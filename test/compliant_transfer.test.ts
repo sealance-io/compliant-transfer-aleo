@@ -1,0 +1,480 @@
+import { ExecutionMode } from "@doko-js/core";
+import { Compliant_transferContract } from "../artifacts/js/compliant_transfer";
+import { Token_registryContract } from "../artifacts/js/token_registry";
+import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_transfer";
+import { decryptToken } from "../artifacts/js/leo2js/token_registry";
+
+const mode = ExecutionMode.SnarkExecute;
+const tokenRegistryContract = new Token_registryContract({ mode });
+const compliantTransferContract = new Compliant_transferContract({ mode })
+const compliantTransferContractForFreezedAccount = new Compliant_transferContract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
+
+const PROGRAM_ADDRESS = "aleo1pxzpcyznucwdtuqzfrksk3uxvjkkvadx5wc3cp3jvshyfex0muzspvdzw3";
+const ZERO_ADDRESS = "aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg";
+const INVESTIGATOR = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t";
+const investigatorPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2;
+
+const account = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"
+const accountPrivKey = process.env.ALEO_PRIVATE_KEY
+const freezedAccount = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t"
+const freezedAccountPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2
+const recipient = "aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg"
+const recipientPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY3
+
+const tokenId = 4846247369341682005n;
+const amount = 10n;
+const defaultAuthorizedUntil = 4294967295;
+const faucetAmount = 100000n;
+
+describe('test compliant_transfer program', () => {
+  test('token_registry setup', async () => {
+    let tx = await tokenRegistryContract.deploy();
+    await tx.wait();
+    
+    // tx = await tokenRegistryContract.register_token(
+    //   tokenId, // tokenId
+    //   tokenId, // tokenId
+    //   tokenId, // name
+    //   6, // decimals
+    //   1000_000000000000n, // max supply
+    //   true,
+    //   PROGRAM_ADDRESS
+    // );
+    // await tx.wait();
+    // tx = await tokenRegistryContract.set_role(
+    //   tokenId,
+    //   PROGRAM_ADDRESS,
+    //   3, // SUPPLY_MANAGER_ROLE
+    // );
+    // await tx.wait();
+
+  }, 10000000)
+
+  test(`deploy compliant_transfer`, async () => {
+    let tx = await compliantTransferContract.deploy();
+    await tx.wait();
+  }, 10000000);
+
+  test(`test initialize`, async () => {
+    let tx = await compliantTransferContract.initialize();
+    await tx.wait();
+  }, 10000000);
+
+  test(`test update_freeze_list`, async () => {
+    // should fail because only the admin can call to this function
+    let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(
+      account,
+      true,
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let tx = await compliantTransferContract.update_freeze_list(
+      freezedAccount,
+      true
+    );
+    await tx.wait();
+    let isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+    expect(isAccountFreezed).toBe(true);
+
+    tx = await compliantTransferContract.update_freeze_list(
+      freezedAccount,
+      false
+    );
+    await tx.wait();
+    isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+    expect(isAccountFreezed).toBe(false);
+
+    tx = await compliantTransferContract.update_freeze_list(
+      freezedAccount,
+      true
+    );
+    await tx.wait();
+    isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+    expect(isAccountFreezed).toBe(true);
+  }, 10000000);
+
+  test(`test mint_public`, async () => {
+    // only the admin can call to this function
+    let rejectedTx = await compliantTransferContractForFreezedAccount.mint_public(
+      freezedAccount,
+      amount * 20n
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let tx = await compliantTransferContract.mint_public(
+      account,
+      amount * 20n,
+    );
+    await tx.wait();
+
+    tx = await compliantTransferContract.mint_public(
+      freezedAccount,
+      amount * 20n,
+    );
+    await tx.wait();
+  }, 10000000);
+
+  let accountRecord;
+  let freezedAccountRecord;
+  test(`test mint_private`, async () => {
+    // only the admin can call to this function
+    let rejectedTx = await compliantTransferContractForFreezedAccount.mint_private(
+      freezedAccount,
+      amount * 20n
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let tx = await compliantTransferContract.mint_private(
+      account,
+      amount * 20n,
+    );
+
+    const [complianceRecord] = await tx.wait();
+    const tokenRecord = (tx as any).transaction.execution.transitions[0].outputs[0].value;
+    accountRecord = decryptToken(tokenRecord, accountPrivKey);
+    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.amount).toBe(amount * 20n);
+    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.external_authorization_required).toBe(true);
+    expect(accountRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord.amount).toBe(amount * 20n);
+    expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
+    expect(decryptedComplianceRecord.recipient).toBe(account);
+
+    tx = await compliantTransferContract.mint_private(
+      freezedAccount,
+      amount * 20n,
+    );
+
+    const [complianceRecord2] = await tx.wait();
+    const tokenRecord2 = (tx as any).transaction.execution.transitions[0].outputs[0].value;
+
+    freezedAccountRecord = decryptToken(tokenRecord2, freezedAccountPrivKey);
+    expect(freezedAccountRecord.owner).toBe(freezedAccount);
+    expect(freezedAccountRecord.amount).toBe(amount * 20n);
+    expect(freezedAccountRecord.token_id).toBe(tokenId);
+    expect(freezedAccountRecord.external_authorization_required).toBe(true);
+    expect(freezedAccountRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord2 = decryptComplianceRecord(complianceRecord2, investigatorPrivKey);
+    expect(decryptedComplianceRecord2.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord2.amount).toBe(amount * 20n);
+    expect(decryptedComplianceRecord2.sender).toBe(ZERO_ADDRESS);
+    expect(decryptedComplianceRecord2.recipient).toBe(freezedAccount);
+  }, 10000000)
+
+  test('test demo_faucet', async () => {
+    let tx = await compliantTransferContractForFreezedAccount.demo_faucet();
+    const [complianceRecord] = await tx.wait();
+    const tokenRecord = (tx as any).transaction.execution.transitions[1].outputs[0].value;
+    const accountRecord = decryptToken(tokenRecord, freezedAccountPrivKey);
+    expect(accountRecord.owner).toBe(freezedAccount);
+    expect(accountRecord.amount).toBe(faucetAmount);
+    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.external_authorization_required).toBe(true);
+    expect(accountRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord.amount).toBe(faucetAmount);
+    expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
+    expect(decryptedComplianceRecord.recipient).toBe(freezedAccount);
+
+    // Each user can call to this function only one time
+    let rejectedTx = await compliantTransferContractForFreezedAccount.demo_faucet();
+    await expect(rejectedTx.wait()).rejects.toThrow();
+  }, 10000000)
+
+  test('token_registry calls should fail', async () => {
+    const rejectedTx1 = await tokenRegistryContract.mint_public(
+      tokenId,
+      account,
+      amount,
+      defaultAuthorizedUntil
+    );
+    await expect(rejectedTx1.wait()).rejects.toThrow();
+
+    const rejectedTx2 = await tokenRegistryContract.mint_private(
+      tokenId,
+      account,
+      amount,
+      true,
+      0
+    );
+    await expect(rejectedTx2.wait()).rejects.toThrow();
+
+    const rejectedTx3 = await tokenRegistryContract.burn_public(
+      tokenId,
+      account,
+      amount
+    );
+    await expect(rejectedTx3.wait()).rejects.toThrow();
+
+    const rejectedTx4 = await tokenRegistryContract.burn_private(
+      accountRecord,
+      amount
+    );
+    await expect(rejectedTx4.wait()).rejects.toThrow();
+
+    const rejectedTx5 = await tokenRegistryContract.transfer_priv_to_public(
+      account,
+      amount,
+      accountRecord
+    );
+    await expect(rejectedTx5.wait()).rejects.toThrow();
+
+    const rejectedTx6 = await tokenRegistryContract.transfer_private(
+      account,
+      amount,
+      accountRecord
+    );
+    await expect(rejectedTx6.wait()).rejects.toThrow();
+
+    const rejectedTx7 = await tokenRegistryContract.transfer_public(
+      tokenId,
+      account,
+      amount,
+    );
+    await expect(rejectedTx7.wait()).rejects.toThrow();
+
+    const rejectedTx8 = await tokenRegistryContract.transfer_public_as_signer(
+      tokenId,
+      account,
+      amount,
+    );
+    await expect(rejectedTx8.wait()).rejects.toThrow();
+
+    const rejectedTx9 = await tokenRegistryContract.transfer_public_to_priv(
+      tokenId,
+      account,
+      amount,
+      true,
+    );
+    await expect(rejectedTx9.wait()).rejects.toThrow();
+
+    const tx = await tokenRegistryContract.approve_public(
+      tokenId,
+      account,
+      amount,
+    );
+    await tx.wait();
+
+    const rejectedTx10 = await tokenRegistryContract.transfer_from_public(
+      tokenId,
+      account,
+      account,
+      amount
+    );
+    await expect(rejectedTx10.wait()).rejects.toThrow();
+
+    const rejectedTx11 = await tokenRegistryContract.transfer_from_public_to_priv(
+      tokenId,
+      account,
+      account,
+      amount,
+      true
+    );
+    await expect(rejectedTx11.wait()).rejects.toThrow();
+  }, 10000000)
+
+  test(`test burn_public`, async () => {
+    // only the admin can call to this function
+    const rejectedTx = await compliantTransferContractForFreezedAccount.burn_public(
+      account,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await compliantTransferContract.burn_public(
+      freezedAccount,
+      amount
+    );
+    await tx.wait();
+  }, 10000000)
+
+  test(`test burn_private`, async () => {
+    // only the admin can call to this function
+    const rejectedTx = await compliantTransferContractForFreezedAccount.burn_private(
+      freezedAccountRecord,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const previousAmount = accountRecord.amount;
+    let tx = await compliantTransferContract.burn_private(
+      accountRecord,
+      amount
+    );
+    const [complianceRecord] = await tx.wait();
+    const tokenRecord = (tx as any).transaction.execution.transitions[0].outputs[0].value;
+
+    accountRecord = decryptToken(tokenRecord, accountPrivKey);
+    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.amount).toBe(previousAmount - amount);
+    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.external_authorization_required).toBe(true);
+    expect(accountRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord.amount).toBe(amount);
+    expect(decryptedComplianceRecord.sender).toBe(account);
+    expect(decryptedComplianceRecord.recipient).toBe(ZERO_ADDRESS);
+  }, 10000000)
+
+  test(`test transfer_public`, async () => {
+    // If the sender didn't approve the program the tx will fail
+    let rejectedTx = await compliantTransferContract.transfer_public(
+      recipient,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const approvalTx = await tokenRegistryContract.approve_public(
+      tokenId,
+      PROGRAM_ADDRESS,
+      amount
+    );
+    await approvalTx.wait();
+
+    // If the sender is freezed account it's impossible to send tokens
+    rejectedTx = await compliantTransferContractForFreezedAccount.transfer_public(
+      recipient,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the recipient is freezed account it's impossible to send tokens
+    rejectedTx = await compliantTransferContract.transfer_public(
+      freezedAccount,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await compliantTransferContract.transfer_public(
+      recipient,
+      amount
+    );
+    await tx.wait();
+  }, 10000000)
+
+  test(`test transfer_public_as_signer`, async () => {
+    // If the sender is freezed account it's impossible to send tokens
+    let rejectedTx = await compliantTransferContractForFreezedAccount.transfer_public_as_signer(
+      recipient,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the recipient is freezed account it's impossible to send tokens
+    rejectedTx = await compliantTransferContract.transfer_public_as_signer(
+      freezedAccount,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await compliantTransferContract.transfer_public_as_signer(
+      recipient,
+      amount
+    );
+    await tx.wait();
+  }, 10000000)
+
+  test(`test transfer_public_to_priv`, async () => {
+    // If the sender didn't approve the program the tx will fail
+    let rejectedTx = await compliantTransferContract.transfer_public_to_priv(
+      recipient,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const approvalTx = await tokenRegistryContract.approve_public(
+      tokenId,
+      PROGRAM_ADDRESS,
+      amount
+    );
+    await approvalTx.wait();
+
+    // If the sender is freezed account it's impossible to send tokens
+    rejectedTx = await compliantTransferContractForFreezedAccount.transfer_public_to_priv(
+      recipient,
+      amount
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await compliantTransferContract.transfer_public_to_priv(
+      recipient,
+      amount
+    );
+    const [complianceRecord] = await tx.wait();
+    const tokenRecord = (tx as any).transaction.execution.transitions[3].outputs[0].value;
+
+    const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
+    expect(recipientRecord.owner).toBe(recipient);
+    expect(recipientRecord.amount).toBe(amount);
+    expect(recipientRecord.token_id).toBe(tokenId);
+    expect(recipientRecord.external_authorization_required).toBe(true);
+    expect(recipientRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord.amount).toBe(amount);
+    expect(decryptedComplianceRecord.sender).toBe(account);
+    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+  }, 10000000);
+
+  test(`test transfer_private`, async () => {
+    const tx = await compliantTransferContract.transfer_private(
+      recipient,
+      amount,
+      accountRecord
+    );
+    const [complianceRecord] = await tx.wait();
+
+    const previousAmount = accountRecord.amount;
+    accountRecord = decryptToken((tx as any).transaction.execution.transitions[0].outputs[0].value, accountPrivKey);
+    const recipientRecord = decryptToken((tx as any).transaction.execution.transitions[1].outputs[1].value, recipientPrivKey);
+    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.amount).toBe(previousAmount - amount);
+    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.external_authorization_required).toBe(true);
+    expect(accountRecord.authorized_until).toBe(0);
+    expect(recipientRecord.owner).toBe(recipient);
+    expect(recipientRecord.amount).toBe(amount);
+    expect(recipientRecord.token_id).toBe(tokenId);
+    expect(recipientRecord.external_authorization_required).toBe(true);
+    expect(recipientRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord.amount).toBe(amount);
+    expect(decryptedComplianceRecord.sender).toBe(account);
+    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+  }, 10000000)
+
+  test(`test transfer_priv_to_public`, async () => {
+    const tx = await compliantTransferContract.transfer_priv_to_public(
+      recipient,
+      amount,
+      accountRecord
+    );
+    const [complianceRecord] = await tx.wait();
+
+    const previousAmount = accountRecord.amount;
+    accountRecord = decryptToken((tx as any).transaction.execution.transitions[0].outputs[0].value, accountPrivKey);
+    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.amount).toBe(previousAmount - amount);
+    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.external_authorization_required).toBe(true);
+    expect(accountRecord.authorized_until).toBe(0);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+    expect(decryptedComplianceRecord.amount).toBe(amount);
+    expect(decryptedComplianceRecord.sender).toBe(account);
+    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+  }, 10000000)
+})
