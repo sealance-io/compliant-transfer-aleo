@@ -2,17 +2,17 @@ import token_registry.aleo;
 import merkle_tree8.aleo;
 
 // The 'compliant_transfer' program.
-program compliant_transfer.aleo {
-    const TOKEN_ID: field = 4846247369341682005field;
+program compliant_transfer_v0.aleo {
 
+    const TOKEN_ID: field = 4846247369341682005field;
     const ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
     const INVESTIGATOR: address = aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t;
     const ZERO_ADDRESS: address = aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg;
     const PROGRAM_ADDRESS: address = aleo1pxzpcyznucwdtuqzfrksk3uxvjkkvadx5wc3cp3jvshyfex0muzspvdzw3;
     
-    const NAME: u128 = 4846247369341682005u128; // name: u128, CATNOHAT ascii encoded
-    const SYMBOL: u128 = 4846247369341682005u128; // symbol: u128, CATNOHAT ascii encoded
-    const DECIMALS: u8 = 6u8; // symbol: u128, CATNOHAT ascii encoded
+    const NAME: u128 = 100667890849571067315045710u128; // name: u128, SEALEDTOKEN ascii encoded
+    const SYMBOL: u128 = 1397047628u128; // symbol: u128, SEAL ascii encoded
+    const DECIMALS: u8 = 6u8;
     const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
     const FAUCET_AMOUNT: u128 = 100_000u128;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
@@ -25,27 +25,25 @@ program compliant_transfer.aleo {
     /* FLOWS
 
     ADMIN to update the list:
-        1. (chain) get the current list (by reading the tree_mapping)
+        1. (offchain) get the current list
         2. add/remove a new address
         3. sort the leaves
-        4. (chain) update tree -> update the mapping -> update root
+        4. (chain) update the mapping -> update root
 
     ADMIN to add/remove address:
-        1. (chain) get the current list (by reading the tree_mapping)
+        1. (offchain) get the current list 
         2. add/remove a new address
         3. sort the leaves
         4. (chain) build a new tree
         4. (chain) add_address/remove_address updating tree_address mapping and update the root 
-WARNING: always make sure that tree_address and tree_mapping are in sync
 
     USER to generate a proof:
-        1. (chain) get the current leaves
-        2. find the closest leaf to the own address
-        3. (chain) build tree
+        1. (offchain) get the current leaves
+        2. (chain) build tree
+        3. find the closest leaf to the own address
         4. (chain) compute siblings paths for left leaf
         5. (chain) compute siblings paths for right leaf
         5. (chain) verify non inclusion proof
-
     */
 
     struct MerkleProof {
@@ -68,10 +66,10 @@ WARNING: always make sure that tree_address and tree_mapping are in sync
     async transition initialize() -> Future {
         let token_registry_call: Future = token_registry.aleo/register_token(
             TOKEN_ID,
-            4846247369341682005u128, // name: u128, CATNOHAT ascii encoded
-            4846247369341682005u128, // symbol: u128, CATNOHAT ascii encoded
-            6u8, // decimals: u8
-            1_000_000_000_000_000u128, // max_supply: u128
+            NAME,
+            SYMBOL,
+            DECIMALS,
+            TOTAL_SUPPLY,
             true,
             PROGRAM_ADDRESS // external_authorization_party: address
         );
@@ -90,22 +88,12 @@ WARNING: always make sure that tree_address and tree_mapping are in sync
         freeze_list.set(account, is_freezed);
         merkle_root.set(0u8, new_root);
     }
- 
-    // Transition to build the tree
-    transition build_sorted_tree(list: [address; 8]) -> [field; 15] {
-        return merkle_tree8.aleo/build_tree(list);
-    }
-
-    // Transition to get merkle proof (sinlings path and leaf index) for a leaf
-    transition siblings_path(tree: [field; 15], leaf_index: u32) -> MerkleProof {
-        return merkle_tree8.aleo/compute_sibling_path(tree, leaf_index);
-    }
 
     async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
         input_record: token_registry.aleo/Token,
-        merkle_proofs: [MerkleProof;2]
+        merkle_proofs: [MerkleProof; 2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
 
         let root: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, merkle_proofs);

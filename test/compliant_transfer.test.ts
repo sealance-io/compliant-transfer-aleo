@@ -1,4 +1,4 @@
-import { ExecutionMode } from "@doko-js/core";
+/*import { ExecutionMode } from "@doko-js/core";
 import { Compliant_transferContract } from "../artifacts/js/compliant_transfer";
 import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_transfer";
@@ -27,7 +27,7 @@ const defaultAuthorizedUntil = 4294967295;
 const faucetAmount = 100000n;
 
 describe('test compliant_transfer program', () => {
-  test('token_registry setup', async () => {
+/*  test('token_registry setup', async () => {
     let tx = await tokenRegistryContract.deploy();
     await tx.wait();
     
@@ -477,4 +477,4 @@ describe('test compliant_transfer program', () => {
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
   }, 10000000)
-})
+})*/

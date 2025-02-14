@@ -41,30 +41,6 @@ program merkle_tree8.aleo {
         ];
     }
 
-    // Create a sibling path for a leaf
-    // TODO: replace by JS code
-    function compute_sibling_path(tree: [field; 15], leaf_index: u32) -> MerkleProof {
-        if leaf_index == 0u32 {
-            return MerkleProof{siblings:[tree[0u32], tree[1u8], tree[9u8], tree[13u8]],leaf_index:leaf_index};
-       } else if leaf_index == 1u32 {
-            return MerkleProof{siblings:[tree[1u32], tree[0u8], tree[9u8], tree[13u8]],leaf_index:leaf_index};
-        } else if leaf_index == 2u32 {
-            return MerkleProof{siblings:[tree[2u32], tree[3u8], tree[8u8], tree[13u8]],leaf_index:leaf_index};
-        } else if leaf_index == 3u32 {
-            return MerkleProof{siblings:[tree[3u32], tree[2u8], tree[8u8], tree[13u8]],leaf_index:leaf_index};
-        } else if leaf_index == 4u32 {
-            return MerkleProof{siblings:[tree[4u32], tree[5u8], tree[11u8], tree[12u8]],leaf_index:leaf_index};
-        } else if leaf_index == 5u32 {
-            return MerkleProof{siblings:[tree[5u32], tree[4u8], tree[11u8], tree[12u8]],leaf_index:leaf_index};
-        } else if leaf_index == 6u32 {
-            return MerkleProof{siblings:[tree[6u32], tree[7u8], tree[10u8], tree[12u8]],leaf_index:leaf_index};
-        } else if leaf_index == 7u32 {
-            return MerkleProof{siblings:[tree[7u32], tree[6u8], tree[10u8], tree[12u8]],leaf_index:leaf_index};
-        }
-
-        return MerkleProof{siblings:[0field, 0field, 0field, 0field],leaf_index:0u32};
-    }
-
     inline calculate_hash_for_neighbor(sibling1:field, sibling2:field, indexbit: u32) -> field {
         if indexbit == 0u32 {
             return Poseidon4::hash_to_field([sibling1, sibling2]);
@@ -97,7 +73,7 @@ program merkle_tree8.aleo {
             // Ensure that if the address is the most left leaf, it is less than the first sibling
             assert_eq(merkle_proofs[0u32].siblings, merkle_proofs[1u32].siblings);
             assert(addr_field < merkle_proofs[0u32].siblings[0u32]);
-        } else if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) && (merkle_proofs[0u32].leaf_index == 8u32) {
+        } else if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) && (merkle_proofs[0u32].leaf_index == 7u32) {
             // Ensure that if the address is the most right leaf, it is more than the last l
             assert_eq(merkle_proofs[0u32].siblings, merkle_proofs[1u32].siblings);
             assert(addr_field > merkle_proofs[0u32].siblings[0u32]);
