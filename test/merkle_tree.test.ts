@@ -1,6 +1,5 @@
 import { ExecutionMode } from "@doko-js/core";
 import { Merkle_tree8Contract } from "../artifacts/js/merkle_tree8";
-import { compileFunction } from "vm";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Merkle_tree8Contract({ mode });
@@ -29,26 +28,14 @@ function getSiblingPath(tree, leafIndex) {
   return {siblings:siblingPath, leaf_index: leafIndex};
 }
 
-function stringToBigInt(asciiString) {
-  let bigIntValue = 0n;
-  for (let i = 0; i < asciiString.length; i++) {
-    bigIntValue = (bigIntValue << 8n) + BigInt(asciiString.charCodeAt(i));
-  }
-  return bigIntValue;
-}
-
 describe('merkle_tree8 tests', () => {
 
   test(`deploy merkle_tree8`, async () => {
-
-    const tokenName = "SEALEDTOKEN";
-    console.log(stringToBigInt(tokenName));
-
-    //const tx = await contract.deploy();
-    //await tx.wait();
+    const tx = await contract.deploy();
+    await tx.wait();
   }, 10000000)
 
- /* test(`happy path`, async () => {
+  test(`happy path`, async () => {
     let tx = await contract.build_tree([
       //"aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
       "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
@@ -99,5 +86,5 @@ describe('merkle_tree8 tests', () => {
     await expect(contract.verify_non_inclusion("aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9", [merkle_proof7, merkle_proof7])).rejects.toThrow();
     await contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [merkle_proof7, merkle_proof7]);
     
-  }, 10000000)*/
+  }, 10000000)
 })

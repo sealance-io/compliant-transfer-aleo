@@ -1,13 +1,14 @@
-/*import { ExecutionMode } from "@doko-js/core";
-import { Compliant_transferContract } from "../artifacts/js/compliant_transfer";
+import { ExecutionMode } from "@doko-js/core";
+import { Compliant_transfer_v0Contract } from "../artifacts/js/compliant_transfer_v0";
+
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_transfer";
+import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_transfer_v0";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 
 const mode = ExecutionMode.SnarkExecute;
 const tokenRegistryContract = new Token_registryContract({ mode });
-const compliantTransferContract = new Compliant_transferContract({ mode })
-const compliantTransferContractForFreezedAccount = new Compliant_transferContract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
+const compliantTransferContract = new Compliant_transfer_v0Contract({ mode })
+const compliantTransferContractForFreezedAccount = new Compliant_transfer_v0Contract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
 
 const PROGRAM_ADDRESS = "aleo1pxzpcyznucwdtuqzfrksk3uxvjkkvadx5wc3cp3jvshyfex0muzspvdzw3";
 const ZERO_ADDRESS = "aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg";
@@ -21,16 +22,26 @@ const freezedAccountPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2
 const recipient = "aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg"
 const recipientPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY3
 
-const tokenId = 4846247369341682005n;
 const amount = 10n;
 const defaultAuthorizedUntil = 4294967295;
 const faucetAmount = 100000n;
 
+const tokenName = "SEALEDTOKEN";
+const tokenId = stringToBigInt(tokenName);
+
+function stringToBigInt(asciiString) {
+  let bigIntValue = 0n;
+  for (let i = 0; i < asciiString.length; i++) {
+    bigIntValue = (bigIntValue << 8n) + BigInt(asciiString.charCodeAt(i));
+  }
+  return bigIntValue;
+}
+
 describe('test compliant_transfer program', () => {
-/*  test('token_registry setup', async () => {
+  test('token_registry setup', async () => {
     let tx = await tokenRegistryContract.deploy();
     await tx.wait();
-    
+
     // tx = await tokenRegistryContract.register_token(
     //   tokenId, // tokenId
     //   tokenId, // tokenId
@@ -477,4 +488,4 @@ describe('test compliant_transfer program', () => {
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
   }, 10000000)
-})*/
+})
