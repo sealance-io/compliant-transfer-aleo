@@ -1,8 +1,8 @@
 import { ExecutionMode } from "@doko-js/core";
-import { Merkle_tree8Contract } from "../artifacts/js/merkle_tree8";
+import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 
 const mode = ExecutionMode.SnarkExecute;
-const contract = new Merkle_tree8Contract({ mode });
+const contract = new RediwsozfoContract({ mode });
 
 
 export function getSiblingPath(tree, leafIndex) {

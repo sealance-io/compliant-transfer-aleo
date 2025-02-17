@@ -1,4 +1,4 @@
-program merkle_tree8.aleo {
+program rediwsozfo.aleo {
     
     // Constants
     const TREE_DEPTH: u128 = 4u128;
@@ -62,8 +62,8 @@ program merkle_tree8.aleo {
     }
 
     transition verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
-        let root1: field = merkle_tree8.aleo/calculate_root_siblings(merkle_proofs[0u32].siblings[0u32], merkle_proofs[0u32]);
-        let root2: field = merkle_tree8.aleo/calculate_root_siblings(merkle_proofs[1u32].siblings[0u32], merkle_proofs[1u32]);
+        let root1: field = calculate_root_siblings(merkle_proofs[0u32].siblings[0u32], merkle_proofs[0u32]);
+        let root2: field = calculate_root_siblings(merkle_proofs[1u32].siblings[0u32], merkle_proofs[1u32]);
         
         // Ensure the roots from merkle proofs are the same
         assert_eq(root1, root2);
