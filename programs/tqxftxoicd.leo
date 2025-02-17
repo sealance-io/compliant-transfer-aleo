@@ -1,18 +1,14 @@
 import token_registry.aleo;
-import merkle_tree8.aleo;
+import rediwsozfo.aleo;
 
-/***
-    WARNING: IF YOU CHANGE THE PROGRAM NAME YOU HAVE TO UPDATE THE PROGRAM_ADDRESS
-***/
-// The 'compliant_transfer' program.
-program compliant_transfer_v0.aleo {
+program tqxftxoicd.aleo {
 
     const TOKEN_ID: field = 100667890849571067315045710field; // SEALEDTOKEN ascii encoded
-    const ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+    const ADMIN: address = aleo17skrjdgtsy7krfpddjzd83c9kzs3elxlffgmhjj795dduy78vuxs9c4jgp;
     const INVESTIGATOR: address = aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t;
     // ZERO_ADDRESS as field equals to 0field
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    const PROGRAM_ADDRESS: address = aleo14e9w24cyd9kkg0zu7jksu0ddu9vzkzy0z0t40zu4wjhnqza49uqshvzu5s;
+    const PROGRAM_ADDRESS: address = aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4;
     
     const NAME: u128 = 100667890849571067315045710u128; // name: u128, SEALEDTOKEN ascii encoded
     const SYMBOL: u128 = 1397047628u128; // symbol: u128, SEAL ascii encoded
@@ -67,23 +63,6 @@ program compliant_transfer_v0.aleo {
         token_id: field
     }
 
-    async transition initialize() -> Future {
-        let token_registry_call: Future = token_registry.aleo/register_token(
-            TOKEN_ID,
-            NAME,
-            SYMBOL,
-            DECIMALS,
-            TOTAL_SUPPLY,
-            true,
-            PROGRAM_ADDRESS // external_authorization_party: address
-        );
-        return finalize_initialize(token_registry_call, self.caller );
-    }
-    async function finalize_initialize(token_registry_call: Future, caller: address) {
-        assert_eq(caller, ADMIN);
-        token_registry_call.await();
-    }
-
     async transition update_freeze_list(account: address, is_freezed: bool, new_root: field) -> Future {
         return f_update_freeze_list(account, is_freezed, self.caller, new_root);
     }
@@ -132,7 +111,7 @@ program compliant_transfer_v0.aleo {
         mint_private_call.await();
     }
 
-    async transition mint_public(
+async transition mint_public(
         public recipient: address,
         public amount: u128,
     ) -> Future {
@@ -231,7 +210,6 @@ program compliant_transfer_v0.aleo {
         token_registry_call.await(); 
     }
 
-
     // -------------------------
     // Called by token owners/DeFi contracts
     // -------------------------
@@ -318,7 +296,7 @@ program compliant_transfer_v0.aleo {
         public amount: u128,
         recipient_merkle_proofs: [MerkleProof;2],
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        let root: field = merkle_tree8.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = rediwsozfo.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let owner: TokenOwner = TokenOwner {
             account: self.caller, // it should be the signer if we choose option 2
@@ -410,8 +388,8 @@ program compliant_transfer_v0.aleo {
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        let sender_root: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-        let recipient_root: field = merkle_tree8.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let sender_root: field = rediwsozfo.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let recipient_root: field = rediwsozfo.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         assert_eq(sender_root, recipient_root);
 
         let authorization_call: (
@@ -471,7 +449,7 @@ program compliant_transfer_v0.aleo {
         input_record: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof; 2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        let root: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let root: field = rediwsozfo.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record
