@@ -1,20 +1,20 @@
 import { ExecutionMode } from "@doko-js/core";
-import { Compliant_transferContract } from "../artifacts/js/compliant_transfer";
 
 import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_transfer_v0";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_tree8Contract } from "../artifacts/js/merkle_tree8";
 import { getSiblingPath } from "./merkle_tree.test";
+import { Compliant_transfer_v0Contract } from "../artifacts/js/compliant_transfer_v0";
 
 const mode = ExecutionMode.SnarkExecute;
 const tokenRegistryContract = new Token_registryContract({ mode });
-const compliantTransferContract = new Compliant_transferContract({ mode })
-const compliantTransferContractForFreezedAccount = new Compliant_transferContract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
+const compliantTransferContract = new Compliant_transfer_v0Contract({ mode })
+const compliantTransferContractForFreezedAccount = new Compliant_transfer_v0Contract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
 const merkleTreeContract = new Merkle_tree8Contract({ mode });
 
 
-const PROGRAM_ADDRESS = "aleo1pxzpcyznucwdtuqzfrksk3uxvjkkvadx5wc3cp3jvshyfex0muzspvdzw3";
+const PROGRAM_ADDRESS = "aleo14e9w24cyd9kkg0zu7jksu0ddu9vzkzy0z0t40zu4wjhnqza49uqshvzu5s";
 const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 const INVESTIGATOR = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t";
 const investigatorPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2;
@@ -97,6 +97,7 @@ describe('test compliant_transfer program', () => {
   test(`deploy compliant_transfer`, async () => {
     const tx = await compliantTransferContract.deploy();
     await tx.wait();
+    expect(compliantTransferContract.address()).toBe(PROGRAM_ADDRESS)
   }, 10000000);
 
   // test(`test initialize`, async () => {

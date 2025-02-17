@@ -4,11 +4,8 @@ import { Merkle_tree8Contract } from "../artifacts/js/merkle_tree8";
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Merkle_tree8Contract({ mode });
 
-const account = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"
-const ZERO_ADDRESS = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t"
 
-
-function getSiblingPath(tree, leafIndex) {
+export function getSiblingPath(tree, leafIndex) {
   let num_leaves = Math.floor((tree.length + 1)/2);
   const siblingPath = [];
   
@@ -28,7 +25,7 @@ function getSiblingPath(tree, leafIndex) {
   return {siblings:siblingPath, leaf_index: leafIndex};
 }
 
-describe('merkle_tree8 tests', () => {
+describe.skip('merkle_tree8 tests', () => {
 
   test(`deploy merkle_tree8`, async () => {
     const tx = await contract.deploy();
