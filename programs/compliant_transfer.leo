@@ -1,13 +1,17 @@
 import token_registry.aleo;
 import merkle_tree8.aleo;
 
+/***
+    WARNING: IF YOU CHANGE THE PROGRAM NAME YOU HAVE TO UPDATE THE PROGRAM_ADDRESS
+***/
 // The 'compliant_transfer' program.
-program compliant_transfer_v0.aleo {
+program compliant_transfer.aleo {
 
-    const TOKEN_ID: field = 4846247369341682005field;
+    const TOKEN_ID: field = 100667890849571067315045710field; // SEALEDTOKEN ascii encoded
     const ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
     const INVESTIGATOR: address = aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t;
-    const ZERO_ADDRESS: address = aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg;
+    // ZERO_ADDRESS as field equals to 0field
+    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
     const PROGRAM_ADDRESS: address = aleo1pxzpcyznucwdtuqzfrksk3uxvjkkvadx5wc3cp3jvshyfex0muzspvdzw3;
     
     const NAME: u128 = 100667890849571067315045710u128; // name: u128, SEALEDTOKEN ascii encoded
@@ -89,67 +93,6 @@ program compliant_transfer_v0.aleo {
         merkle_root.set(0u8, new_root);
     }
 
-    async transition transfer_priv_to_public(
-        public recipient: address,
-        public amount: u128,
-        input_record: token_registry.aleo/Token,
-        merkle_proofs: [MerkleProof; 2]
-    ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-
-        let root: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, merkle_proofs);
-
-        let authorization_call: (
-            token_registry.aleo/Token, // unauthorized_record
-            token_registry.aleo/Token, // authorized_record
-            Future
-        ) = token_registry.aleo/prehook_private(
-            input_record, 
-            amount, 
-            AUTHORIZED_UNTIL
-        );
-
-        // we don't need to return the record because the amount is zero
-        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_priv_to_public(
-            recipient,
-            amount,
-            authorization_call.1,
-        );
-        
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: INVESTIGATOR,
-            amount: amount,
-            sender: input_record.owner,
-            recipient: recipient,
-        };
-
-        
-        return (
-            compliance_record, 
-            authorization_call.0,
-            f_transfer_priv_to_public(
-                authorization_call.2, 
-                transfer_call.1, 
-                recipient,
-                root
-            )
-        );
-    }
-    async function f_transfer_priv_to_public(
-        authorization_call: Future,
-        transfer_call: Future,
-        recipient: address,
-        root: field
-    ) {
-        let is_recipient_freezed: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_freezed, false);
-       
-        let current_root: field = merkle_root.get(0u8);
-        assert_eq(root, current_root);
-        
-        authorization_call.await();
-        transfer_call.await();
-
-    }
     async transition demo_faucet() -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         let mint_public_call: Future = token_registry.aleo/mint_public(
             TOKEN_ID,
@@ -370,38 +313,13 @@ program compliant_transfer_v0.aleo {
         transfer_call.await();
     }
 
-
-
-    // async transition transfer_from_public(
-    //     public owner: address,
-    //     public recipient: address,
-    //     public amount: u128
-    // ) -> Future {
-    //     let token_registry_call: Future = token_registry.aleo/transfer_from_public(
-    //         TOKEN_ID,
-    //         owner,
-    //         recipient,
-    //         amount
-    //     );
-    //     return finalize_transfer_from_public(token_registry_call, owner, recipient);
-    // }
-
-    // async function finalize_transfer_from_public(
-    //     token_registry_call: Future,
-    //     sender: address,
-    //     recipient: address
-    // ) {
-    //     let is_sender_freezed: bool = freeze_list.get_or_use(sender, false);
-    //     assert_eq(is_sender_freezed, false);
-    //     let is_recipient_freezed: bool = freeze_list.get_or_use(recipient, false);
-    //     assert_eq(is_recipient_freezed, false);
-    //     token_registry_call.await();
-    // }
-
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
+        recipient_merkle_proofs: [MerkleProof;2],
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
+        let root: field = merkle_tree8.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+
         let owner: TokenOwner = TokenOwner {
             account: self.caller, // it should be the signer if we choose option 2
             token_id: TOKEN_ID
@@ -460,7 +378,8 @@ program compliant_transfer_v0.aleo {
                 transfer_to_program,
                 authorization_call_for_program, 
                 transfer_to_recipient.1, 
-                self.caller
+                self.caller,
+                root
             )
         );
     }
@@ -469,49 +388,20 @@ program compliant_transfer_v0.aleo {
         transfer_to_program: Future,
         authorization_call_for_program: Future,
         transfer_to_recipient: Future,
-        sender: address
+        sender: address,
+        root: field
     ) {
         let is_sender_freezed: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_freezed, false);
+
+        let current_root: field = merkle_root.get(0u8);
+        assert_eq(root, current_root);
 
         authorization_call_for_caller.await();
         transfer_to_program.await();
         authorization_call_for_program.await();
         transfer_to_recipient.await();
     }
-    // async transition transfer_from_public_to_priv(
-    //     public owner: address,
-    //     recipient: address,
-    //     public amount: u128,
-    //     public external_authorization_required: bool
-    // ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-    //     let token_registry_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_from_public_to_priv(
-    //         TOKEN_ID,
-    //         owner,
-    //         recipient,
-    //         amount,
-    //         external_authorization_required,
-    //     );
-
-
-    //     let compliance_record: ComplianceRecord = ComplianceRecord {
-    //         owner: INVESTIGATOR,
-    //         amount: amount,
-    //         sender: owner,
-    //         recipient: recipient,
-    //     };
-
-    //     return (compliance_record, token_registry_call.0, f_transfer_from_public_to_priv(token_registry_call.1, owner));
-    // }
-
-    // async function f_transfer_from_public_to_priv(
-    //     token_registry_call: Future,
-    //     sender: address
-    // ) {
-    //     let is_sender_freezed: bool = freeze_list.get_or_use(sender, false);
-    //     assert_eq(is_sender_freezed, false);
-    //     token_registry_call.await();
-    // }
 
     async transition transfer_private(
         recipient: address,
@@ -520,10 +410,9 @@ program compliant_transfer_v0.aleo {
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-
-        let root1: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-        let root2: field = merkle_tree8.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
-        assert_eq(root1, root2);
+        let sender_root: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let recipient_root: field = merkle_tree8.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        assert_eq(sender_root, recipient_root);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record
@@ -559,7 +448,7 @@ program compliant_transfer_v0.aleo {
             f_transfer_private(
                 authorization_call.2,
                 transfer_call.2,
-                root1,   
+                sender_root,   
             )
         );
     }
@@ -569,6 +458,66 @@ program compliant_transfer_v0.aleo {
         transfer_call: Future,
         root: field
     ) {
+        let current_root: field = merkle_root.get(0u8);
+        assert_eq(root, current_root);
+        
+        authorization_call.await();
+        transfer_call.await();
+    }
+
+        async transition transfer_priv_to_public(
+        public recipient: address,
+        public amount: u128,
+        input_record: token_registry.aleo/Token,
+        sender_merkle_proofs: [MerkleProof; 2]
+    ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
+        let root: field = merkle_tree8.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+
+        let authorization_call: (
+            token_registry.aleo/Token, // unauthorized_record
+            token_registry.aleo/Token, // authorized_record
+            Future
+        ) = token_registry.aleo/prehook_private(
+            input_record, 
+            amount, 
+            AUTHORIZED_UNTIL
+        );
+
+        // we don't need to return the record because the amount is zero
+        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_priv_to_public(
+            recipient,
+            amount,
+            authorization_call.1,
+        );
+        
+        let compliance_record: ComplianceRecord = ComplianceRecord {
+            owner: INVESTIGATOR,
+            amount: amount,
+            sender: input_record.owner,
+            recipient: recipient,
+        };
+
+        
+        return (
+            compliance_record, 
+            authorization_call.0,
+            f_transfer_priv_to_public(
+                authorization_call.2, 
+                transfer_call.1, 
+                recipient,
+                root
+            )
+        );
+    }
+    async function f_transfer_priv_to_public(
+        authorization_call: Future,
+        transfer_call: Future,
+        recipient: address,
+        root: field
+    ) {
+        let is_recipient_freezed: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_freezed, false);
+       
         let current_root: field = merkle_root.get(0u8);
         assert_eq(root, current_root);
         
