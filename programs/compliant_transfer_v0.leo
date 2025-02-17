@@ -5,14 +5,14 @@ import merkle_tree8.aleo;
     WARNING: IF YOU CHANGE THE PROGRAM NAME YOU HAVE TO UPDATE THE PROGRAM_ADDRESS
 ***/
 // The 'compliant_transfer' program.
-program compliant_transfer.aleo {
+program compliant_transfer_v0.aleo {
 
     const TOKEN_ID: field = 100667890849571067315045710field; // SEALEDTOKEN ascii encoded
     const ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
     const INVESTIGATOR: address = aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t;
     // ZERO_ADDRESS as field equals to 0field
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    const PROGRAM_ADDRESS: address = aleo1pxzpcyznucwdtuqzfrksk3uxvjkkvadx5wc3cp3jvshyfex0muzspvdzw3;
+    const PROGRAM_ADDRESS: address = aleo14e9w24cyd9kkg0zu7jksu0ddu9vzkzy0z0t40zu4wjhnqza49uqshvzu5s;
     
     const NAME: u128 = 100667890849571067315045710u128; // name: u128, SEALEDTOKEN ascii encoded
     const SYMBOL: u128 = 1397047628u128; // symbol: u128, SEAL ascii encoded
