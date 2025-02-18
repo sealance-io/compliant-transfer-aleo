@@ -18,8 +18,8 @@ const creditsContract = new CreditsContract({ mode });
 
 const PROGRAM_ADDRESS = "aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4";
 const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
-const INVESTIGATOR = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t";
-const investigatorPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2;
+const INVESTIGATOR = "aleo1y3ftuud75cwspnsx9w85sw4z0pdcrxpgnsxtz2re4q0vupw9mg8szhm06m";
+const investigatorPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY4;
 
 const account = "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn"
 const accountPrivKey = process.env.ALEO_PRIVATE_KEY
@@ -99,7 +99,7 @@ describe('test compliant_transfer program', () => {
     ]);
     const [tree] = await tx.wait();
     root = tree[14];
-    senderMerkleProof = [getSiblingPath(tree, 7), getSiblingPath(tree, 7)];
+    senderMerkleProof = [getSiblingPath(tree, 6), getSiblingPath(tree, 7)];
     recipientMerkleProof = [getSiblingPath(tree, 7), getSiblingPath(tree, 7)];
     freezedAccountMerkleProof = [getSiblingPath(tree, 7), getSiblingPath(tree, 7)];
   }, 10000000);
@@ -279,7 +279,7 @@ describe('test compliant_transfer program', () => {
     // );
     // await expect(rejectedTx4.wait()).rejects.toThrow();
 
-    const rejectedTx5 = await tokenRegistryContract.transfer_priv_to_public(
+    const rejectedTx5 = await tokenRegistryContract.transfer_private_to_public(
       account,
       amount,
       accountRecord
@@ -307,7 +307,7 @@ describe('test compliant_transfer program', () => {
     );
     await expect(rejectedTx8.wait()).rejects.toThrow();
 
-    const rejectedTx9 = await tokenRegistryContract.transfer_public_to_priv(
+    const rejectedTx9 = await tokenRegistryContract.transfer_public_to_private(
       tokenId,
       account,
       amount,
@@ -330,7 +330,7 @@ describe('test compliant_transfer program', () => {
     );
     await expect(rejectedTx10.wait()).rejects.toThrow();
 
-    const rejectedTx11 = await tokenRegistryContract.transfer_from_public_to_priv(
+    const rejectedTx11 = await tokenRegistryContract.transfer_from_public_to_private(
       tokenId,
       account,
       account,
