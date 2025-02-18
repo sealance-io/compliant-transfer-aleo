@@ -4,8 +4,8 @@ import rediwsozfo.aleo;
 program tqxftxoicd.aleo {
 
     const TOKEN_ID: field = 100667890849571067315045710field; // SEALEDTOKEN ascii encoded
-    const ADMIN: address = aleo17skrjdgtsy7krfpddjzd83c9kzs3elxlffgmhjj795dduy78vuxs9c4jgp;
-    const INVESTIGATOR: address = aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t;
+    const ADMIN: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
+    const INVESTIGATOR: address = aleo1y3ftuud75cwspnsx9w85sw4z0pdcrxpgnsxtz2re4q0vupw9mg8szhm06m;
     // ZERO_ADDRESS as field equals to 0field
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
     const PROGRAM_ADDRESS: address = aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4;
@@ -353,7 +353,7 @@ async transition mint_public(
             AUTHORIZED_UNTIL
         );
 
-        let transfer_to_recipient: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_public_to_priv(
+        let transfer_to_recipient: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_public_to_private(
             TOKEN_ID,
             recipient,
             amount,
@@ -480,7 +480,7 @@ async transition mint_public(
         );
 
         // we don't need to return the record because the amount is zero
-        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_priv_to_public(
+        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_private_to_public(
             recipient,
             amount,
             authorization_call.1,
