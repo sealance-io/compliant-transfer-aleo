@@ -63,6 +63,24 @@ program tqxftxoicd.aleo {
         token_id: field
     }
 
+    async transition initialize() -> Future {
+        let token_registry_call: Future = token_registry.aleo/register_token(
+            TOKEN_ID,
+            NAME,
+            SYMBOL,
+            DECIMALS,
+            TOTAL_SUPPLY,
+            true,
+            PROGRAM_ADDRESS // external_authorization_party: address
+        );
+        return finalize_initialize(token_registry_call, self.caller );
+    }
+
+    async function finalize_initialize(token_registry_call: Future, caller: address) {
+        assert_eq(caller, ADMIN);
+        token_registry_call.await();
+    }
+
     async transition update_freeze_list(account: address, is_freezed: bool, new_root: field) -> Future {
         return f_update_freeze_list(account, is_freezed, self.caller, new_root);
     }
