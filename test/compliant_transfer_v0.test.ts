@@ -6,20 +6,22 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 import { getSiblingPath } from "./merkle_tree.test";
 import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
+import { CreditsContract } from "../artifacts/js/credits";
 
 const mode = ExecutionMode.SnarkExecute;
-const tokenRegistryContract = new Token_registryContract({ mode });
-const compliantTransferContract = new TqxftxoicdContract({ mode })
+const tokenRegistryContract = new Token_registryContract({ mode, privateKey: process.env.ALEO_PRIVATE_KEY });
+const compliantTransferContract = new TqxftxoicdContract({ mode, privateKey: process.env.ALEO_PRIVATE_KEY })
 const compliantTransferContractForFreezedAccount = new TqxftxoicdContract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
 const merkleTreeContract = new RediwsozfoContract({ mode });
+const creditsContract = new CreditsContract({ mode });
 
 
-const PROGRAM_ADDRESS = "aleo14e9w24cyd9kkg0zu7jksu0ddu9vzkzy0z0t40zu4wjhnqza49uqshvzu5s";
+const PROGRAM_ADDRESS = "aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4";
 const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 const INVESTIGATOR = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t";
 const investigatorPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2;
 
-const account = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"
+const account = "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn"
 const accountPrivKey = process.env.ALEO_PRIVATE_KEY
 const freezedAccount = "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t"
 const freezedAccountPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY2
@@ -29,6 +31,7 @@ const recipientPrivKey = process.env.ALEO_DEVNET_PRIVATE_KEY3
 const amount = 10n;
 const defaultAuthorizedUntil = 4294967295;
 const faucetAmount = 100000n;
+const fundedAmount = 10000000000000n;
 
 const tokenName = "SEALEDTOKEN";
 const tokenSymbol = "SEALED";
@@ -46,6 +49,13 @@ function stringToBigInt(asciiString) {
 }
 
 describe('test compliant_transfer program', () => {
+  test(`fund account`, async () => {
+    let tx = await creditsContract.transfer_public(account, fundedAmount);
+    await tx.wait();
+    tx = await creditsContract.transfer_public(freezedAccount, fundedAmount);
+    await tx.wait();
+  }, 10000000)
+
   test('token_registry setup', async () => {
     let tx = await tokenRegistryContract.deploy();
     await tx.wait();
