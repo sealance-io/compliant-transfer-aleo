@@ -47,7 +47,7 @@ program tqxftxoicd.aleo {
     */
 
     struct MerkleProof {
-        siblings: [field; 4],
+        siblings: [field; 16],
         leaf_index: u32
     }
 
