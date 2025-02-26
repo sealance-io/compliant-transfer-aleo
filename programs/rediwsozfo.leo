@@ -126,7 +126,8 @@ program rediwsozfo.aleo {
     }
 
     inline calculate_tree_depth(merkle_proof: MerkleProof) -> u32 {
-        for i: u32 in 0u32..15u32 {
+        // first two siblings are the leaves and can be zero
+        for i: u32 in 2u32..15u32 {
             if (merkle_proof.siblings[i] == 0field) {
                 return i;
             }
