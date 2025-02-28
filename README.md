@@ -32,8 +32,11 @@ This repository contains smart contracts, tests, and auxiliary scripts for imple
 4. **Build the Contracts**  
     - `dokojs compile`
 
-5. **Run Tests**  
-   Execute tests with:  
+## Run Tests  
+   - **Run devnet** 
+   `./devnet.sh` following instructions from snarkOS https://github.com/ProvableHQ/snarkOS/blob/staging/devnet.sh`
+   
+   - **Run tests**
    `npm test` or `npm run test:select compliant`
 
 ## Contributing
