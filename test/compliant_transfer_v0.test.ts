@@ -111,11 +111,6 @@ describe('test compliant_transfer program', () => {
     expect(compliantTransferContract.address()).toBe(PROGRAM_ADDRESS)
   }, 10000000);
 
-  // test(`test initialize`, async () => {
-  //   const tx = await compliantTransferContract.initialize();
-  //   await tx.wait();
-  // }, 10000000);
-
   test(`test update_freeze_list`, async () => {
     let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(
       account,
@@ -260,7 +255,6 @@ describe('test compliant_transfer program', () => {
   }, 10000000)
 
   test('token_registry calls should fail', async () => {
-    // these checks will pass only if we use the initialize functionality
     // const rejectedTx1 = await tokenRegistryContract.mint_public(
     //   tokenId,
     //   account,
