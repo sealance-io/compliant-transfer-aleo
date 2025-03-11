@@ -18,7 +18,8 @@ program tqxftxoicd.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
 
     // Mappings
-    mapping freeze_list: address => bool;
+    mapping freeze_list: address => bool; // Indicates if address is frozen
+    mapping freeze_list_index: u32 => address; // Mimic an array of all the frozen addresses
     mapping funded: address => bool;
     mapping merkle_root: u8 => field;
 
@@ -81,12 +82,13 @@ program tqxftxoicd.aleo {
         token_registry_call.await();
     }
 
-    async transition update_freeze_list(account: address, is_freezed: bool, new_root: field) -> Future {
-        return f_update_freeze_list(account, is_freezed, self.caller, new_root);
+    async transition update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, new_root: field) -> Future {
+        return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
-    async function f_update_freeze_list(account: address, is_freezed: bool, caller: address, new_root: field) {
+    async function f_update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, caller: address, new_root: field) {
         assert_eq(ADMIN, caller);
         freeze_list.set(account, is_freezed);
+        freeze_list_index.set(freezed_index, is_freezed ? account : ZERO_ADDRESS);
         merkle_root.set(0u8, new_root);
     }
 
