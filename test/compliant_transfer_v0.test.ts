@@ -120,6 +120,7 @@ describe('test compliant_transfer program', () => {
     let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(
       account,
       true,
+      0,
       root
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -127,29 +128,40 @@ describe('test compliant_transfer program', () => {
     let tx = await compliantTransferContract.update_freeze_list(
       freezedAccount,
       true,
+      0,
       root
     );
     await tx.wait();
     let isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+    let freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+
     expect(isAccountFreezed).toBe(true);
+    expect(freezedAccountByIndex).toBe(freezedAccount);
 
     tx = await compliantTransferContract.update_freeze_list(
       freezedAccount,
       false,
+      0,
       root
     );
     await tx.wait();
     isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+    freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+
     expect(isAccountFreezed).toBe(false);
+    expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
 
     tx = await compliantTransferContract.update_freeze_list(
       freezedAccount,
       true,
+      0,
       root
     );
     await tx.wait();
     isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+    freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
     expect(isAccountFreezed).toBe(true);
+    expect(freezedAccountByIndex).toBe(freezedAccount);
   }, 10000000);
 
   test(`test mint_public`, async () => {
