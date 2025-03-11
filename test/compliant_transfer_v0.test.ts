@@ -56,6 +56,8 @@ describe('test compliant_transfer program', () => {
     await tx.wait();
   }, 10000000)
 
+  let accountRecord;
+  let freezedAccountRecord;
   test('token_registry setup', async () => {
     let tx = await tokenRegistryContract.deploy();
     await tx.wait();
@@ -77,6 +79,40 @@ describe('test compliant_transfer program', () => {
     );
     await tx.wait();
 
+    // fund account and freezed account
+    tx = await tokenRegistryContract.mint_public(
+      tokenId,
+      account,
+      amount * 20n,
+      defaultAuthorizedUntil
+    );
+    await tx.wait();
+    tx = await tokenRegistryContract.mint_public(
+      tokenId,
+      freezedAccount,
+      amount * 20n,
+      defaultAuthorizedUntil
+    );
+    await tx.wait();
+    tx = await tokenRegistryContract.mint_private(
+      tokenId,
+      account,
+      amount * 20n,
+      true,
+      0
+    );
+
+    const [encryptedAccountRecord] = await tx.wait();
+    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
+    tx = await tokenRegistryContract.mint_private(
+      tokenId,
+      freezedAccount,
+      amount * 20n,
+      true,
+      0
+    );
+    const [encryptedFreezedAccountRecord] = await tx.wait();
+    freezedAccountRecord = decryptToken(encryptedFreezedAccountRecord, freezedAccountPrivKey);
   }, 10000000)
 
   let senderMerkleProof;
@@ -159,79 +195,6 @@ describe('test compliant_transfer program', () => {
     expect(freezedAccountByIndex).toBe(freezedAccount);
   }, 10000000);
 
-  test(`test mint_public`, async () => {
-    // only the admin can call to this function
-    let rejectedTx = await compliantTransferContractForFreezedAccount.mint_public(
-      freezedAccount,
-      amount * 20n
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    let tx = await compliantTransferContract.mint_public(
-      account,
-      amount * 20n,
-    );
-    await tx.wait();
-
-    tx = await compliantTransferContract.mint_public(
-      freezedAccount,
-      amount * 20n,
-    );
-    await tx.wait();
-  }, 10000000);
-
-  let accountRecord;
-  let freezedAccountRecord;
-  test(`test mint_private`, async () => {
-    // only the admin can call to this function
-    let rejectedTx = await compliantTransferContractForFreezedAccount.mint_private(
-      freezedAccount,
-      amount * 20n
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    let tx = await compliantTransferContract.mint_private(
-      account,
-      amount * 20n,
-    );
-
-    const [complianceRecord] = await tx.wait();
-    const tokenRecord = (tx as any).transaction.execution.transitions[0].outputs[0].value;
-    accountRecord = decryptToken(tokenRecord, accountPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(amount * 20n);
-    expect(accountRecord.token_id).toBe(tokenId);
-    expect(accountRecord.external_authorization_required).toBe(true);
-    expect(accountRecord.authorized_until).toBe(0);
-
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
-    expect(decryptedComplianceRecord.amount).toBe(amount * 20n);
-    expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
-    expect(decryptedComplianceRecord.recipient).toBe(account);
-
-    tx = await compliantTransferContract.mint_private(
-      freezedAccount,
-      amount * 20n,
-    );
-
-    const [complianceRecord2] = await tx.wait();
-    const tokenRecord2 = (tx as any).transaction.execution.transitions[0].outputs[0].value;
-
-    freezedAccountRecord = decryptToken(tokenRecord2, freezedAccountPrivKey);
-    expect(freezedAccountRecord.owner).toBe(freezedAccount);
-    expect(freezedAccountRecord.amount).toBe(amount * 20n);
-    expect(freezedAccountRecord.token_id).toBe(tokenId);
-    expect(freezedAccountRecord.external_authorization_required).toBe(true);
-    expect(freezedAccountRecord.authorized_until).toBe(0);
-
-    const decryptedComplianceRecord2 = decryptComplianceRecord(complianceRecord2, investigatorPrivKey);
-    expect(decryptedComplianceRecord2.owner).toBe(INVESTIGATOR);
-    expect(decryptedComplianceRecord2.amount).toBe(amount * 20n);
-    expect(decryptedComplianceRecord2.sender).toBe(ZERO_ADDRESS);
-    expect(decryptedComplianceRecord2.recipient).toBe(freezedAccount);
-  }, 10000000)
-
   test('test demo_faucet', async () => {
     let tx = await compliantTransferContractForFreezedAccount.demo_faucet();
     const [complianceRecord] = await tx.wait();
@@ -255,71 +218,41 @@ describe('test compliant_transfer program', () => {
   }, 10000000)
 
   test('token_registry calls should fail', async () => {
-    // const rejectedTx1 = await tokenRegistryContract.mint_public(
-    //   tokenId,
-    //   account,
-    //   amount,
-    //   defaultAuthorizedUntil
-    // );
-    // await expect(rejectedTx1.wait()).rejects.toThrow();
-
-    // const rejectedTx2 = await tokenRegistryContract.mint_private(
-    //   tokenId,
-    //   account,
-    //   amount,
-    //   true,
-    //   0
-    // );
-    // await expect(rejectedTx2.wait()).rejects.toThrow();
-
-    // const rejectedTx3 = await tokenRegistryContract.burn_public(
-    //   tokenId,
-    //   account,
-    //   amount
-    // );
-    // await expect(rejectedTx3.wait()).rejects.toThrow();
-
-    // const rejectedTx4 = await tokenRegistryContract.burn_private(
-    //   accountRecord,
-    //   amount
-    // );
-    // await expect(rejectedTx4.wait()).rejects.toThrow();
-
-    const rejectedTx5 = await tokenRegistryContract.transfer_private_to_public(
+    const rejectedTx1 = await tokenRegistryContract.transfer_private_to_public(
       account,
       amount,
       accountRecord
     );
-    await expect(rejectedTx5.wait()).rejects.toThrow();
+    await expect(rejectedTx1.wait()).rejects.toThrow();
 
-    const rejectedTx6 = await tokenRegistryContract.transfer_private(
+    const rejectedTx2 = await tokenRegistryContract.transfer_private(
       account,
       amount,
       accountRecord
     );
-    await expect(rejectedTx6.wait()).rejects.toThrow();
+    await expect(rejectedTx2.wait()).rejects.toThrow();
 
-    const rejectedTx7 = await tokenRegistryContract.transfer_public(
+    const rejectedTx3 = await tokenRegistryContract.transfer_public(
       tokenId,
       account,
       amount,
     );
-    await expect(rejectedTx7.wait()).rejects.toThrow();
+    await expect(rejectedTx3.wait()).rejects.toThrow();
 
-    const rejectedTx8 = await tokenRegistryContract.transfer_public_as_signer(
+    const rejectedTx4 = await tokenRegistryContract.transfer_public_as_signer(
       tokenId,
       account,
       amount,
     );
-    await expect(rejectedTx8.wait()).rejects.toThrow();
+    await expect(rejectedTx4.wait()).rejects.toThrow();
 
-    const rejectedTx9 = await tokenRegistryContract.transfer_public_to_private(
+    const rejectedTx5 = await tokenRegistryContract.transfer_public_to_private(
       tokenId,
       account,
       amount,
       true,
     );
-    await expect(rejectedTx9.wait()).rejects.toThrow();
+    await expect(rejectedTx5.wait()).rejects.toThrow();
 
     const tx = await tokenRegistryContract.approve_public(
       tokenId,
@@ -328,67 +261,22 @@ describe('test compliant_transfer program', () => {
     );
     await tx.wait();
 
-    const rejectedTx10 = await tokenRegistryContract.transfer_from_public(
+    const rejectedTx6 = await tokenRegistryContract.transfer_from_public(
       tokenId,
       account,
       account,
       amount
     );
-    await expect(rejectedTx10.wait()).rejects.toThrow();
+    await expect(rejectedTx6.wait()).rejects.toThrow();
 
-    const rejectedTx11 = await tokenRegistryContract.transfer_from_public_to_private(
+    const rejectedTx7 = await tokenRegistryContract.transfer_from_public_to_private(
       tokenId,
       account,
       account,
       amount,
       true
     );
-    await expect(rejectedTx11.wait()).rejects.toThrow();
-  }, 10000000)
-
-  test(`test burn_public`, async () => {
-    // only the admin can call to this function
-    const rejectedTx = await compliantTransferContractForFreezedAccount.burn_public(
-      account,
-      amount
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const tx = await compliantTransferContract.burn_public(
-      freezedAccount,
-      amount
-    );
-    await tx.wait();
-  }, 10000000)
-
-  test(`test burn_private`, async () => {
-    // only the admin can call to this function
-    const rejectedTx = await compliantTransferContractForFreezedAccount.burn_private(
-      freezedAccountRecord,
-      amount
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const previousAmount = accountRecord.amount;
-    let tx = await compliantTransferContract.burn_private(
-      accountRecord,
-      amount
-    );
-    const [complianceRecord] = await tx.wait();
-    const tokenRecord = (tx as any).transaction.execution.transitions[0].outputs[0].value;
-
-    accountRecord = decryptToken(tokenRecord, accountPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
-    expect(accountRecord.token_id).toBe(tokenId);
-    expect(accountRecord.external_authorization_required).toBe(true);
-    expect(accountRecord.authorized_until).toBe(0);
-
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(ZERO_ADDRESS);
+    await expect(rejectedTx7.wait()).rejects.toThrow();
   }, 10000000)
 
   test(`test transfer_public`, async () => {
