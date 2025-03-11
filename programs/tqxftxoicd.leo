@@ -212,20 +212,12 @@ program tqxftxoicd.aleo {
             AUTHORIZED_UNTIL
         );
 
-        /*option 1 - the sender is the caller and the caller needs to approve the program */
         let transfer_to_program: Future = token_registry.aleo/transfer_from_public(
             TOKEN_ID,
             self.caller,
             PROGRAM_ADDRESS,
             amount,
         );
-
-        /* option 2 - the sender is the signer and no one need to approve the program*/
-        // let token_registry_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_public_as_signer(
-        //     TOKEN_ID,
-        //     PROGRAM_ADDRESS,
-        //     amount,
-        // );
 
         let program_owner: TokenOwner = TokenOwner {
             account: PROGRAM_ADDRESS, // it should be the signer if we choose option 2
@@ -248,7 +240,7 @@ program tqxftxoicd.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR,
             amount: amount,
-            sender: self.caller, // maybe it should be the self.signer
+            sender: self.caller,
             recipient: recipient,
         };
         return (
