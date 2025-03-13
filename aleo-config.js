@@ -9,6 +9,7 @@ export default {
     testnet: {
       endpoint: 'http://localhost:3030',
       accounts: [
+        process.env.ALEO_PRIVATE_KEY,
         process.env.ALEO_PRIVATE_KEY_TESTNET3,
         process.env.ALEO_DEVNET_PRIVATE_KEY2
       ],
