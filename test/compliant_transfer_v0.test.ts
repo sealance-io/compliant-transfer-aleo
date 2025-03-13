@@ -13,7 +13,7 @@ const tokenRegistryContract = new Token_registryContract({ mode, privateKey: pro
 const compliantTransferContract = new TqxftxoicdContract({ mode, privateKey: process.env.ALEO_PRIVATE_KEY })
 const compliantTransferContractForFreezedAccount = new TqxftxoicdContract({ mode, privateKey: process.env.ALEO_DEVNET_PRIVATE_KEY2 });
 const merkleTreeContract = new RediwsozfoContract({ mode });
-const creditsContract = new CreditsContract({ mode });
+const creditsContract = new CreditsContract({ mode, privateKey: process.env.ALEO_PRIVATE_KEY_TESTNET3 })
 
 
 const PROGRAM_ADDRESS = "aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4";
@@ -34,9 +34,9 @@ const faucetAmount = 100000n;
 const fundedAmount = 10000000000000n;
 
 const tokenName = "SEALEDTOKEN";
-const tokenSymbol = "SEALED";
-
 const tokenId = stringToBigInt(tokenName);
+
+const timeout = 10000000;
 
 let root: bigint;
 
@@ -49,81 +49,57 @@ function stringToBigInt(asciiString) {
 }
 
 describe('test compliant_transfer program', () => {
-  test(`fund account`, async () => {
+  test(`fund credits`, async () => {
     let tx = await creditsContract.transfer_public(account, fundedAmount);
     await tx.wait();
     tx = await creditsContract.transfer_public(freezedAccount, fundedAmount);
     await tx.wait();
-  }, 10000000)
+  }, timeout)
 
   let accountRecord;
   let freezedAccountRecord;
-  test('token_registry setup', async () => {
-    let tx = await tokenRegistryContract.deploy();
-    await tx.wait();
-
-    tx = await tokenRegistryContract.register_token(
-      tokenId, // tokenId
-      stringToBigInt(tokenName), // tokenId
-      stringToBigInt(tokenSymbol), // name
-      6, // decimals
-      1000_000000000000n, // max supply
-      true,
-      PROGRAM_ADDRESS
-    );
-    await tx.wait();
-    tx = await tokenRegistryContract.set_role(
-      tokenId,
-      PROGRAM_ADDRESS,
-      3, // SUPPLY_MANAGER_ROLE
-    );
-    await tx.wait();
-
-    // fund account and freezed account
-    tx = await tokenRegistryContract.mint_public(
+  test('fund tokens', async () => {
+    let mintPublicTx = await tokenRegistryContract.mint_public(
       tokenId,
       account,
       amount * 20n,
       defaultAuthorizedUntil
     );
-    await tx.wait();
-    tx = await tokenRegistryContract.mint_public(
+    await mintPublicTx.wait();
+    mintPublicTx = await tokenRegistryContract.mint_public(
       tokenId,
       freezedAccount,
       amount * 20n,
       defaultAuthorizedUntil
     );
-    await tx.wait();
-    tx = await tokenRegistryContract.mint_private(
+    await mintPublicTx.wait();
+
+    let mintPrivateTx = await tokenRegistryContract.mint_private(
       tokenId,
       account,
       amount * 20n,
       true,
       0
     );
-
-    const [encryptedAccountRecord] = await tx.wait();
+    const [encryptedAccountRecord] = await mintPrivateTx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-    tx = await tokenRegistryContract.mint_private(
+
+    mintPrivateTx = await tokenRegistryContract.mint_private(
       tokenId,
       freezedAccount,
       amount * 20n,
       true,
       0
     );
-    const [encryptedFreezedAccountRecord] = await tx.wait();
+    const [encryptedFreezedAccountRecord] = await mintPrivateTx.wait();
     freezedAccountRecord = decryptToken(encryptedFreezedAccountRecord, freezedAccountPrivKey);
-  }, 10000000)
+  }, timeout)
 
   let senderMerkleProof;
   let recipientMerkleProof;
   let freezedAccountMerkleProof;
-
-  test(`merkle_tree setup`, async () => {
-    let tx = await merkleTreeContract.deploy();
-    await tx.wait();
-
-    tx = await merkleTreeContract.build_tree([
+  test(`generate merkle proofs`, async () => {
+    const tx = await merkleTreeContract.build_tree([
       ZERO_ADDRESS,
       ZERO_ADDRESS,
       ZERO_ADDRESS,
@@ -138,14 +114,11 @@ describe('test compliant_transfer program', () => {
     senderMerkleProof = [getSiblingPath(tree, 6), getSiblingPath(tree, 7)];
     recipientMerkleProof = [getSiblingPath(tree, 7), getSiblingPath(tree, 7)];
     freezedAccountMerkleProof = [getSiblingPath(tree, 7), getSiblingPath(tree, 7)];
-  }, 10000000);
+  }, timeout);
 
-  test(`deploy compliant_transfer`, async () => {
-    const tx = await compliantTransferContract.deploy();
-    await tx.wait();
-    console.log(compliantTransferContract.address())
+  test(`verify compliant_transfer address`, async () => {
     expect(compliantTransferContract.address()).toBe(PROGRAM_ADDRESS)
-  }, 10000000);
+  }, timeout);
 
   test(`test update_freeze_list`, async () => {
     let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(
@@ -193,29 +166,32 @@ describe('test compliant_transfer program', () => {
     freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
     expect(isAccountFreezed).toBe(true);
     expect(freezedAccountByIndex).toBe(freezedAccount);
-  }, 10000000);
+  }, timeout);
 
   test('test demo_faucet', async () => {
-    let tx = await compliantTransferContractForFreezedAccount.demo_faucet();
-    const [complianceRecord] = await tx.wait();
-    const tokenRecord = (tx as any).transaction.execution.transitions[1].outputs[0].value;
-    const accountRecord = decryptToken(tokenRecord, freezedAccountPrivKey);
-    expect(accountRecord.owner).toBe(freezedAccount);
-    expect(accountRecord.amount).toBe(faucetAmount);
-    expect(accountRecord.token_id).toBe(tokenId);
-    expect(accountRecord.external_authorization_required).toBe(true);
-    expect(accountRecord.authorized_until).toBe(0);
-
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
-    expect(decryptedComplianceRecord.amount).toBe(faucetAmount);
-    expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
-    expect(decryptedComplianceRecord.recipient).toBe(freezedAccount);
+    const isFunded = await compliantTransferContractForFreezedAccount.funded(freezedAccount, false)
+    if(!isFunded) {
+      const tx = await compliantTransferContractForFreezedAccount.demo_faucet();
+      const [complianceRecord] = await tx.wait();
+      const tokenRecord = (tx as any).transaction.execution.transitions[1].outputs[0].value;
+      const accountRecord = decryptToken(tokenRecord, freezedAccountPrivKey);
+      expect(accountRecord.owner).toBe(freezedAccount);
+      expect(accountRecord.amount).toBe(faucetAmount);
+      expect(accountRecord.token_id).toBe(tokenId);
+      expect(accountRecord.external_authorization_required).toBe(true);
+      expect(accountRecord.authorized_until).toBe(0);
+  
+      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+      expect(decryptedComplianceRecord.owner).toBe(INVESTIGATOR);
+      expect(decryptedComplianceRecord.amount).toBe(faucetAmount);
+      expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
+      expect(decryptedComplianceRecord.recipient).toBe(freezedAccount);
+    }
 
     // Each user can call to this function only one time
-    let rejectedTx = await compliantTransferContractForFreezedAccount.demo_faucet();
+    const rejectedTx = await compliantTransferContractForFreezedAccount.demo_faucet();
     await expect(rejectedTx.wait()).rejects.toThrow();
-  }, 10000000)
+  }, timeout)
 
   test('token_registry calls should fail', async () => {
     const rejectedTx1 = await tokenRegistryContract.transfer_private_to_public(
@@ -277,7 +253,7 @@ describe('test compliant_transfer program', () => {
       true
     );
     await expect(rejectedTx7.wait()).rejects.toThrow();
-  }, 10000000)
+  }, timeout)
 
   test(`test transfer_public`, async () => {
     // If the sender didn't approve the program the tx will fail
@@ -313,7 +289,7 @@ describe('test compliant_transfer program', () => {
       amount
     );
     await tx.wait();
-  }, 10000000)
+  }, timeout)
 
   test(`test transfer_public_as_signer`, async () => {
     // If the sender is freezed account it's impossible to send tokens
@@ -335,7 +311,7 @@ describe('test compliant_transfer program', () => {
       amount
     );
     await tx.wait();
-  }, 10000000)
+  }, timeout)
 
   test(`test transfer_public_to_priv`, async () => {
     // If the sender didn't approve the program the tx will fail
@@ -388,7 +364,7 @@ describe('test compliant_transfer program', () => {
     expect(decryptedComplianceRecord.amount).toBe(amount);
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
-  }, 10000000);
+  }, timeout);
 
   test(`test transfer_private`, async () => {
     // If the sender is freezed account it's impossible to send tokens
@@ -436,7 +412,7 @@ describe('test compliant_transfer program', () => {
     expect(decryptedComplianceRecord.amount).toBe(amount);
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
-  }, 10000000)
+  }, timeout)
 
   test(`test transfer_priv_to_public`, async () => {
     // If the sender is freezed account it's impossible to send tokens
@@ -476,5 +452,5 @@ describe('test compliant_transfer program', () => {
     expect(decryptedComplianceRecord.amount).toBe(amount);
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
-  }, 10000000)
+  }, timeout)
 })

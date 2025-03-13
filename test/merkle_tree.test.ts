@@ -4,6 +4,7 @@ import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 const mode = ExecutionMode.SnarkExecute;
 const contract = new RediwsozfoContract({ mode });
 const MAX_TREE_SIZE = 16;
+const timeout = 10000000;
 
 export function getSiblingPath(tree, leafIndex) {
   let num_leaves = Math.floor((tree.length + 1)/2);
@@ -31,12 +32,6 @@ export function getSiblingPath(tree, leafIndex) {
 }
 
 describe('merkle_tree8 tests', () => {
-
-  test.skip(`deploy merkle_tree8`, async () => {
-    const tx = await contract.deploy();
-    await tx.wait();
-  }, 10000000)
-
   test(`merkletree16 tests`, async () => {
     let tx = await contract.build_tree16([
       "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc",
@@ -59,7 +54,7 @@ describe('merkle_tree8 tests', () => {
 
     const [result] =  await tx.wait();
     console.log(result);
-  }, 10000000)
+  }, timeout)
 
   
   test(`merkletree8 tests`, async () => {
@@ -90,7 +85,7 @@ describe('merkle_tree8 tests', () => {
   await contract.verify_non_inclusion("aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t", [merkle_proof0, merkle_proof0]);
   await contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [merkle_proof7, merkle_proof7]);
   
-  }, 10000000)
+  }, timeout)
 
 
   test(`merkletree16 tests`, async () => {
@@ -135,7 +130,7 @@ describe('merkle_tree8 tests', () => {
     await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [merkle_proof10, merkle_proof11]);
     await contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [merkle_proof15, merkle_proof15]);
     
-    }, 10000000)
+    }, timeout)
 
   test(`happy path`, async () => {
     let tx = await contract.build_tree([
@@ -189,5 +184,5 @@ describe('merkle_tree8 tests', () => {
     await expect(contract.verify_non_inclusion("aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9", [merkle_proof7, merkle_proof7])).rejects.toThrow();
     await contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [merkle_proof7, merkle_proof7]);
     
-  }, 10000000)
+  }, timeout)
 })
