@@ -1,35 +1,10 @@
 import { ExecutionMode } from "@doko-js/core";
 import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
+import { MAX_TREE_SIZE, timeout } from "../lib/Constants";
+import { getSiblingPath } from "../lib/FreezeList";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new RediwsozfoContract({ mode });
-const MAX_TREE_SIZE = 16;
-const timeout = 10000000;
-
-export function getSiblingPath(tree, leafIndex) {
-  let num_leaves = Math.floor((tree.length + 1)/2);
-  const siblingPath = [];
-  
-  let index = leafIndex;
-  let parentIndex = num_leaves;
-  siblingPath.push(tree[index]);
-  let level = 1;
-  while (parentIndex < tree.length) {
-      let siblingIndex = (index % 2 === 0) ? index + 1 : index - 1;  // Get the sibling index
-      siblingPath.push(tree[siblingIndex]);
-      
-      index = parentIndex + Math.floor(leafIndex/2**level);  // Move up to the parent node
-      parentIndex += Math.floor(num_leaves/2**level);  // Halve the number of nodes for the next level
-      level++;
-    }
-  
-    while (level < MAX_TREE_SIZE) {
-      siblingPath.push(0n);
-      level++;
-    }
-
-  return {siblings:siblingPath, leaf_index: leafIndex};
-}
 
 describe('merkle_tree8 tests', () => {
   test(`merkletree16 tests`, async () => {
@@ -75,10 +50,10 @@ describe('merkle_tree8 tests', () => {
     2080670057803057035984478725857899450450640303132064986335589665679687596892n,
     5522068419655646538277363166405777584917413407807564140634215150837651370579n
   ];
-  const merkle_proof0 = getSiblingPath(full_tree, 0);
-  const merkle_proof2 = getSiblingPath(full_tree, 2);
-  const merkle_proof3 = getSiblingPath(full_tree, 3);
-  const merkle_proof7 = getSiblingPath(full_tree, 7);
+  const merkle_proof0 = getSiblingPath(full_tree, 0, MAX_TREE_SIZE);
+  const merkle_proof2 = getSiblingPath(full_tree, 2, MAX_TREE_SIZE);
+  const merkle_proof3 = getSiblingPath(full_tree, 3, MAX_TREE_SIZE);
+  const merkle_proof7 = getSiblingPath(full_tree, 7, MAX_TREE_SIZE);
   console.log(merkle_proof7);
 
   await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [merkle_proof2, merkle_proof3]);
@@ -122,9 +97,9 @@ describe('merkle_tree8 tests', () => {
       5522068419655646538277363166405777584917413407807564140634215150837651370579n,
       603366662573338348172198587371734088890711748448429624039274257001129839063n
     ];
-    const merkle_proof10 = getSiblingPath(full_tree, 10);
-    const merkle_proof11 = getSiblingPath(full_tree, 11);
-    const merkle_proof15 = getSiblingPath(full_tree, 15);
+    const merkle_proof10 = getSiblingPath(full_tree, 10, MAX_TREE_SIZE);
+    const merkle_proof11 = getSiblingPath(full_tree, 11, MAX_TREE_SIZE);
+    const merkle_proof15 = getSiblingPath(full_tree, 15, MAX_TREE_SIZE);
     console.log(merkle_proof15);
   
     await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [merkle_proof10, merkle_proof11]);
@@ -149,12 +124,12 @@ describe('merkle_tree8 tests', () => {
     const [result] =  await tx.wait();
     console.log(result);
 
-    const merkle_proof0 = getSiblingPath(result, 0);
+    const merkle_proof0 = getSiblingPath(result, 0, MAX_TREE_SIZE);
     console.log(merkle_proof0);
-    const merkle_proof2 = getSiblingPath(result, 2);
-    const merkle_proof3 = getSiblingPath(result, 3);
-    const merkle_proof4 = getSiblingPath(result, 4);
-    const merkle_proof7 = getSiblingPath(result, 7);
+    const merkle_proof2 = getSiblingPath(result, 2, MAX_TREE_SIZE);
+    const merkle_proof3 = getSiblingPath(result, 3, MAX_TREE_SIZE);
+    const merkle_proof4 = getSiblingPath(result, 4, MAX_TREE_SIZE);
+    const merkle_proof7 = getSiblingPath(result, 7, MAX_TREE_SIZE);
     
     await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [merkle_proof2, merkle_proof3]);
 
