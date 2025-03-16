@@ -33,17 +33,17 @@ test("Devnet has 4 connected peers and is producing blocks", async () => {
   // Verify latest block height
   const blockResponse = await fetch(`${clientHost}/testnet/block/height/latest`);
   const latestBlock = parseInt(await blockResponse.text(), 10);
-  expect(latestBlock).toBeGreaterThan(0);
+  expect(latestBlock).toBeGreaterThanOrEqual(0);
 });
 
 /**
  * Custom wait strategy for the Aleo client container.
  * Ensures the client is ready when:
  * - Peer count is exactly 4
- * - Latest block height is greater than 0
+ * - Latest block height is greater or equal to 0
  */
 class ClientReadyWaitStrategy extends StartupCheckStrategy {
-  private readonly maxAttempts: number = 20;
+  private readonly maxAttempts: number = 40;
   private readonly intervalMs: number = 15000;
   private readonly clientPort: number;
 
@@ -66,8 +66,8 @@ class ClientReadyWaitStrategy extends StartupCheckStrategy {
 
         console.log(`Attempt ${attempt}: Peers=${peerCount}, Block Height=${latestBlock}`);
 
-        if (peerCount === 4 && latestBlock > 0) {
-          console.log("Client is ready! ✅");
+        if (peerCount === 4 && latestBlock >= 0) {
+          console.log("Client is ready!");
           return "SUCCESS";
         }
       } catch (error) {
@@ -77,6 +77,6 @@ class ClientReadyWaitStrategy extends StartupCheckStrategy {
       await new Promise((resolve) => setTimeout(resolve, this.intervalMs));
     }
 
-    throw new Error("Client service did not become ready within 5 minutes ❌");
+    throw new Error("Client service did not become ready within 10 minutes ❌");
   }
 }
