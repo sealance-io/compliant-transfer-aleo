@@ -74,45 +74,6 @@ program tqxftxoicd.aleo {
         merkle_root.set(0u8, new_root);
     }
 
-    async transition demo_faucet() -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        let mint_public_call: Future = token_registry.aleo/mint_public(
-            TOKEN_ID,
-            self.caller,
-            FAUCET_AMOUNT,
-            AUTHORIZED_UNTIL
-        );
-        
-        let mint_private_call: (token_registry.aleo/Token, Future) = token_registry.aleo/mint_private(
-            TOKEN_ID,
-            self.caller,
-            FAUCET_AMOUNT,
-            true,
-            0u32
-        );
-
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: INVESTIGATOR,
-            amount: FAUCET_AMOUNT,
-            sender: ZERO_ADDRESS,
-            recipient: self.caller
-        };
-        
-        return (compliance_record, mint_private_call.0, finalize_demo_faucet(mint_public_call, mint_private_call.1, self.caller));
-    }
-
-    async function finalize_demo_faucet(
-        mint_public_call: Future,
-        mint_private_call: Future,
-        recipient: address
-    ) {
-        let is_funded: bool = funded.get_or_use(recipient, false);
-        assert_eq(is_funded, false);
-        funded.set(recipient, true);
-
-        mint_public_call.await();
-        mint_private_call.await();
-    }
-
     // -------------------------
     // Called by token owners/DeFi contracts
     // -------------------------
