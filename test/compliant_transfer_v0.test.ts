@@ -7,7 +7,7 @@ import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
 import { ADMIN, COMPLIANT_TRANSFER_ADDRESS, FREEZED_ACCOUNT, INVESTIGATOR, MAX_TREE_SIZE, ZERO_ADDRESS, adminPrivKey, defaultAuthorizedUntil, freezedAccountPrivKey, fundedAmount, investigatorPrivKey, timeout, tokenId } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
-import { funWithCredits } from "../lib/Fund";
+import { fundWithCredits } from "../lib/Fund";
 
 const account = ADMIN;
 const accountPrivKey = adminPrivKey;
@@ -26,8 +26,8 @@ let root: bigint;
 
 describe('test compliant_transfer program', () => {
   test(`fund credits`, async () => {
-    await funWithCredits(account, fundedAmount);
-    await funWithCredits(freezedAccount, fundedAmount);
+    await fundWithCredits(account, fundedAmount);
+    await fundWithCredits(freezedAccount, fundedAmount);
   }, timeout)
 
   let accountRecord;
