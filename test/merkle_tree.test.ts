@@ -1,20 +1,43 @@
+import path from "path";
+import fetch from "node-fetch";
 import { ExecutionMode } from "@doko-js/core";
 import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
+import { DockerComposeEnvironment, StartedDockerComposeEnvironment, StartupCheckStrategy, StartupStatus } from "testcontainers";
+import Dockerode from "dockerode";
+
+let environment: StartedDockerComposeEnvironment;
+
+beforeAll(async () => {
+  const composeFilePath = path.resolve("test", "devnet"); // Path to docker-compose.yml
+  const composeFile = "docker-compose.yml";
+  // Start the entire docker-compose setup
+  environment = await new DockerComposeEnvironment(composeFilePath, composeFile)
+  .withWaitStrategy("client", new ClientReadyWaitStrategy(3030))
+  .up();
+});
+
+afterAll(async () => {
+  if (environment) {
+    await environment.down();
+  }
+});
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new RediwsozfoContract({ mode });
 const MAX_TREE_SIZE = 16;
 
-export function getSiblingPath(tree, leafIndex) {
+export function getSiblingPath(tree: string | any[], leafIndex: number) {
   let num_leaves = Math.floor((tree.length + 1)/2);
   const siblingPath = [];
   
   let index = leafIndex;
   let parentIndex = num_leaves;
+  // @ts-ignore
   siblingPath.push(tree[index]);
   let level = 1;
   while (parentIndex < tree.length) {
       let siblingIndex = (index % 2 === 0) ? index + 1 : index - 1;  // Get the sibling index
+      // @ts-ignore
       siblingPath.push(tree[siblingIndex]);
       
       index = parentIndex + Math.floor(leafIndex/2**level);  // Move up to the parent node
@@ -23,6 +46,7 @@ export function getSiblingPath(tree, leafIndex) {
     }
   
     while (level < MAX_TREE_SIZE) {
+      // @ts-ignore
       siblingPath.push(0n);
       level++;
     }
@@ -32,7 +56,7 @@ export function getSiblingPath(tree, leafIndex) {
 
 describe('merkle_tree8 tests', () => {
 
-  test.skip(`deploy merkle_tree8`, async () => {
+  test(`deploy merkle_tree8`, async () => {
     const tx = await contract.deploy();
     await tx.wait();
   }, 10000000)
@@ -191,3 +215,48 @@ describe('merkle_tree8 tests', () => {
     
   }, 10000000)
 })
+
+/**
+ * Custom wait strategy for the Aleo client container.
+ * Ensures the client is ready when:
+ * - Peer count is exactly 4
+ * - Latest block height is greater or equal to 0
+ */
+class ClientReadyWaitStrategy extends StartupCheckStrategy {
+  private readonly maxAttempts: number = 40;
+  private readonly intervalMs: number = 15000;
+  private readonly clientPort: number;
+
+  constructor(clientPort: number = 3030) {
+    super();
+    this.clientPort = clientPort;
+  }
+
+  public async checkStartupState(_dockerClient: Dockerode, _containerId: string): Promise<StartupStatus> {
+    const clientHost = `http://localhost:${this.clientPort}`;
+    console.log(`Waiting for Aleo client readiness at ${clientHost}`);
+
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      try {
+        const peerResponse = await fetch(`${clientHost}/testnet/peers/count`);
+        const peerCount = parseInt(await peerResponse.text(), 10);
+
+        const blockResponse = await fetch(`${clientHost}/testnet/block/height/latest`);
+        const latestBlock = parseInt(await blockResponse.text(), 10);
+
+        console.log(`Attempt ${attempt}: Peers=${peerCount}, Block Height=${latestBlock}`);
+
+        if (peerCount === 4 && latestBlock >= 0) {
+          console.log("Client is ready!");
+          return "SUCCESS";
+        }
+      } catch (error) {
+        console.warn(`Attempt ${attempt}: API not responding yet...`);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, this.intervalMs));
+    }
+
+    throw new Error("Client service did not become ready within 10 minutes ❌");
+  }
+}

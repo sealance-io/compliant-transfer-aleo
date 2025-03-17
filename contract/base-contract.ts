@@ -28,6 +28,7 @@ export class BaseContract {
 
     const networkName = this.config.networkName;
     if (networkName) {
+      // @ts-ignore
       if (!networkConfig?.networks[networkName])
         throw Error(
           `Network config not defined for ${networkName}.Please add the config in aleo - config.js file in root directory`
@@ -35,11 +36,13 @@ export class BaseContract {
 
       this.config = {
         ...this.config,
+        // @ts-ignore
         network: networkConfig.networks[networkName]
       };
     }
 
     if (!this.config.privateKey && networkName)
+      // @ts-ignore
       this.config.privateKey = networkConfig.networks[networkName].accounts[0];
 
     this.ctx = CreateExecutionContext(this.config);
