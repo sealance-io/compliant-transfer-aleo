@@ -8,8 +8,8 @@
     "test": "test"
   },
   "scripts": {
-    "deploy:devnet": "npx tsx scripts/deploy.ts",
-    "deploy:testnet": "cross-env ENDPOINT=https://capable.snarkos.net npx tsx scripts/deploy.ts",
+    "deploy:devnet": "npx tsx scripts/deploy-devnet.ts",
+    "deploy:testnet": "npx tsx scripts/deploy-testnet.ts",
     "compile": "dokojs compile",
     "test": "npm run deploy:devnet && node --no-warnings --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.json --detectOpenHandles --forceExit",
     "test:select": "npm run deploy:devnet && npm run test -- --runInBand"
