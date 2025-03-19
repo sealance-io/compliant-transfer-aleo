@@ -2,11 +2,18 @@ import { ExecutionMode } from "@doko-js/core";
 import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 import { MAX_TREE_SIZE, timeout } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
+import { deployIfNotDeployed } from "../lib/Deploy";
+
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new RediwsozfoContract({ mode });
 
 describe('merkle_tree8 tests', () => {
+
+  test(`deploy program`, async () => {
+    await deployIfNotDeployed(contract);
+  }, timeout);
+
   test(`merkletree16 tests`, async () => {
     let tx = await contract.build_tree16([
       "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc",
@@ -28,7 +35,6 @@ describe('merkle_tree8 tests', () => {
     ]);
 
     const [result] =  await tx.wait();
-    console.log(result);
   }, timeout)
 
   
@@ -54,7 +60,6 @@ describe('merkle_tree8 tests', () => {
   const merkle_proof2 = getSiblingPath(full_tree, 2, MAX_TREE_SIZE);
   const merkle_proof3 = getSiblingPath(full_tree, 3, MAX_TREE_SIZE);
   const merkle_proof7 = getSiblingPath(full_tree, 7, MAX_TREE_SIZE);
-  console.log(merkle_proof7);
 
   await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [merkle_proof2, merkle_proof3]);
   await contract.verify_non_inclusion("aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t", [merkle_proof0, merkle_proof0]);
@@ -100,7 +105,6 @@ describe('merkle_tree8 tests', () => {
     const merkle_proof10 = getSiblingPath(full_tree, 10, MAX_TREE_SIZE);
     const merkle_proof11 = getSiblingPath(full_tree, 11, MAX_TREE_SIZE);
     const merkle_proof15 = getSiblingPath(full_tree, 15, MAX_TREE_SIZE);
-    console.log(merkle_proof15);
   
     await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [merkle_proof10, merkle_proof11]);
     await contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [merkle_proof15, merkle_proof15]);
@@ -122,10 +126,8 @@ describe('merkle_tree8 tests', () => {
     ]);
 
     const [result] =  await tx.wait();
-    console.log(result);
 
     const merkle_proof0 = getSiblingPath(result, 0, MAX_TREE_SIZE);
-    console.log(merkle_proof0);
     const merkle_proof2 = getSiblingPath(result, 2, MAX_TREE_SIZE);
     const merkle_proof3 = getSiblingPath(result, 3, MAX_TREE_SIZE);
     const merkle_proof4 = getSiblingPath(result, 4, MAX_TREE_SIZE);

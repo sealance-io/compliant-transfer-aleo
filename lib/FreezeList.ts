@@ -1,6 +1,6 @@
 import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
-import { FREEZED_ACCOUNT, ZERO_ADDRESS, mode, } from "./Constants";
+import { ZERO_ADDRESS, mode } from "./Constants";
 
 const compliantTransferContract = new TqxftxoicdContract({ mode })
 const merkleTreeContract = new RediwsozfoContract({ mode });
@@ -35,12 +35,8 @@ export async function AddToFreezeList(address: string, leavesLength: number) {
     const buildTreeTx = await merkleTreeContract.build_tree(sortedAddresses);
     [tree] = await buildTreeTx.wait();
     const root = tree[14];
-    await compliantTransferContract.update_freeze_list(
-      address,
-      true,
-      lastIndex,
-      root
-    );
+
+    return { lastIndex, root };
   }
 }
 
