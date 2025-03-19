@@ -4,48 +4,18 @@ import rediwsozfo.aleo;
 program tqxftxoicd.aleo {
 
     const TOKEN_ID: field = 100667890849571067315045710field; // SEALEDTOKEN ascii encoded
-    const ADMIN: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
-    const INVESTIGATOR: address = aleo1y3ftuud75cwspnsx9w85sw4z0pdcrxpgnsxtz2re4q0vupw9mg8szhm06m;
-    // ZERO_ADDRESS as field equals to 0field
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4;
-    
-    const NAME: u128 = 100667890849571067315045710u128; // name: u128, SEALEDTOKEN ascii encoded
-    const SYMBOL: u128 = 1397047628u128; // symbol: u128, SEAL ascii encoded
-    const DECIMALS: u8 = 6u8;
-    const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
-    const FAUCET_AMOUNT: u128 = 100_000u128;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
 
     // Mappings
     mapping freeze_list: address => bool; // Indicates if address is frozen
     mapping freeze_list_index: u32 => address; // Mimic an array of all the frozen addresses
-    mapping funded: address => bool;
-    mapping merkle_root: u8 => field;
+    mapping freeze_list_root: u8 => field;
 
-    /* FLOWS
-
-    ADMIN to update the list:
-        1. (offchain) get the current list
-        2. add/remove a new address
-        3. sort the leaves
-        4. (chain) update the mapping -> update root
-
-    ADMIN to add/remove address:
-        1. (offchain) get the current list 
-        2. add/remove a new address
-        3. sort the leaves
-        4. (chain) build a new tree
-        4. (chain) add_address/remove_address updating tree_address mapping and update the root 
-
-    USER to generate a proof:
-        1. (offchain) get the current leaves
-        2. (chain) build tree
-        3. find the closest leaf to the own address
-        4. (chain) compute siblings paths for left leaf
-        5. (chain) compute siblings paths for right leaf
-        5. (chain) verify non inclusion proof
-    */
+    const ADMIN_ROLE: u8 = 1u8;
+    const INVESTIGATOR_ROLE: u8 = 2u8;
+    mapping roles: u8 => address;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -68,10 +38,29 @@ program tqxftxoicd.aleo {
         return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
     async function f_update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, caller: address, new_root: field) {
-        assert_eq(ADMIN, caller);
+        let admin_address: address = roles.get(1u8);
+        assert_eq(admin_address, caller);
         freeze_list.set(account, is_freezed);
         freeze_list_index.set(freezed_index, is_freezed ? account : ZERO_ADDRESS);
-        merkle_root.set(0u8, new_root);
+        freeze_list_root.set(0u8, new_root);
+    }
+
+    async transition update_investigator_address(new_investigator_address: address) -> Future {
+        return f_update_investigator_address(new_investigator_address, self.caller);
+    }
+    async function f_update_investigator_address(new_investigator_address: address, caller: address) {
+        let admin_address: address = roles.get(1u8);
+        assert_eq(admin_address, caller);
+        roles.set(2u8, new_investigator_address);
+    }
+
+    async transition update_admin_address(new_admin_address: address) -> Future {
+        return f_update_admin_address(new_admin_address, self.caller);
+    }
+    async function f_update_admin_address(new_admin_address: address, caller: address) {
+        let admin_address: address = roles.get_or_use(1u8, caller);
+        assert_eq(admin_address, caller);
+        roles.set(1u8, new_admin_address);
     }
 
     // -------------------------
@@ -159,11 +148,12 @@ program tqxftxoicd.aleo {
         recipient: address,
         public amount: u128,
         recipient_merkle_proofs: [MerkleProof;2],
+        investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         let root: field = rediwsozfo.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let owner: TokenOwner = TokenOwner {
-            account: self.caller, // it should be the signer if we choose option 2
+            account: self.caller,
             token_id: TOKEN_ID
         };
 
@@ -181,7 +171,7 @@ program tqxftxoicd.aleo {
         );
 
         let program_owner: TokenOwner = TokenOwner {
-            account: PROGRAM_ADDRESS, // it should be the signer if we choose option 2
+            account: PROGRAM_ADDRESS,
             token_id: TOKEN_ID
         };
 
@@ -199,7 +189,7 @@ program tqxftxoicd.aleo {
         );
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: INVESTIGATOR,
+            owner: investigator_address,
             amount: amount,
             sender: self.caller,
             recipient: recipient,
@@ -213,7 +203,8 @@ program tqxftxoicd.aleo {
                 authorization_call_for_program, 
                 transfer_to_recipient.1, 
                 self.caller,
-                root
+                root,
+                investigator_address
             )
         );
     }
@@ -223,13 +214,17 @@ program tqxftxoicd.aleo {
         authorization_call_for_program: Future,
         transfer_to_recipient: Future,
         sender: address,
-        root: field
+        root: field,
+        investigator_address: address
     ) {
         let is_sender_freezed: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_freezed, false);
 
-        let current_root: field = merkle_root.get(0u8);
+        let current_root: field = freeze_list_root.get(0u8);
         assert_eq(root, current_root);
+
+        let address: address = roles.get(2u8);
+        assert_eq(address, investigator_address);
 
         authorization_call_for_caller.await();
         transfer_to_program.await();
@@ -243,6 +238,7 @@ program tqxftxoicd.aleo {
         input_record: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
+        investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         let sender_root: field = rediwsozfo.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
         let recipient_root: field = rediwsozfo.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
@@ -269,7 +265,7 @@ program tqxftxoicd.aleo {
         );
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: INVESTIGATOR,
+            owner: investigator_address,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -282,7 +278,8 @@ program tqxftxoicd.aleo {
             f_transfer_private(
                 authorization_call.2,
                 transfer_call.2,
-                sender_root,   
+                sender_root,
+                investigator_address 
             )
         );
     }
@@ -290,11 +287,15 @@ program tqxftxoicd.aleo {
     async function f_transfer_private(
         authorization_call: Future,
         transfer_call: Future,
-        root: field
+        root: field,
+        investigator_address: address
     ) {
-        let current_root: field = merkle_root.get(0u8);
+        let current_root: field = freeze_list_root.get(0u8);
         assert_eq(root, current_root);
         
+        let address: address = roles.get(2u8);
+        assert_eq(address, investigator_address);
+
         authorization_call.await();
         transfer_call.await();
     }
@@ -303,7 +304,8 @@ program tqxftxoicd.aleo {
         public recipient: address,
         public amount: u128,
         input_record: token_registry.aleo/Token,
-        sender_merkle_proofs: [MerkleProof; 2]
+        sender_merkle_proofs: [MerkleProof; 2],
+        investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         let root: field = rediwsozfo.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
@@ -325,7 +327,7 @@ program tqxftxoicd.aleo {
         );
         
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: INVESTIGATOR,
+            owner: investigator_address,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -339,7 +341,8 @@ program tqxftxoicd.aleo {
                 authorization_call.2, 
                 transfer_call.1, 
                 recipient,
-                root
+                root,
+                investigator_address
             )
         );
     }
@@ -347,14 +350,18 @@ program tqxftxoicd.aleo {
         authorization_call: Future,
         transfer_call: Future,
         recipient: address,
-        root: field
+        root: field,
+        investigator_address: address
     ) {
         let is_recipient_freezed: bool = freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_freezed, false);
        
-        let current_root: field = merkle_root.get(0u8);
+        let current_root: field = freeze_list_root.get(0u8);
         assert_eq(root, current_root);
         
+        let address: address = roles.get(2u8);
+        assert_eq(address, investigator_address);
+
         authorization_call.await();
         transfer_call.await();
     }
