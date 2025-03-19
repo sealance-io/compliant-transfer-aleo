@@ -9,9 +9,12 @@ export default {
     testnet: {
       endpoint: 'http://localhost:3030',
       accounts: [
-        process.env.ALEO_PRIVATE_KEY,
-        process.env.ALEO_PRIVATE_KEY_TESTNET3,
-        process.env.ALEO_DEVNET_PRIVATE_KEY2
+        process.env.ALEO_DEVNET_DEPLOYER_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_ADMIN_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_INVESTIGATOR_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_FREEZED_ADDRESS_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_SENDER_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_RECIPIENT_PRIVATE_KEY
       ],
       priorityFee: 0.01
     },
