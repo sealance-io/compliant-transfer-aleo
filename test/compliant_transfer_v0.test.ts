@@ -10,7 +10,7 @@ import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthori
 import { getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { stringToBigInt } from "../lib/Conversion";
+import { initializeTokenProgram } from "../lib/Token";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -39,9 +39,9 @@ let root: bigint;
 describe('test compliant_transfer program', () => {
 
   test(`fund credits`, async () => {
-    await fundWithCredits(adminAddress, fundedAmount);
-    await fundWithCredits(freezedAccount, fundedAmount);
-    await fundWithCredits(account, fundedAmount);
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
+    await fundWithCredits(deployerPrivKey, account, fundedAmount);
   }, timeout)
 
   test(`deploy needed programs`, async () => {
@@ -49,16 +49,7 @@ describe('test compliant_transfer program', () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
     
-    let tx = await tokenRegistryContract.register_token(
-            tokenId, // tokenId
-            stringToBigInt(tokenName), // tokenId
-            stringToBigInt(tokenSymbol), // name
-            6, // decimals
-            1000_000000000000n, // max supply
-            true,
-            compliantTransferContract.address()
-        );
-    tx.wait();
+    await initializeTokenProgram();
 
   }, timeout);
 

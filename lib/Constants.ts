@@ -1,6 +1,8 @@
 import { ExecutionMode } from "@doko-js/core";
 import { stringToBigInt } from "./Conversion";
 
+export const ALEO_TESTNET_API = "https://capable.snarkos.net";
+
 // addresses
 export const COMPLIANT_TRANSFER_ADDRESS = "aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4";
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
