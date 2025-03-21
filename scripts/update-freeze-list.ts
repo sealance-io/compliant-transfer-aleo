@@ -1,5 +1,5 @@
 import { ExecutionMode } from "@doko-js/core";
-import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
+import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { BaseContract } from '../contract/base-contract';
 import { AddToFreezeList } from "../lib/FreezeList";
 import networkConfig from '../aleo-config';
@@ -10,7 +10,7 @@ const contract = new BaseContract({ mode });
 const [_, adminAddress] = contract.getAccounts();
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const compliantTransferContract = new TqxftxoicdContract({ mode, privateKey: adminPrivKey });
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
 
 (async () => {
     if (process.argv.length === 2) {

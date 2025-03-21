@@ -1,8 +1,8 @@
 import { ExecutionMode } from "@doko-js/core";
 
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
-import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
+import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
+import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import networkConfig from '../aleo-config';
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from '../contract/base-contract';
@@ -17,8 +17,8 @@ const [deployerAddress, adminAddress, investigatorAddress] = contract.getAccount
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
-const compliantTransferContract = new TqxftxoicdContract({ mode })
-const merkleTreeContract = new RediwsozfoContract({ mode });
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
 
 (async () => {
     // deploy contracts
