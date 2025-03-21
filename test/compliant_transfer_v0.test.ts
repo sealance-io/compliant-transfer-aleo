@@ -6,7 +6,7 @@ import { decryptComplianceRecord } from "../artifacts/js/leo2js/tqxftxoicd";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
 import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
-import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, timeout, tokenId, tokenName, tokenSymbol } from "../lib/Constants";
+import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, timeout, tokenId } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";

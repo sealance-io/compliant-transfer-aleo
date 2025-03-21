@@ -6,7 +6,7 @@ import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
 import networkConfig from '../aleo-config';
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from '../contract/base-contract';
-import { ALEO_TESTNET_API, mode} from "./Constants";
+import { ALEO_TESTNET_API } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
 
 const mode = ExecutionMode.SnarkExecute;
