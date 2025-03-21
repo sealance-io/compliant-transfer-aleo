@@ -1,12 +1,12 @@
 import { ExecutionMode } from "@doko-js/core";
-import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
+import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { MAX_TREE_SIZE, timeout } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
 
 
 const mode = ExecutionMode.SnarkExecute;
-const contract = new RediwsozfoContract({ mode });
+const contract = new Rediwsozfo_v2Contract({ mode });
 
 describe('merkle_tree8 tests', () => {
 
