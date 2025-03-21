@@ -1,17 +1,10 @@
-import { BaseContract } from '../contract/base-contract';
 import { Token_registryContract } from "../artifacts/js/token_registry";
 import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
 import { ZERO_ADDRESS, mode, tokenId, tokenName, tokenSymbol } from "./Constants";
 import { stringToBigInt } from "./Conversion";
 
-const contract = new BaseContract({ mode });
-
-// ToDo: Library should not depend on specific env variables.
-// Find a better way to handle addresses and keys.  
-const [deployerAddress, adminAddress, investigatorAddress] = contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-
-export async function initializeTokenProgram() {
+export async function initializeTokenProgram(deployerPrivKey: any, deployerAddress: string, adminAddress: string, investigatorAddress: string) {
+    
     const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
     const compliantTransferContract = new TqxftxoicdContract({ mode, privateKey: deployerPrivKey });
 

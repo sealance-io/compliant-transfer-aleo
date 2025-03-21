@@ -49,7 +49,7 @@ describe('test compliant_transfer program', () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
     
-    await initializeTokenProgram();
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress);
 
   }, timeout);
 
