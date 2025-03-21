@@ -8,7 +8,7 @@ export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 
 // token specs
-export const tokenName = "SEALEDTOKEN";
+export const tokenName = "SEALEDTOKEN_V2";
 export const tokenSymbol = "SEALED";
 export const tokenId = stringToBigInt(tokenName);
 
