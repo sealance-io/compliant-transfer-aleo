@@ -27,7 +27,7 @@ const merkleTreeContract = new RediwsozfoContract({ mode });
     await deployIfNotDeployed(compliantTransferContract);
 
     // register token and assign compliant transfer contract as external_authorization_party
-    await initializeTokenProgram();
+    await initializeTokenProgram(deployerAddress, deployerAddress, adminAddress, investigatorAddress);
 
     process.exit(0);
 })();
