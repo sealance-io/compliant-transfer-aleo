@@ -4,7 +4,7 @@ import { stringToBigInt } from "./Conversion";
 export const ALEO_TESTNET_API = "https://capable.snarkos.net";
 
 // addresses
-export const COMPLIANT_TRANSFER_ADDRESS = "aleo10ha27yxrya7d7lf0eg5p3hqcafm8k6nj00pvgeuxuqmvhqpst5xsdh2ft4";
+export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 
 // token specs

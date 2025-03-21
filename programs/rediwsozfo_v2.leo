@@ -1,10 +1,5 @@
-program rediwsozfo.aleo {
+program rediwsozfo_v2.aleo {
     
-    // Constants
-    const TREE_DEPTH: u128 = 4u128;
-    const LEAVES_SIZE: u128 = 8u128;
-    const TREE_SIZE: u128 = 15u128;
-
     struct MerkleProof {
         siblings: [field; 16],
         leaf_index: u32
