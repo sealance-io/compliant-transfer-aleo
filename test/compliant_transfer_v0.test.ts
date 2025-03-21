@@ -54,7 +54,7 @@ describe('test compliant_transfer program', () => {
   }, timeout);
 
   test(`test update_admin_address`, async () => {
-    let tx = await compliantTransferContract.update_admin_address(freezedAccount);
+    let tx = await compliantTransferContractForAdmin.update_admin_address(freezedAccount);
     await tx.wait();
     let adminRole = await compliantTransferContract.roles(1);
     expect(adminRole).toBe(freezedAccount);
