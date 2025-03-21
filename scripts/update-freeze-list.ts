@@ -3,7 +3,7 @@ import { TqxftxoicdContract } from "../artifacts/js/tqxftxoicd";
 import { BaseContract } from '../contract/base-contract';
 import { AddToFreezeList } from "../lib/FreezeList";
 import networkConfig from '../aleo-config';
-import { ALEO_TESTNET_API } from "./Constants";
+import { ALEO_TESTNET_API } from "../lib/Constants";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
