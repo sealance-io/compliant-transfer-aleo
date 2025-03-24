@@ -1,11 +1,11 @@
 import token_registry.aleo;
-import rediwsozfo_v2.aleo;
+import rediwsozfo.aleo;
 
-program tqxftxoicd_v2.aleo {
+program tqxftxoicd_v2_1.aleo {
 
-    const TOKEN_ID: field = 100667890849571067315045710field; // SEALEDTOKEN ascii encoded
+    const TOKEN_ID: field = 1688926949047677303695061932791346field; // SEALEDTOKEN ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const PROGRAM_ADDRESS: address = aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc;
+    const PROGRAM_ADDRESS: address = aleo1x3hrdn4gttc9dnfd2cyz6ss3tlfuev27w3hnwclgpw0vw93nf58sz4h8uh;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
 
     // Mappings
@@ -18,7 +18,7 @@ program tqxftxoicd_v2.aleo {
     mapping roles: u8 => address;
 
     struct MerkleProof {
-        siblings: [field; 16],
+        siblings: [field; 4],
         leaf_index: u32
     }
 
@@ -150,7 +150,7 @@ program tqxftxoicd_v2.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        let root: field = rediwsozfo_v2.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = rediwsozfo.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
@@ -240,8 +240,10 @@ program tqxftxoicd_v2.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        let sender_root: field = rediwsozfo_v2.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-        let recipient_root: field = rediwsozfo_v2.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        assert_eq(input_record.token_id, TOKEN_ID);
+        
+        let sender_root: field = rediwsozfo.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let recipient_root: field = rediwsozfo.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         assert_eq(sender_root, recipient_root);
 
         let authorization_call: (
@@ -307,7 +309,9 @@ program tqxftxoicd_v2.aleo {
         sender_merkle_proofs: [MerkleProof; 2],
         investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        let root: field = rediwsozfo_v2.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        assert_eq(input_record.token_id, TOKEN_ID);
+
+        let root: field = rediwsozfo.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record
