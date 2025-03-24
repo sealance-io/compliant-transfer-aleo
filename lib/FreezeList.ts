@@ -1,9 +1,9 @@
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
+import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
+import { Tqxftxoicd_v2_1Contract } from "../artifacts/js/tqxftxoicd_v2_1";
 import { ZERO_ADDRESS, mode } from "./Constants";
 
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
+const compliantTransferContract = new Tqxftxoicd_v2_1Contract({ mode })
+const merkleTreeContract = new RediwsozfoContract({ mode });
 
 export async function AddToFreezeList(address: string, leavesLength: number) {
   const isAccountFreezed = await compliantTransferContract.freeze_list(address, false)

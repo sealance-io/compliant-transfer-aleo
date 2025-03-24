@@ -1,8 +1,8 @@
 import { BaseContract } from '../contract/base-contract';
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { ZERO_ADDRESS, mode, tokenId, tokenName, tokenSymbol } from "./Constants";
 import { stringToBigInt } from "./Conversion";
+import { Tqxftxoicd_v2_1Contract } from '../artifacts/js/tqxftxoicd_v2_1';
 
 const contract = new BaseContract({ mode });
 
@@ -13,7 +13,7 @@ const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 
 export async function initializeTokenProgram() {
     const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
-    const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
+    const compliantTransferContract = new Tqxftxoicd_v2_1Contract({ mode, privateKey: deployerPrivKey });
 
     // register token and assign compliant transfer contract as external_authorization_party
     const tokenMetadata = await tokenRegistryContract.registered_tokens(

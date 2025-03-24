@@ -1,8 +1,8 @@
 import { ExecutionMode } from "@doko-js/core";
 
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
+import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
+import { Tqxftxoicd_v2_1Contract } from "../artifacts/js/tqxftxoicd_v2_1";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from '../contract/base-contract';
 import { mode } from "./Constants";
@@ -14,8 +14,8 @@ const [deployerAddress] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
+const compliantTransferContract = new Tqxftxoicd_v2_1Contract({ mode })
+const merkleTreeContract = new RediwsozfoContract({ mode });
 
 (async () => {
     // deploy contracts
@@ -23,6 +23,7 @@ const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
 
+    console.log(compliantTransferContract.address());
     // register token and assign compliant transfer contract as external_authorization_party
     await initializeTokenProgram();
 

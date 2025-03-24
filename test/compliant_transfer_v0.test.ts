@@ -4,8 +4,8 @@ import { BaseContract } from '../contract/base-contract';
 import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptComplianceRecord } from "../artifacts/js/leo2js/tqxftxoicd_v2";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
+import { RediwsozfoContract } from "../artifacts/js/rediwsozfo";
+import { Tqxftxoicd_v2_1Contract } from "../artifacts/js/tqxftxoicd_v2_1";
 import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, timeout, tokenId, tokenName, tokenSymbol } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -27,11 +27,11 @@ const recipientPrivKey = contract.getPrivateKey(recipient);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
-const compliantTransferContractForAdmin = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
-const compliantTransferContractForAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: accountPrivKey });
-const compliantTransferContractForFreezedAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const compliantTransferContract = new Tqxftxoicd_v2_1Contract({ mode, privateKey: deployerPrivKey });
+const compliantTransferContractForAdmin = new Tqxftxoicd_v2_1Contract({ mode, privateKey: adminPrivKey });
+const compliantTransferContractForAccount = new Tqxftxoicd_v2_1Contract({ mode, privateKey: accountPrivKey });
+const compliantTransferContractForFreezedAccount = new Tqxftxoicd_v2_1Contract({ mode, privateKey: freezedAccountPrivKey });
+const merkleTreeContract = new RediwsozfoContract({ mode, privateKey: deployerPrivKey });
 
 const amount = 10n;
 let root: bigint;
