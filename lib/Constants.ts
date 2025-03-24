@@ -4,7 +4,7 @@ import { stringToBigInt } from "./Conversion";
 export const ALEO_TESTNET_API = "https://capable.snarkos.net";
 
 // addresses
-export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
+export const COMPLIANT_TRANSFER_ADDRESS = "aleo1x3hrdn4gttc9dnfd2cyz6ss3tlfuev27w3hnwclgpw0vw93nf58sz4h8uh";
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 
 // token specs
@@ -13,7 +13,7 @@ export const tokenSymbol = "SEALED";
 export const tokenId = stringToBigInt(tokenName);
 
 // merkle tree
-export const MAX_TREE_SIZE = 16;
+export const MAX_TREE_SIZE = 4;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;
