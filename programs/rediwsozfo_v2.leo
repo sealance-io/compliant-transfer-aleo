@@ -82,40 +82,40 @@ program rediwsozfo_v2.aleo {
             ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[3u8], (merkle_proof.leaf_index / 4u32) % 2u32)
             :  parent2;
         let parent4: field = merkle_proof.siblings[4u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[4u8], (merkle_proof.leaf_index / 8u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent3, merkle_proof.siblings[4u8], (merkle_proof.leaf_index / 8u32) % 2u32)
             :  parent3;
         let parent5: field = merkle_proof.siblings[5u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[5u8], (merkle_proof.leaf_index / 16u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent4, merkle_proof.siblings[5u8], (merkle_proof.leaf_index / 16u32) % 2u32)
             :  parent4;
         let parent6: field =  merkle_proof.siblings[6u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[6u8], (merkle_proof.leaf_index / 32u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent5, merkle_proof.siblings[6u8], (merkle_proof.leaf_index / 32u32) % 2u32)
             :  parent5;
         let parent7: field = merkle_proof.siblings[7u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[7u8], (merkle_proof.leaf_index / 64u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent6, merkle_proof.siblings[7u8], (merkle_proof.leaf_index / 64u32) % 2u32)
             :  parent6;
         let parent8: field = merkle_proof.siblings[8u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[8u8], (merkle_proof.leaf_index / 128u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent7, merkle_proof.siblings[8u8], (merkle_proof.leaf_index / 128u32) % 2u32)
             :  parent7;
         let parent9: field =  merkle_proof.siblings[9u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[9u8], (merkle_proof.leaf_index / 256u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent8, merkle_proof.siblings[9u8], (merkle_proof.leaf_index / 256u32) % 2u32)
             :  parent8;
         let parent10: field =  merkle_proof.siblings[10u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[10u8], (merkle_proof.leaf_index / 512u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent9, merkle_proof.siblings[10u8], (merkle_proof.leaf_index / 512u32) % 2u32)
             :  parent9;
         let parent11: field = merkle_proof.siblings[11u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[11u8], (merkle_proof.leaf_index / 1024u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent10, merkle_proof.siblings[11u8], (merkle_proof.leaf_index / 1024u32) % 2u32)
             :  parent10;
         let parent12: field = merkle_proof.siblings[12u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[12u8], (merkle_proof.leaf_index / 2048u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent11, merkle_proof.siblings[12u8], (merkle_proof.leaf_index / 2048u32) % 2u32)
             :  parent11;
         let parent13: field =  merkle_proof.siblings[13u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[13u8], (merkle_proof.leaf_index / 4096u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent12, merkle_proof.siblings[13u8], (merkle_proof.leaf_index / 4096u32) % 2u32)
             :  parent12;
         let parent14: field =  merkle_proof.siblings[14u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[14u8], (merkle_proof.leaf_index / 8192u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent13, merkle_proof.siblings[14u8], (merkle_proof.leaf_index / 8192u32) % 2u32)
             :  parent13;
         let root: field =  merkle_proof.siblings[15u8] != 0field
-            ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[15u8], (merkle_proof.leaf_index / 16384u32) % 2u32)
+            ?  calculate_hash_for_neighbor(parent14, merkle_proof.siblings[15u8], (merkle_proof.leaf_index / 16384u32) % 2u32)
             :  parent14;
         return root;
     }
