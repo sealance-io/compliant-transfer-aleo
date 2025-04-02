@@ -4,7 +4,7 @@ import { ZERO_ADDRESS, mode, tokenId, tokenName, tokenSymbol } from "./Constants
 import { stringToBigInt } from "./Conversion";
 
 export async function initializeTokenProgram(deployerPrivKey: any, deployerAddress: string, adminAddress: string, investigatorAddress: string) {
-    
+
     const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
     const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
 
@@ -33,7 +33,15 @@ export async function initializeTokenProgram(deployerPrivKey: any, deployerAddre
             true,
             compliantTransferContract.address()
         );
-        tx.wait();
+        await tx.wait();
+        if (deployerAddress !== adminAddress) {
+            const tx = await tokenRegistryContract.update_token_management(
+                tokenId,
+                adminAddress,
+                compliantTransferContract.address()
+            )
+            await tx.wait();
+        }
     } else if (tokenMetadata.external_authorization_party !== compliantTransferContract.address()) {
         const tx = await tokenRegistryContract.update_token_management(
             tokenId,
@@ -43,20 +51,20 @@ export async function initializeTokenProgram(deployerPrivKey: any, deployerAddre
         await tx.wait();
     }
 
-    let adminRole = await compliantTransferContract.roles(1, ZERO_ADDRESS);
+    const adminRole = await compliantTransferContract.roles(1, ZERO_ADDRESS);
     if (adminRole === ZERO_ADDRESS) {
-        let tx = await compliantTransferContract.update_admin_address(deployerAddress);
+        const tx = await compliantTransferContract.update_admin_address(deployerAddress);
         await tx.wait();
     }
 
-    let investigatorRole = await compliantTransferContract.roles(2, ZERO_ADDRESS);
+    const investigatorRole = await compliantTransferContract.roles(2, ZERO_ADDRESS);
     if (investigatorRole === ZERO_ADDRESS) {
-        let tx = await compliantTransferContract.update_investigator_address(investigatorAddress);
+        const tx = await compliantTransferContract.update_investigator_address(investigatorAddress);
         await tx.wait();
     }
 
     if (adminRole === ZERO_ADDRESS) {
-        let tx = await compliantTransferContract.update_admin_address(adminAddress);
+        const tx = await compliantTransferContract.update_admin_address(adminAddress);
         await tx.wait();
     }
 
