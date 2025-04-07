@@ -1,6 +1,7 @@
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { ZERO_ADDRESS, mode } from "./Constants";
+import { convertAddressToField } from "./Conversion";
 
 const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
@@ -38,6 +39,21 @@ export async function AddToFreezeList(address: string, leavesLength: number) {
 
     return { lastIndex, root };
   }
+}
+
+export function getLeafIndices(merkleTree: bigint[], address: string): [number, number] {
+  const addressBigInt = convertAddressToField(address);
+  const leaves = merkleTree.slice(0, 8);
+  let rightLeafIndex = leaves.findIndex((leaf: bigint) => addressBigInt <= leaf);
+  let leftLeafIndex = rightLeafIndex - 1;
+  if (rightLeafIndex === -1) {
+    rightLeafIndex = leaves.length - 1;
+    leftLeafIndex = leaves.length - 1;
+  }
+  if (rightLeafIndex === 0) {
+    leftLeafIndex = 0;
+  }
+  return [leftLeafIndex, rightLeafIndex]
 }
 
 export function getSiblingPath(tree, leafIndex, depth) {
