@@ -69,8 +69,6 @@ describe('test freeze_registry program', () => {
     root = tree[14];
     const adminLeadIndices = getLeafIndices(tree, adminAddress);
     const freezedAccountLeadIndices = getLeafIndices(tree, freezedAccount);
-
-    console.log({adminLeadIndices, freezedAccountLeadIndices})
     adminMerkleProof = [
       getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE), 
       getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE)
@@ -130,11 +128,6 @@ describe('test freeze_registry program', () => {
   }, timeout);
 
   test(`test verify_non_inclusion_pub`, async () => {
-    const isAccountFreezed1 = await freezeRegistryContract.freeze_list(adminAddress, false);
-    const isAccountFreezed2 = await freezeRegistryContract.freeze_list(freezedAccount, false);
-    console.log({
-      isAccountFreezed1, isAccountFreezed2
-    });
     const rejectedTx = await freezeRegistryContract.verify_non_inclusion_pub(freezedAccount);
     await expect(rejectedTx.wait()).rejects.toThrow();
     const tx = await freezeRegistryContract.verify_non_inclusion_pub(adminAddress);

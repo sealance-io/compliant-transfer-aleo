@@ -31,7 +31,7 @@ const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: 
 const compliantTransferContractForAdmin = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
 const compliantTransferContractForAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: accountPrivKey });
 const compliantTransferContractForFreezedAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminAddress });
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
 
 const amount = 10n;
 let root: bigint;
