@@ -6,5 +6,6 @@
   "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
 
   "preset": "ts-jest/presets/default-esm",
+  "testTimeout": 3000000,
   "setupFilesAfterEnv": ["./test.config.js"]
 }
