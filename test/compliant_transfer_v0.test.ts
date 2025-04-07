@@ -25,13 +25,13 @@ const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
 
-const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
+const tokenRegistryContract = new Token_registryContract({ mode, privateKey: adminPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
 const compliantTransferContractForAdmin = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
 const compliantTransferContractForAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: accountPrivKey });
 const compliantTransferContractForFreezedAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminAddress });
 
 const amount = 10n;
 let root: bigint;
