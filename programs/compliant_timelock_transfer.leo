@@ -4,7 +4,6 @@ import freeze_registry.aleo;
 program compliant_timelock_transfer.aleo {
 
     const TOKEN_ID: field = 1688926949047677303695061932791346field; // SEALEDTOKEN_V2 ascii encoded
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo1f03a508uvg5fskrmzqfqyvvzd58989m2fhd02ef99qnkt85whs8q3kfjev;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 1u128;// freeze_registry ascii encoded
@@ -13,7 +12,6 @@ program compliant_timelock_transfer.aleo {
     mapping freeze_registry_program_name: u8 => u128;
 
     const ADMIN_ROLE: u8 = 1u8;
-    const INVESTIGATOR_ROLE: u8 = 2u8;
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -21,12 +19,12 @@ program compliant_timelock_transfer.aleo {
         leaf_index: u32
     }
 
-    record ComplianceRecord {
+    record CompliantToken {
         owner: address,
         amount: u128,
-        sender: address,
-        recipient: address
-    }
+        token_id: field,
+        locked_until: u32
+    } 
 
     struct TokenOwner {
         account: address,
@@ -38,15 +36,6 @@ program compliant_timelock_transfer.aleo {
     }
     async function f_init_freeze_registry_name() {
         freeze_registry_program_name.set(0u8, FREEZE_REGISTRY_PROGRAM_NAME);
-    }
-
-    async transition update_investigator_address(new_investigator_address: address) -> Future {
-        return f_update_investigator_address(new_investigator_address, self.caller);
-    }
-    async function f_update_investigator_address(new_investigator_address: address, caller: address) {
-        let admin_address: address = roles.get(1u8);
-        assert_eq(admin_address, caller);
-        roles.set(2u8, new_investigator_address);
     }
 
     async transition update_admin_address(new_admin_address: address) -> Future {
@@ -65,11 +54,16 @@ program compliant_timelock_transfer.aleo {
     // The caller has to approve this contract to call this function
     async transition transfer_public(
         public recipient: address,
-        public amount: u128
-    ) -> Future {
+        public amount: u128,
+        sealed_token: CompliantToken,
+        public lock_until: u32,
+    ) -> (CompliantToken, CompliantToken, Future) {
+
+        assert_eq(sealed_token.token_id, TOKEN_ID);
+       // assert(sealed_token.locked_until <= current_height);
+
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
-
 
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
@@ -87,10 +81,31 @@ program compliant_timelock_transfer.aleo {
             recipient,
             amount
         );
-        return finalize_transfer_public(authorization_call, transfer_call, verify_sender, verify_recipient);
+
+        let unauthorized_record: CompliantToken = CompliantToken {
+            owner: sealed_token.owner,
+            amount: sealed_token.amount - amount,
+            token_id: sealed_token.token_id,
+            locked_until: sealed_token.locked_until
+        };
+
+        let authorized_record: CompliantToken = CompliantToken {
+            owner: recipient,
+            amount: amount,
+            token_id: sealed_token.token_id,
+            locked_until: lock_until
+        };
+
+
+        return (
+            unauthorized_record,
+            authorized_record, 
+            finalize_transfer_public(sealed_token.locked_until, authorization_call, transfer_call, verify_sender, verify_recipient)
+            );
     }
 
     async function finalize_transfer_public(
+        locked_until: u32, 
         verify_sender: Future,
         verify_recipient: Future,
         authorization_call: Future,
@@ -100,13 +115,19 @@ program compliant_timelock_transfer.aleo {
         verify_recipient.await();
 
         authorization_call.await(); 
-        transfer_call.await(); 
-    }
+        transfer_call.await();
+
+        assert(locked_until <= block.height);
+  }
+
+
 
     async transition transfer_public_as_signer(
         public recipient: address,
-        public amount: u128
-    ) -> Future {
+        public amount: u128,
+        sealed_token: CompliantToken,
+        public lock_until: u32
+    ) -> (CompliantToken, CompliantToken, Future) {
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.signer);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
 
@@ -126,10 +147,30 @@ program compliant_timelock_transfer.aleo {
             recipient,
             amount
         );
-        return f_transfer_public_as_signer(authorization_call, transfer_call, verify_sender, verify_recipient);
+
+        let unauthorized_record: CompliantToken = CompliantToken {
+            owner: sealed_token.owner,
+            amount: sealed_token.amount - amount,
+            token_id: sealed_token.token_id,
+            locked_until: sealed_token.locked_until
+        };
+
+        let authorized_record: CompliantToken = CompliantToken {
+            owner: recipient,
+            amount: amount,
+            token_id: sealed_token.token_id,
+            locked_until: lock_until
+        };
+
+        return (
+            unauthorized_record,
+            authorized_record, 
+            f_transfer_public_as_signer(sealed_token.locked_until, authorization_call, transfer_call, verify_sender, verify_recipient)
+        );
     }
 
     async function f_transfer_public_as_signer(
+        locked_until: u32, 
         verify_sender: Future,
         verify_recipient: Future,
         authorization_call: Future,
@@ -140,14 +181,17 @@ program compliant_timelock_transfer.aleo {
 
         authorization_call.await();
         transfer_call.await();
+
+        assert(locked_until <= block.height);
     }
 
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
         recipient_merkle_proofs: [MerkleProof;2],
-        investigator_address: address
-    ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
+        sealed_token: CompliantToken,
+        lock_until: u32
+    ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
         
@@ -187,58 +231,71 @@ program compliant_timelock_transfer.aleo {
             true,
         );
 
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
-            amount: amount,
-            sender: self.caller,
-            recipient: recipient,
+        let unauthorized_record: CompliantToken = CompliantToken {
+            owner: sealed_token.owner,
+            amount: sealed_token.amount - amount,
+            token_id: sealed_token.token_id,
+            locked_until: sealed_token.locked_until
         };
+
+        let authorized_record: CompliantToken = CompliantToken {
+            owner: recipient,
+            amount: amount,
+            token_id: sealed_token.token_id,
+            locked_until: lock_until
+        };
+
         return (
-            compliance_record, 
+            unauthorized_record,
+            authorized_record,
             transfer_to_recipient.0, 
             f_transfer_public_to_priv(
+                sealed_token.locked_until,
                 verify_sender,
                 verify_recipient,
                 authorization_call_for_caller,
                 transfer_to_program,
                 authorization_call_for_program, 
                 transfer_to_recipient.1, 
-                investigator_address
             )
         );
     }
     async function f_transfer_public_to_priv(
+        locked_until: u32,
         verify_sender: Future,
         verify_recipient: Future,
         authorization_call_for_caller: Future,
         transfer_to_program: Future,
         authorization_call_for_program: Future,
         transfer_to_recipient: Future,
-        investigator_address: address
     ) {
         verify_sender.await();
         verify_recipient.await();
-
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
 
         authorization_call_for_caller.await();
         transfer_to_program.await();
         authorization_call_for_program.await();
         transfer_to_recipient.await();
+
+        assert(locked_until <= block.height);
     }
 
     async transition transfer_private(
         recipient: address,
         amount: u128,
-        input_record: token_registry.aleo/Token,
+        sealed_token: CompliantToken,
+        base_token: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
-        investigator_address: address
-    ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        assert_eq(input_record.token_id, TOKEN_ID);
+        lock_until: u32,
+       // current_height: u32, // if we provide it, we can prevent the onchain rejection
+    ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
+        assert_eq(base_token.token_id, TOKEN_ID);
+        assert_eq(sealed_token.token_id, TOKEN_ID);
+        assert_eq(base_token.amount, sealed_token.amount);
+       // assert(sealed_token.locked_until <= current_height);
 
-        let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
@@ -246,7 +303,7 @@ program compliant_timelock_transfer.aleo {
             token_registry.aleo/Token, // authorized_record
             Future
         ) = token_registry.aleo/prehook_private(
-            input_record, 
+            base_token, 
             amount, 
             AUTHORIZED_UNTIL
         );
@@ -261,54 +318,65 @@ program compliant_timelock_transfer.aleo {
             authorization_call.1,
         );
 
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+        let unauthorized_record: CompliantToken = CompliantToken {
+            owner: sealed_token.owner,
+            amount: sealed_token.amount - amount,
+            token_id: sealed_token.token_id,
+            locked_until: sealed_token.locked_until
+        };
+
+        let authorized_record: CompliantToken = CompliantToken {
+            owner: recipient,
             amount: amount,
-            sender: input_record.owner,
-            recipient: recipient,
+            token_id: sealed_token.token_id,
+            locked_until: lock_until
         };
 
         return (
-            compliance_record,
+            unauthorized_record,
+            authorized_record,
             authorization_call.0, 
             transfer_call.1, 
             f_transfer_private(
+                sealed_token.locked_until,
                 verify_sender,
                 verify_recipient,
                 authorization_call.2,
                 transfer_call.2,
-                investigator_address 
             )
         );
     }
 
     async function f_transfer_private(
+        locked_until: u32,
         verify_sender: Future,
         verify_recipient: Future,  
         authorization_call: Future,
         transfer_call: Future,       
-        investigator_address: address
     ) {
         verify_sender.await();
         verify_recipient.await();
-
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
-
         authorization_call.await();
         transfer_call.await();
+
+        assert(locked_until <= block.height);
     }
 
-        async transition transfer_priv_to_public(
+    async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
-        input_record: token_registry.aleo/Token,
+        sealed_token: CompliantToken,
+        base_token: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof; 2],
-        investigator_address: address
-    ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        assert_eq(input_record.token_id, TOKEN_ID);
-        
-        let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        public lock_until: u32,
+
+    ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
+        assert_eq(base_token.token_id, TOKEN_ID);
+        assert_eq(sealed_token.token_id, TOKEN_ID);
+        assert_eq(base_token.amount, sealed_token.amount);
+       // assert(sealed_token.locked_until <= current_height);
+
+        let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
 
         let authorization_call: (
@@ -316,7 +384,7 @@ program compliant_timelock_transfer.aleo {
             token_registry.aleo/Token, // authorized_record
             Future
         ) = token_registry.aleo/prehook_private(
-            input_record, 
+            base_token, 
             amount, 
             AUTHORIZED_UNTIL
         );
@@ -328,40 +396,47 @@ program compliant_timelock_transfer.aleo {
             authorization_call.1,
         );
         
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
-            amount: amount,
-            sender: input_record.owner,
-            recipient: recipient,
+        let unauthorized_record: CompliantToken = CompliantToken {
+            owner: sealed_token.owner,
+            amount: sealed_token.amount - amount,
+            token_id: sealed_token.token_id,
+            locked_until: sealed_token.locked_until
         };
 
-        
+        let authorized_record: CompliantToken = CompliantToken {
+            owner: recipient,
+            amount: amount,
+            token_id: sealed_token.token_id,
+            locked_until: lock_until
+        };
+
         return (
-            compliance_record, 
+            unauthorized_record,
+            authorized_record,
             authorization_call.0,
             f_transfer_priv_to_public(
+                sealed_token.locked_until,
                 authorization_call.2, 
                 transfer_call.1, 
                 verify_sender,
                 verify_recipient,
-                investigator_address
             )
         );
     }
     async function f_transfer_priv_to_public(
+        locked_until: u32,
         verify_sender: Future,
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        investigator_address: address
     ) {
         verify_sender.await();
         verify_recipient.await();
-        
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();
+
+        assert(locked_until <= block.height);
     }
+
 }
