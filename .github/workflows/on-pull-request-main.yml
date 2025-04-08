@@ -38,6 +38,10 @@ jobs:
       - name: Install 'doko-js' CLI globally
         run: npm install -g @doko-js/cli@latest
 
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - run: cp .env.example .env
 
       - name: Install dependencies
