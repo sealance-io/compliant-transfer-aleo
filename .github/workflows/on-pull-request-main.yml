@@ -3,7 +3,6 @@ name: Compliant Transfer Aleo Checks
 on:
   pull_request:
     branches:
-      - '*'
     paths-ignore:
       - '**/*.md'
 
