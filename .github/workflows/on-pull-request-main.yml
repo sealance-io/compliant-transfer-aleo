@@ -1,0 +1,48 @@
+name: Compliant Transfer Aleo Checks
+
+on:
+  pull_request:
+    branches:
+      - '*'
+    paths-ignore:
+      - '**/*.md'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency:
+  group: ci-tests-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  devnet-sanity-test:
+    name: Aleo devent sanity test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      packages: 'read'
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/sealance-io/leo-lang-ci:v2.4.1-fixed
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
+      options: --cpus 2
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install 'doko-js' CLI globally
+        run: npm install -g @doko-js/cli@latest
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit
+      - name: compile leo
+        run: npm run compile
+      - name: Devnet sanity test 
+        run: npm run test:select ./test/devnet_sanity.test.ts
