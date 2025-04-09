@@ -29,6 +29,10 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
+      - name: Verify Docker socket exists and is accessible
+        run: |
+          ls -la /var/run/docker.sock
+          docker info
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -51,6 +55,5 @@ jobs:
       - name: Devnet sanity test 
         run: npm run test:select ./test/devnet_sanity.test.ts
         env:
-          TESTCONTAINERS_HOST_OVERRIDE: "127.0.0.1"
           TESTCONTAINERS_RYUK_DISABLED: true
           DEBUG: "testcontainers*"
