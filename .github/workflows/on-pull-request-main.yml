@@ -53,3 +53,4 @@ jobs:
         env:
           TESTCONTAINERS_HOST_OVERRIDE: "127.0.0.1"
           TESTCONTAINERS_RYUK_DISABLED: true
+          DEBUG: "testcontainers*"
