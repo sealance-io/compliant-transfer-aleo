@@ -24,7 +24,7 @@ afterAll(async () => {
 });
 
 test("yada yada yada", async () => {
-  const clientHost = "http://localhost:3030";
+  const clientHost = "http://host.docker.internal:3030";
 
   // Verify latest block height
   const blockResponse = await fetch(`${clientHost}/testnet/block/height/latest`);
