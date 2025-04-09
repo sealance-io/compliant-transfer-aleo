@@ -25,10 +25,15 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
-      options: --cpus 2
+      options: --cpus 2 --add-host=host.docker.internal:host-gateway
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
+      - name: Basic Docker diagnostics
+        run: |
+          cat /etc/hosts | grep host.docker.internal
+          curl -v http://host.docker.internal:3030/
+          curl -v http://localhost:3030/
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
