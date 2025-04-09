@@ -13,7 +13,7 @@ amareleo = await new GenericContainer("ghcr.io/sealance-io/amareleo-chain:latest
   container: 3030,
   host: 3030
 })
-.withWaitStrategy(new AmareleoReadyWaitStrategy(3030))
+//.withWaitStrategy(new AmareleoReadyWaitStrategy(3030))
 .start();
 });
 
