@@ -1,6 +1,9 @@
 import fetch from "node-fetch";
 import { GenericContainer, StartedTestContainer, StartupCheckStrategy, StartupStatus } from "testcontainers";
 import Dockerode from "dockerode";
+import * as util from 'util';
+import { exec } from "child_process";
+const execAsync = util.promisify(exec);
 
 let amareleo: StartedTestContainer;
 
@@ -45,10 +48,9 @@ class AmareleoReadyWaitStrategy extends StartupCheckStrategy {
   }
 
   public async checkStartupState(_dockerClient: Dockerode, _containerId: string): Promise<StartupStatus> {
-    const container = _dockerClient.getContainer(_containerId);
-    await container.wait();
-    const inspections = await container.inspect()
-    console.dir(inspections);
+    const inspection = await execAsync(`docker inspect -f '{{.State.Running}}' ${_containerId}`, 
+      { encoding: 'utf8' })
+    console.dir(inspection)
 
     const clientHost = `http://localhost:${this.clientPort}`;
     console.log(`Waiting for Amareleo node readiness at ${clientHost}`);
