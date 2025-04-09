@@ -29,10 +29,6 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
-      - name: Fix Docker socket permissions
-        run: |
-          sudo chmod 666 /var/run/docker.sock
-          ls -la /var/run/docker.sock 
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
