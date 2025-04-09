@@ -48,9 +48,9 @@ class AmareleoReadyWaitStrategy extends StartupCheckStrategy {
   }
 
   public async checkStartupState(_dockerClient: Dockerode, _containerId: string): Promise<StartupStatus> {
-    const inspection = await execAsync(`docker inspect -f '{{.State.Running}}' ${_containerId}`, 
+    const inspection = await execAsync(`docker inspect' ${_containerId}`, 
       { encoding: 'utf8' })
-    console.dir(inspection)
+    console.dir(inspection.stdout);
 
     const clientHost = `http://localhost:${this.clientPort}`;
     console.log(`Waiting for Amareleo node readiness at ${clientHost}`);
