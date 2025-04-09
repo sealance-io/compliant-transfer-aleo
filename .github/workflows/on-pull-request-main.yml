@@ -51,5 +51,5 @@ jobs:
       - name: Devnet sanity test 
         run: npm run test:select ./test/devnet_sanity.test.ts
         env:
-          TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+          TESTCONTAINERS_HOST_OVERRIDE: "127.0.0.1"
           TESTCONTAINERS_RYUK_DISABLED: true
