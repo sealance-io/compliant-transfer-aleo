@@ -29,10 +29,25 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
-      - name: Verify Docker socket exists and is accessible
+      - name: Docker diagnostics
         run: |
-          ls -la /var/run/docker.sock
+          echo "=== Docker Environment ==="
+          docker version
+          
+          echo -e "\n=== Docker Info ==="
           docker info
+          
+          echo -e "\n=== Docker Socket ==="
+          ls -la /var/run/docker.sock
+          
+          echo -e "\n=== Network Interfaces ==="
+          ip addr show
+          
+          echo -e "\n=== Docker Networks ==="
+          docker network ls
+
+          echo -e "\n=== Docker Env ==="
+          echo $DOCKER_HOST
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
