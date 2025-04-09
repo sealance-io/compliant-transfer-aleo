@@ -45,6 +45,9 @@ class AmareleoReadyWaitStrategy extends StartupCheckStrategy {
   }
 
   public async checkStartupState(_dockerClient: Dockerode, _containerId: string): Promise<StartupStatus> {
+    const info = _dockerClient.info();
+    console.dir(info);
+
     const clientHost = `http://localhost:${this.clientPort}`;
     console.log(`Waiting for Amareleo node readiness at ${clientHost}`);
 
@@ -61,6 +64,7 @@ class AmareleoReadyWaitStrategy extends StartupCheckStrategy {
           return "SUCCESS";
         }
       } catch (error) {
+        console.debug(error);
         console.warn(`Attempt ${attempt}: API not responding yet...`);
       }
 
