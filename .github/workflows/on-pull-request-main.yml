@@ -29,25 +29,10 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
-      - name: Docker diagnostics
+      - name: Fix Docker socket permissions
         run: |
-          echo "=== Docker Environment ==="
-          docker version
-          
-          echo -e "\n=== Docker Info ==="
-          docker info
-          
-          echo -e "\n=== Docker Socket ==="
-          ls -la /var/run/docker.sock
-          
-          echo -e "\n=== Network Interfaces ==="
-          ip addr show
-          
-          echo -e "\n=== Docker Networks ==="
-          docker network ls
-
-          echo -e "\n=== Docker Env ==="
-          echo $DOCKER_HOST
+          sudo chmod 666 /var/run/docker.sock
+          ls -la /var/run/docker.sock 
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -70,5 +55,6 @@ jobs:
       - name: Devnet sanity test 
         run: npm run test:select ./test/devnet_sanity.test.ts
         env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: true
           DEBUG: "testcontainers*"
