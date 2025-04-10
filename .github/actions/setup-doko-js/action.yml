@@ -42,6 +42,6 @@ runs:
     working-directory: /tmp/doko-js-cli
     run: |
       pnpm install
-      pnpm run build
+      pnpm run --r --filter \"./packages/**\" build
       pnpm run install:cli
       echo "doko-js-cli installed successfully ($(doko-js --version))"
