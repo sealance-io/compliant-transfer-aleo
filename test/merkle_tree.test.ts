@@ -1,14 +1,31 @@
 import { ExecutionMode } from "@doko-js/core";
+import { GenericContainer, StartedTestContainer } from "testcontainers";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { MAX_TREE_SIZE, timeout } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
 
 
+let amareleo: StartedTestContainer;
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Rediwsozfo_v2Contract({ mode });
 
 describe('merkle_tree8 tests', () => {
+
+  beforeAll(async () => {
+    amareleo = await new GenericContainer("ghcr.io/sealance-io/amareleo-chain:latest")
+    .withExposedPorts({
+      container: 3030,
+      host: 3030
+    })
+    .start();
+  });
+  
+  afterAll(async () => {
+    if (amareleo) {
+      await amareleo.stop();
+    }
+  });
 
   test(`deploy program`, async () => {
     await deployIfNotDeployed(contract);
