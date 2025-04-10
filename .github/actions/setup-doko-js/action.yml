@@ -11,6 +11,9 @@ inputs:
     description: 'pnpm version to use'
     default: '10'
     required: false
+  rust-version:
+    description: 'Rust toolchain version to use'
+    default: 'stable'
   doko-repo:
     description: 'Repository URI of doko-js-cli'
     required: true
@@ -31,6 +34,13 @@ runs:
     with:
       version: ${{ inputs.pnpm-version }}
       run_install: false
+
+  - name: Install Rust and Cargo
+    uses: actions-rs/toolchain@v1
+    with:
+      toolchain: ${{ inputs.rust-version }}
+      default: true
+      profile: minimal
 
   - name: Installed pre-compiled 'wasm-pack'
     shell: bash
