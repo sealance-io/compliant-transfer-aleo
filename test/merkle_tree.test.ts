@@ -14,6 +14,7 @@ describe('merkle_tree8 tests', () => {
 
   beforeAll(async () => {
     amareleo = await new GenericContainer("ghcr.io/sealance-io/amareleo-chain:latest")
+    .withCommand(["--network", "1", "--verbosity", "4", "--rest", "0.0.0.0:3030", "--storage", "/data/amareleo"])
     .withExposedPorts({
       container: 3030,
       host: 3030
