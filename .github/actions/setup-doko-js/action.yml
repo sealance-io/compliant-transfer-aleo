@@ -38,7 +38,7 @@ runs:
   - name: Install wasm-pack dependencies
     shell: bash
     run: |
-      apt-get install -y build-essential gcc g++ pkg-config libssl-dev clang llvm-dev make
+      apt-get update && apt-get install -y --no-install-recommends
 
   - name: Install Rust and Cargo
     uses: actions-rs/toolchain@v1
