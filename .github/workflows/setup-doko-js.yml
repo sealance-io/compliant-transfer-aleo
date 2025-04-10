@@ -1,0 +1,51 @@
+name: Setup doko-js-cli
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        default: '22'
+        required: false
+        type: string
+      pnpm-version:
+        description: 'pnpm version to use'
+        default: '8'
+        required: false
+        type: string
+      doko-repo:
+        description: 'Repository URI of doko-js-cli'
+        required: true
+        type: string
+      doko-branch:
+        description: 'Branch of doko-js-cli to use'
+        required: true
+        type: string
+
+jobs:
+  setup:
+    name: Sanity Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm-version }}
+          run_install: false
+      
+      - name: Clone doko-js-cli branch
+        run: |
+          git clone -b '${{ inputs.doko-branch }}' --single-branch --depth 1 ${{ inputs.doko-repo }} /tmp/doko-js-cli
+      
+      - name: Install and build doko-js-cli
+        working-directory: /tmp/doko-js-cli
+        run: |
+          pnpm install
+          pnpm run build
+          pnpm run install:cli
+          echo "doko-js-cli installed successfully ($(doko-js --version))"
