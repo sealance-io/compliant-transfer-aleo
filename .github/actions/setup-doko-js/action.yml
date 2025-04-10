@@ -42,10 +42,12 @@ runs:
       default: true
       profile: minimal
 
-  - name: Installed pre-compiled 'wasm-pack'
+  - name: Install wasm-pack
     shell: bash
     run: |
-      npm i -g wasm-pack@0.13.1
+      echo "Installing wasm-pack..."
+      cargo install wasm-pack
+      wasm-pack --version
   
   - name: Clone doko-js-cli branch
     shell: bash
