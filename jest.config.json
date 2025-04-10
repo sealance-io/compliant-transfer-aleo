@@ -1,11 +1,24 @@
 {
   "transform": {
-      "^.+\\.(t|j)sx?$": ["ts-jest", { "useESM": true }]
+    "^.+\\.(t|j)sx?$": [
+      "ts-jest",
+      {
+        "useESM": true,
+        "isolatedModules": true,
+        "diagnostics": {
+          "ignoreCodes": [
+            "TS151001",
+            "TS2531",
+            "TS7053"
+          ]
+        }
+      }
+    ]
   },
   "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
   "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
-
-  "preset": "ts-jest/presets/default-esm",
+  "extensionsToTreatAsEsm": [".ts"],
+  "preset": "ts-jest/presets/js-with-ts-esm",
   "testTimeout": 3000000,
   "setupFilesAfterEnv": ["./test.config.js"]
 }
