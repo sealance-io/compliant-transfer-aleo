@@ -33,7 +33,9 @@ runs:
       run_install: false
 
   - name: Installed pre-compiled 'wasm-pack'
-    run: npm i -g wasm-pack@0.3.1
+    shell: bash
+    run: |
+      npm i -g wasm-pack@0.3.1
   
   - name: Clone doko-js-cli branch
     shell: bash
