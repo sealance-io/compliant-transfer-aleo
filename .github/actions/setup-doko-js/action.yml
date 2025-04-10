@@ -66,4 +66,4 @@ runs:
       pnpm install
       pnpm run --r --filter "./packages/**" build
       npm run install:cli
-      echo "doko-js-cli installed successfully ($(doko-js --version))"
+      echo "doko-js-cli installed successfully ($(dokojs --version))"
