@@ -36,7 +36,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Setup doko-js-cli
-        uses: ./.github/workflows/setup-doko-js.yml
+        uses: ./.github/actions/setup-doko-js
         with:
           doko-repo: 'https://github.com/NadavPeled1998/doko-js.git'
           doko-branch: 'fix/array_type_conversion'
