@@ -41,11 +41,9 @@ runs:
       apt-get update && apt-get install -y --no-install-recommends build-essential gcc g++ pkg-config libssl-dev clang llvm-dev make
 
   - name: Install Rust and Cargo
-    uses: actions-rs/toolchain@v1
+    uses: dtolnay/rust-toolchain@master
     with:
       toolchain: ${{ inputs.rust-version }}
-      default: true
-      profile: minimal
 
   - name: Install wasm-pack
     shell: bash
