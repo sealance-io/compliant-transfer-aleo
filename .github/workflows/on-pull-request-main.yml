@@ -56,4 +56,5 @@ jobs:
         env:
           DOCKER_HOST: "unix:///var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: true
+          TESTNET_ENDPOINT: "http://host.docker.internal:3030"
           DEBUG: "testcontainers*"
