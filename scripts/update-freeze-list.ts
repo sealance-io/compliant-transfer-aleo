@@ -3,7 +3,6 @@ import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { BaseContract } from '../contract/base-contract';
 import { AddToFreezeList } from "../lib/FreezeList";
 import networkConfig from '../aleo-config';
-import { ALEO_TESTNET_API } from "../lib/Constants";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -16,11 +15,6 @@ const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: 
     if (process.argv.length === 2) {
         console.error('Expected at least one argument! Usage: npx tsx scripts/update-freeze-list.ts <address> [testnet]');
         process.exit(1);
-    }
-
-    if (process.argv[3] === 'testnet') {
-        console.log("Using Aleo Testnet!!!")
-        networkConfig.networks.testnet.endpoint = ALEO_TESTNET_API;
     }
 
     const isDeployed = await compliantTransferContract.isDeployed();

@@ -12,8 +12,9 @@
   },
   "scripts": {
     "deploy:devnet": "npx tsx scripts/deploy-devnet.ts",
-    "deploy:testnet": "npx tsx scripts/deploy-testnet.ts",
-    "update-freeze-list": "npx tsx scripts/update-freeze-list.ts",
+    "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://capable.snarkos.net' npx tsx scripts/deploy-testnet.ts",
+    "update-freeze-list:devnet": "npx tsx scripts/update-freeze-list.ts",
+    "update-freeze-list:testnet": "cross-env TESTNET_ENDPOINT='https://capable.snarkos.net' npx tsx scripts/update-freeze-list.ts",
     "compile": "dokojs compile",
     "test": "node --no-warnings --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.json",
     "test:select": "npm run test -- --runInBand"

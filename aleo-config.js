@@ -7,7 +7,7 @@ export default {
   mainnet: {},
   networks: {
     testnet: {
-      endpoint: 'http://localhost:3030',
+      endpoint: process.env.TESTNET_ENDPOINT ?? 'http://localhost:3030',
       accounts: [
         process.env.ALEO_DEVNET_DEPLOYER_PRIVATE_KEY,
         process.env.ALEO_DEVNET_ADMIN_PRIVATE_KEY,
