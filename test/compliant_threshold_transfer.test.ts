@@ -5,17 +5,21 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptComplianceRecord } from "../artifacts/js/leo2js/tqxftxoicd_v2";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { COMPLIANT_THRESHOLD_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, timeout, tokenId, tokenName, tokenSymbol } from "../lib/Constants";
+import { COMPLIANT_THRESHOLD_TRANSFER_ADDRESS, EPOCH, MAX_TREE_SIZE, THRESHOLD, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, policies, timeout } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
 import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
 import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
+import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/compliant_threshold_transfer";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
 
+const {
+  tokenId,
+} = policies.threshold
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
 const [deployerAddress, adminAddress, investigatorAddress, freezedAccount, account, recipient] = contract.getAccounts();
@@ -35,8 +39,14 @@ const compliantThresholdTransferContractForFreezedAccount = new Compliant_thresh
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
 const freezeRegistryContract = new Freeze_registryContract({ mode, privateKey: adminPrivKey });
 
-const amount = 10n;
+const amount = 1n;
 let root: bigint;
+
+async function getLatestBlockHeight() {
+  const response = await fetch(`${contract.config.network.endpoint}/${contract.config.networkName}/block/height/latest`) as any;
+  const latestBlockHeight = await response.json() as number;
+  return latestBlockHeight;
+}
 
 describe('test compliant_threshold_transfer program', () => {
   test(`fund credits`, async () => {
@@ -50,14 +60,18 @@ describe('test compliant_threshold_transfer program', () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(compliantThresholdTransferContract);
-    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, COMPLIANT_THRESHOLD_TRANSFER_ADDRESS);
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.threshold);
   }, timeout);
 
-  test(`test init_freeze_registry_name`, async () => {
-    const tx = await compliantThresholdTransferContractForAdmin.init_freeze_registry_name();
+  test(`test init_mappings`, async () => {
+    const tx = await compliantThresholdTransferContractForAdmin.init_mappings();
     await tx.wait();
     const freezeRegistryName = await compliantThresholdTransferContract.freeze_registry_program_name(0);
-    expect(freezeRegistryName).toBe(1);
+    expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
+    const epoch = await compliantThresholdTransferContract.epoch(0);
+    expect(epoch).toBe(EPOCH);
+    const threshold = await compliantThresholdTransferContract.threshold(0);
+    expect(threshold).toBe(THRESHOLD);
   }, timeout);
 
   test(`test update_admin_address`, async () => {
@@ -88,9 +102,21 @@ describe('test compliant_threshold_transfer program', () => {
 
     let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_investigator_address(freezedAccount);
     await expect(rejectedTx.wait()).rejects.toThrow();
-  
+
   }, timeout);
 
+  test(`test update_allowed_delay`, async () => {
+    // only the admin can call update the allowed delay
+    let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_allowed_delay(150);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let tx = await compliantThresholdTransferContractForAdmin.update_allowed_delay(150);
+    await tx.wait()
+
+    const allowedDelay = await compliantThresholdTransferContract.allowed_delay(0);
+    expect(allowedDelay).toBe(150);
+
+  }, timeout);
 
   let accountRecord;
   let freezedAccountRecord;
@@ -98,14 +124,14 @@ describe('test compliant_threshold_transfer program', () => {
     let mintPublicTx = await tokenRegistryContract.mint_public(
       tokenId,
       account,
-      amount * 20n,
+      amount * 20n + THRESHOLD,
       defaultAuthorizedUntil
     );
     await mintPublicTx.wait();
     mintPublicTx = await tokenRegistryContract.mint_public(
       tokenId,
       freezedAccount,
-      amount * 20n,
+      amount * 20n + THRESHOLD,
       defaultAuthorizedUntil
     );
     await mintPublicTx.wait();
@@ -113,7 +139,7 @@ describe('test compliant_threshold_transfer program', () => {
     let mintPrivateTx = await tokenRegistryContract.mint_private(
       tokenId,
       account,
-      amount * 20n,
+      amount * 20n + THRESHOLD,
       true,
       0
     );
@@ -123,7 +149,7 @@ describe('test compliant_threshold_transfer program', () => {
     mintPrivateTx = await tokenRegistryContract.mint_private(
       tokenId,
       freezedAccount,
-      amount * 20n,
+      amount * 20n + THRESHOLD,
       true,
       0
     );
@@ -241,11 +267,114 @@ describe('test compliant_threshold_transfer program', () => {
     await expect(rejectedTx7.wait()).rejects.toThrow();
   }, timeout)
 
+  let accountStateRecord;
+  let freezedAccountStateRecord;
+  test(`test signup`, async () => {
+    const isAccountSigned = await compliantThresholdTransferContractForAccount.owned_state_record(account, false);
+    expect(isAccountSigned).toBe(false);
+    const isFreezedAccountSigned = await compliantThresholdTransferContractForAccount.owned_state_record(freezedAccount, false);
+    expect(isFreezedAccountSigned).toBe(false);
+    let tx = await compliantThresholdTransferContractForAccount.signup();
+    const [encryptedAccountStateRecord] = await tx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountStateRecord, accountPrivKey);
+    tx = await compliantThresholdTransferContractForFreezedAccount.signup();
+    const [encryptedFreezedAccountStateRecord] = await tx.wait();
+    freezedAccountStateRecord = decryptTokenComplianceStateRecord(encryptedFreezedAccountStateRecord, freezedAccountPrivKey);
+
+    // If the user have already signed the tx will fail
+    tx = await compliantThresholdTransferContractForAccount.signup();
+    await expect(tx.wait()).rejects.toThrow();
+  }, timeout)
+
+  test('test state record behavior', async () => {
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(0n);
+    expect(accountStateRecord.latest_block_height).toBe(0);
+
+    const latestBlockHeight1 = await getLatestBlockHeight()
+    let transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
+      recipient,
+      amount,
+      accountStateRecord,
+      latestBlockHeight1
+    );
+    const [encryptedAccountRecord1] = await transferPublicTx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord1, accountPrivKey);
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight1);
+
+    const latestBlockHeight2 = await getLatestBlockHeight();
+    let transferPrivateTx = await compliantThresholdTransferContractForAccount.transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      accountStateRecord,
+      latestBlockHeight2,
+      senderMerkleProof,
+      recipientMerkleProof,
+      investigatorAddress
+    );
+    const [complianceRecord1, encryptedAccountRecord2] = await transferPrivateTx.wait();
+    expect(() => decryptComplianceRecord(complianceRecord1, investigatorPrivKey)).toThrow();
+
+    accountRecord = decryptToken((transferPrivateTx as any).transaction.execution.transitions[4].outputs[0].value, accountPrivKey);
+    let isTheSameEpoch = Math.floor(latestBlockHeight2 / EPOCH) === Math.floor(latestBlockHeight1 / EPOCH)
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord2, accountPrivKey);
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? amount * 2n : amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight2);
+
+    let updateAllowedDelayTx = await compliantThresholdTransferContractForAdmin.update_allowed_delay(0);
+    await updateAllowedDelayTx.wait();
+
+    // the transaction will reject because the estimated block height is too low
+    transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
+      recipient,
+      amount,
+      accountStateRecord,
+      latestBlockHeight2 + 1
+    );
+    await expect(transferPublicTx.wait()).rejects.toThrow();
+
+    updateAllowedDelayTx = await compliantThresholdTransferContractForAdmin.update_allowed_delay(150);
+    await updateAllowedDelayTx.wait();
+
+    const latestBlockHeight3 = await getLatestBlockHeight();
+    transferPrivateTx = await compliantThresholdTransferContractForAccount.transfer_private(
+      recipient,
+      THRESHOLD + amount,
+      accountRecord,
+      accountStateRecord,
+      latestBlockHeight3,
+      senderMerkleProof,
+      recipientMerkleProof,
+      investigatorAddress
+    );
+    const [complianceRecord2, encryptedAccountRecord3] = await transferPrivateTx.wait();
+    accountRecord = decryptToken((transferPrivateTx as any).transaction.execution.transitions[4].outputs[0].value, accountPrivKey);
+
+    isTheSameEpoch = Math.floor(latestBlockHeight3 / EPOCH) === Math.floor(latestBlockHeight2 / EPOCH);    
+    const previousCumulativeAmount = accountStateRecord.cumulative_amount_per_epoch;
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord3, accountPrivKey);
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? previousCumulativeAmount + THRESHOLD + amount : THRESHOLD + amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight3);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord2, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    expect(decryptedComplianceRecord.amount).toBe(THRESHOLD + amount);
+    expect(decryptedComplianceRecord.sender).toBe(account);
+    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+  }, timeout)
+
   test(`test transfer_public`, async () => {
     // If the sender didn't approve the program the tx will fail
     let rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public(
       recipient,
-      amount
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight()
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -254,49 +383,100 @@ describe('test compliant_threshold_transfer program', () => {
       compliantThresholdTransferContract.address(),
       amount
     );
+
     await approvalTx.wait();
 
     // If the sender is freezed account it's impossible to send tokens
     rejectedTx = await compliantThresholdTransferContractForFreezedAccount.transfer_public(
       recipient,
-      amount
+      amount,
+      freezedAccountStateRecord,
+      await getLatestBlockHeight()
     );
+
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the recipient is freezed account it's impossible to send tokens
     rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public(
       freezedAccount,
-      amount
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight()
+    );
+
+    // If the estimated block height is too low the transaction will fail
+    await expect(compliantThresholdTransferContractForAccount.transfer_public(
+      account,
+      amount,
+      accountStateRecord,
+      0
+    )).rejects.toThrow();
+
+    // If the estimated block height is too high the transaction will fail
+    rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public(
+      account,
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight() + 50
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const tx = await compliantThresholdTransferContractForAccount.transfer_public(
       recipient,
-      amount
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight()
     );
-    await tx.wait();
+    const [encryptedAccountRecord1] = await tx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord1, accountPrivKey);
   }, timeout)
 
   test(`test transfer_public_as_signer`, async () => {
     // If the sender is freezed account it's impossible to send tokens
     let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.transfer_public_as_signer(
       recipient,
-      amount
+      amount,
+      freezedAccountStateRecord,
+      await getLatestBlockHeight()
     );
+
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the recipient is freezed account it's impossible to send tokens
     rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
       freezedAccount,
-      amount
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight()
+    );
+
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the estimated block height is too low the transaction will fail
+    await expect(compliantThresholdTransferContractForAccount.transfer_public_as_signer(
+      account,
+      amount,
+      accountStateRecord,
+      0
+    )).rejects.toThrow();
+
+    // If the estimated block height is too high the transaction will fail
+    rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
+      account,
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight() + 50
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const tx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
       recipient,
-      amount
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight()
     );
-    await tx.wait();
+    const [encryptedAccountRecord] = await tx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
   }, timeout)
 
   test(`test transfer_public_to_priv`, async () => {
@@ -304,8 +484,10 @@ describe('test compliant_threshold_transfer program', () => {
     let rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public_to_priv(
       recipient,
       amount,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       recipientMerkleProof,
-      investigatorAddress
+      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -314,12 +496,15 @@ describe('test compliant_threshold_transfer program', () => {
       compliantThresholdTransferContract.address(),
       amount
     );
+
     await approvalTx.wait();
 
     // If the sender is freezed account it's impossible to send tokens
     rejectedTx = await compliantThresholdTransferContractForFreezedAccount.transfer_public_to_priv(
       recipient,
       amount,
+      freezedAccountStateRecord,
+      await getLatestBlockHeight(),
       recipientMerkleProof,
       investigatorAddress
     );
@@ -329,20 +514,46 @@ describe('test compliant_threshold_transfer program', () => {
     await expect(compliantThresholdTransferContractForAccount.transfer_public_to_priv(
       freezedAccount,
       amount,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       freezedAccountMerkleProof,
       investigatorAddress
     )).rejects.toThrow();
 
+    // If the estimated block height is too low the transaction will fail
+    await expect(compliantThresholdTransferContractForAccount.transfer_public_to_priv(
+      recipient,
+      amount,
+      accountStateRecord,
+      0,
+      freezedAccountMerkleProof,
+      investigatorAddress
+    )).rejects.toThrow();
+
+    // If the estimated block height is too high the transaction will fail
+    rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public_to_priv(
+      recipient,
+      amount,
+      accountStateRecord,
+      await getLatestBlockHeight() + 50,
+      recipientMerkleProof,
+      investigatorAddress
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+
     const tx = await compliantThresholdTransferContractForAccount.transfer_public_to_priv(
       recipient,
       amount,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       recipientMerkleProof,
       investigatorAddress
     );
 
-    const [complianceRecord] = await tx.wait();
-    const tokenRecord = (tx as any).transaction.execution.transitions[6].outputs[0].value;
-
+    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const tokenRecord = (tx as any).transaction.execution.transitions[6].outputs[0].value; 
     const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);
     expect(recipientRecord.amount).toBe(amount);
@@ -350,11 +561,15 @@ describe('test compliant_threshold_transfer program', () => {
     expect(recipientRecord.external_authorization_required).toBe(true);
     expect(recipientRecord.authorized_until).toBe(0);
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    if(accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+      expect(decryptedComplianceRecord.amount).toBe(amount);
+      expect(decryptedComplianceRecord.sender).toBe(account);
+      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    } else {
+      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+    }
   }, timeout);
 
   test(`test transfer_private`, async () => {
@@ -362,7 +577,9 @@ describe('test compliant_threshold_transfer program', () => {
     await expect(compliantThresholdTransferContractForFreezedAccount.transfer_private(
       recipient,
       amount,
-      accountRecord,
+      freezedAccountRecord,
+      freezedAccountStateRecord,
+      await getLatestBlockHeight(),
       freezedAccountMerkleProof,
       recipientMerkleProof,
       investigatorAddress
@@ -372,20 +589,51 @@ describe('test compliant_threshold_transfer program', () => {
       freezedAccount,
       amount,
       accountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       senderMerkleProof,
       freezedAccountMerkleProof,
       investigatorAddress
     )).rejects.toThrow();
 
-    const tx = await compliantThresholdTransferContractForAccount.transfer_private(
+    // If the estimated block height is too low the transaction will fail
+    await expect(compliantThresholdTransferContractForAccount.transfer_private(
       recipient,
       amount,
       accountRecord,
+      accountStateRecord,
+      0,
+      senderMerkleProof,
+      freezedAccountMerkleProof,
+      investigatorAddress
+    )).rejects.toThrow();
+
+    // If the estimated block height is too high the transaction will fail
+    let rejectedTx = await compliantThresholdTransferContractForAccount.transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight() + 50,
       senderMerkleProof,
       recipientMerkleProof,
       investigatorAddress
     );
-    const [complianceRecord] = await tx.wait();
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+
+    const tx = await compliantThresholdTransferContractForAccount.transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight(),
+      senderMerkleProof,
+      recipientMerkleProof,
+      investigatorAddress
+    );
+    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
 
     const previousAmount = accountRecord.amount;
     accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, accountPrivKey);
@@ -401,11 +649,15 @@ describe('test compliant_threshold_transfer program', () => {
     expect(recipientRecord.external_authorization_required).toBe(true);
     expect(recipientRecord.authorized_until).toBe(0);
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    if(accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+      expect(decryptedComplianceRecord.amount).toBe(amount);
+      expect(decryptedComplianceRecord.sender).toBe(account);
+      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    } else {
+      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+    }
   }, timeout)
 
   test(`test transfer_priv_to_public`, async () => {
@@ -414,6 +666,8 @@ describe('test compliant_threshold_transfer program', () => {
       recipient,
       amount,
       freezedAccountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       freezedAccountMerkleProof,
       investigatorAddress
     )).rejects.toThrow();
@@ -423,19 +677,47 @@ describe('test compliant_threshold_transfer program', () => {
       freezedAccount,
       amount,
       accountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       senderMerkleProof,
       investigatorAddress
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the estimated block height is too low the transaction will fail
+    await expect(compliantThresholdTransferContractForAccount.transfer_priv_to_public(
+      recipient,
+      amount,
+      accountRecord,
+      accountStateRecord,
+      0,
+      senderMerkleProof,
+      investigatorAddress
+    )).rejects.toThrow();
+
+    // If the estimated block height is too high the transaction will fail
+    rejectedTx = await compliantThresholdTransferContractForAccount.transfer_priv_to_public(
+      recipient,
+      amount,
+      accountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight() + 50,
+      senderMerkleProof,
+      investigatorAddress
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
     const tx = await compliantThresholdTransferContractForAccount.transfer_priv_to_public(
       recipient,
       amount,
       accountRecord,
+      accountStateRecord,
+      await getLatestBlockHeight(),
       senderMerkleProof,
       investigatorAddress
     );
-    const [complianceRecord] = await tx.wait();
-
+    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
     const previousAmount = accountRecord.amount;
     accountRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, accountPrivKey);
     expect(accountRecord.owner).toBe(account);
@@ -444,10 +726,14 @@ describe('test compliant_threshold_transfer program', () => {
     expect(accountRecord.external_authorization_required).toBe(true);
     expect(accountRecord.authorized_until).toBe(0);
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    if(accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+      expect(decryptedComplianceRecord.amount).toBe(amount);
+      expect(decryptedComplianceRecord.sender).toBe(account);
+      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    } else {
+      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+    }
   }, timeout)
 })
