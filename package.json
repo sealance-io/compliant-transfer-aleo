@@ -19,21 +19,17 @@
     "test:select": "npm run test -- --runInBand"
   },
   "devDependencies": {
-    "@babel/preset-env": "7.26.9",
     "@doko-js/core": "1.0.2",
     "@doko-js/utils": "1.0.0",
     "@doko-js/wasm": "1.0.0",
     "@provablehq/sdk": "0.6.9",
     "@scure/base": "1.2.4",
     "@types/jest": "29.5.14",
-    "babel-jest": "29.7.0",
     "bn.js": "5.2.1",
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
     "jest": "29.7.0",
     "ts-jest": "29.3.2",
-    "ts-node": "10.9.2",
-    "tsx": "4.19.3",
-    "zod": "3.24.2"
+    "tsx": "4.19.3"
   }
 }
