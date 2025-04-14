@@ -6,5 +6,6 @@
   "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
 
   "preset": "ts-jest/presets/default-esm",
-  "setupFilesAfterEnv": ["./test.config.js"]
+  "globalTeardown": "./jest.global-teardown.js",
+  "setupFilesAfterEnv": ["./jest.setup.js"]
 }
