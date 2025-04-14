@@ -6,7 +6,7 @@ import { decryptComplianceRecord } from "../artifacts/js/leo2js/tqxftxoicd_v2";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
-import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, timeout, tokenId, tokenName, tokenSymbol } from "../lib/Constants";
+import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, policies, timeout } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
@@ -14,6 +14,8 @@ import { initializeTokenProgram } from "../lib/Token";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
+
+const { tokenId } = policies.compliant
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
@@ -49,7 +51,7 @@ describe('test compliant_transfer program', () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
     
-    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress);
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.compliant);
 
   }, timeout);
 
