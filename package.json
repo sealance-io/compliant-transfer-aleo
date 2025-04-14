@@ -1,7 +1,10 @@
 {
-  "name": "compliant-tranfer-on-aleo",
+  "name": "compliant-transfer-aleo",
   "version": "0.0.1",
-  "description": "",
+  "description": "Compliant transfer functionalities using the Aleo blockchain",
+  "author": "Sealance Team",
+  "license": "Apache-2.0",
+  "private": "true",
   "main": "index.js",
   "type": "module",
   "directories": {
@@ -34,7 +37,5 @@
     "bn.js": "^5.2.1",
     "dotenv": "^16.4.7",
     "zod": "^3.24.1"
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }
