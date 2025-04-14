@@ -1,8 +1,21 @@
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { ZERO_ADDRESS, mode, tokenId, tokenName, tokenSymbol } from "./Constants";
+import { IPolicy, ZERO_ADDRESS, mode } from "./Constants";
 import { stringToBigInt } from "./Conversion";
 
-export async function initializeTokenProgram(deployerPrivKey: any, deployerAddress: string, adminAddress: string, policyAddress: string) {
+export async function initializeTokenProgram(
+    deployerPrivKey: any, 
+    deployerAddress: string, 
+    adminAddress: string, 
+    investigatorAddress: string,
+    {
+        tokenId, 
+        tokenName, 
+        tokenSymbol, 
+        programAddress, 
+        Contract,
+        initMappings
+    }: IPolicy 
+) {
     const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 
     // register token and assign compliant transfer contract as external_authorization_party
@@ -28,42 +41,45 @@ export async function initializeTokenProgram(deployerPrivKey: any, deployerAddre
             6, // decimals
             1000_000000000000n, // max supply
             true,
-            policyAddress
+            programAddress
         );
         await tx.wait();
         if (deployerAddress !== adminAddress) {
             const tx = await tokenRegistryContract.update_token_management(
                 tokenId,
                 adminAddress,
-                policyAddress
+                programAddress
             )
             await tx.wait();
         }
-    } else if (tokenMetadata.external_authorization_party !== policyAddress) {
+    } else if (tokenMetadata.external_authorization_party !== programAddress) {
         // if the admin is not the deployer and the admin is already the admin this call will not work
         const tx = await tokenRegistryContract.update_token_management(
             tokenId,
             adminAddress,
-            policyAddress
+            programAddress
         )
         await tx.wait();
     }
 
-    // const adminRole = await compliantTransferContract.roles(1, ZERO_ADDRESS);
-    // if (adminRole === ZERO_ADDRESS) {
-    //     const tx = await compliantTransferContract.update_admin_address(deployerAddress);
-    //     await tx.wait();
-    // }
+    const contract = new Contract({ mode, privateKey: deployerPrivKey });
+    const adminRole = await contract.roles(1, ZERO_ADDRESS);
+    if (adminRole === ZERO_ADDRESS) {
+        const tx = await contract.update_admin_address(deployerAddress);
+        await tx.wait();
+    }
 
-    // const investigatorRole = await compliantTransferContract.roles(2, ZERO_ADDRESS);
-    // if (investigatorRole === ZERO_ADDRESS) {
-    //     const tx = await compliantTransferContract.update_investigator_address(investigatorAddress);
-    //     await tx.wait();
-    // }
+    const investigatorRole = await contract.roles(2, ZERO_ADDRESS);
+    if (investigatorRole === ZERO_ADDRESS) {
+        const tx = await contract.update_investigator_address(investigatorAddress);
+        await tx.wait();
+    }
 
-    // if (adminRole === ZERO_ADDRESS) {
-    //     const tx = await compliantTransferContract.update_admin_address(adminAddress);
-    //     await tx.wait();
-    // }
+    if(initMappings) {
+        const tx = await contract.init_mappings();
+        await tx.wait();
+    }
 
 }
+
+
