@@ -7,5 +7,6 @@
 
   "preset": "ts-jest/presets/default-esm",
   "globalTeardown": "./jest.global-teardown.js",
-  "setupFilesAfterEnv": ["./jest.setup.js"]
+  "setupFilesAfterEnv": ["./jest.setup.js"],
+  "workerThreads": true
 }
