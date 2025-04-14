@@ -81,6 +81,12 @@ If you prefer to handle the installation steps yourself, you can follow these in
 
 1. Clone the repository:
    ```bash
+   git clone -b fix/array_type_conversion https://github.com/NadavPeled1998/doko-js.git
+   cd doko-js
+   ```
+
+Or the unpathced origin:
+   ```bash
    git clone -b v0.0.2 https://github.com/venture23-aleo/doko-js.git
    cd doko-js
    ```
