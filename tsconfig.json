@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["esnext"],
+    "moduleResolution": "Node",
     "target": "esnext",
     "allowJs": true,
     "esModuleInterop": true
