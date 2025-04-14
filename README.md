@@ -113,13 +113,13 @@ Or the unpathced origin:
 
 ### Option 3: Install from NPM (Simplest)
 
+WARNING: **This is the simplest approach, but it won't include any unreleased fixes that might be available in specific branches or forks.**
+
 If you just want the latest published version, you can install directly from npm:
 
 ```bash
 npm install -g @doko-js/cli@latest
 ```
-
-This is the simplest approach, but it won't include any unreleased fixes that might be available in specific branches or forks.
 
 ### Troubleshooting
 
