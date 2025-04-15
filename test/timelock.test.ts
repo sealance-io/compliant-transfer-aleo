@@ -9,7 +9,6 @@ import {
   MAX_TREE_SIZE,
   ZERO_ADDRESS,
   COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
-  defaultAuthorizedUntil,
   fundedAmount,
   timeout,
   tokenId,
