@@ -28,8 +28,23 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-      - name: Install amareleo-chain
-        run: cargo install leo-lang@2.4.1
+      - name: Install Leo
+        run: |
+          git clone -b v2.4.1 --recurse-submodules --single-branch --depth 1 https://github.com/ProvableHQ/leo
+          
+          # Change directory to the cloned repository
+          cd leo
+          
+          # Install Leo from the local path
+          # --locked: Use the exact dependency versions from Cargo.lock
+          # --path .: Install from the current directory
+          cargo install --locked --path .
+          
+          # Verify the installation by checking Leo's version
+          leo --version
+          
+          # Return to the original directory
+          cd ..
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
