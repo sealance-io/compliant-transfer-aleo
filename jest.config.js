@@ -18,6 +18,7 @@ const config = {
   },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
   preset: "ts-jest/presets/js-with-ts-esm",
+  globalSetup: "./jest.global-setup.js",
   globalTeardown: "./jest.global-teardown.js",
   setupFilesAfterEnv: ["./jest.setup.js"],
   testTimeout: 3000000, // Set large timeout for both test and hooks
