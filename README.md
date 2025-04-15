@@ -54,7 +54,7 @@ To install using the default repository and version:
 
 The default settings use:
 - Repository: https://github.com/venture23-aleo/doko-js.git
-- Branch: v0.0.2
+- Branch: main
 
 To install from a custom repository or branch (for example, to use a patched version):
 
@@ -87,7 +87,7 @@ If you prefer to handle the installation steps yourself, you can follow these in
 
 Or the unpathced origin:
    ```bash
-   git clone -b v0.0.2 https://github.com/venture23-aleo/doko-js.git
+   git clone -b main https://github.com/venture23-aleo/doko-js.git
    cd doko-js
    ```
 
