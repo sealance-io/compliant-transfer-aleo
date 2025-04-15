@@ -4,14 +4,14 @@ import freeze_registry.aleo;
 program compliant_timelock_transfer.aleo {
 
     const TOKEN_ID: field = 1688926949047677303695061932791346field; // SEALEDTOKEN_V2 ascii encoded
-    const PROGRAM_ADDRESS: address = aleo1f03a508uvg5fskrmzqfqyvvzd58989m2fhd02ef99qnkt85whs8q3kfjev;
+    const PROGRAM_ADDRESS: address = aleo18n84jzwgx8xsd6jkn2adncmqez73fn0xq9njuwjn66r40yf3uszsvr3wn5;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 1u128;// freeze_registry ascii encoded
 
     // Mappings
     mapping freeze_registry_program_name: u8 => u128;
 
-    const ADMIN_ROLE: u8 = 1u8;
+    const ADMIN: u8 = 1u8;
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -31,6 +31,10 @@ program compliant_timelock_transfer.aleo {
         token_id: field
     }
 
+    // -------------------------
+    // Called by administrators
+    // -------------------------
+
     async transition init_freeze_registry_name() -> Future {
         return f_init_freeze_registry_name();
     }
@@ -47,6 +51,73 @@ program compliant_timelock_transfer.aleo {
         roles.set(1u8, new_admin_address);
     }
 
+    async transition mint_public(
+        public recipient: address,
+        public amount: u128,
+        public lock_until: u32
+    ) -> (CompliantToken, Future) {
+        let token_registry_call: Future = token_registry.aleo/mint_public(
+            TOKEN_ID,
+            recipient,
+            amount,
+            lock_until // Note: should it be 0? 
+        );
+
+        let authorized_record: CompliantToken = CompliantToken {
+            owner: recipient,
+            amount: amount,
+            token_id: TOKEN_ID,
+            locked_until: lock_until
+        };
+
+        return (authorized_record, finalize_mint_public(token_registry_call, self.caller));
+    }
+
+    async function finalize_mint_public(
+        token_registry_call: Future,
+        caller: address
+    ) {
+        let admin_address: address = roles.get(1u8);
+        assert_eq(admin_address, caller);
+
+        token_registry_call.await();
+    }
+
+    async transition mint_private(
+        recipient: address,
+        public amount: u128,
+        lock_until: u32
+    ) -> (CompliantToken, token_registry.aleo/Token, Future) {
+        let token_registry_call: (token_registry.aleo/Token, Future) = token_registry.aleo/mint_private(
+            TOKEN_ID,
+            recipient,
+            amount,
+            true,
+            lock_until // NOTE: should it be 0?
+        );
+
+        let authorized_record: CompliantToken = CompliantToken {
+            token_id: TOKEN_ID,
+            owner: recipient,
+            amount: amount,
+            locked_until: lock_until
+        };
+
+        return (authorized_record, token_registry_call.0, finalize_mint_private(token_registry_call.1, self.caller));
+    }
+
+    async function finalize_mint_private(
+        token_registry_call: Future,
+        caller: address
+    ) {
+        let admin_address: address = roles.get(1u8);
+        assert_eq(admin_address, caller);
+
+        token_registry_call.await();
+    }
+
+    // NOTE: do we need to have burn?
+
     // -------------------------
     // Called by token owners/DeFi contracts
     // -------------------------
@@ -56,11 +127,11 @@ program compliant_timelock_transfer.aleo {
         public recipient: address,
         public amount: u128,
         sealed_token: CompliantToken,
-        public lock_until: u32,
+        lock_until: u32, // NOTE: should it be private?
     ) -> (CompliantToken, CompliantToken, Future) {
 
         assert_eq(sealed_token.token_id, TOKEN_ID);
-       // assert(sealed_token.locked_until <= current_height);
+        assert(amount <= sealed_token.amount); // NOTE: can we remove this check because it will fail later?
 
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -96,7 +167,6 @@ program compliant_timelock_transfer.aleo {
             locked_until: lock_until
         };
 
-
         return (
             unauthorized_record,
             authorized_record, 
@@ -119,8 +189,6 @@ program compliant_timelock_transfer.aleo {
 
         assert(locked_until <= block.height);
   }
-
-
 
     async transition transfer_public_as_signer(
         public recipient: address,
@@ -170,7 +238,7 @@ program compliant_timelock_transfer.aleo {
     }
 
     async function f_transfer_public_as_signer(
-        locked_until: u32, 
+        locked_until: u32,
         verify_sender: Future,
         verify_recipient: Future,
         authorization_call: Future,
@@ -369,7 +437,6 @@ program compliant_timelock_transfer.aleo {
         base_token: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof; 2],
         public lock_until: u32,
-
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
         assert_eq(base_token.token_id, TOKEN_ID);
         assert_eq(sealed_token.token_id, TOKEN_ID);
