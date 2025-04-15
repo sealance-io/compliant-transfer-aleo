@@ -1,6 +1,25 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+/**
+ * @typedef {Object} NetworkConfig
+ * @property {string} endpoint - The API endpoint URL for the network
+ * @property {string[]} accounts - Array of Aleo private keys for this network
+ * @property {number} priorityFee - The transaction priority fee for this network
+ */
+
+/**
+ * @typedef {Object} AleoConfig
+ * @property {string[]} accounts - Default accounts to use across all networks
+ * @property {'execute'|'prove'|'deploy'} mode - Execution mode for Aleo operations
+ * @property {Object} mainnet - Global mainnet configuration
+ * @property {Object.<string, NetworkConfig>} networks - Network-specific configurations
+ * @property {NetworkConfig} networks.testnet - Testnet network configuration
+ * @property {NetworkConfig} networks.mainnet - Mainnet network configuration
+ * @property {'testnet'|'mainnet'} defaultNetwork - The default network to use
+ */
+
+/** @type {AleoConfig} */
 export default {
   accounts: [process.env.ALEO_PRIVATE_KEY],
   mode: 'execute',
