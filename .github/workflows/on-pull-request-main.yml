@@ -1,0 +1,61 @@
+name: Compliant Transfer Aleo Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency:
+  group: ci-tests-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  aleo-progrmas-test:
+    name: Aleo Programs Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      packages: 'read'
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/sealance-io/leo-lang-ci:v2.4.1-fixed
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
+      options: --cpus 2 --add-host=host.docker.internal:host-gateway
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup doko-js-cli
+        uses: ./.github/actions/setup-doko-js
+        with:
+          doko-repo: 'https://github.com/NadavPeled1998/doko-js.git'
+          doko-branch: 'fix/array_type_conversion'
+
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - run: cp .env.example .env
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit
+      - name: compile leo
+        run: npm run compile
+      - name: Run all programs tests 
+        run: npm run test
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: true
+          TESTNET_ENDPOINT: "http://host.docker.internal:3030"
