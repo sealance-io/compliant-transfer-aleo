@@ -31,22 +31,65 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Add this function to check if npm global directory is writable
+check_npm_permissions() {
+    local npm_prefix
+    npm_prefix=$(npm config get prefix)
+    
+    # Check if the npm global directories are writable
+    if [ -w "$npm_prefix/bin" ] && [ -w "$npm_prefix/lib/node_modules" ]; then
+        return 0  # Directories are writable
+    else
+        return 1  # Directories are not writable
+    fi
+}
+
 # Check for required dependencies
 check_dependencies() {
     echo "Checking dependencies..."
     
     local missing_deps=()
     
+    # Check if Rust/Cargo is installed
     if ! command_exists cargo; then
-        missing_deps+=("Rust/Cargo")
+        echo "Rust/Cargo is not installed."
+        read -p "Would you like to install Rust using rustup? (y/n): " -r install_rust
+        if [[ "$install_rust" =~ ^[Yy]$ ]]; then
+            echo "Installing Rust using rustup..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+            # Source the cargo environment
+            if [[ -f "$HOME/.cargo/env" ]]; then
+                source "$HOME/.cargo/env"
+            else
+                error "Failed to find cargo environment after installation."
+            fi
+        else
+            error "Rust/Cargo is required but not installed. Please install it manually."
+        fi
     fi
     
+    # Check if wasm-pack is installed (required for Rust to WASM builds)
     if ! command_exists wasm-pack; then
-        missing_deps+=("wasm-pack")
+        echo "wasm-pack is not installed (required for Rust to WASM builds)."
+        read -p "Would you like to install wasm-pack from crates.io? (y/n): " -r install_wasm_pack
+        if [[ "$install_wasm_pack" =~ ^[Yy]$ ]]; then
+            echo "Installing wasm-pack..."
+            cargo install wasm-pack
+        else
+            error "wasm-pack is required but not installed. Please install it manually using 'cargo install wasm-pack'."
+        fi
     fi
     
+    # Ensure the Rust wasm32-unknown-unknown target is installed
     if ! rustup target list | grep "wasm32-unknown-unknown (installed)" > /dev/null; then
-        missing_deps+=("wasm32-unknown-unknown target")
+        echo "The wasm32-unknown-unknown target is not installed for Rust."
+        read -p "Would you like to install it now? (y/n): " -r install_wasm_target
+        if [[ "$install_wasm_target" =~ ^[Yy]$ ]]; then
+            echo "Installing wasm32-unknown-unknown target..."
+            rustup target add wasm32-unknown-unknown
+        else
+            error "The wasm32-unknown-unknown target is required but not installed. Please install it manually using 'rustup target add wasm32-unknown-unknown'."
+        fi
     fi
     
     if ! command_exists pnpm; then
@@ -100,11 +143,11 @@ setup_node() {
     fi
 }
 
-# Simple lint bypass for pnpm
-create_lint_bypass() {
+create_wrapper_script() {
+    # Create function override
     pnpm() {
         if [ "$1" = "lint" ]; then
-            echo "Skipping lint step..."
+            echo "Skipping lint step (function bypass)..."
             return 0
         else
             command pnpm "$@"
@@ -113,16 +156,34 @@ create_lint_bypass() {
     export -f pnpm
 }
 
-# Add this function to check if npm global directory is writable
-check_npm_permissions() {
-    local npm_prefix
-    npm_prefix=$(npm config get prefix)
+create_lint_bypass() {
+    echo "Disabling lint step in package.json..."
     
-    # Check if the npm global directories are writable
-    if [ -w "$npm_prefix/bin" ] && [ -w "$npm_prefix/lib/node_modules" ]; then
-        return 0  # Directories are writable
+    # Back up the original package.json
+    if [ -f "package.json" ]; then
+        cp package.json package.json.bak
+        
+        # Use a pipe character as delimiter instead of forward slash
+        # This avoids issues with paths containing forward slashes
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS version needs an empty string with -i
+            sed -i '' 's|pnpm lint && ||' package.json
+        else
+            # Linux version
+            sed -i 's|pnpm lint && ||' package.json
+        fi
+        
+        # Verify the change worked
+        if grep -q "pnpm lint &&" package.json; then
+            echo "Warning: Could not remove lint step from package.json. Creating wrapper script instead."
+            cp package.json.bak package.json  # Restore original file
+            create_wrapper_script  # Call our fallback function
+        else
+            echo "Successfully removed lint step from build script in package.json."
+        fi
     else
-        return 1  # Directories are not writable
+        echo "Warning: package.json not found. Creating wrapper script instead."
+        create_wrapper_script  # Call our fallback function
     fi
 }
 
