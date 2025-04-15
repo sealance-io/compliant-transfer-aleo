@@ -21,13 +21,28 @@ jobs:
     permissions:
       contents: 'read'
       packages: 'read'
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust and Cargo
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          # Cache multiple directories related to Cargo
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          # Cache key based on OS, Rust version and lockfile if present
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          # Restore from these keys if exact match isn't found
+          restore-keys: |
+            ${{ runner.os }}-cargo-
       - name: Install Leo
         run: |
           git clone -b v2.4.1 --recurse-submodules --single-branch --depth 1 https://github.com/ProvableHQ/leo
