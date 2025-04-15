@@ -13,6 +13,7 @@ import { initializeTokenProgram } from "../lib/Token";
 import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
 import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
 import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/compliant_threshold_transfer";
+import { getLatestBlockHeight } from "../lib/Block";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -41,12 +42,6 @@ const freezeRegistryContract = new Freeze_registryContract({ mode, privateKey: a
 
 const amount = 1n;
 let root: bigint;
-
-async function getLatestBlockHeight() {
-  const response = await fetch(`${contract.config.network.endpoint}/${contract.config.networkName}/block/height/latest`) as any;
-  const latestBlockHeight = await response.json() as number;
-  return latestBlockHeight;
-}
 
 describe('test compliant_threshold_transfer program', () => {
   test(`fund credits`, async () => {
