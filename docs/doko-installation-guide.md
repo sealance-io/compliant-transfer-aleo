@@ -14,7 +14,7 @@ There are three ways to install the Doko-JS CLI, depending on your needs:
 
 ## Option 1: Using the Installation Script (Recommended)
 
-Our installation script handles all dependencies and build steps automatically, making it the simplest way to get started with the CLI.
+Our installation script handles **some** dependencies and build steps automatically, making it the simplest way to get started with the CLI.
 
 ### Prerequisites
 
