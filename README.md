@@ -71,6 +71,7 @@ USE_TEST_CONTAINERS=false npm test
 ```
 
 When disabling containers, you'll need to run Amareleo manually outside the test environment.
+For instructions, refer to the [Amareleo repository](https://github.com/kaxxa123/amareleo-chain).
 
 ### Option 2: Using Aleo's Full Devnet (Not Recommended)
 
@@ -94,10 +95,12 @@ This approach is not recommended for regular development as it's significantly s
 If you encounter issues with the containerized tests:
 
 1. Ensure Docker/Podman is running and properly configured
+2. For macOS and/or podman make sure to refer to [Supported Contianer Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
 2. Check container runtime logs for errors
-3. Try increasing verbosity with `AMARELEO_VERBOSITY=3`
+3. Try increasing Testcontainers verbosity using `DEBUG=testcontainers*` (refer to [Testcontainers configuration](https://node.testcontainers.org/configuration/))
 4. If on Linux, ensure your user has permissions to access the container runtime
-5. On macOS, ensure Docker Desktop is running with sufficient resources allocated
+5. On macOS, ensure Docker Desktop or podman-machine is running with sufficient resources allocated
+6. Try increasing Amareleo node's verbosity with `AMARELEO_VERBOSITY=4`
 
 ### Container Registry Authentication
 
