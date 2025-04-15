@@ -1,0 +1,69 @@
+
+name: 'Setup doko-js-cli'
+description: 'Installs doko-js-cli from a specified repository and branch'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    default: '22'
+    required: false
+  pnpm-version:
+    description: 'pnpm version to use'
+    default: '10'
+    required: false
+  rust-version:
+    description: 'Rust toolchain version to use'
+    default: 'stable'
+  doko-repo:
+    description: 'Repository URI of doko-js-cli'
+    default: 'https://github.com/venture23-aleo/doko-js.git'
+    required: false
+  doko-branch:
+    description: 'Branch of doko-js-cli to use'
+    default: 'main'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: ${{ inputs.node-version }}
+  
+  - name: Setup pnpm
+    uses: pnpm/action-setup@v4
+    with:
+      version: ${{ inputs.pnpm-version }}
+      run_install: false
+
+  - name: Install wasm-pack dependencies
+    shell: bash
+    run: |
+      apt-get update && apt-get install -y --no-install-recommends build-essential gcc g++ pkg-config libssl-dev clang llvm-dev make
+
+  - name: Install Rust and Cargo
+    uses: dtolnay/rust-toolchain@master
+    with:
+      toolchain: ${{ inputs.rust-version }}
+
+  - name: Install wasm-pack
+    shell: bash
+    run: |
+      echo "Installing wasm-pack..."
+      cargo install wasm-pack
+      wasm-pack --version
+  
+  - name: Clone doko-js-cli branch
+    shell: bash
+    run: |
+      git clone -b '${{ inputs.doko-branch }}' --single-branch --depth 1 ${{ inputs.doko-repo }} /tmp/doko-js-cli
+  
+  - name: Install and build doko-js-cli
+    shell: bash
+    working-directory: /tmp/doko-js-cli
+    run: |
+      pnpm install
+      pnpm run --r --filter "./packages/**" build
+      npm run install:cli
+      echo "doko-js-cli installed successfully ($(dokojs --version))"
