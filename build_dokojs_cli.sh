@@ -6,7 +6,7 @@ IFS=$'\n\t'
 
 # Default values for repository and branch
 DEFAULT_REPO="https://github.com/venture23-aleo/doko-js.git"
-DEFAULT_BRANCH="v0.0.2"
+DEFAULT_BRANCH="main"
 REPO="$DEFAULT_REPO"
 BRANCH="$DEFAULT_BRANCH"
 
