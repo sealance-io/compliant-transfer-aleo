@@ -113,6 +113,66 @@ create_lint_bypass() {
     export -f pnpm
 }
 
+# Add this function to check if npm global directory is writable
+check_npm_permissions() {
+    local npm_prefix
+    npm_prefix=$(npm config get prefix)
+    
+    # Check if the npm global directories are writable
+    if [ -w "$npm_prefix/bin" ] && [ -w "$npm_prefix/lib/node_modules" ]; then
+        return 0  # Directories are writable
+    else
+        return 1  # Directories are not writable
+    fi
+}
+
+# Add this function to handle CLI installation with proper permissions
+install_cli_globally() {
+    echo "Installing CLI globally..."
+    
+    if check_npm_permissions; then
+        # No sudo needed, directories are writable
+        npm run install:cli
+        return $?
+    else
+        echo "The npm global directories are not writable by the current user."
+        echo "You have several options:"
+        echo "  1. Run with sudo (requires admin password)"
+        echo "  2. Configure npm to use a user-writable location"
+        echo "  3. Skip global installation (abort)"
+        read -rp "Choose an option (1/2/3): " choice
+        
+        case "$choice" in
+            1)
+                echo "Installing with sudo..."
+                sudo npm run install:cli
+                ;;
+            2)
+                echo "Configuring npm to use a user-writable location..."
+                mkdir -p "$HOME/.npm-global"
+                npm config set prefix "$HOME/.npm-global"
+                export PATH="$HOME/.npm-global/bin:$PATH"
+                
+                echo "Installing CLI to user location..."
+                npm run install:cli
+                
+                echo "✅ Installation complete!"
+                echo ""
+                echo "IMPORTANT: To make the CLI available in all terminal sessions, add this line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+                echo "  export PATH=\"$HOME/.npm-global/bin:\$PATH\""
+                ;;
+            3)
+                echo "Skipping global installation."
+                return 0
+                ;;
+            *)
+                echo "Invalid option. Skipping global installation."
+                return 1
+                ;;
+        esac
+    fi
+}
+
 # Main installation function
 install_doko_cli() {
     # Check dependencies
@@ -153,12 +213,16 @@ install_doko_cli() {
     pnpm run build
     
     # Uninstall existing CLI if present
-    echo "Removing any existing CLI installation..."
-    npm uninstall -g @doko-js/cli 2>/dev/null || true
-    
-    # Install CLI globally using project script
-    echo "Installing CLI globally..."
-    npm run install:cli
+    echo "Checking for existing CLI installation..."
+    if check_npm_permissions; then
+        npm uninstall -g @doko-js/cli 2>/dev/null || true
+    else
+        echo "Note: Cannot automatically uninstall previous global version due to permissions."
+        echo "If you need to remove a previous version, you may need to use sudo."
+    fi
+
+    # Install CLI globally with appropriate permissions
+    install_cli_globally
     
     # Test the installation
     DOKOJS_BIN_PATH="$(npm bin -g)/dokojs"
