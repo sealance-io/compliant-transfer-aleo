@@ -21,12 +21,101 @@ This repository contains smart contracts, tests, and auxiliary scripts for imple
 4. **Build the Contracts**  
     - `dokojs compile`
 
-## Run Tests  
-   - **Run devnet** 
-   `./devnet.sh` following instructions from snarkOS https://github.com/ProvableHQ/snarkOS/blob/staging/devnet.sh`
+# Testing
+
+This project uses automated testing with infrastructure components that simulate a local Aleo blockchain environment.
+
+## Default Testing Approach
+
+By default, tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using [Amareleo](https://amareleo.com/) light nodes. This approach requires no manual setup and provides a consistent testing environment across different machines.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run specific tests
+npm run test:select ./test/merkle_tree.test.ts
+```
+
+### Customizing Container Behavior
+
+You can customize the Amareleo container with environment variables:
+
+```bash
+# Use a custom Amareleo image
+AMARELEO_IMAGE=custom/amareleo:latest npm test
+
+# Set verbosity level (0-4, default is 1)
+AMARELEO_VERBOSITY=2 npm test
+```
+
+**Note:** The Amareleo container does not persist blockchain state by default, and the same chain is reused across all tests.
+
+### Container Runtime Support
+
+Both Docker and Podman are supported as container runtimes. For troubleshooting container-related issues, refer to:
+- [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
+- [Configuration Options](https://node.testcontainers.org/configuration/)
+
+## Alternative Testing Methods
+
+### Option 1: Running Tests Without Containers
+
+You can disable testcontainers and use your own manually-started infrastructure:
+
+```bash
+# Disable testcontainers
+USE_TEST_CONTAINERS=false npm test
+```
+
+When disabling containers, you'll need to run Amareleo manually outside the test environment.
+
+### Option 2: Using Aleo's Full Devnet (Not Recommended)
+
+A slower and more cumbersome option is to use Aleo's `devnet.sh` script:
+
+1. **Run devnet**
+   ```bash
+   ./devnet.sh
+   ```
+   (Following instructions from [snarkOS](https://github.com/ProvableHQ/snarkOS/blob/staging/devnet.sh))
+
+2. **Run tests**
+   ```bash
+   npm test
+   ```
+
+This approach is not recommended for regular development as it's significantly slower and requires more system resources than the containerized Amareleo approach.
+
+## Troubleshooting
+
+If you encounter issues with the containerized tests:
+
+1. Ensure Docker/Podman is running and properly configured
+2. Check container runtime logs for errors
+3. Try increasing verbosity with `AMARELEO_VERBOSITY=3`
+4. If on Linux, ensure your user has permissions to access the container runtime
+5. On macOS, ensure Docker Desktop is running with sufficient resources allocated
+
+### Container Registry Authentication
+
+If you're using an image from a container registry that requires authentication (such as GitHub Container Registry - ghcr.io) and experience authentication issues:
+
+1. Run `docker login` or `podman login` in the same terminal session you'll use to run tests
+2. Explicitly pull the target Amareleo image before running tests:
+   ```bash
+   # For Docker
+   docker pull ghcr.io/sealance-io/amareleo-chain:latest
    
-   - **Run tests**
-   `npm test` or `npm run test:select compliant`
+   # For Podman
+   podman pull ghcr.io/sealance-io/amareleo-chain:latest
+   ```
+
+This can help resolve authentication timeouts or permission issues that might occur when Testcontainers attempts to pull images automatically.
+
+For container-specific issues, refer to the [Testcontainers documentation](https://node.testcontainers.org/).
 
 ## Contributing
 
