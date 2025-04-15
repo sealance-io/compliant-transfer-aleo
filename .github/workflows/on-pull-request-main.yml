@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: 'read'
       packages: 'read'
-    timeout-minutes: 60
+    timeout-minutes: 90
     container:
       image: ghcr.io/sealance-io/leo-lang-ci:v2.4.1-fixed
       credentials:
