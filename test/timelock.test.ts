@@ -484,8 +484,6 @@ describe("test compliant_timelock_transfer program", () => {
         latestBlockHeight + 1,
       );
       await tx.wait();
-
-      // NOTE: how to test a different tokenID?
     },
     timeout,
   );
