@@ -465,6 +465,7 @@ describe("test compliant_timelock_transfer program", () => {
         recipientSealedRecord,
         latestBlockHeight,
       );
+      await expect(tx.wait()).rejects.toThrow();
 
       // cannot send a different amount of tokens then in sealed token
       tx = await timelockContractForAccount.transfer_public(
@@ -498,7 +499,7 @@ describe("test compliant_timelock_transfer program", () => {
         0,
       );
       await mintPublicTx.wait();
-      
+
       mintPublicTx = await timelockContractForAdmin.mint_public(
         account,
         amount,
@@ -532,11 +533,12 @@ describe("test compliant_timelock_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // cannot send tokens with the smaller amount in the sealed record
-      await expect(timelockContractForAccount.transfer_public_as_signer(
-        recipient,
-        amount + 1n,
-        accountSealedRecord,
-        latestBlockHeight,
+      await expect(
+        timelockContractForAccount.transfer_public_as_signer(
+          recipient,
+          amount + 1n,
+          accountSealedRecord,
+          latestBlockHeight,
         ),
       ).rejects.toThrow();
 
@@ -559,7 +561,7 @@ describe("test compliant_timelock_transfer program", () => {
         amount * 20n,
         0,
       );
-      
+
       mintPublicTx = await timelockContractForAdmin.mint_public(
         account,
         amount,
@@ -736,17 +738,18 @@ describe("test compliant_timelock_transfer program", () => {
       const amountToSend = accountRecord.amount - change;
 
       // cannot send amount larger than in sealed token
-      await expect(timelockContractForAccount.transfer_private(
+      await expect(
+        timelockContractForAccount.transfer_private(
           recipient,
           accountRecord2.amount + 1n,
           accountSealedRecord2,
           accountRecord,
           senderMerkleProof,
           recipientMerkleProof,
-          largeBlockHeight
-          ),
-        ).rejects.toThrow();
-    
+          largeBlockHeight,
+        ),
+      ).rejects.toThrow();
+
       // cannot send a different amount in base token than in sealed token
       await expect(
         timelockContractForAccount.transfer_private(
@@ -899,13 +902,14 @@ describe("test compliant_timelock_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // cannot send tokens with the smaller amount in the sealed record
-      await expect(timelockContractForAccount.transfer_priv_to_public(
-        recipient,
-        amount + 1n,
-        accountSealedRecord,
-        accountTokenRecord2,
-        senderMerkleProof,
-        latestBlockHeight,
+      await expect(
+        timelockContractForAccount.transfer_priv_to_public(
+          recipient,
+          amount + 1n,
+          accountSealedRecord,
+          accountTokenRecord2,
+          senderMerkleProof,
+          latestBlockHeight,
         ),
       ).rejects.toThrow();
 
@@ -958,15 +962,13 @@ describe("test compliant_timelock_transfer program", () => {
         account,
         change,
         accountSealedRecord,
-        accountTokenRecord, 
+        accountTokenRecord,
         senderMerkleProof,
         senderMerkleProof,
         largeBlockHeight,
       );
-      const [
-        encryptedEmptySealedRecord,
-        encryptedAccountSealedRecord,
-      ] = await tx2.wait();
+      const [encryptedEmptySealedRecord, encryptedAccountSealedRecord] =
+        await tx2.wait();
 
       accountTokenRecord = decryptToken(
         (tx2 as any).transaction.execution.transitions[5].outputs[1].value,
@@ -977,7 +979,7 @@ describe("test compliant_timelock_transfer program", () => {
         encryptedAccountSealedRecord,
         accountPrivKey,
       );
-      
+
       rejectedTx = await timelockContractForAccount.transfer_priv_to_public(
         recipient,
         change,
@@ -987,7 +989,6 @@ describe("test compliant_timelock_transfer program", () => {
         largeBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
-
     },
     timeout,
   );
