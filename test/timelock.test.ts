@@ -5,13 +5,13 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptCompliantToken } from "../artifacts/js/leo2js/compliant_timelock_transfer";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
+
 import {
   MAX_TREE_SIZE,
   ZERO_ADDRESS,
   COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
   fundedAmount,
   timeout,
-  tokenId,
   tokenName,
   tokenSymbol,
 } from "../lib/Constants";
@@ -75,6 +75,7 @@ const freezeRegistryContract = new Freeze_registryContract({
 
 const amount = 10n;
 let root: bigint;
+let tokenId = stringToBigInt("SEALED_TIMELOCK_TOKEN");
 
 async function getLatestBlockHeight() {
   const response = (await fetch(
@@ -83,6 +84,15 @@ async function getLatestBlockHeight() {
   const latestBlockHeight = (await response.json()) as number;
   return latestBlockHeight;
 }
+
+let accountRecord, accountTokenRecord;
+let accountSealedRecord, accountSealedRecord2;
+let freezedAccountRecord;
+let freezedAccountSealedRecord, freezedAccountSealedRecord2;
+let recipientSealedRecord;
+let senderMerkleProof;
+let recipientMerkleProof;
+let freezedAccountMerkleProof;
 
 describe("test compliant_timelock_transfer program", () => {
   test(
@@ -181,19 +191,10 @@ describe("test compliant_timelock_transfer program", () => {
       await tx.wait();
       const freezeRegistryName =
         await timelockContract.freeze_registry_program_name(0);
-      expect(freezeRegistryName).toBe(1n);
+      expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
     },
     timeout,
   );
-
-  let accountRecord, accountTokenRecord;
-  let accountSealedRecord, accountSealedRecord2;
-  let freezedAccountRecord;
-  let freezedAccountSealedRecord, freezedAccountSealedRecord2;
-  let recipientSealedRecord;
-  let senderMerkleProof;
-  let recipientMerkleProof;
-  let freezedAccountMerkleProof;
 
   test(
     "fund tokens",
@@ -496,6 +497,13 @@ describe("test compliant_timelock_transfer program", () => {
         amount * 20n,
         0,
       );
+      await mintPublicTx.wait();
+      
+      mintPublicTx = await timelockContractForAdmin.mint_public(
+        account,
+        amount,
+        0,
+      );
       const [encryptedAccountSealedRecord] = await mintPublicTx.wait();
       accountSealedRecord = decryptCompliantToken(
         encryptedAccountSealedRecord,
@@ -523,6 +531,15 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
+      // cannot send tokens with the smaller amount in the sealed record
+      await expect(timelockContractForAccount.transfer_public_as_signer(
+        recipient,
+        amount + 1n,
+        accountSealedRecord,
+        latestBlockHeight,
+        ),
+      ).rejects.toThrow();
+
       const tx = await timelockContractForAccount.transfer_public_as_signer(
         recipient,
         amount,
@@ -537,10 +554,15 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `test transfer_public_to_priv`,
     async () => {
-      const mintedAmount = amount * 20n;
       let mintPublicTx = await timelockContractForAdmin.mint_public(
         account,
-        mintedAmount,
+        amount * 20n,
+        0,
+      );
+      
+      mintPublicTx = await timelockContractForAdmin.mint_public(
+        account,
+        amount,
         0,
       );
       const [encryptedAccountSealedRecord] = await mintPublicTx.wait();
@@ -590,6 +612,17 @@ describe("test compliant_timelock_transfer program", () => {
         ),
       ).rejects.toThrow();
 
+      // cannot send tokens with the smaller amount in the sealed record
+      await expect(
+        timelockContractForAccount.transfer_public_to_priv(
+          recipient,
+          amount + 1n,
+          recipientMerkleProof,
+          accountSealedRecord,
+          latestBlockHeight,
+        ),
+      ).rejects.toThrow();
+
       const largeBlockHeight = latestBlockHeight + 100;
       const change = 1n;
       const amountToSend = amount - change;
@@ -619,7 +652,7 @@ describe("test compliant_timelock_transfer program", () => {
         accountPrivKey,
       );
       expect(accountSealedRecord.owner).toBe(account);
-      expect(accountSealedRecord.amount).toBe(mintedAmount - amountToSend);
+      expect(accountSealedRecord.amount).toBe(change);
       expect(accountSealedRecord.locked_until).toBe(0);
 
       const recipientSealedRecord = decryptCompliantToken(
@@ -702,25 +735,18 @@ describe("test compliant_timelock_transfer program", () => {
       const change = 1n;
       const amountToSend = accountRecord.amount - change;
 
-      /*
-    console.log("accountRecord", accountRecord);
-    console.log("accountSealedRecord2", accountSealedRecord2);
-    console.log("amount", amount);
-    // cannot send amount larger than in sealed token
-    let tx = await timelockContractForAccount.transfer_private(
-        recipient,
-        accountRecord.amount + 1n,
-        accountSealedRecord2,
-        accountRecord,
-        senderMerkleProof,
-        recipientMerkleProof,
-        largeBlockHeight
-        );
-    await expect(tx.wait()).rejects.toThrow();
+      // cannot send amount larger than in sealed token
+      await expect(timelockContractForAccount.transfer_private(
+          recipient,
+          accountRecord2.amount + 1n,
+          accountSealedRecord2,
+          accountRecord,
+          senderMerkleProof,
+          recipientMerkleProof,
+          largeBlockHeight
+          ),
+        ).rejects.toThrow();
     
-    NOTE: this resolves in the out of bounds error that failing the tests
-    */
-
       // cannot send a different amount in base token than in sealed token
       await expect(
         timelockContractForAccount.transfer_private(
@@ -812,9 +838,26 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `test transfer_priv_to_public`,
     async () => {
-      const mintPrivateTx = await timelockContractForAdmin.mint_private(
+      let mintPrivateTx = await timelockContractForAdmin.mint_private(
         account,
         amount * 20n,
+        0,
+      );
+      await mintPrivateTx.wait();
+      accountSealedRecord2 = decryptCompliantToken(
+        (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0]
+          .value,
+        accountPrivKey,
+      );
+      const accountTokenRecord2 = decryptToken(
+        (mintPrivateTx as any).transaction.execution.transitions[0].outputs[0]
+          .value,
+        accountPrivKey,
+      );
+
+      mintPrivateTx = await timelockContractForAdmin.mint_private(
+        account,
+        amount,
         0,
       );
       await mintPrivateTx.wait();
@@ -854,6 +897,17 @@ describe("test compliant_timelock_transfer program", () => {
         latestBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // cannot send tokens with the smaller amount in the sealed record
+      await expect(timelockContractForAccount.transfer_priv_to_public(
+        recipient,
+        amount + 1n,
+        accountSealedRecord,
+        accountTokenRecord2,
+        senderMerkleProof,
+        latestBlockHeight,
+        ),
+      ).rejects.toThrow();
 
       const largeBlockHeight = latestBlockHeight + 100;
       const change = 1n;
@@ -898,14 +952,42 @@ describe("test compliant_timelock_transfer program", () => {
       expect(recipientSealedRecord.amount).toBe(amountToSend);
       expect(recipientSealedRecord.locked_until).toBe(largeBlockHeight);
 
-      // cannot send tokens before the timelock expires
-      const tx2 = await timelockContractForRecipient.transfer_public_as_signer(
+      // Send the remaining amount to account using large blockheight
+      // and verify that account cannot call transfer_priv_to_public with it
+      const tx2 = await timelockContractForAccount.transfer_private(
         account,
-        amountToSend,
-        recipientSealedRecord,
-        latestBlockHeight,
+        change,
+        accountSealedRecord,
+        accountTokenRecord, 
+        senderMerkleProof,
+        senderMerkleProof,
+        largeBlockHeight,
       );
-      await expect(tx2.wait()).rejects.toThrow();
+      const [
+        encryptedEmptySealedRecord,
+        encryptedAccountSealedRecord,
+      ] = await tx2.wait();
+
+      accountTokenRecord = decryptToken(
+        (tx2 as any).transaction.execution.transitions[5].outputs[1].value,
+        accountPrivKey,
+      );
+
+      accountSealedRecord = decryptCompliantToken(
+        encryptedAccountSealedRecord,
+        accountPrivKey,
+      );
+      
+      rejectedTx = await timelockContractForAccount.transfer_priv_to_public(
+        recipient,
+        change,
+        accountSealedRecord,
+        accountTokenRecord,
+        senderMerkleProof,
+        largeBlockHeight,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
     },
     timeout,
   );

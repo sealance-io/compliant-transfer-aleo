@@ -3,10 +3,10 @@ import freeze_registry.aleo;
 
 program compliant_timelock_transfer.aleo {
 
-    const TOKEN_ID: field = 1688926949047677303695061932791346field; // SEALEDTOKEN_V2 ascii encoded
+    const TOKEN_ID: field = 121700012454193788241350538767360056604864872662350field; // SEALED_TIMELOCK_TOKEN ascii encoded
     const PROGRAM_ADDRESS: address = aleo18n84jzwgx8xsd6jkn2adncmqez73fn0xq9njuwjn66r40yf3uszsvr3wn5;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
-    const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 1u128;// freeze_registry ascii encoded
+    const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
 
     // Mappings
     mapping freeze_registry_program_name: u8 => u128;
@@ -22,7 +22,6 @@ program compliant_timelock_transfer.aleo {
     record CompliantToken {
         owner: address,
         amount: u128,
-        token_id: field,
         locked_until: u32
     } 
 
@@ -54,19 +53,18 @@ program compliant_timelock_transfer.aleo {
     async transition mint_public(
         public recipient: address,
         public amount: u128,
-        public lock_until: u32
+        lock_until: u32
     ) -> (CompliantToken, Future) {
         let token_registry_call: Future = token_registry.aleo/mint_public(
             TOKEN_ID,
             recipient,
             amount,
-            lock_until // Note: should it be 0? 
+            0u32
         );
 
         let authorized_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
-            token_id: TOKEN_ID,
             locked_until: lock_until
         };
 
@@ -93,11 +91,10 @@ program compliant_timelock_transfer.aleo {
             recipient,
             amount,
             true,
-            lock_until // NOTE: should it be 0?
+            0u32
         );
 
         let authorized_record: CompliantToken = CompliantToken {
-            token_id: TOKEN_ID,
             owner: recipient,
             amount: amount,
             locked_until: lock_until
@@ -127,11 +124,8 @@ program compliant_timelock_transfer.aleo {
         public recipient: address,
         public amount: u128,
         sealed_token: CompliantToken,
-        lock_until: u32, // NOTE: should it be private?
+        lock_until: u32,
     ) -> (CompliantToken, CompliantToken, Future) {
-
-        assert_eq(sealed_token.token_id, TOKEN_ID);
-        assert(amount <= sealed_token.amount); // NOTE: can we remove this check because it will fail later?
 
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -156,14 +150,12 @@ program compliant_timelock_transfer.aleo {
         let unauthorized_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
-            token_id: sealed_token.token_id,
             locked_until: sealed_token.locked_until
         };
 
         let authorized_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
-            token_id: sealed_token.token_id,
             locked_until: lock_until
         };
 
@@ -194,7 +186,7 @@ program compliant_timelock_transfer.aleo {
         public recipient: address,
         public amount: u128,
         sealed_token: CompliantToken,
-        public lock_until: u32
+        lock_until: u32
     ) -> (CompliantToken, CompliantToken, Future) {
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.signer);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -219,14 +211,12 @@ program compliant_timelock_transfer.aleo {
         let unauthorized_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
-            token_id: sealed_token.token_id,
             locked_until: sealed_token.locked_until
         };
 
         let authorized_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
-            token_id: sealed_token.token_id,
             locked_until: lock_until
         };
 
@@ -302,14 +292,12 @@ program compliant_timelock_transfer.aleo {
         let unauthorized_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
-            token_id: sealed_token.token_id,
             locked_until: sealed_token.locked_until
         };
 
         let authorized_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
-            token_id: sealed_token.token_id,
             locked_until: lock_until
         };
 
@@ -356,12 +344,9 @@ program compliant_timelock_transfer.aleo {
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
         lock_until: u32,
-       // current_height: u32, // if we provide it, we can prevent the onchain rejection
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(base_token.token_id, TOKEN_ID);
-        assert_eq(sealed_token.token_id, TOKEN_ID);
         assert_eq(base_token.amount, sealed_token.amount);
-       // assert(sealed_token.locked_until <= current_height);
 
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
@@ -389,14 +374,12 @@ program compliant_timelock_transfer.aleo {
         let unauthorized_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
-            token_id: sealed_token.token_id,
             locked_until: sealed_token.locked_until
         };
 
         let authorized_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
-            token_id: sealed_token.token_id,
             locked_until: lock_until
         };
 
@@ -436,12 +419,10 @@ program compliant_timelock_transfer.aleo {
         sealed_token: CompliantToken,
         base_token: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof; 2],
-        public lock_until: u32,
+        lock_until: u32,
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
         assert_eq(base_token.token_id, TOKEN_ID);
-        assert_eq(sealed_token.token_id, TOKEN_ID);
         assert_eq(base_token.amount, sealed_token.amount);
-       // assert(sealed_token.locked_until <= current_height);
 
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -466,14 +447,12 @@ program compliant_timelock_transfer.aleo {
         let unauthorized_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
-            token_id: sealed_token.token_id,
             locked_until: sealed_token.locked_until
         };
 
         let authorized_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
-            token_id: sealed_token.token_id,
             locked_until: lock_until
         };
 
@@ -505,5 +484,4 @@ program compliant_timelock_transfer.aleo {
 
         assert(locked_until <= block.height);
     }
-
 }
