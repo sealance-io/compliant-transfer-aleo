@@ -100,16 +100,16 @@ describe('test compliant_threshold_transfer program', () => {
 
   }, timeout);
 
-  test(`test update_allowed_delay`, async () => {
-    // only the admin can call update the allowed delay
-    let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_allowed_delay(150);
+  test(`test update_block_height_window`, async () => {
+    // only the admin can call update the block height window
+    let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_block_height_window(150);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await compliantThresholdTransferContractForAdmin.update_allowed_delay(150);
+    let tx = await compliantThresholdTransferContractForAdmin.update_block_height_window(150);
     await tx.wait()
 
-    const allowedDelay = await compliantThresholdTransferContract.allowed_delay(0);
-    expect(allowedDelay).toBe(150);
+    const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(0);
+    expect(blockHeightWindow).toBe(150);
 
   }, timeout);
 
@@ -272,9 +272,15 @@ describe('test compliant_threshold_transfer program', () => {
     let tx = await compliantThresholdTransferContractForAccount.signup();
     const [encryptedAccountStateRecord] = await tx.wait();
     accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountStateRecord, accountPrivKey);
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(0n);
+    expect(accountStateRecord.latest_block_height).toBe(0);
     tx = await compliantThresholdTransferContractForFreezedAccount.signup();
     const [encryptedFreezedAccountStateRecord] = await tx.wait();
     freezedAccountStateRecord = decryptTokenComplianceStateRecord(encryptedFreezedAccountStateRecord, freezedAccountPrivKey);
+    expect(freezedAccountStateRecord.owner).toBe(freezedAccount);
+    expect(freezedAccountStateRecord.cumulative_amount_per_epoch).toBe(0n);
+    expect(freezedAccountStateRecord.latest_block_height).toBe(0);
 
     // If the user have already signed the tx will fail
     tx = await compliantThresholdTransferContractForAccount.signup();
@@ -282,10 +288,6 @@ describe('test compliant_threshold_transfer program', () => {
   }, timeout)
 
   test('test state record behavior', async () => {
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(0n);
-    expect(accountStateRecord.latest_block_height).toBe(0);
-
     const latestBlockHeight1 = await getLatestBlockHeight()
     let transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
       recipient,
@@ -320,8 +322,8 @@ describe('test compliant_threshold_transfer program', () => {
     expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? amount * 2n : amount);
     expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight2);
 
-    let updateAllowedDelayTx = await compliantThresholdTransferContractForAdmin.update_allowed_delay(0);
-    await updateAllowedDelayTx.wait();
+    let updateBlockHeightWindowTx = await compliantThresholdTransferContractForAdmin.update_block_height_window(0);
+    await updateBlockHeightWindowTx.wait();
 
     // the transaction will reject because the estimated block height is too low
     transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
@@ -332,8 +334,8 @@ describe('test compliant_threshold_transfer program', () => {
     );
     await expect(transferPublicTx.wait()).rejects.toThrow();
 
-    updateAllowedDelayTx = await compliantThresholdTransferContractForAdmin.update_allowed_delay(150);
-    await updateAllowedDelayTx.wait();
+    updateBlockHeightWindowTx = await compliantThresholdTransferContractForAdmin.update_block_height_window(150);
+    await updateBlockHeightWindowTx.wait();
 
     const latestBlockHeight3 = await getLatestBlockHeight();
     transferPrivateTx = await compliantThresholdTransferContractForAccount.transfer_private(
@@ -416,14 +418,21 @@ describe('test compliant_threshold_transfer program', () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
+    const latestBlockHeight = await getLatestBlockHeight();
     const tx = await compliantThresholdTransferContractForAccount.transfer_public(
       recipient,
       amount,
       accountStateRecord,
-      await getLatestBlockHeight()
+      latestBlockHeight
     );
-    const [encryptedAccountRecord1] = await tx.wait();
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord1, accountPrivKey);
+    const [encryptedAccountRecord] = await tx.wait();
+    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
+    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH)
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? cumulativeAmountBefore + amount : amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
   }, timeout)
 
   test(`test transfer_public_as_signer`, async () => {
@@ -464,14 +473,21 @@ describe('test compliant_threshold_transfer program', () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
+    const latestBlockHeight = await getLatestBlockHeight();
     const tx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
       recipient,
       amount,
       accountStateRecord,
-      await getLatestBlockHeight()
+      latestBlockHeight
     );
     const [encryptedAccountRecord] = await tx.wait();
+    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
+    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
     accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH)
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? cumulativeAmountBefore + amount : amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
   }, timeout)
 
   test(`test transfer_public_to_priv`, async () => {
@@ -537,17 +553,26 @@ describe('test compliant_threshold_transfer program', () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
 
+    const latestBlockHeight =await getLatestBlockHeight();
     const tx = await compliantThresholdTransferContractForAccount.transfer_public_to_priv(
       recipient,
       amount,
       accountStateRecord,
-      await getLatestBlockHeight(),
+      latestBlockHeight,
       recipientMerkleProof,
       investigatorAddress
     );
 
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+
+    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
+    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
     accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH)
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? cumulativeAmountBefore + amount : amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+
     const tokenRecord = (tx as any).transaction.execution.transitions[6].outputs[0].value; 
     const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);
@@ -616,19 +641,26 @@ describe('test compliant_threshold_transfer program', () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-
+    const latestBlockHeight = await getLatestBlockHeight();
     const tx = await compliantThresholdTransferContractForAccount.transfer_private(
       recipient,
       amount,
       accountRecord,
       accountStateRecord,
-      await getLatestBlockHeight(),
+      latestBlockHeight,
       senderMerkleProof,
       recipientMerkleProof,
       investigatorAddress
     );
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+
+    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
+    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
     accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH)
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? cumulativeAmountBefore + amount : amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
 
     const previousAmount = accountRecord.amount;
     accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, accountPrivKey);
@@ -702,17 +734,26 @@ describe('test compliant_threshold_transfer program', () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
+    const latestBlockHeight = await getLatestBlockHeight();
     const tx = await compliantThresholdTransferContractForAccount.transfer_priv_to_public(
       recipient,
       amount,
       accountRecord,
       accountStateRecord,
-      await getLatestBlockHeight(),
+      latestBlockHeight,
       senderMerkleProof,
       investigatorAddress
     );
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+
+    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
+    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
     accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH)
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? cumulativeAmountBefore + amount : amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);    
+
     const previousAmount = accountRecord.amount;
     accountRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, accountPrivKey);
     expect(accountRecord.owner).toBe(account);

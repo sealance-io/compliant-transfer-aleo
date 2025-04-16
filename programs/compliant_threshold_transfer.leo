@@ -3,7 +3,7 @@ import freeze_registry.aleo;
 
 program compliant_threshold_transfer.aleo {
 
-    const TOKEN_ID: field = 438271370123737563379885991741056366field; // SEALEDTOKEN_V2 ascii encoded
+    const TOKEN_ID: field = 438271370123737563379885991741056366field; // "Threshold Token" ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo1f03a508uvg5fskrmzqfqyvvzd58989m2fhd02ef99qnkt85whs8q3kfjev;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
@@ -15,8 +15,8 @@ program compliant_threshold_transfer.aleo {
     mapping freeze_registry_program_name: u8 => u128;
     mapping threshold: u8 => u128;
     mapping epoch: u8 => u32;
-    mapping allowed_delay: u8 => u32;
-    mapping owned_state_record: address => bool; // maybe it should be a hash instead of an address;
+    mapping block_height_window: u8 => u32; // it defines a window of blocks within which a transaction is considered valid:  block.height - window < estimated_block_height <= block.height
+    mapping owned_state_record: address => bool;
  
     const ADMIN_ROLE: u8 = 1u8;
     const INVESTIGATOR_ROLE: u8 = 2u8;
@@ -37,7 +37,7 @@ program compliant_threshold_transfer.aleo {
     record TokenComplianceStateRecord {
         owner: address,
         cumulative_amount_per_epoch: u128,
-        latest_block_height: u32 // maybe it should be last block epoch
+        latest_block_height: u32
     }
 
     struct TokenOwner {
@@ -61,14 +61,14 @@ program compliant_threshold_transfer.aleo {
     }
 
 
-    async transition update_allowed_delay(blocks: u32) -> Future {
-        return f_update_allowed_delay(blocks, self.caller);
+    async transition update_block_height_window(blocks: u32) -> Future {
+        return f_update_block_height_window(blocks, self.caller);
     }
-    async function f_update_allowed_delay(blocks: u32, caller: address) {
+    async function f_update_block_height_window(blocks: u32, caller: address) {
         let admin_address: address = roles.get(1u8);
         assert_eq(admin_address, caller);
 
-        allowed_delay.set(0u8, blocks);
+        block_height_window.set(0u8, blocks);
     }
 
     async transition init_mappings() -> Future {
@@ -107,7 +107,7 @@ program compliant_threshold_transfer.aleo {
         public recipient: address,
         public amount: u128,
         input_state_record: TokenComplianceStateRecord,
-        estimated_block_height: u32,
+        public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Future) {
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -152,17 +152,17 @@ program compliant_threshold_transfer.aleo {
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        estimated_block_height: u32
+        public estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
 
         assert(block.height >= estimated_block_height);
-        let delay: u32 = allowed_delay.get(0u8);
-        delay = block.height > delay 
-            ? delay
+        let window: u32 = block_height_window.get(0u8);
+        window = block.height > window 
+            ? window
             : block.height;
-        assert(estimated_block_height > (block.height - delay));
+        assert(estimated_block_height > (block.height - window));
         authorization_call.await(); 
         transfer_call.await(); 
     }
@@ -171,7 +171,7 @@ program compliant_threshold_transfer.aleo {
         public recipient: address,
         public amount: u128,
         input_state_record: TokenComplianceStateRecord,
-        estimated_block_height: u32,
+        public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Future) {
         let verify_sender: Future = freeze_registry.aleo/verify_non_inclusion_pub(self.signer);
         let verify_recipient: Future = freeze_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -215,17 +215,17 @@ program compliant_threshold_transfer.aleo {
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        estimated_block_height: u32
+        public estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
 
         assert(block.height >= estimated_block_height);
-        let delay: u32 = allowed_delay.get(0u8);
-        delay = block.height > delay 
-            ? delay
+        let window: u32 = block_height_window.get(0u8);
+        window = block.height > window 
+            ? window
             : block.height;
-        assert(estimated_block_height > (block.height - delay));
+        assert(estimated_block_height > (block.height - window));
         authorization_call.await();
         transfer_call.await();
     }
@@ -234,7 +234,7 @@ program compliant_threshold_transfer.aleo {
         recipient: address,
         public amount: u128,
         input_state_record: TokenComplianceStateRecord,
-        estimated_block_height: u32,
+        public estimated_block_height: u32,
         recipient_merkle_proofs: [MerkleProof;2],
         investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
@@ -324,7 +324,7 @@ program compliant_threshold_transfer.aleo {
         authorization_call_for_program: Future,
         transfer_to_recipient: Future,
         investigator_address: address,
-        estimated_block_height: u32
+        public estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
@@ -333,11 +333,11 @@ program compliant_threshold_transfer.aleo {
         assert_eq(address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let delay: u32 = allowed_delay.get(0u8);
-        delay = block.height > delay 
-            ? delay
+        let window: u32 = block_height_window.get(0u8);
+        window = block.height > window 
+            ? window
             : block.height;
-        assert(estimated_block_height > (block.height - delay));
+        assert(estimated_block_height > (block.height - window));
         authorization_call_for_caller.await();
         transfer_to_program.await();
         authorization_call_for_program.await();
@@ -349,7 +349,7 @@ program compliant_threshold_transfer.aleo {
         amount: u128,
         input_record: token_registry.aleo/Token,
         input_state_record: TokenComplianceStateRecord,
-        estimated_block_height: u32,
+        public estimated_block_height: u32,
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
         investigator_address: address
@@ -424,7 +424,7 @@ program compliant_threshold_transfer.aleo {
         authorization_call: Future,
         transfer_call: Future,       
         investigator_address: address,
-        estimated_block_height: u32
+        public estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
@@ -433,11 +433,11 @@ program compliant_threshold_transfer.aleo {
         assert_eq(address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let delay: u32 = allowed_delay.get(0u8);
-        delay = block.height > delay 
-            ? delay
+        let window: u32 = block_height_window.get(0u8);
+        window = block.height > window 
+            ? window
             : block.height;
-        assert(estimated_block_height > (block.height - delay));
+        assert(estimated_block_height > (block.height - window));
 
         authorization_call.await();
         transfer_call.await();
@@ -448,7 +448,7 @@ program compliant_threshold_transfer.aleo {
         public amount: u128,
         input_record: token_registry.aleo/Token,
         input_state_record: TokenComplianceStateRecord,
-        estimated_block_height: u32,
+        public estimated_block_height: u32,
         sender_merkle_proofs: [MerkleProof; 2],
         investigator_address: address,
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
@@ -517,7 +517,7 @@ program compliant_threshold_transfer.aleo {
         authorization_call: Future,
         transfer_call: Future,
         investigator_address: address,
-        estimated_block_height: u32
+        public estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
@@ -526,11 +526,11 @@ program compliant_threshold_transfer.aleo {
         assert_eq(address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let delay: u32 = allowed_delay.get(0u8);
-        delay = block.height > delay 
-            ? delay
+        let window: u32 = block_height_window.get(0u8);
+        window = block.height > window 
+            ? window
             : block.height;
-        assert(estimated_block_height > (block.height - delay));
+        assert(estimated_block_height > (block.height - window));
         authorization_call.await();
         transfer_call.await();
     }
