@@ -37,11 +37,6 @@ runs:
       version: ${{ inputs.pnpm-version }}
       run_install: false
 
-  - name: Install wasm-pack dependencies
-    shell: bash
-    run: |
-      apt-get update && apt-get install -y --no-install-recommends build-essential gcc g++ pkg-config libssl-dev clang llvm-dev make
-
   - name: Install Rust and Cargo
     uses: dtolnay/rust-toolchain@master
     with:
