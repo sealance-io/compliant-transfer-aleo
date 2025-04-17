@@ -2,6 +2,27 @@ name: Aleo Program Tests
 
 on:
   workflow_dispatch:
+    inputs:
+      run_merkle_tree:
+        description: 'Run Merkle Tree tests'
+        type: boolean
+        default: true
+      run_compliant_transfer:
+        description: 'Run Compliant Transfer tests'
+        type: boolean
+        default: true
+      run_freeze_registry:
+        description: 'Run Freeze Registry tests'
+        type: boolean
+        default: true
+      run_timelock_policy:
+        description: 'Run Timelock Policy tests'
+        type: boolean
+        default: true
+      run_threshold_policy:
+        description: 'Run Threshold Policy tests'
+        type: boolean
+        default: true
   pull_request:
     branches:
       - main
@@ -16,14 +37,37 @@ jobs:
   check-trigger:
     runs-on: ubuntu-latest
     outputs:
-      # temporarily allow only manual runs
-      should_run: ${{ github.event_name == 'workflow_dispatch' }}
+      run_merkle_tree: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
+          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+        }}
+      run_compliant_transfer: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_compliant_transfer || 
+          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+        }}
+      run_freeze_registry: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_freeze_registry || 
+          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+        }}
+      run_timelock_policy: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_timelock_policy || 
+          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+        }}
+      run_threshold_policy: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_threshold_policy || 
+          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+        }}
     steps:
-      - run: echo "Checking if workflow was manually triggered"
+      - run: echo "Determining which jobs to run"
 
   merkle-tree-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_merkle_tree == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Merkle Tree Test"
@@ -33,7 +77,7 @@ jobs:
 
   compliant-transfer-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_compliant_transfer == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Compliant Transfer Test"
@@ -43,7 +87,7 @@ jobs:
 
   freeze-registry-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_freeze_registry == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Freeze Registry Test"
@@ -53,7 +97,7 @@ jobs:
 
   timelock-policy-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_timelock_policy == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Timelock Policy Test"
@@ -63,7 +107,7 @@ jobs:
 
   threshold-policy-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_threshold_policy == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Threshold Policy Test"
