@@ -11,9 +11,7 @@ import {
   ZERO_ADDRESS,
   COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
   fundedAmount,
-  timeout,
-  tokenName,
-  tokenSymbol,
+  timeout
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -131,8 +129,8 @@ describe("test compliant_timelock_transfer program", () => {
       if (tokenMetadata.token_id === 0n) {
         const tx = await tokenRegistryContract.register_token(
           tokenId,
-          stringToBigInt(tokenName),
-          stringToBigInt(tokenSymbol),
+          stringToBigInt("TIMELOCK_TOKEN"),
+          stringToBigInt("TIMELOCK"),
           6,
           1000_000000000000n,
           true,
