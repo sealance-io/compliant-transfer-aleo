@@ -2,8 +2,11 @@ import token_registry.aleo;
 import freeze_registry.aleo;
 
 program compliant_timelock_transfer.aleo {
-
     const TOKEN_ID: field = 121700012454193788241350538767360056604864872662350field; // SEALED_TIMELOCK_TOKEN ascii encoded
+    const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
+    const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
+    const DECIMALS: u8 = 6u8;
+    const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
     const PROGRAM_ADDRESS: address = aleo18n84jzwgx8xsd6jkn2adncmqez73fn0xq9njuwjn66r40yf3uszsvr3wn5;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
@@ -11,8 +14,9 @@ program compliant_timelock_transfer.aleo {
     // Mappings
     mapping freeze_registry_program_name: u8 => u128;
 
-    const ADMIN: u8 = 1u8;
-    mapping roles: u8 => address;
+    const ADMIN_ROLE: u8 = 1u8;
+    const MINTER_ROLE: u8 = 2u8;
+    mapping roles: address => u8;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -34,20 +38,34 @@ program compliant_timelock_transfer.aleo {
     // Called by administrators
     // -------------------------
 
-    async transition init_freeze_registry_name() -> Future {
-        return f_init_freeze_registry_name();
-    }
-    async function f_init_freeze_registry_name() {
-        freeze_registry_program_name.set(0u8, FREEZE_REGISTRY_PROGRAM_NAME);
+    async transition initialize() -> Future {
+        // Set admin and external_authorization_party to be PROGRAM_ADDRESS
+        let token_registry_call: Future = token_registry.aleo/register_token(
+            TOKEN_ID,
+            NAME,
+            SYMBOL,
+            DECIMALS,
+            TOTAL_SUPPLY,
+            true,
+            PROGRAM_ADDRESS // external_authorization_party: address
+        );
+        return f_initialize(token_registry_call, self.caller );
     }
 
-    async transition update_admin_address(new_admin_address: address) -> Future {
-        return f_update_admin_address(new_admin_address, self.caller);
+    async function f_initialize(token_registry_call: Future, caller: address,) {
+        freeze_registry_program_name.set(0u8, FREEZE_REGISTRY_PROGRAM_NAME);
+        roles.set(caller, ADMIN_ROLE);
+        
+        token_registry_call.await();
     }
-    async function f_update_admin_address(new_admin_address: address, caller: address) {
-        let admin_address: address = roles.get_or_use(1u8, caller);
-        assert_eq(admin_address, caller);
-        roles.set(1u8, new_admin_address);
+
+    async transition update_roles(new_address: address, role: u8) -> Future {
+        return f_update_roles(new_address, self.caller, role);
+    }
+    async function f_update_roles(new_address: address, caller: address, role: u8) {
+        let caller_role: u8 = roles.get(caller);
+        assert_eq(caller_role, ADMIN_ROLE);
+        roles.set(new_address, role);
     }
 
     async transition mint_public(
@@ -75,8 +93,8 @@ program compliant_timelock_transfer.aleo {
         token_registry_call: Future,
         caller: address
     ) {
-        let admin_address: address = roles.get(1u8);
-        assert_eq(admin_address, caller);
+        let role: u8 = roles.get(caller);
+        assert(role == MINTER_ROLE || role == ADMIN_ROLE);
 
         token_registry_call.await();
     }
@@ -107,13 +125,11 @@ program compliant_timelock_transfer.aleo {
         token_registry_call: Future,
         caller: address
     ) {
-        let admin_address: address = roles.get(1u8);
-        assert_eq(admin_address, caller);
+        let role: u8 = roles.get(caller);
+        assert(role == MINTER_ROLE || role == ADMIN_ROLE);
 
         token_registry_call.await();
     }
-
-    // NOTE: do we need to have burn?
 
     // -------------------------
     // Called by token owners/DeFi contracts
