@@ -16,7 +16,7 @@ inputs:
     default: 'stable'
   doko-repo:
     description: 'Repository URI of doko-js-cli'
-    default: 'https://github.com/venture23-aleo/doko-js.git'
+    default: 'venture23-aleo/doko-js'
     required: false
   doko-branch:
     description: 'Branch of doko-js-cli to use'
@@ -57,9 +57,12 @@ runs:
       wasm-pack --version
   
   - name: Clone doko-js-cli branch
-    shell: bash
-    run: |
-      git clone -b '${{ inputs.doko-branch }}' --single-branch --depth 1 ${{ inputs.doko-repo }} /tmp/doko-js-cli
+    uses: actions/checkout@v4
+    with:
+      repository: ${{ inputs.doko-repo }}
+      ref: ${{ inputs.doko-branch }}
+      path: /tmp/doko-js-cli
+      fetch-depth: 1
   
   - name: Install and build doko-js-cli
     shell: bash

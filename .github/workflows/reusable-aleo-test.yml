@@ -78,7 +78,7 @@ jobs:
       - name: Setup doko-js-cli
         uses: ./.github/actions/setup-doko-js
         with:
-          doko-repo: 'https://github.com/NadavPeled1998/doko-js.git'
+          doko-repo: 'NadavPeled1998/doko-js'
           doko-branch: 'fix/array_type_conversion'
 
       - name: Login to GitHub Container Registry
