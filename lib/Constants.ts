@@ -9,6 +9,7 @@ export const COMPLIANT_THRESHOLD_TRANSFER_ADDRESS = "aleo1f03a508uvg5fskrmzqfqyv
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 export const COMPLIANT_TIMELOCK_TRANSFER_ADDRESS =
   "aleo18n84jzwgx8xsd6jkn2adncmqez73fn0xq9njuwjn66r40yf3uszsvr3wn5";
+export const TREASURE_ADDRESS=  "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn";
 
 export interface IPolicy {
     tokenName: string,
