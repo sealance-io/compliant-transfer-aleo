@@ -40,7 +40,7 @@ jobs:
       run_merkle_tree: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_compliant_transfer: >-
         ${{ 
