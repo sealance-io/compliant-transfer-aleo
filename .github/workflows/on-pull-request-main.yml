@@ -1,9 +1,5 @@
 name: Aleo Program Tests
 
-# Define the common paths that should trigger all tests
-env:
-  CORE_PATHS: "package.json,package-lock.json,aleo-config.js"
-
 on:
   workflow_dispatch:
   pull_request:
@@ -22,7 +18,7 @@ jobs:
     with:
       job_name: "Merkle Tree Test"
       test_command: "npm run test:select ./test/merkle_tree.test.ts"
-      watched_paths: "programs/rediwsozfo_v2.leo,${{ env.CORE_PATHS }}"
+      watched_paths: "programs/rediwsozfo_v2.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   compliant-transfer-test:
@@ -30,7 +26,7 @@ jobs:
     with:
       job_name: "Compliant Transfer Test"
       test_command: "npm run test:select ./test/compliant_transfer_v0.test.ts"
-      watched_paths: "programs/tqxftxoicd_v2.leo,${{ env.CORE_PATHS }}"
+      watched_paths: "programs/tqxftxoicd_v2.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   freeze-registry-test:
@@ -38,7 +34,7 @@ jobs:
     with:
       job_name: "Freeze Registry Test"
       test_command: "npm run test:select ./test/freeze_registry.test.ts"
-      watched_paths: "programs/freeze_registry.leo,${{ env.CORE_PATHS }}"
+      watched_paths: "programs/freeze_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   timelock-policy-test:
@@ -46,7 +42,7 @@ jobs:
     with:
       job_name: "Timelock Policy Test"
       test_command: "npm run test:select ./test/timelock.test.ts"
-      watched_paths: "programs/compliant_timelock_transfer.leo,${{ env.CORE_PATHS }}"
+      watched_paths: "programs/compliant_timelock_transfer.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   threshold-policy-test:
@@ -54,5 +50,5 @@ jobs:
     with:
       job_name: "Threshold Policy Test"
       test_command: "npm run test:select ./test/compliant_threshold_transfer.test.ts"
-      watched_paths: "programs/compliant_threshold_transfer.leo,${{ env.CORE_PATHS }}"
+      watched_paths: "programs/compliant_threshold_transfer.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
