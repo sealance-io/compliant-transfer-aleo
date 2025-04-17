@@ -37,8 +37,18 @@ runs:
   - name: Move repository to temporary location
     shell: bash
     run: |
-      mkdir -p $RUNNER_TEMP/doko-js-cli
-      cp -r doko-js-cli-temp/* $RUNNER_TEMP/doko-js-cli/
+      set -eo pipefail
+      
+      if ! mkdir -p $RUNNER_TEMP/doko-js-cli; then
+        echo "::error::Failed to create temporary directory at $RUNNER_TEMP/doko-js-cli"
+        exit 1
+      fi
+      
+      if ! cp -r doko-js-cli-temp/* $RUNNER_TEMP/doko-js-cli/; then
+        echo "::error::Failed to copy repository to temporary location"
+        exit 1
+      fi
+      
       echo "Repository copied to $RUNNER_TEMP/doko-js-cli"
       echo "DOKO_PATH=$RUNNER_TEMP/doko-js-cli" >> $GITHUB_ENV
 
@@ -61,22 +71,65 @@ runs:
   - name: Install wasm-pack
     shell: bash
     run: |
+      set -eo pipefail
+      
       echo "Installing wasm-pack..."
-      cargo install wasm-pack
+      if ! cargo install wasm-pack; then
+        echo "::error::Failed to install wasm-pack"
+        exit 1
+      fi
       
       # Add cargo bin to PATH and make sure it's available in current session
       echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       export PATH="$HOME/.cargo/bin:$PATH"
       
-      # Verify installation
-      which wasm-pack
-      wasm-pack --version
+      # Verify installation with explicit error checking
+      if ! which wasm-pack > /dev/null; then
+        echo "::error::wasm-pack binary not found in PATH"
+        exit 1
+      fi
+      
+      if ! wasm-pack --version; then
+        echo "::error::wasm-pack verification failed"
+        exit 1
+      fi
+      
+      echo "wasm-pack installation verified successfully"
   
   - name: Install and build doko-js-cli
     shell: bash
     working-directory: ${{ env.DOKO_PATH }}
     run: |
-      pnpm install
-      pnpm run --r --filter "./packages/**" build
-      npm run install:cli
-      echo "doko-js-cli installed successfully ($(dokojs --version))"
+      set -eo pipefail
+      
+      echo "Installing dependencies..."
+      if ! pnpm install; then
+        echo "::error::Failed to install dependencies with pnpm"
+        exit 1
+      fi
+      
+      echo "Building packages..."
+      if ! pnpm run --r --filter "./packages/**" build; then
+        echo "::error::Failed to build packages"
+        exit 1
+      fi
+      
+      echo "Installing CLI globally..."
+      if ! npm run install:cli; then
+        echo "::error::Failed to install doko-js-cli globally"
+        exit 1
+      fi
+      
+      # Verify installation with explicit error checking
+      if ! command -v dokojs > /dev/null; then
+        echo "::error::dokojs binary not found in PATH after installation"
+        exit 1
+      fi
+      
+      VERSION_OUTPUT=$(dokojs --version)
+      if [ $? -ne 0 ]; then
+        echo "::error::Failed to verify dokojs version"
+        exit 1
+      fi
+      
+      echo "doko-js-cli installed successfully (version: $VERSION_OUTPUT)"
