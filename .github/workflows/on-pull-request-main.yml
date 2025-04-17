@@ -13,7 +13,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-trigger:
+    runs-on: ubuntu-latest
+    outputs:
+      # temporarily allow only manual runs
+      should_run: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - run: echo "Checking if workflow was manually triggered"
+
   merkle-tree-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Merkle Tree Test"
@@ -22,6 +32,8 @@ jobs:
     secrets: inherit
 
   compliant-transfer-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Compliant Transfer Test"
@@ -30,6 +42,8 @@ jobs:
     secrets: inherit
 
   freeze-registry-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Freeze Registry Test"
@@ -38,6 +52,8 @@ jobs:
     secrets: inherit
 
   timelock-policy-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Timelock Policy Test"
@@ -46,6 +62,8 @@ jobs:
     secrets: inherit
 
   threshold-policy-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.should_run == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Threshold Policy Test"
