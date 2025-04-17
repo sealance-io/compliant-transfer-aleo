@@ -40,3 +40,19 @@ jobs:
       test_command: "npm run test:select ./test/freeze_registry.test.ts"
       watched_paths: "programs/freeze_registry.leo,${{ env.CORE_PATHS }}"
     secrets: inherit
+
+  timelock-policy-test:
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Timelock Policy Test"
+      test_command: "npm run test:select ./test/timelock.test.ts"
+      watched_paths: "programs/compliant_timelock_transfer.leo,${{ env.CORE_PATHS }}"
+    secrets: inherit
+
+  threshold-policy-test:
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Threshold Policy Test"
+      test_command: "npm run test:select ./test/compliant_threshold_transfer.test.ts"
+      watched_paths: "programs/compliant_threshold_transfer.leo,${{ env.CORE_PATHS }}"
+    secrets: inherit
