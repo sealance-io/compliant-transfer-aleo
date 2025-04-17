@@ -47,6 +47,13 @@ runs:
     run: |
       echo "Installing wasm-pack..."
       cargo install wasm-pack
+      
+      # Add cargo bin to PATH and make sure it's available in current session
+      echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      export PATH="$HOME/.cargo/bin:$PATH"
+      
+      # Verify installation
+      which wasm-pack
       wasm-pack --version
   
   - name: Clone doko-js-cli branch
