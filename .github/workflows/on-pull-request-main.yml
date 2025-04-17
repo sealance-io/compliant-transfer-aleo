@@ -40,27 +40,27 @@ jobs:
       run_merkle_tree: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
-          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+          github.event_name == 'pull_request' && false
         }}
       run_compliant_transfer: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_compliant_transfer || 
-          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+          github.event_name == 'pull_request' && false
         }}
       run_freeze_registry: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_freeze_registry || 
-          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+          github.event_name == 'pull_request' && false
         }}
       run_timelock_policy: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_timelock_policy || 
-          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+          github.event_name == 'pull_request' && false
         }}
       run_threshold_policy: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_threshold_policy || 
-          github.event_name == 'pull_request' && false # temporarily allow only manual runs
+          github.event_name == 'pull_request' && false
         }}
     steps:
       - run: echo "Determining which jobs to run"
