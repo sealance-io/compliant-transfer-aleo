@@ -31,7 +31,7 @@ runs:
     with:
       repository: ${{ inputs.doko-repo }}
       ref: ${{ inputs.doko-branch }}
-      path: /tmp/doko-js-cli
+      path: doko-js-cli
       fetch-depth: 1
 
   - name: Setup pnpm
@@ -45,7 +45,7 @@ runs:
     with:
       node-version: ${{ inputs.node-version }}
       cache: 'pnpm'
-      cache-dependency-path: '/tmp/doko-js-cli/pnpm-lock.yaml'
+      cache-dependency-path: 'doko-js-cli/pnpm-lock.yaml'
 
   - name: Install Rust and Cargo
     uses: dtolnay/rust-toolchain@master
@@ -55,7 +55,7 @@ runs:
   - name: Cache Rust dependencies and build artifacts
     uses: Swatinem/rust-cache@v2
     with:
-      working-directory: /tmp/doko-js-cli/packages/wasm
+      working-directory: doko-js-cli/packages/wasm
       cache-directories: |
         "$HOME/.cargo/bin/wasm-pack"
 
@@ -75,7 +75,7 @@ runs:
   
   - name: Install and build doko-js-cli
     shell: bash
-    working-directory: /tmp/doko-js-cli
+    working-directory: doko-js-cli
     run: |
       pnpm install
       pnpm run --r --filter "./packages/**" build
