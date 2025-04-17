@@ -9,16 +9,20 @@ import { fundedAmount, policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
 import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
+import { ExchangeContract } from "../artifacts/js/exchange";
+import { setRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
 const [deployerAddress, adminAddress, investigatorAddress] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
+const adminPrivKey = contract.getPrivateKey(deployerAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
 const compliantThresholdTransferContract = new Compliant_threshold_transferContract({ mode })
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
+const exchangeContract = new ExchangeContract({ mode, privateKey: deployerPrivKey });
 
 (async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
@@ -28,10 +32,16 @@ const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
     await deployIfNotDeployed(compliantThresholdTransferContract);
+    await deployIfNotDeployed(compliantThresholdTransferContract);
+    await deployIfNotDeployed(exchangeContract);
 
     // register token and assign compliant transfer contract as external_authorization_party
     await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.compliant);
     await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.threshold);
+
+    // assign exchange program to be a minter
+    await setRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
+    await setRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
 
     process.exit(0);
 })();

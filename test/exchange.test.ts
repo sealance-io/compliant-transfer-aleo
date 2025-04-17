@@ -5,12 +5,13 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
-import {  TREASURE_ADDRESS, fundedAmount, timeout, policies } from "../lib/Constants";
+import { TREASURE_ADDRESS, fundedAmount, timeout, policies } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
 import { ExchangeContract } from "../artifacts/js/exchange";
 import { CreditsContract } from "../artifacts/js/credits";
+import { setRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -49,18 +50,8 @@ describe('test exchange contract', () => {
   }, timeout);
 
   test(`set exchange program role`, async () => {
-    let tx = await tokenRegistryContract.set_role(
-      policies.compliant.tokenId,
-      exchangeContract.address(),
-      1
-    )
-    await tx.wait();
-    tx = await tokenRegistryContract.set_role(
-      policies.threshold.tokenId,
-      exchangeContract.address(),
-      1
-    )
-    await tx.wait();
+    await setRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1)
+    await setRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1)
   })
 
 
@@ -79,7 +70,7 @@ describe('test exchange contract', () => {
     expect(compliantTokenRecord.token_id).toBe(policies.compliant.tokenId);
     expect(compliantTokenRecord.amount).toBe(amount * 10n);
 
-   treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
     tx = await exchangeContract.exchange_token(
       policies.threshold.tokenId,
       amount

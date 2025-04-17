@@ -19,6 +19,7 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
 import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
 import { stringToBigInt } from "../lib/Conversion";
+import { setRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
