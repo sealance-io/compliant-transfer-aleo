@@ -33,6 +33,15 @@ runs:
       path: doko-js-cli-temp
       fetch-depth: 1
 
+  # Avoids polluting the caller workspace but sacrifices caching by using 'RUNNER_TEMP'  
+  - name: Move repository to temporary location
+    shell: bash
+    run: |
+      mkdir -p $RUNNER_TEMP/doko-js-cli
+      cp -r doko-js-cli-temp/* $RUNNER_TEMP/doko-js-cli/
+      echo "Repository copied to $RUNNER_TEMP/doko-js-cli"
+      echo "DOKO_PATH=$RUNNER_TEMP/doko-js-cli" >> $GITHUB_ENV
+
   - name: Setup pnpm
     uses: pnpm/action-setup@v4
     with:
@@ -43,27 +52,11 @@ runs:
     uses: actions/setup-node@v4
     with:
       node-version: ${{ inputs.node-version }}
-      cache: 'pnpm'
-      cache-dependency-path: 'doko-js-cli-temp/pnpm-lock.yaml'
 
   - name: Install Rust and Cargo
     uses: dtolnay/rust-toolchain@master
     with:
       toolchain: ${{ inputs.rust-version }}
-
-  - name: Cache Rust dependencies and build artifacts
-    uses: Swatinem/rust-cache@v2
-    with:
-      workspaces: |
-            doko-js-cli-temp/packages/wasm -> target
-
-  - name: Move repository to temporary location
-    shell: bash
-    run: |
-      mkdir -p $RUNNER_TEMP/doko-js-cli
-      cp -r doko-js-cli-temp/* $RUNNER_TEMP/doko-js-cli/
-      echo "Repository copied to $RUNNER_TEMP/doko-js-cli"
-      echo "DOKO_PATH=$RUNNER_TEMP/doko-js-cli" >> $GITHUB_ENV
 
   - name: Install wasm-pack
     shell: bash
