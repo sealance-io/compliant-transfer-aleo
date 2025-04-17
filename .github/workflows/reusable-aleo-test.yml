@@ -69,13 +69,12 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
+      - uses: actions/checkout@v4
       - name: Setup doko-js-cli
         uses: ./.github/actions/setup-doko-js
         with:
           doko-repo: 'NadavPeled1998/doko-js'
           doko-branch: 'fix/array_type_conversion'
-
-      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
