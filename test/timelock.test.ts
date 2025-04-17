@@ -1,4 +1,4 @@
-import { ExecutionMode } from "@doko-js/core";
+import { ExecutionMode, PROGRAM_DIRECTORY } from "@doko-js/core";
 
 import { BaseContract } from "../contract/base-contract";
 import { Token_registryContract } from "../artifacts/js/token_registry";
@@ -93,12 +93,14 @@ let recipientMerkleProof;
 let freezedAccountMerkleProof;
 
 describe("test compliant_timelock_transfer program", () => {
+
   test(
     `fund credits`,
     async () => {
       await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
       await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
       await fundWithCredits(deployerPrivKey, account, fundedAmount);
+      await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
     },
     timeout,
   );
@@ -110,7 +112,7 @@ describe("test compliant_timelock_transfer program", () => {
       await deployIfNotDeployed(merkleTreeContract);
       await deployIfNotDeployed(freezeRegistryContract);
       await deployIfNotDeployed(timelockContract);
-
+      
       // NOTE: use Nadav's policies struct and initializeTokenProgram()
       const tokenMetadata = await tokenRegistryContract.registered_tokens(
         tokenId,
@@ -127,69 +129,31 @@ describe("test compliant_timelock_transfer program", () => {
         },
       );
       if (tokenMetadata.token_id === 0n) {
-        const tx = await tokenRegistryContract.register_token(
-          tokenId,
-          stringToBigInt("TIMELOCK_TOKEN"),
-          stringToBigInt("TIMELOCK"),
-          6,
-          1000_000000000000n,
-          true,
-          timelockContract.address(),
-        );
+        const tx = await timelockContractForAdmin.initialize();
         await tx.wait();
       }
-
-      const tx = await tokenRegistryContract.update_token_management(
-        tokenId,
-        adminAddress,
-        timelockContract.address(),
-      );
-      await tx.wait();
-
-      // NOTE: should we do initialize() and have the program being the admin instead?
-      const setRoleTx = await tokenRegistryContract.set_role(
-        tokenId,
-        timelockContract.address(),
-        1, // minter_role
-      );
-      await setRoleTx.wait();
     },
     timeout,
   );
 
   test(
-    `test update_admin_address`,
+    `test update_roles`,
     async () => {
-      let tx = await timelockContract.update_admin_address(freezedAccount);
-      await tx.wait();
-      let adminRole = await timelockContract.roles(1);
-      expect(adminRole).toBe(freezedAccount);
 
-      tx =
-        await timelockContractForFreezedAccount.update_admin_address(
-          adminAddress,
-        );
-      await tx.wait();
-      adminRole = await timelockContract.roles(1);
-      expect(adminRole).toBe(adminAddress);
+      let adminRole = await timelockContract.roles(adminAddress);
+      expect(adminRole).toBe(1);
 
-      tx =
-        await timelockContractForFreezedAccount.update_admin_address(
-          freezedAccount,
+      let tx =
+        await timelockContractForFreezedAccount.update_roles(
+          adminAddress, 1
         );
       await expect(tx.wait()).rejects.toThrow();
-    },
-    timeout,
-  );
 
-  test(
-    `test init_freeze_registry_name`,
-    async () => {
-      const tx = await timelockContractForAdmin.init_freeze_registry_name();
-      await tx.wait();
-      const freezeRegistryName =
-        await timelockContract.freeze_registry_program_name(0);
-      expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
+      tx =
+        await timelockContractForAdmin.update_roles(
+          recipient, 2
+        );
+        await tx.wait();
     },
     timeout,
   );
@@ -252,6 +216,35 @@ describe("test compliant_timelock_transfer program", () => {
           .value,
         freezedAccountPrivKey,
       );
+
+      // recipient is a minter, verify that they can call mint
+      mintPublicTx = await timelockContractForRecipient.mint_public(
+        account,
+        amount * 20n,
+        0,
+      );
+      await mintPublicTx.wait();
+      mintPrivateTx = await timelockContractForAdmin.mint_private(
+        freezedAccount,
+        amount * 20n,
+        0,
+      );
+      await mintPrivateTx.wait();
+    
+      // freezed account cannot call mint
+      const  rejectedTx = await timelockContractForFreezedAccount.mint_public(
+        account,
+        amount * 20n,
+        0,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+      const rejectedTx2 = await timelockContractForFreezedAccount.mint_private(
+        freezedAccount,
+        amount * 20n,
+        0,
+      );
+      await expect(rejectedTx2.wait()).rejects.toThrow();
+
     },
     timeout,
   );
