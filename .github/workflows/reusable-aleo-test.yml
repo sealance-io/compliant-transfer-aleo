@@ -69,21 +69,18 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-
       - name: Setup doko-js-cli
         uses: ./.github/actions/setup-doko-js
         with:
           doko-repo: 'NadavPeled1998/doko-js'
           doko-branch: 'fix/array_type_conversion'
 
-      - name: Login to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: './package-lock.json'
 
       - run: cp .env.example .env
 
@@ -92,6 +89,10 @@ jobs:
       
       - name: Compile leo
         run: npm run compile
+
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       
       - name: Run test
         run: ${{ inputs.test_command }}

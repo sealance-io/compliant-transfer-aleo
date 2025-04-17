@@ -26,21 +26,38 @@ inputs:
 runs:
   using: "composite"
   steps:
-  - name: Setup Node.js
-    uses: actions/setup-node@v4
+  - name: Clone doko-js-cli branch
+    uses: actions/checkout@v4
     with:
-      node-version: ${{ inputs.node-version }}
-  
+      repository: ${{ inputs.doko-repo }}
+      ref: ${{ inputs.doko-branch }}
+      path: /tmp/doko-js-cli
+      fetch-depth: 1
+
   - name: Setup pnpm
     uses: pnpm/action-setup@v4
     with:
       version: ${{ inputs.pnpm-version }}
       run_install: false
 
+  - name: Setup Node.js for temporary repo
+    uses: actions/setup-node@v4
+    with:
+      node-version: ${{ inputs.node-version }}
+      cache: 'pnpm'
+      cache-dependency-path: '/tmp/doko-js-cli/pnpm-lock.yaml'
+
   - name: Install Rust and Cargo
     uses: dtolnay/rust-toolchain@master
     with:
       toolchain: ${{ inputs.rust-version }}
+
+  - name: Cache Rust dependencies and build artifacts
+    uses: Swatinem/rust-cache@v2
+    with:
+      working-directory: /tmp/doko-js-cli/packages/wasm
+      cache-directories: |
+        "$HOME/.cargo/bin/wasm-pack"
 
   - name: Install wasm-pack
     shell: bash
@@ -55,14 +72,6 @@ runs:
       # Verify installation
       which wasm-pack
       wasm-pack --version
-  
-  - name: Clone doko-js-cli branch
-    uses: actions/checkout@v4
-    with:
-      repository: ${{ inputs.doko-repo }}
-      ref: ${{ inputs.doko-branch }}
-      path: /tmp/doko-js-cli
-      fetch-depth: 1
   
   - name: Install and build doko-js-cli
     shell: bash
