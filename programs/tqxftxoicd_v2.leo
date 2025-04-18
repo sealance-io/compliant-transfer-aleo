@@ -223,8 +223,8 @@ program tqxftxoicd_v2.aleo {
         let current_root: field = freeze_list_root.get(0u8);
         assert_eq(root, current_root);
 
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
+        let caller_address: address = roles.get(2u8);
+        assert_eq(caller_address, investigator_address);
 
         authorization_call_for_caller.await();
         transfer_to_program.await();
@@ -295,8 +295,8 @@ program tqxftxoicd_v2.aleo {
         let current_root: field = freeze_list_root.get(0u8);
         assert_eq(root, current_root);
         
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
+        let caller_address: address = roles.get(2u8);
+        assert_eq(caller_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();
@@ -363,8 +363,8 @@ program tqxftxoicd_v2.aleo {
         let current_root: field = freeze_list_root.get(0u8);
         assert_eq(root, current_root);
         
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
+        let caller_address: address = roles.get(2u8);
+        assert_eq(caller_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();
