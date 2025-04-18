@@ -329,8 +329,8 @@ program compliant_threshold_transfer.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
+        let caller_address: address = roles.get(2u8);
+        assert_eq(caller_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(0u8);
@@ -429,8 +429,8 @@ program compliant_threshold_transfer.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
+        let caller_address: address = roles.get(2u8);
+        assert_eq(caller_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(0u8);
@@ -522,8 +522,8 @@ program compliant_threshold_transfer.aleo {
         verify_sender.await();
         verify_recipient.await();
         
-        let address: address = roles.get(2u8);
-        assert_eq(address, investigator_address);
+        let caller_address: address = roles.get(2u8);
+        assert_eq(caller_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(0u8);
