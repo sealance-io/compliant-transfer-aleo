@@ -26,40 +26,41 @@ runs:
   using: "composite"
   steps:
   - name: Clone doko-js-cli branch
-    uses: actions/checkout@v4
+    uses: actions/checkout@v4.2.2
     with:
       repository: ${{ inputs.doko-repo }}
       ref: ${{ inputs.doko-branch }}
       path: doko-js-cli-temp
       fetch-depth: 1
+      persist-credentials: false
 
   # Avoids polluting the caller workspace but sacrifices caching by using 'RUNNER_TEMP'  
   - name: Move repository to temporary location
     shell: bash
     run: |
-      set -eo pipefail
-      
-      if ! mkdir -p $RUNNER_TEMP/doko-js-cli; then
-        echo "::error::Failed to create temporary directory at $RUNNER_TEMP/doko-js-cli"
-        exit 1
+      set -euo pipefail
+
+      if ! mkdir -p "$RUNNER_TEMP/doko-js-cli"; then
+      echo "::error::Failed to create temporary directory at $RUNNER_TEMP/doko-js-cli"
+      exit 1
       fi
-      
-      if ! cp -r doko-js-cli-temp/* $RUNNER_TEMP/doko-js-cli/; then
-        echo "::error::Failed to copy repository to temporary location"
-        exit 1
+
+      if ! cp -r doko-js-cli-temp/* "$RUNNER_TEMP/doko-js-cli/"; then
+      echo "::error::Failed to copy repository to temporary location"
+      exit 1
       fi
-      
+
       echo "Repository copied to $RUNNER_TEMP/doko-js-cli"
-      echo "DOKO_PATH=$RUNNER_TEMP/doko-js-cli" >> $GITHUB_ENV
+      echo "DOKO_PATH=$RUNNER_TEMP/doko-js-cli" >> "$GITHUB_ENV"
 
   - name: Setup pnpm
-    uses: pnpm/action-setup@v4
+    uses: pnpm/action-setup@v4.1.0
     with:
       version: ${{ inputs.pnpm-version }}
       run_install: false
 
   - name: Setup Node.js with caching
-    uses: actions/setup-node@v4
+    uses: actions/setup-node@v4.4.0
     with:
       node-version: ${{ inputs.node-version }}
 
@@ -71,36 +72,36 @@ runs:
   - name: Install wasm-pack
     shell: bash
     run: |
-      set -eo pipefail
-      
+      set -euo pipefail
+
       echo "Installing wasm-pack..."
       if ! cargo install wasm-pack; then
-        echo "::error::Failed to install wasm-pack"
-        exit 1
+      echo "::error::Failed to install wasm-pack"
+      exit 1
       fi
-      
+
       # Add cargo bin to PATH and make sure it's available in current session
-      echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       export PATH="$HOME/.cargo/bin:$PATH"
-      
+
       # Verify installation with explicit error checking
       if ! which wasm-pack > /dev/null; then
-        echo "::error::wasm-pack binary not found in PATH"
-        exit 1
+      echo "::error::wasm-pack binary not found in PATH"
+      exit 1
       fi
-      
+
       if ! wasm-pack --version; then
-        echo "::error::wasm-pack verification failed"
-        exit 1
+      echo "::error::wasm-pack verification failed"
+      exit 1
       fi
-      
+
       echo "wasm-pack installation verified successfully"
   
   - name: Install and build doko-js-cli
     shell: bash
     working-directory: ${{ env.DOKO_PATH }}
     run: |
-      set -eo pipefail
+      set -euo pipefail
       
       echo "Installing dependencies..."
       if ! pnpm install; then
@@ -126,8 +127,7 @@ runs:
         exit 1
       fi
       
-      VERSION_OUTPUT=$(dokojs --version)
-      if [ $? -ne 0 ]; then
+      if ! VERSION_OUTPUT=$(dokojs --version); then
         echo "::error::Failed to verify dokojs version"
         exit 1
       fi
