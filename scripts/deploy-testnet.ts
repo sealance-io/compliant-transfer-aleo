@@ -7,9 +7,11 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from '../contract/base-contract';
 import { policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
-import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
 import { setTimelockPolicyRole, setTokenRegistryRole } from "../lib/Role";
-import { ExchangeContract } from "../artifacts/js/exchange";
+import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
+import { GqrfmwbtykContract } from "../artifacts/js/gqrfmwbtyk";
+import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
 
 const mode = ExecutionMode.SnarkExecute;
 
@@ -19,17 +21,21 @@ const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(deployerAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
-const compliantThresholdTransferContract = new Compliant_threshold_transferContract({ mode })
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
-const exchangeContract = new ExchangeContract({ mode, privateKey: deployerPrivKey });
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey })
+const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
+const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: deployerPrivKey })
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey })
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPrivKey });
 
 (async () => {
     // deploy contracts
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
+    await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(compliantThresholdTransferContract);
+    await deployIfNotDeployed(compliantTimelockTransferContract);
     await deployIfNotDeployed(exchangeContract);
 
     // register token and assign compliant transfer contract as external_authorization_party

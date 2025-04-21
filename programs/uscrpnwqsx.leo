@@ -2,7 +2,7 @@
 import rediwsozfo_v2.aleo;
 
 // The 'freeze_registry' program.
-program freeze_registry.aleo {
+program uscrpnwqsx.aleo {
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
 
     struct MerkleProof {
