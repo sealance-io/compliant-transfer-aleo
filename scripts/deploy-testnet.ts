@@ -42,5 +42,8 @@ const exchangeContract = new ExchangeContract({ mode, privateKey: deployerPrivKe
     await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
     await setTimelockPolicyRole(adminPrivKey, exchangeContract.address(), 2);
 
+    const tx = await exchangeContract.update_admin(adminAddress);
+    await tx.wait();
+    
     process.exit(0);
 })();

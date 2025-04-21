@@ -64,3 +64,4 @@ export const defaultAuthorizedUntil = 4294967295;
 export const fundedAmount = 10000000000000n;
 export const timeout = 10000000;
 export const mode = ExecutionMode.SnarkExecute;
+export const defaultRate = 10n;
