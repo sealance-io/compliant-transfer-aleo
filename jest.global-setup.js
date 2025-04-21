@@ -23,7 +23,7 @@ function parseBooleanEnv(value, defaultValue = true) {
 }
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const AMARELEO_IMAGE = process.env.AMARELEO_IMAGE || "ghcr.io/sealance-io/amareleo-chain:latest";
+const AMARELEO_IMAGE = process.env.AMARELEO_IMAGE || "ghcr.io/sealance-io/amareleo-chain:v2.2.0";
 const AMARELEO_VERBOSITY = process.env.AMARELEO_VERBOSITY || "1";
 
 // If Jest runs in parallel mode using workers (which is default) this runs in parent process
