@@ -6,7 +6,7 @@ import { MAX_TREE_SIZE, ZERO_ADDRESS, fundedAmount, timeout } from "../lib/Const
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
+import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -19,8 +19,8 @@ const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 
-const freezeRegistryContract = new Freeze_registryContract({ mode, privateKey: adminPrivKey });
-const freezeRegistryContractForFreezedAccount = new Freeze_registryContract({ mode, privateKey: freezedAccountPrivKey });
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
+const freezeRegistryContractForFreezedAccount = new UscrpnwqsxContract({ mode, privateKey: freezedAccountPrivKey });
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
 
 let root: bigint;

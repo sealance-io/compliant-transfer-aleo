@@ -1,4 +1,4 @@
-import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
+import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
 import { Token_registryContract } from "../artifacts/js/token_registry"
 import { ZERO_ADDRESS, mode } from "./Constants";
 
@@ -13,7 +13,7 @@ export async function setTokenRegistryRole(privateKey: string, tokenId: bigint, 
 }
 
 export async function setTimelockPolicyRole(privateKey: string, address: string, role: number) {
-    const timelockContract = new Compliant_timelock_transferContract({ mode, privateKey });
+    const timelockContract = new RawxtbrzceContract({ mode, privateKey });
     const onchainRole = await timelockContract.roles(address, 0);
     if (onchainRole !== role) {
         const tx = await timelockContract.update_roles(address, role)

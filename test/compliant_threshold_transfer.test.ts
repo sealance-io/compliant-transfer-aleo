@@ -10,10 +10,10 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
-import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
-import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
-import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/compliant_threshold_transfer";
+import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/riwoxowhva";
 import { getLatestBlockHeight } from "../lib/Block";
+import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -33,12 +33,12 @@ const recipientPrivKey = contract.getPrivateKey(recipient);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: adminPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContract = new Compliant_threshold_transferContract({ mode, privateKey: adminPrivKey });
-const compliantThresholdTransferContractForAdmin = new Compliant_threshold_transferContract({ mode, privateKey: adminPrivKey });
-const compliantThresholdTransferContractForAccount = new Compliant_threshold_transferContract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContractForFreezedAccount = new Compliant_threshold_transferContract({ mode, privateKey: freezedAccountPrivKey });
+const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
+const compliantThresholdTransferContractForAdmin = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
+const compliantThresholdTransferContractForAccount = new RiwoxowhvaContract({ mode, privateKey: accountPrivKey });
+const compliantThresholdTransferContractForFreezedAccount = new RiwoxowhvaContract({ mode, privateKey: freezedAccountPrivKey });
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
-const freezeRegistryContract = new Freeze_registryContract({ mode, privateKey: adminPrivKey });
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
 
 const amount = 1n;
 let root: bigint;

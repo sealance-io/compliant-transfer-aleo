@@ -2,7 +2,7 @@ import { ExecutionMode, PROGRAM_DIRECTORY } from "@doko-js/core";
 
 import { BaseContract } from "../contract/base-contract";
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { decryptCompliantToken } from "../artifacts/js/leo2js/compliant_timelock_transfer";
+import { decryptCompliantToken } from "../artifacts/js/leo2js/rawxtbrzce";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 
@@ -17,10 +17,10 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
-import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
 import { stringToBigInt } from "../lib/Conversion";
 import { initializeTokenProgram } from "../lib/Token";
+import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -43,24 +43,24 @@ const tokenRegistryContractForAccount = new Token_registryContract({
   mode,
   privateKey: accountPrivKey,
 });
-const timelockContract = new Compliant_timelock_transferContract({
+const timelockContract = new RawxtbrzceContract({
   mode,
   privateKey: adminPrivKey,
 });
-const timelockContractForAdmin = new Compliant_timelock_transferContract({
+const timelockContractForAdmin = new RawxtbrzceContract({
   mode,
   privateKey: adminPrivKey,
 });
-const timelockContractForAccount = new Compliant_timelock_transferContract({
+const timelockContractForAccount = new RawxtbrzceContract({
   mode,
   privateKey: accountPrivKey,
 });
-const timelockContractForRecipient = new Compliant_timelock_transferContract({
+const timelockContractForRecipient = new RawxtbrzceContract({
   mode,
   privateKey: recipientPrivKey,
 });
 const timelockContractForFreezedAccount =
-  new Compliant_timelock_transferContract({
+  new RawxtbrzceContract({
     mode,
     privateKey: freezedAccountPrivKey,
   });
@@ -68,7 +68,7 @@ const merkleTreeContract = new Rediwsozfo_v2Contract({
   mode,
   privateKey: adminPrivKey,
 });
-const freezeRegistryContract = new Freeze_registryContract({
+const freezeRegistryContract = new UscrpnwqsxContract({
   mode,
   privateKey: adminPrivKey,
 });

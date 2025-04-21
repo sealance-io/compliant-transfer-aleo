@@ -1,15 +1,15 @@
 import { ExecutionMode } from "@doko-js/core";
 import { stringToBigInt } from "./Conversion";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
-import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
-import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
+import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
+import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
 
 // addresses
 export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
-export const COMPLIANT_THRESHOLD_TRANSFER_ADDRESS = "aleo1f03a508uvg5fskrmzqfqyvvzd58989m2fhd02ef99qnkt85whs8q3kfjev";
+export const COMPLIANT_THRESHOLD_TRANSFER_ADDRESS = "aleo1w9w0zz3xlxngpws8q7cw9c98den5u3jkqt2y60effkphhe3urs8q5xhdtz";
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 export const COMPLIANT_TIMELOCK_TRANSFER_ADDRESS =
-  "aleo18n84jzwgx8xsd6jkn2adncmqez73fn0xq9njuwjn66r40yf3uszsvr3wn5";
+  "aleo18g6qksdhstu4e9exg9mfgv6cdq84exx24za9c6e50hgsmg5xjsfqq5saq3";
 export const TREASURE_ADDRESS=  "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn";
 
 export interface IPolicy {
@@ -38,16 +38,16 @@ export const policies: {[key: string]: IPolicy} = {
         tokenSymbol: "THRESHOLD",
         tokenId: stringToBigInt("Threshold Token"),
         programAddress: COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
-        Contract: Compliant_threshold_transferContract,
+        Contract: RiwoxowhvaContract,
         initMappings: true,
         requireInitialization: false,
     },
     timelock: {
         tokenName: "TIMELOCK_TOKEN",
         tokenSymbol: "TIMELOCK",
-        tokenId: stringToBigInt("SEALED_TIMELOCK_TOKEN"),
+        tokenId: stringToBigInt("TIMELOCK"),
         programAddress: COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
-        Contract: Compliant_timelock_transferContract,
+        Contract: RawxtbrzceContract,
         initMappings: false,
         requireInitialization: true,
     }

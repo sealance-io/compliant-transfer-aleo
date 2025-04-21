@@ -1,3 +1,4 @@
+// The 'merkle_tree' program.
 program rediwsozfo_v2.aleo {
     
     struct MerkleProof {
