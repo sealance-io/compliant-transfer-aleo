@@ -5,17 +5,17 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
-import { TREASURE_ADDRESS, fundedAmount, timeout, policies, COMPLIANT_THRESHOLD_TRANSFER_ADDRESS, defaultRate } from "../lib/Constants";
+import { TREASURE_ADDRESS, fundedAmount, timeout, policies, defaultRate } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
-import { ExchangeContract } from "../artifacts/js/exchange";
 import { CreditsContract } from "../artifacts/js/credits";
 import { setTimelockPolicyRole, setTokenRegistryRole } from "../lib/Role";
-import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
-import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
-import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
-import { decryptCompliantToken } from "../artifacts/js/leo2js/compliant_timelock_transfer";
+import { decryptCompliantToken } from "../artifacts/js/leo2js/rawxtbrzce";
+import { GqrfmwbtykContract } from "../artifacts/js/gqrfmwbtyk";
+import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
+import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -30,14 +30,14 @@ const accountPrivKey = contract.getPrivateKey(account);
 
 const creditsContract = new CreditsContract({ mode })
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: adminPrivKey });
-const freezeRegistryContract = new Freeze_registryContract({ mode })
+const freezeRegistryContract = new UscrpnwqsxContract({ mode })
 const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
-const compliantThresholdTransferContract = new Compliant_threshold_transferContract({ mode, privateKey: adminPrivKey });
-const compliantTimelockTransferContract = new Compliant_timelock_transferContract({ mode, privateKey: adminPrivKey });
+const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
+const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: adminPrivKey });
 
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
-const exchangeContractForAdmin = new ExchangeContract({ mode, privateKey: adminPrivKey });
-const exchangeContract = new ExchangeContract({ mode, privateKey: accountPrivKey });
+const exchangeContractForAdmin = new GqrfmwbtykContract({ mode, privateKey: adminPrivKey });
+const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: accountPrivKey });
 
 const amount = 10n;
 

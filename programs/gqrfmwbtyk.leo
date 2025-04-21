@@ -1,9 +1,11 @@
 import credits.aleo;
 import token_registry.aleo;
-import compliant_timelock_transfer.aleo;
+import rawxtbrzce.aleo;
 
+// The 'exchange' program.
 // This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
-program exchange.aleo {
+program gqrfmwbtyk.aleo {
+    
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     const DEFAULT_RATE: u128 = 10u128;
 
@@ -58,14 +60,14 @@ program exchange.aleo {
         mint_call.await();
     }
 
-    async transition exchange_timelock_token(amount: u64, rate: u128) -> (compliant_timelock_transfer.aleo/CompliantToken, token_registry.aleo/Token, Future) {
+    async transition exchange_timelock_token(amount: u64, rate: u128) -> (rawxtbrzce.aleo/CompliantToken, token_registry.aleo/Token, Future) {
         let transfer_credits_call: Future = credits.aleo/transfer_public_as_signer(
             TREASURY_ADDRESS,
             amount as u64
         );
 
         let token_amount: u128 = rate * amount as u128;
-        let mint_token_call: (compliant_timelock_transfer.aleo/CompliantToken, token_registry.aleo/Token, Future) = compliant_timelock_transfer.aleo/mint_private(
+        let mint_token_call: (rawxtbrzce.aleo/CompliantToken, token_registry.aleo/Token, Future) = rawxtbrzce.aleo/mint_private(
             self.caller,
             token_amount,
             0u32

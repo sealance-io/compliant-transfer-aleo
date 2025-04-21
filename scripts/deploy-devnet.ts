@@ -8,9 +8,11 @@ import { BaseContract } from '../contract/base-contract';
 import { fundedAmount, policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
-import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
-import { ExchangeContract } from "../artifacts/js/exchange";
 import { setTimelockPolicyRole, setTokenRegistryRole } from "../lib/Role";
+import { GqrfmwbtykContract } from "../artifacts/js/gqrfmwbtyk";
+import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
+import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -19,10 +21,12 @@ const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(deployerAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
-const compliantThresholdTransferContract = new Compliant_threshold_transferContract({ mode })
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
-const exchangeContract = new ExchangeContract({ mode, privateKey: deployerPrivKey });
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey })
+const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
+const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: deployerPrivKey })
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey })
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPrivKey });
 
 (async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
@@ -31,8 +35,9 @@ const exchangeContract = new ExchangeContract({ mode, privateKey: deployerPrivKe
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(compliantTransferContract);
+    await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(compliantThresholdTransferContract);
-    await deployIfNotDeployed(compliantThresholdTransferContract);
+    await deployIfNotDeployed(compliantTimelockTransferContract);
     await deployIfNotDeployed(exchangeContract);
 
     // register token and assign compliant transfer contract as external_authorization_party
