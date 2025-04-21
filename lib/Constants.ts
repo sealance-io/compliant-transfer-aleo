@@ -2,6 +2,7 @@ import { ExecutionMode } from "@doko-js/core";
 import { stringToBigInt } from "./Conversion";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
+import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
 
 // addresses
 export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
@@ -18,7 +19,9 @@ export interface IPolicy {
     programAddress: string,
     Contract: any,
     initMappings: boolean
+    requireInitialization: boolean
 }
+
 // policies specs
 export const policies: {[key: string]: IPolicy} = {
     compliant: {
@@ -28,6 +31,7 @@ export const policies: {[key: string]: IPolicy} = {
         programAddress: COMPLIANT_TRANSFER_ADDRESS,
         Contract: Tqxftxoicd_v2Contract,
         initMappings: false,
+        requireInitialization: false,
     },
     threshold: {
         tokenName: "Threshold Token",
@@ -36,6 +40,16 @@ export const policies: {[key: string]: IPolicy} = {
         programAddress: COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
         Contract: Compliant_threshold_transferContract,
         initMappings: true,
+        requireInitialization: false,
+    },
+    timelock: {
+        tokenName: "TIMELOCK_TOKEN",
+        tokenSymbol: "TIMELOCK",
+        tokenId: stringToBigInt("SEALED_TIMELOCK_TOKEN"),
+        programAddress: COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
+        Contract: Compliant_timelock_transferContract,
+        initMappings: false,
+        requireInitialization: true,
     }
 }
 
