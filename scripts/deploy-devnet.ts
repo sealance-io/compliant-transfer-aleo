@@ -10,7 +10,7 @@ import { initializeTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
 import { Compliant_threshold_transferContract } from "../artifacts/js/compliant_threshold_transfer";
 import { ExchangeContract } from "../artifacts/js/exchange";
-import { setRole } from "../lib/Role";
+import { setTimelockPolicyRole, setTokenRegistryRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -36,12 +36,14 @@ const exchangeContract = new ExchangeContract({ mode, privateKey: deployerPrivKe
     await deployIfNotDeployed(exchangeContract);
 
     // register token and assign compliant transfer contract as external_authorization_party
-    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.compliant);
-    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.threshold);
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminPrivKey, adminAddress, investigatorAddress, policies.compliant);
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminPrivKey, adminAddress, investigatorAddress, policies.threshold);
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminPrivKey, adminAddress, investigatorAddress, policies.timelock);
 
     // assign exchange program to be a minter
-    await setRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
-    await setRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-
+    await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
+    await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
+    await setTimelockPolicyRole(adminPrivKey, exchangeContract.address(), 2);
+    
     process.exit(0);
 })();
