@@ -21,15 +21,15 @@ This repository contains smart contracts, tests, and auxiliary scripts for imple
 4. **Build the Contracts**  
     - `dokojs compile`
 
-# Testing
+## Testing
 
 This project uses automated testing with infrastructure components that simulate a local Aleo blockchain environment.
 
-## Default Testing Approach
+### Default Testing Approach
 
 By default, tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using [Amareleo](https://amareleo.com/) light nodes. This approach requires no manual setup and provides a consistent testing environment across different machines.
 
-### Running Tests
+#### Running Tests
 
 ```bash
 # Run all tests
@@ -39,7 +39,7 @@ npm test
 npm run test:select ./test/merkle_tree.test.ts
 ```
 
-### Customizing Container Behavior
+#### Customizing Container Behavior
 
 You can customize the Amareleo container with environment variables:
 
@@ -53,15 +53,15 @@ AMARELEO_VERBOSITY=2 npm test
 
 **Note:** The Amareleo container does not persist blockchain state by default, and the same chain is reused across all tests.
 
-### Container Runtime Support
+#### Container Runtime Support
 
 Both Docker and Podman are supported as container runtimes. For troubleshooting container-related issues, refer to:
 - [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
 - [Configuration Options](https://node.testcontainers.org/configuration/)
 
-## Alternative Testing Methods
+### Alternative Testing Methods
 
-### Option 1: Running Tests Without Containers
+#### Option 1: Running Tests Without Containers
 
 You can disable testcontainers and use your own manually-started infrastructure:
 
@@ -73,7 +73,7 @@ USE_TEST_CONTAINERS=false npm test
 When disabling containers, you'll need to run Amareleo manually outside the test environment.
 For instructions, refer to the [Amareleo repository](https://github.com/kaxxa123/amareleo-chain).
 
-### Option 2: Using Aleo's Full Devnet (Not Recommended)
+#### Option 2: Using Aleo's Full Devnet (Not Recommended)
 
 A slower and more cumbersome option is to use Aleo's `devnet.sh` script:
 
@@ -90,7 +90,7 @@ A slower and more cumbersome option is to use Aleo's `devnet.sh` script:
 
 This approach is not recommended for regular development as it's significantly slower and requires more system resources than the containerized Amareleo approach.
 
-## Troubleshooting
+### Troubleshooting
 
 If you encounter issues with the containerized tests:
 
@@ -102,7 +102,7 @@ If you encounter issues with the containerized tests:
 5. On macOS, ensure Docker Desktop or podman-machine is running with sufficient resources allocated
 6. Try increasing Amareleo node's verbosity with `AMARELEO_VERBOSITY=4`
 
-### Container Registry Authentication
+#### Container Registry Authentication
 
 If you're using an image from a container registry that requires authentication (such as GitHub Container Registry - ghcr.io) and experience authentication issues:
 
@@ -119,6 +119,32 @@ If you're using an image from a container registry that requires authentication 
 This can help resolve authentication timeouts or permission issues that might occur when Testcontainers attempts to pull images automatically.
 
 For container-specific issues, refer to the [Testcontainers documentation](https://node.testcontainers.org/).
+
+### CI Test Workflows
+
+#### Current Limitations
+
+- **Sequential Test Execution Only**: Due to technical limitations with the Aleo testing environment, tests must run sequentially (not in parallel). Each test requires exclusive access to the test environment.
+
+- **Manual Triggering Only**: Tests are computationally intensive and can take significant time to complete. To conserve CI resources, automatic triggers on pull requests have been disabled. All test runs must be manually initiated.
+
+#### Running Tests Manually
+
+To run tests:
+
+1. Navigate to the **Actions** tab in the GitHub repository
+2. Select the **Aleo Program Tests** workflow from the left sidebar
+3. Click the **Run workflow** dropdown button
+4. Select which tests to run using the provided inputs
+5. Click **Run workflow** to start
+
+<img src="docs/manual_test_run.png" width="400" alt="Run Workflow Screenshot">
+
+#### When To Run Tests
+
+- After modifying any `.leo` program files
+- When updating core configuration files (`package.json`, `aleo-config.js`)
+- Before merging important changes to the main branch
 
 ## Contributing
 
