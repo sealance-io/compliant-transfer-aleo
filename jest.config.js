@@ -24,6 +24,9 @@ const config = {
   testTimeout: 3000000, // Set large timeout for both test and hooks
   workerThreads: true,  // Use Node.js worker threads instead of child processes
   maxWorkers: 2,
+  reporters: [
+  ['summary', { summaryThreshold: 0 }], // Always print full run summary
+  ],
 };
 
 export default config;
