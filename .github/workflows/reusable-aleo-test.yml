@@ -62,7 +62,7 @@ jobs:
       packages: 'read'
     timeout-minutes: 180
     container:
-      image: ghcr.io/sealance-io/leo-lang-ci:v2.4.1-fixed
+      image: ghcr.io/sealance-io/leo-lang-ci:v2.5.0
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
