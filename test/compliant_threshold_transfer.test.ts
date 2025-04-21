@@ -55,7 +55,7 @@ describe('test compliant_threshold_transfer program', () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(compliantThresholdTransferContract);
-    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminAddress, investigatorAddress, policies.threshold);
+    await initializeTokenProgram(deployerPrivKey, deployerAddress, adminPrivKey, adminAddress, investigatorAddress, policies.threshold);
   }, timeout);
 
   test(`test init_mappings`, async () => {

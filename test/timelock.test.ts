@@ -11,7 +11,8 @@ import {
   ZERO_ADDRESS,
   COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
   fundedAmount,
-  timeout
+  timeout,
+  policies
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -19,7 +20,7 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_timelock_transfer";
 import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
 import { stringToBigInt } from "../lib/Conversion";
-import { setRole } from "../lib/Role";
+import { initializeTokenProgram } from "../lib/Token";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -114,25 +115,7 @@ describe("test compliant_timelock_transfer program", () => {
       await deployIfNotDeployed(freezeRegistryContract);
       await deployIfNotDeployed(timelockContract);
       
-      // NOTE: use Nadav's policies struct and initializeTokenProgram()
-      const tokenMetadata = await tokenRegistryContract.registered_tokens(
-        tokenId,
-        {
-          token_id: 0n,
-          name: 0n,
-          symbol: 0n,
-          decimals: 0,
-          supply: 0n,
-          max_supply: 0n,
-          admin: ZERO_ADDRESS,
-          external_authorization_required: false,
-          external_authorization_party: ZERO_ADDRESS,
-        },
-      );
-      if (tokenMetadata.token_id === 0n) {
-        const tx = await timelockContractForAdmin.initialize();
-        await tx.wait();
-      }
+      await initializeTokenProgram(deployerPrivKey, deployerAddress, adminPrivKey, adminAddress, ZERO_ADDRESS, policies.timelock);
     },
     timeout,
   );
