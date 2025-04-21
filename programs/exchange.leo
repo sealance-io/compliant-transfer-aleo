@@ -2,7 +2,7 @@ import credits.aleo;
 import token_registry.aleo;
 import compliant_timelock_transfer.aleo;
 
-// The 'exchange' program.
+// This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
 program exchange.aleo {
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     const RATE: u128 = 10u128;
