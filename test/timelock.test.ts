@@ -21,6 +21,7 @@ import { Compliant_timelock_transferContract } from "../artifacts/js/compliant_t
 import { Freeze_registryContract } from "../artifacts/js/freeze_registry";
 import { stringToBigInt } from "../lib/Conversion";
 import { initializeTokenProgram } from "../lib/Token";
+import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -236,17 +237,8 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `generate merkle proofs`,
     async () => {
-      const tx = await merkleTreeContract.build_tree([
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        freezedAccount,
-      ]);
-      const [tree] = await tx.wait();
+      const leaves = genLeaves([freezedAccount], 3)
+      const tree = await buildTree(leaves)
       root = tree[14];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);

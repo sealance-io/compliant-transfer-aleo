@@ -2,9 +2,9 @@ import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { ZERO_ADDRESS, mode } from "./Constants";
 import { convertAddressToField } from "./Conversion";
+import { buildTree, genLeaves } from "./MerkleTree";
 
 const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode });
 
 export async function AddToFreezeList(address: string, leavesLength: number) {
   const isAccountFreezed = await compliantTransferContract.freeze_list(address, false)
@@ -24,17 +24,8 @@ export async function AddToFreezeList(address: string, leavesLength: number) {
       throw new Error("Merkle tree is full, there is no place for the new freezed account");
     }
     addresses.push(address);
-    addresses = addresses.concat(Array(leavesLength - addresses.length).fill(ZERO_ADDRESS));
-
-    const sortTx = await merkleTreeContract.build_tree(addresses);
-    let [tree] = await sortTx.wait();
-    // Sorting addresses based on numbers array
-    const sortedAddresses = addresses
-      .map((address, index) => ({ address, number: tree[index] })) // Pair addresses with numbers
-      .sort((a, b) => (a.number < b.number ? -1 : 1)) // Sort using BigInt comparison
-      .map(item => item.address); // Extract sorted addresses
-    const buildTreeTx = await merkleTreeContract.build_tree(sortedAddresses);
-    [tree] = await buildTreeTx.wait();
+    const leaves = genLeaves([addresses], 3)
+    const tree = await buildTree(leaves);
     const root = tree[14];
 
     return { lastIndex, root };
