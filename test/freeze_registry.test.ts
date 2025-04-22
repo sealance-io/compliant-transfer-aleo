@@ -7,6 +7,7 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -55,17 +56,8 @@ describe('test freeze_registry program', () => {
   let adminMerkleProof;
   let freezedAccountMerkleProof;
   test(`generate merkle proofs`, async () => {
-    const tx = await merkleTreeContract.build_tree([
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      freezedAccount,
-    ]);
-    const [tree] = await tx.wait();
+    const leaves = genLeaves([freezedAccount], 3)
+    const tree = await buildTree(leaves)
     root = tree[14];
     const adminLeadIndices = getLeafIndices(tree, adminAddress);
     const freezedAccountLeadIndices = getLeafIndices(tree, freezedAccount);
