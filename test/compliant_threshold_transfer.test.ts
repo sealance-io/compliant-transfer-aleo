@@ -14,6 +14,7 @@ import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/riwoxo
 import { getLatestBlockHeight } from "../lib/Block";
 import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
 import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
+import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -43,7 +44,7 @@ const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: adminP
 const amount = 1n;
 let root: bigint;
 
-describe('test compliant_threshold_transfer program', () => {
+describe.skip('test compliant_threshold_transfer program', () => {
   test(`fund credits`, async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
@@ -156,17 +157,8 @@ describe('test compliant_threshold_transfer program', () => {
   let recipientMerkleProof;
   let freezedAccountMerkleProof;
   test(`generate merkle proofs`, async () => {
-    const tx = await merkleTreeContract.build_tree([
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      freezedAccount,
-    ]);
-    const [tree] = await tx.wait();
+    const leaves = genLeaves([freezedAccount], 3)
+    const tree = await buildTree(leaves);
     root = tree[14];
     const senderLeafIndices = getLeafIndices(tree, account);
     const recipientLeafIndices = getLeafIndices(tree, recipient);

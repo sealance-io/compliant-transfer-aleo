@@ -11,6 +11,7 @@ import { getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
+import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -39,7 +40,6 @@ const amount = 10n;
 let root: bigint;
 
 describe('test compliant_transfer program', () => {
-
   test(`fund credits`, async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
@@ -130,17 +130,8 @@ describe('test compliant_transfer program', () => {
   let recipientMerkleProof;
   let freezedAccountMerkleProof;
   test(`generate merkle proofs`, async () => {
-    const tx = await merkleTreeContract.build_tree([
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      freezedAccount,
-    ]);
-    const [tree] = await tx.wait();
+    const leaves = genLeaves([freezedAccount], 3)
+    const tree = await buildTree(leaves);
     root = tree[14];
     senderMerkleProof = [getSiblingPath(tree, 6, MAX_TREE_SIZE), getSiblingPath(tree, 7, MAX_TREE_SIZE)];
     recipientMerkleProof = [getSiblingPath(tree, 7, MAX_TREE_SIZE), getSiblingPath(tree, 7, MAX_TREE_SIZE)];
