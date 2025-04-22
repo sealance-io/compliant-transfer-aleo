@@ -3,10 +3,68 @@ import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
 import { MAX_TREE_SIZE, timeout } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
-
+import { convertAddressToField } from "../lib/Conversion";
+import { Field, Poseidon8, Poseidon4, Poseidon2, Plaintext } from "@provablehq/sdk";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Rediwsozfo_v2Contract({ mode });
+
+function hashTwoElements(el1: string, el2: string) {
+  const hasher = new Poseidon4();
+  const fields = [
+    Field.fromString(el1),
+    Field.fromString(el2)
+  ];
+  const arrayPlaintext = Plaintext.fromString(`[${fields.map(f => f.toString()).join(',')}]`);
+  
+  return hasher.hash(arrayPlaintext.toFields());
+}
+
+export async function buildTree(leaves: string[]) {
+  let currentLevel = leaves;
+  let tree = [...currentLevel];
+  let levelSize = currentLevel.length;
+  
+  while (levelSize > 1) {
+    const nextLevel = [];
+    for (let i = 0; i < levelSize; i += 2) {
+      const left = currentLevel[i];
+      const right = currentLevel[i + 1];
+      const hash = await hashTwoElements(left, right);
+      nextLevel.push(hash.toString());
+    }
+    tree = [...tree, ...nextLevel];
+    currentLevel = nextLevel;
+    levelSize = currentLevel.length;
+  }
+  
+  const treeBN = tree.map(element => {
+      return BigInt(element.slice(0, element.length - "field".length));
+  });
+
+  return treeBN;
+}
+
+export async function prepTree(leaves, depth) {
+  let num_leaves = Math.floor(2**depth);
+
+  const leaveFields = leaves.map(leave => ({
+    leave,
+    field: convertAddressToField(leave),
+}));
+
+  const sortedLeaves = leaveFields
+  .sort((a, b) => (a.field < b.field ? -1 : 1))
+  .map(item => item.field);
+
+  const sortedFieldElements = sortedLeaves.map(leaf => {
+    return leaf.toString() + "field";
+  })
+
+  const fullTree = Array(Math.max(num_leaves - sortedFieldElements.length, 0)).fill("0field");
+
+  return fullTree.concat(sortedFieldElements);
+}
 
 describe('merkle_tree8 tests', () => {
 
@@ -35,6 +93,23 @@ describe('merkle_tree8 tests', () => {
     ]);
 
     const [result] =  await tx.wait();
+
+    const result2 = await prepTree([
+      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
+      "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
+      "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
+      "aleo194vjp7nt6pwgpruw3kz5fk5kvj9ur6sg2f4k84fqu6cpgq5xhvrs7emymc",
+      "aleo1wkyn0ax8nhftfxn0hkx8kgh46yxqla7tzd6z77jhcf5wne6z3c9qnxl2l4",
+      "aleo1g3n6k74jx5zzxndnxjzvpgt0zwce93lz00305lycyvayfyyqwqxqxlq7ma",
+      "aleo1tjkv7vquk6yldxz53ecwsy5csnun43rfaknpkjc97v5223dlnyxsglv7nm",
+      "aleo18khmhg2nehxxsm6km43ah7qdudjkjw7mgpsfya9vvzx3vlq9hyxs8vzdds",
+      "aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9",
+    ], 4)
+    
+    const result3 = await buildTree(result2);
+    
+    expect(result).toEqual(result3); 
+
   }, timeout)
 
   
