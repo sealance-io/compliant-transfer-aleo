@@ -6,65 +6,6 @@ program rediwsozfo_v2.aleo {
         leaf_index: u32
     }
 
-    // Build the tree of 8 leaves
-    transition build_tree(leaves: [address; 8]) -> [field; 15] {
-        return build_tree8(leaves);
-    }
-
-    inline build_tree8(leaves: [address; 8]) -> [field; 15] {
-
-        // First Layer
-        let parent1:field = Poseidon4::hash_to_field([leaves[0u8] as field, leaves[1u8] as field]);
-        let parent2:field = Poseidon4::hash_to_field([leaves[2u8] as field, leaves[3u8] as field]);
-        let parent3:field = Poseidon4::hash_to_field([leaves[4u8] as field, leaves[5u8] as field]);
-        let parent4:field = Poseidon4::hash_to_field([leaves[6u8] as field, leaves[7u8] as field]);
-
-        // Second layer
-        let parent5:field = Poseidon4::hash_to_field([parent1, parent2]);
-        let parent6:field = Poseidon4::hash_to_field([parent3, parent4]);
-
-        // Root
-        let root:field = Poseidon4::hash_to_field([parent5, parent6]);
-        
-        return [
-            leaves[0u8] as field,
-            leaves[1u8] as field,
-            leaves[2u8] as field,
-            leaves[3u8] as field,
-            leaves[4u8] as field,
-            leaves[5u8] as field,
-            leaves[6u8] as field,
-            leaves[7u8] as field,
-            parent1, parent2, parent3, parent4, 
-            parent5, parent6, 
-            root
-        ];
-    }
-
-    // Build the tree of 16 leaves
-    transition build_tree16(leaves: [address; 16]) -> [field; 31] {
-        // First Layer
-        let left_tree:[field; 15] = build_tree8([leaves[0u8], leaves[1u8], leaves[2u8], leaves[3u8], leaves[4u8], leaves[5u8], leaves[6u8], leaves[7u8]]);
-        let right_tree:[field; 15] = build_tree8([leaves[8u8], leaves[9u8], leaves[10u8], leaves[11u8], leaves[12u8], leaves[13u8], leaves[14u8], leaves[15u8]]);
-       
-        // Root
-        let root:field = Poseidon4::hash_to_field([left_tree[14u8], right_tree[14u8]]);
-        
-        return [
-            left_tree[0u8], left_tree[1u8], left_tree[2u8], left_tree[3u8], left_tree[4u8], left_tree[5u8], left_tree[6u8], left_tree[7u8],
-            right_tree[0u8], right_tree[1u8], right_tree[2u8], right_tree[3u8], right_tree[4u8], right_tree[5u8], right_tree[6u8], right_tree[7u8],
-            
-            left_tree[8u8], left_tree[9u8], left_tree[10u8], left_tree[11u8], 
-            right_tree[8u8], right_tree[9u8], right_tree[10u8], right_tree[11u8], 
-            
-            left_tree[12u8], left_tree[13u8], right_tree[12u8], right_tree[13u8], 
-                
-            left_tree[14u8], right_tree[14u8],
-
-            root
-        ];
-    }
-
     inline calculate_hash_for_neighbor(sibling1:field, sibling2:field, indexbit: u32) -> field {
         if indexbit == 0u32 {
             return Poseidon4::hash_to_field([sibling1, sibling2]);
