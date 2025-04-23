@@ -74,8 +74,8 @@ jobs:
       - name: Setup doko-js-cli
         uses: ./.github/actions/setup-doko-js
         with:
-          doko-repo: 'NadavPeled1998/doko-js'
-          doko-branch: 'fix/array_type_conversion'
+          doko-repo: 'sealance-io/doko-js'
+          doko-branch: 'fixes_to_dokojs'
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
