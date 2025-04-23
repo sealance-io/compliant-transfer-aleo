@@ -39,7 +39,7 @@ export default async function() {
   }
 
   globalThis.__TEST_CONTAINERS__.amareleo = await new GenericContainer(AMARELEO_IMAGE)
-  .withCommand(["--network", "1", "--verbosity", AMARELEO_VERBOSITY, "--rest", "0.0.0.0:3030", "--storage", "/data/amareleo"])
+  .withCommand(["--network", "1", "--verbosity", AMARELEO_VERBOSITY, "--rest", "0.0.0.0:3030", "--storage", "/data/amareleo", "--rest-rps", "100"])
   .withExposedPorts({
     container: 3030,
     host: 3030
