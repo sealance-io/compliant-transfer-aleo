@@ -86,7 +86,7 @@ program rediwsozfo_v2.aleo {
             if (merkle_proofs[0u32].leaf_index == 0u32) {
                 assert(addr_field < merkle_proofs[0u32].siblings[0u32]);
             } else if (merkle_proofs[0u32].leaf_index >= 7u32) {
-                // Ensure that if the address is the most right leaf, it is more than the last leaf
+                // Ensure that if the address is the most right leaf, it is greater than the last leaf
                 let depth: u32 = calculate_tree_depth(merkle_proofs[0u32]);
                 assert_eq(merkle_proofs[0u32].leaf_index, 2u32 ** (depth - 1u32) - 1u32);
                 assert(addr_field > merkle_proofs[0u32].siblings[0u32]);
