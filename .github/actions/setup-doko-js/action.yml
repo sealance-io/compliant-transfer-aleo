@@ -102,9 +102,15 @@ runs:
     working-directory: ${{ env.DOKO_PATH }}
     run: |
       set -euo pipefail
+
+      echo "Installing only 'web' module's dependencies (required as a workaround)..."
+      if ! pnpm install --no-frozen-lockfile --filter './packages/web'; then
+        echo "::error::Failed to install 'web' module dependencies with pnpm"
+        exit 1
+      fi
       
       echo "Installing dependencies..."
-      if ! pnpm install --filter '!./packages/web'; then
+      if ! pnpm install --frozen-lockfile --filter '!./packages/web'; then
         echo "::error::Failed to install dependencies with pnpm"
         exit 1
       fi
