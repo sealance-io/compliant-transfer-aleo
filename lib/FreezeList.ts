@@ -24,7 +24,7 @@ export async function AddToFreezeList(address: string, leavesLength: number) {
       throw new Error("Merkle tree is full, there is no place for the new freezed account");
     }
     addresses.push(address);
-    const leaves = genLeaves([addresses], 3)
+    const leaves = genLeaves(addresses, 3)
     const tree = await buildTree(leaves);
     const root = tree[14];
 

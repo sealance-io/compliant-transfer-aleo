@@ -1,7 +1,14 @@
 import { Field, Plaintext, Poseidon4 } from "@provablehq/sdk";
 import { convertAddressToField } from "./Conversion";
 
-function hashTwoElements(el1: string, el2: string) {
+/**
+ * Hashes two elements using Poseidon4 hash function
+ * @throws {Error} If inputs are empty or invalid
+ */
+function hashTwoElements(el1: string, el2: string): Promise<Field> {
+    if (!el1 || !el2) {
+throw new Error('Invalid inputs: elements cannot be empty');
+    }
     const hasher = new Poseidon4();
     const fields = [
       Field.fromString(el1),
@@ -12,7 +19,18 @@ function hashTwoElements(el1: string, el2: string) {
     return hasher.hash(arrayPlaintext.toFields());
   }
   
-  export async function buildTree(leaves: string[]) {
+/**
+ * Builds a Merkle tree from given leaves
+ * @throws {Error} If leaves array has odd number of elements
+ */
+  export async function buildTree(leaves: string[]): Promise<bigint[]> {
+    if (leaves.length === 0) {
+        throw new Error('Leaves array cannot be empty');
+    }
+    if (leaves.length % 2 !== 0) {
+        throw new Error('Leaves array must have even number of elements');
+    }
+
     let currentLevel = leaves;
     let tree = [...currentLevel];
     let levelSize = currentLevel.length;
@@ -30,15 +48,14 @@ function hashTwoElements(el1: string, el2: string) {
       levelSize = currentLevel.length;
     }
     
-    const treeBN = tree.map(element => {
-        return BigInt(element.slice(0, element.length - "field".length));
-    });
-  
-    return treeBN;
-  }
-  
-  export function genLeaves(leaves, depth) {
-    let num_leaves = Math.floor(2**depth);
+    return tree.map(element => BigInt(element.slice(0, element.length - "field".length)));
+    }
+
+/**
+ * Converts Leo addresses to field element, sort, pad with 0field and return an array
+ */  
+  export function genLeaves(leaves: string[], depth: number): string[] {
+    const num_leaves = Math.floor(2**depth);
   
     const leaveFields = leaves.map(leave => ({
       leave,
@@ -49,9 +66,9 @@ function hashTwoElements(el1: string, el2: string) {
     .sort((a, b) => (a.field < b.field ? -1 : 1))
     .map(item => item.field);
   
-    const sortedFieldElements = sortedLeaves.map(leaf => {
-      return leaf.toString() + "field";
-    })
+    const sortedFieldElements = sortedLeaves.map(leaf => 
+leaf.toString() + "field"
+    );
   
     const fullTree = Array(Math.max(num_leaves - sortedFieldElements.length, 0)).fill("0field");
   
