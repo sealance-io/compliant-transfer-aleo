@@ -104,13 +104,13 @@ runs:
       set -euo pipefail
       
       echo "Installing dependencies..."
-      if ! pnpm install; then
+      if ! pnpm install --filter '!./packages/web'; then
         echo "::error::Failed to install dependencies with pnpm"
         exit 1
       fi
       
       echo "Building packages..."
-      if ! pnpm run --r --filter "./packages/**" build; then
+      if ! pnpm run --r --filter './packages/**' --filter '!./packages/web' build; then
         echo "::error::Failed to build packages"
         exit 1
       fi
