@@ -41,7 +41,7 @@ The default settings use:
 To install from a custom repository or branch (for example, to use a patched version):
 
 ```bash
-./build_dokojs_cli.sh -r "https://github.com/NadavPeled1998/doko-js.git" -b "fix/array_type_conversion"
+./build_dokojs_cli.sh -r "https://github.com/sealance-io/doko-js.git" -b "fixes_to_dokojs"
 ```
 
 After the installation completes, you can use the CLI by running `dokojs` commands in your terminal.
@@ -69,7 +69,7 @@ If you prefer to handle the installation steps yourself or need more control ove
 
    Or for a patched version:
    ```bash
-   git clone -b fix/array_type_conversion https://github.com/NadavPeled1998/doko-js.git
+   git clone -b fixes_to_dokojs https://github.com/sealance-io/doko-js.git
    cd doko-js
    ```
 
