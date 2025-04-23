@@ -44,7 +44,7 @@ const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: adminP
 const amount = 1n;
 let root: bigint;
 
-describe.skip('test compliant_threshold_transfer program', () => {
+describe('test compliant_threshold_transfer program', () => {
   test(`fund credits`, async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
