@@ -61,7 +61,7 @@ program rawxtbrzce.aleo {
         token_registry_call.await();
     }
 
-    async transition update_roles(new_address: address, role: u8) -> Future {
+    async transition update_roles(public new_address: address, public role: u8) -> Future {
         return f_update_roles(new_address, self.caller, role);
     }
     async function f_update_roles(new_address: address, caller: address, role: u8) {
