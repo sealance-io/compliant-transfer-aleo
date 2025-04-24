@@ -56,7 +56,7 @@ describe('test freeze_registry program', () => {
   let adminMerkleProof;
   let freezedAccountMerkleProof;
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([freezedAccount], 3)
+    const leaves = genLeaves([freezedAccount])
     const tree = await buildTree(leaves)
     root = tree[14];
     const adminLeadIndices = getLeafIndices(tree, adminAddress);
