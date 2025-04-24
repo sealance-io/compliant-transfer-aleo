@@ -43,24 +43,57 @@ describe("merkle_tree lib, buildTree", () => {
 });
 
 describe("merkle_tree lib, genLeaves", () => {
-  it("should generate correct number of leaves for given depth", () => {
+  it("should generate correct number of leaves from 1 leaf", () => {
+    const leaves = [
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+    ];
+    const result = genLeaves(leaves);
+    expect(result).toHaveLength(2);
+  });
+
+  it("should generate correct number of leaves from 2 leaves", () => {
     const leaves = [
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
       "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
     ];
-    const depth = 2;
-    const result = genLeaves(leaves, depth);
+    const result = genLeaves(leaves);
+    expect(result).toHaveLength(2);
+  });
+
+  it("should generate correct number of leaves from 3 leaves", () => {
+    const leaves = [
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
+      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
+    ];
+    const result = genLeaves(leaves);
     expect(result).toHaveLength(4);
+  });
+
+  it("should generate correct number of leaves from 5 leaves", () => {
+    const leaves = Array(5).fill(
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+    );
+    const result = genLeaves(leaves);
+    expect(result).toHaveLength(8);
+  });
+
+  it("should generate correct number of leaves from 9 leaves", () => {
+    const leaves = Array(9).fill(
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+    );
+    const result = genLeaves(leaves);
+    expect(result).toHaveLength(16);
   });
 
   it("should pad with 0field when needed", () => {
     const leaves = [
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
-    const depth = 2;
-    const result = genLeaves(leaves, depth);
-    expect(result).toHaveLength(4);
-    expect(result.filter((x) => x === "0field").length).toBe(3);
+    const result = genLeaves(leaves);
+
+    expect(result).toHaveLength(2);
+    expect(result.filter((x) => x === "0field").length).toBe(1);
   });
 
   it("should sort leaves correctly", () => {
@@ -68,37 +101,21 @@ describe("merkle_tree lib, genLeaves", () => {
       "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
-    const depth = 1;
-    const result = genLeaves(leaves, depth);
+    const result = genLeaves(leaves);
     expect(result.length).toBe(2);
     expect(result[0]).not.toBe(result[1]);
     expect(result[0]).toBe(
       "1295133970529764960316948294624974168921228814652993007266766481909235735940field",
     );
   });
-  it("should fail if the input array is large", () => {
-    const leaves = [
-      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-    ];
-    const depth = 1;
 
-    try {
-      genLeaves(leaves, depth);
-      fail("Should have thrown error");
-    } catch (e) {
-      expect(e.message).toBe("Leaves limit exceeded. Max: 2");
-    }
-  });
   it("should pad with 0field when needed", () => {
     const leaves = [
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
-    const depth = 2;
-    const result = genLeaves(leaves, depth);
-    expect(result).toHaveLength(4);
-    expect(result.filter((x) => x === "0field").length).toBe(3);
+    const result = genLeaves(leaves);
+    expect(result).toHaveLength(2);
+    expect(result.filter((x) => x === "0field").length).toBe(1);
   });
 
   it("should filter ZERO_ADDRESS", () => {
@@ -109,10 +126,12 @@ describe("merkle_tree lib, genLeaves", () => {
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
     const depth = 1;
-    const result = genLeaves(leaves, depth);
+    const result = genLeaves(leaves);
     expect(result).toHaveLength(2);
     expect(result[0]).toBe("0field");
-    expect(result[1]).toBe("3501665755452795161867664882580888971213780722176652848275908626939553697821field");
+    expect(result[1]).toBe(
+      "3501665755452795161867664882580888971213780722176652848275908626939553697821field",
+    );
   });
 });
 
@@ -199,7 +218,7 @@ describe("merkle_tree program tests", () => {
         .fill(null)
         .map(() => new Account().address().to_string());
 
-      const sortedAddresses = await genLeaves(addresses, depth);
+      const sortedAddresses = await genLeaves(addresses);
       const tree = await buildTree(sortedAddresses);
 
       const checkedAddress = new Account().address().to_string();
@@ -238,19 +257,16 @@ describe("merkle_tree program tests", () => {
   test(
     `all cases, depth 3`,
     async () => {
-      const leaves = await genLeaves(
-        [
-          "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
-          "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
-          "aleo194vjp7nt6pwgpruw3kz5fk5kvj9ur6sg2f4k84fqu6cpgq5xhvrs7emymc",
-          "aleo1wkyn0ax8nhftfxn0hkx8kgh46yxqla7tzd6z77jhcf5wne6z3c9qnxl2l4",
-          "aleo1g3n6k74jx5zzxndnxjzvpgt0zwce93lz00305lycyvayfyyqwqxqxlq7ma",
-          "aleo1tjkv7vquk6yldxz53ecwsy5csnun43rfaknpkjc97v5223dlnyxsglv7nm",
-          "aleo18khmhg2nehxxsm6km43ah7qdudjkjw7mgpsfya9vvzx3vlq9hyxs8vzdds",
-          "aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9",
-        ],
-        3,
-      );
+      const leaves = await genLeaves([
+        "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
+        "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
+        "aleo194vjp7nt6pwgpruw3kz5fk5kvj9ur6sg2f4k84fqu6cpgq5xhvrs7emymc",
+        "aleo1wkyn0ax8nhftfxn0hkx8kgh46yxqla7tzd6z77jhcf5wne6z3c9qnxl2l4",
+        "aleo1g3n6k74jx5zzxndnxjzvpgt0zwce93lz00305lycyvayfyyqwqxqxlq7ma",
+        "aleo1tjkv7vquk6yldxz53ecwsy5csnun43rfaknpkjc97v5223dlnyxsglv7nm",
+        "aleo18khmhg2nehxxsm6km43ah7qdudjkjw7mgpsfya9vvzx3vlq9hyxs8vzdds",
+        "aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9",
+      ]);
       const tree = await buildTree(leaves);
 
       const merkleProof0 = getSiblingPath(tree, 0, MAX_TREE_SIZE);
@@ -334,6 +350,45 @@ describe("merkle_tree program tests", () => {
       await contract.verify_non_inclusion(
         "aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t",
         [merkleProof7, merkleProof7],
+      );
+    },
+    timeout,
+  );
+
+  test(
+    `test various sizes of leaves array`,
+    async () => {
+      let leaves = await genLeaves([
+        "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
+        "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
+      ]);
+      let tree = await buildTree(leaves);
+
+      expect(tree).toHaveLength(3);
+
+      let merkleProof0 = getSiblingPath(tree, 0, MAX_TREE_SIZE);
+      let merkleProof2 = getSiblingPath(tree, 1, MAX_TREE_SIZE);
+
+      await contract.verify_non_inclusion(
+        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+        [merkleProof2, merkleProof2],
+      );
+
+      leaves = await genLeaves([
+        "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
+        "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
+        "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
+      ]);
+      tree = await buildTree(leaves);
+
+      expect(tree).toHaveLength(7);
+
+      merkleProof0 = getSiblingPath(tree, 0, MAX_TREE_SIZE);
+      merkleProof2 = getSiblingPath(tree, 1, MAX_TREE_SIZE);
+
+      await contract.verify_non_inclusion(
+        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+        [merkleProof2, merkleProof2],
       );
     },
     timeout,
