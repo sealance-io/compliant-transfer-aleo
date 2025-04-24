@@ -55,14 +55,14 @@ throw new Error('Invalid inputs: elements cannot be empty');
  * Converts Leo addresses to field element, sort, pad with 0field and return an array
  */  
   export function genLeaves(leaves: string[], depth: number): string[] {
-    const num_leaves = Math.floor(2**depth);
+    const numLeaves = Math.floor(2**depth);
   
-    const leaveFields = leaves.map(leave => ({
+    const leavesFields = leaves.map(leave => ({
       leave,
       field: convertAddressToField(leave),
   }));
   
-    const sortedLeaves = leaveFields
+    const sortedLeaves = leavesFields
     .sort((a, b) => (a.field < b.field ? -1 : 1))
     .map(item => item.field);
   
@@ -70,7 +70,7 @@ throw new Error('Invalid inputs: elements cannot be empty');
 leaf.toString() + "field"
     );
   
-    const fullTree = Array(Math.max(num_leaves - sortedFieldElements.length, 0)).fill("0field");
+    const fullTree = Array(Math.max(numLeaves - sortedFieldElements.length, 0)).fill("0field");
   
     return fullTree.concat(sortedFieldElements);
   }
