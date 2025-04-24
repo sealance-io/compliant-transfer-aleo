@@ -1,6 +1,6 @@
 import { ExecutionMode } from "@doko-js/core";
 import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { MAX_TREE_SIZE, timeout } from "../lib/Constants";
+import { MAX_TREE_SIZE, timeout, ZERO_ADDRESS } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
@@ -99,6 +99,20 @@ describe("merkle_tree lib, genLeaves", () => {
     const result = genLeaves(leaves, depth);
     expect(result).toHaveLength(4);
     expect(result.filter((x) => x === "0field").length).toBe(3);
+  });
+
+  it("should filter ZERO_ADDRESS", () => {
+    const leaves = [
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+    ];
+    const depth = 1;
+    const result = genLeaves(leaves, depth);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toBe("0field");
+    expect(result[1]).toBe("3501665755452795161867664882580888971213780722176652848275908626939553697821field");
   });
 });
 
