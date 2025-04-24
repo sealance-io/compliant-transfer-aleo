@@ -72,6 +72,33 @@ describe("merkle_tree lib, genLeaves", () => {
     const result = genLeaves(leaves, depth);
     expect(result.length).toBe(2);
     expect(result[0]).not.toBe(result[1]);
+    expect(result[0]).toBe(
+      "1295133970529764960316948294624974168921228814652993007266766481909235735940field",
+    );
+  });
+  it("should fail if the input array is large", () => {
+    const leaves = [
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
+      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
+    ];
+    const depth = 1;
+
+    try {
+      genLeaves(leaves, depth);
+      fail("Should have thrown error");
+    } catch (e) {
+      expect(e.message).toBe("Leaves limit exceeded. Max: 2");
+    }
+  });
+  it("should pad with 0field when needed", () => {
+    const leaves = [
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+    ];
+    const depth = 2;
+    const result = genLeaves(leaves, depth);
+    expect(result).toHaveLength(4);
+    expect(result.filter((x) => x === "0field").length).toBe(3);
   });
 });
 
