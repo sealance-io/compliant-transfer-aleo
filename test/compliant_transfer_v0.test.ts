@@ -130,7 +130,7 @@ describe('test compliant_transfer program', () => {
   let recipientMerkleProof;
   let freezedAccountMerkleProof;
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([freezedAccount], 3)
+    const leaves = genLeaves([freezedAccount])
     const tree = await buildTree(leaves);
     root = tree[14];
     senderMerkleProof = [getSiblingPath(tree, 6, MAX_TREE_SIZE), getSiblingPath(tree, 7, MAX_TREE_SIZE)];

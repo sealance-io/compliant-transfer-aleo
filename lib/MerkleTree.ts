@@ -1,6 +1,6 @@
 import { Field, Plaintext, Poseidon4 } from "@provablehq/sdk";
 import { convertAddressToField } from "./Conversion";
-import { ZERO_ADDRESS } from "./Constants";
+import { ZERO_ADDRESS, MAX_TREE_SIZE } from "./Constants";
 
 /**
  * Hashes two elements using Poseidon4 hash function
@@ -55,13 +55,19 @@ throw new Error('Invalid inputs: elements cannot be empty');
 /**
  * Converts Leo addresses to field element, sort, pad with 0field and return an array
  */  
-  export function genLeaves(leaves: string[], depth: number): string[] {
-    const numLeaves = Math.floor(2**depth);
+  export function genLeaves(leaves: string[]): string[] {
+    const maxNumLeaves = Math.floor(2**(MAX_TREE_SIZE-1));
 
     leaves = leaves.filter(leaf => leaf !== ZERO_ADDRESS);
+    let numLeaves = 0;
+    if (leaves.length === 0 || leaves.length === 1) {
+      numLeaves = 2;
+    } else {
+      numLeaves = Math.pow(2, Math.ceil(Math.log2(leaves.length)));
+    } 
 
-    if (leaves.length > numLeaves) {
-      throw new Error('Leaves limit exceeded. Max: ' + numLeaves);
+    if (leaves.length > maxNumLeaves) {
+      throw new Error('Leaves limit exceeded. Max: ' + maxNumLeaves);
     }
 
     const leavesFields = leaves.map(leave => ({

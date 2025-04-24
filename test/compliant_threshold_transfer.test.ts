@@ -157,7 +157,7 @@ describe('test compliant_threshold_transfer program', () => {
   let recipientMerkleProof;
   let freezedAccountMerkleProof;
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([freezedAccount], 3)
+    const leaves = genLeaves([freezedAccount])
     const tree = await buildTree(leaves);
     root = tree[14];
     const senderLeafIndices = getLeafIndices(tree, account);
