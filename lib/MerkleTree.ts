@@ -1,5 +1,6 @@
 import { Field, Plaintext, Poseidon4 } from "@provablehq/sdk";
 import { convertAddressToField } from "./Conversion";
+import { ZERO_ADDRESS } from "./Constants";
 
 /**
  * Hashes two elements using Poseidon4 hash function
@@ -56,11 +57,17 @@ throw new Error('Invalid inputs: elements cannot be empty');
  */  
   export function genLeaves(leaves: string[], depth: number): string[] {
     const numLeaves = Math.floor(2**depth);
-  
+
+    leaves = leaves.filter(leaf => leaf !== ZERO_ADDRESS);
+
+    if (leaves.length > numLeaves) {
+      throw new Error('Leaves limit exceeded. Max: ' + numLeaves);
+    }
+
     const leavesFields = leaves.map(leave => ({
       leave,
       field: convertAddressToField(leave),
-  }));
+    }));
   
     const sortedLeaves = leavesFields
     .sort((a, b) => (a.field < b.field ? -1 : 1))
