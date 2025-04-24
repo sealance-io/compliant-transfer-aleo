@@ -62,7 +62,7 @@ program riwoxowhva.aleo {
     }
 
 
-    async transition update_block_height_window(blocks: u32) -> Future {
+    async transition update_block_height_window(public blocks: u32) -> Future {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
@@ -81,7 +81,7 @@ program riwoxowhva.aleo {
         epoch.set(0u8, EPOCH);
     }
 
-    async transition update_investigator_address(new_investigator_address: address) -> Future {
+    async transition update_investigator_address(public new_investigator_address: address) -> Future {
         return f_update_investigator_address(new_investigator_address, self.caller);
     }
     async function f_update_investigator_address(new_investigator_address: address, caller: address) {
@@ -90,7 +90,7 @@ program riwoxowhva.aleo {
         roles.set(2u8, new_investigator_address);
     }
 
-    async transition update_admin_address(new_admin_address: address) -> Future {
+    async transition update_admin_address(public new_admin_address: address) -> Future {
         return f_update_admin_address(new_admin_address, self.caller);
     }
     async function f_update_admin_address(new_admin_address: address, caller: address) {
@@ -237,7 +237,7 @@ program riwoxowhva.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
         recipient_merkle_proofs: [MerkleProof;2],
-        investigator_address: address
+        public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
@@ -353,7 +353,7 @@ program riwoxowhva.aleo {
         public estimated_block_height: u32,
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
-        investigator_address: address
+        public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -451,7 +451,7 @@ program riwoxowhva.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
         sender_merkle_proofs: [MerkleProof; 2],
-        investigator_address: address,
+        public investigator_address: address,
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
         

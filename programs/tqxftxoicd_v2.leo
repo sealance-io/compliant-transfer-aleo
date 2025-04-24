@@ -34,7 +34,7 @@ program tqxftxoicd_v2.aleo {
         token_id: field
     }
 
-    async transition update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, new_root: field) -> Future {
+    async transition update_freeze_list(public account: address, public is_freezed: bool, public freezed_index: u32, public new_root: field) -> Future {
         return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
     async function f_update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, caller: address, new_root: field) {
@@ -45,7 +45,7 @@ program tqxftxoicd_v2.aleo {
         freeze_list_root.set(0u8, new_root);
     }
 
-    async transition update_investigator_address(new_investigator_address: address) -> Future {
+    async transition update_investigator_address(public new_investigator_address: address) -> Future {
         return f_update_investigator_address(new_investigator_address, self.caller);
     }
     async function f_update_investigator_address(new_investigator_address: address, caller: address) {
@@ -54,7 +54,7 @@ program tqxftxoicd_v2.aleo {
         roles.set(2u8, new_investigator_address);
     }
 
-    async transition update_admin_address(new_admin_address: address) -> Future {
+    async transition update_admin_address(public new_admin_address: address) -> Future {
         return f_update_admin_address(new_admin_address, self.caller);
     }
     async function f_update_admin_address(new_admin_address: address, caller: address) {
@@ -148,7 +148,7 @@ program tqxftxoicd_v2.aleo {
         recipient: address,
         public amount: u128,
         recipient_merkle_proofs: [MerkleProof;2],
-        investigator_address: address
+        public investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         let root: field = rediwsozfo_v2.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
@@ -238,7 +238,7 @@ program tqxftxoicd_v2.aleo {
         input_record: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
-        investigator_address: address
+        public investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -307,7 +307,7 @@ program tqxftxoicd_v2.aleo {
         public amount: u128,
         input_record: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof; 2],
-        investigator_address: address
+        public investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
