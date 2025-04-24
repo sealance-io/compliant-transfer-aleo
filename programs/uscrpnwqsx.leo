@@ -16,7 +16,7 @@ program uscrpnwqsx.aleo {
 
     mapping admin: u8 => address;
 
-    async transition update_admin_address(new_admin_address: address) -> Future {
+    async transition update_admin_address(public new_admin_address: address) -> Future {
         return f_update_admin_address(new_admin_address, self.caller);
     }
     async function f_update_admin_address(new_admin_address: address, caller: address) {
@@ -25,7 +25,7 @@ program uscrpnwqsx.aleo {
         admin.set(0u8, new_admin_address);
     }
 
-    async transition update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, new_root: field) -> Future {
+    async transition update_freeze_list(public account: address, public is_freezed: bool, public freezed_index: u32, public new_root: field) -> Future {
         return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
     async function f_update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, caller: address, new_root: field) {
@@ -37,7 +37,7 @@ program uscrpnwqsx.aleo {
         freeze_list_root.set(0u8, new_root);
     }
 
-    async transition verify_non_inclusion_pub(account: address) -> Future {
+    async transition verify_non_inclusion_pub(public account: address) -> Future {
         return f_verify_non_inclusion_pub(account);
     }
     async function f_verify_non_inclusion_pub(account: address) {

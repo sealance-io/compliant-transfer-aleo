@@ -12,7 +12,7 @@ program gqrfmwbtyk.aleo {
     mapping token_rates: field => u128;     
     mapping admin: u8 => address;
 
-    async transition update_admin(new_admin: address) -> Future {
+    async transition update_admin(public new_admin: address) -> Future {
         return f_update_admin(self.caller, new_admin);
     }
 
@@ -23,7 +23,7 @@ program gqrfmwbtyk.aleo {
         admin.set(0u8, new_admin);
     }
 
-    async transition update_rate(token_id: field, rate: u128) -> Future {
+    async transition update_rate(public token_id: field, public rate: u128) -> Future {
         return f_update_rate(self.caller, token_id, rate);
     }
 
@@ -34,10 +34,10 @@ program gqrfmwbtyk.aleo {
         token_rates.set(token_id, rate);
     }
 
-    async transition exchange_token(token_id: field, amount: u64, rate: u128) -> (token_registry.aleo/Token, Future) {
+    async transition exchange_token(public token_id: field, public amount: u64, public rate: u128) -> (token_registry.aleo/Token, Future) {
         let transfer_credits_call: Future = credits.aleo/transfer_public_as_signer(
             TREASURY_ADDRESS,
-            amount as u64
+            amount
         );
 
         let token_amount: u128 = rate * amount as u128;
@@ -60,10 +60,10 @@ program gqrfmwbtyk.aleo {
         mint_call.await();
     }
 
-    async transition exchange_timelock_token(amount: u64, rate: u128) -> (rawxtbrzce.aleo/CompliantToken, token_registry.aleo/Token, Future) {
+    async transition exchange_timelock_token(public amount: u64, public rate: u128) -> (rawxtbrzce.aleo/CompliantToken, token_registry.aleo/Token, Future) {
         let transfer_credits_call: Future = credits.aleo/transfer_public_as_signer(
             TREASURY_ADDRESS,
-            amount as u64
+            amount
         );
 
         let token_amount: u128 = rate * amount as u128;
