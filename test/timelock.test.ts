@@ -38,7 +38,7 @@ const recipientPrivKey = contract.getPrivateKey(recipient);
 
 const tokenRegistryContract = new Token_registryContract({
   mode,
-  privateKey: adminPrivKey,
+  privateKey: deployerPrivKey,
 });
 const tokenRegistryContractForAccount = new Token_registryContract({
   mode,
@@ -46,7 +46,7 @@ const tokenRegistryContractForAccount = new Token_registryContract({
 });
 const timelockContract = new RawxtbrzceContract({
   mode,
-  privateKey: adminPrivKey,
+  privateKey: deployerPrivKey,
 });
 const timelockContractForAdmin = new RawxtbrzceContract({
   mode,
@@ -67,16 +67,19 @@ const timelockContractForFreezedAccount =
   });
 const merkleTreeContract = new Rediwsozfo_v2Contract({
   mode,
-  privateKey: adminPrivKey,
+  privateKey: deployerPrivKey,
 });
 const freezeRegistryContract = new UscrpnwqsxContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
+const freezeRegistryContractForAdmin = new UscrpnwqsxContract({
   mode,
   privateKey: adminPrivKey,
 });
 
 const amount = 10n;
 let root: bigint;
-let tokenId = stringToBigInt("SEALED_TIMELOCK_TOKEN");
 
 async function getLatestBlockHeight() {
   const response = (await fetch(
@@ -273,12 +276,12 @@ describe("test compliant_timelock_transfer program", () => {
     `freeze registry setup`,
     async () => {
       const tx =
-        await freezeRegistryContract.update_admin_address(adminAddress);
+        await freezeRegistryContractForAdmin.update_admin_address(adminAddress);
       await tx.wait();
       let adminRole = await freezeRegistryContract.admin(0);
       expect(adminRole).toBe(adminAddress);
 
-      const tx2 = await freezeRegistryContract.update_freeze_list(
+      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(
         freezedAccount,
         true,
         0,
@@ -316,7 +319,7 @@ describe("test compliant_timelock_transfer program", () => {
       await expect(rejectedTx2.wait()).rejects.toThrow();
 
       const rejectedTx3 = await tokenRegistryContractForAccount.transfer_public(
-        tokenId,
+        policies.timelock.tokenId,
         account,
         amount,
       );
@@ -324,7 +327,7 @@ describe("test compliant_timelock_transfer program", () => {
 
       const rejectedTx4 =
         await tokenRegistryContractForAccount.transfer_public_as_signer(
-          tokenId,
+          policies.timelock.tokenId,
           account,
           amount,
         );
@@ -332,7 +335,7 @@ describe("test compliant_timelock_transfer program", () => {
 
       const rejectedTx5 =
         await tokenRegistryContractForAccount.transfer_public_to_private(
-          tokenId,
+          policies.timelock.tokenId,
           account,
           amount,
           true,
@@ -340,7 +343,7 @@ describe("test compliant_timelock_transfer program", () => {
       await expect(rejectedTx5.wait()).rejects.toThrow();
 
       const tx = await tokenRegistryContractForAccount.approve_public(
-        tokenId,
+        policies.timelock.tokenId,
         account,
         amount,
       );
@@ -348,7 +351,7 @@ describe("test compliant_timelock_transfer program", () => {
 
       const rejectedTx6 =
         await tokenRegistryContractForAccount.transfer_from_public(
-          tokenId,
+          policies.timelock.tokenId,
           account,
           account,
           amount,
@@ -357,7 +360,7 @@ describe("test compliant_timelock_transfer program", () => {
 
       const rejectedTx7 =
         await tokenRegistryContractForAccount.transfer_from_public_to_private(
-          tokenId,
+          policies.timelock.tokenId,
           account,
           account,
           amount,
@@ -383,7 +386,7 @@ describe("test compliant_timelock_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const approvalTx = await tokenRegistryContractForAccount.approve_public(
-        tokenId,
+        policies.timelock.tokenId,
         timelockContract.address(),
         amount,
       );
@@ -551,7 +554,7 @@ describe("test compliant_timelock_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const approvalTx = await tokenRegistryContractForAccount.approve_public(
-        tokenId,
+        policies.timelock.tokenId,
         timelockContract.address(),
         amount,
       );
@@ -610,7 +613,7 @@ describe("test compliant_timelock_transfer program", () => {
       const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
       expect(recipientRecord.owner).toBe(recipient);
       expect(recipientRecord.amount).toBe(amountToSend);
-      expect(recipientRecord.token_id).toBe(tokenId);
+      expect(recipientRecord.token_id).toBe(policies.timelock.tokenId);
       expect(recipientRecord.external_authorization_required).toBe(true);
       expect(recipientRecord.authorized_until).toBe(0);
 
@@ -746,7 +749,7 @@ describe("test compliant_timelock_transfer program", () => {
       );
       expect(accountRecord.owner).toBe(account);
       expect(accountRecord.amount).toBe(change);
-      expect(accountRecord.token_id).toBe(tokenId);
+      expect(accountRecord.token_id).toBe(policies.timelock.tokenId);
       expect(accountRecord.external_authorization_required).toBe(true);
       expect(accountRecord.authorized_until).toBe(0);
 
@@ -756,7 +759,7 @@ describe("test compliant_timelock_transfer program", () => {
       );
       expect(recipientRecord.owner).toBe(recipient);
       expect(recipientRecord.amount).toBe(amountToSend);
-      expect(recipientRecord.token_id).toBe(tokenId);
+      expect(recipientRecord.token_id).toBe(policies.timelock.tokenId);
       expect(recipientRecord.external_authorization_required).toBe(true);
       expect(recipientRecord.authorized_until).toBe(0);
 
@@ -901,7 +904,7 @@ describe("test compliant_timelock_transfer program", () => {
       );
       expect(accountTokenRecord.owner).toBe(account);
       expect(accountTokenRecord.amount).toBe(change);
-      expect(accountTokenRecord.token_id).toBe(tokenId);
+      expect(accountTokenRecord.token_id).toBe(policies.timelock.tokenId);
       expect(accountTokenRecord.external_authorization_required).toBe(true);
       expect(accountTokenRecord.authorized_until).toBe(0);
 

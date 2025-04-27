@@ -32,14 +32,16 @@ const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
 
-const tokenRegistryContract = new Token_registryContract({ mode, privateKey: adminPrivKey });
+const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
+const tokenRegistryContractForAdmin = new Token_registryContract({ mode, privateKey: adminPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
+const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
 const compliantThresholdTransferContractForAdmin = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
 const compliantThresholdTransferContractForAccount = new RiwoxowhvaContract({ mode, privateKey: accountPrivKey });
 const compliantThresholdTransferContractForFreezedAccount = new RiwoxowhvaContract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
-const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContractForAdmin = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
 
 const amount = 1n;
 let root: bigint;
@@ -117,14 +119,14 @@ describe('test compliant_threshold_transfer program', () => {
   let accountRecord;
   let freezedAccountRecord;
   test('fund tokens', async () => {
-    let mintPublicTx = await tokenRegistryContract.mint_public(
+    let mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
       tokenId,
       account,
       amount * 20n + THRESHOLD,
       defaultAuthorizedUntil
     );
     await mintPublicTx.wait();
-    mintPublicTx = await tokenRegistryContract.mint_public(
+    mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
       tokenId,
       freezedAccount,
       amount * 20n + THRESHOLD,
@@ -132,7 +134,7 @@ describe('test compliant_threshold_transfer program', () => {
     );
     await mintPublicTx.wait();
 
-    let mintPrivateTx = await tokenRegistryContract.mint_private(
+    let mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
       tokenId,
       account,
       amount * 20n + THRESHOLD,
@@ -142,7 +144,7 @@ describe('test compliant_threshold_transfer program', () => {
     const [encryptedAccountRecord] = await mintPrivateTx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
 
-    mintPrivateTx = await tokenRegistryContract.mint_private(
+    mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
       tokenId,
       freezedAccount,
       amount * 20n + THRESHOLD,
@@ -173,12 +175,12 @@ describe('test compliant_threshold_transfer program', () => {
   }, timeout);
 
   test(`freeze registry setup`, async () => {
-    const tx = await freezeRegistryContract.update_admin_address(adminAddress);
+    const tx = await freezeRegistryContractForAdmin.update_admin_address(adminAddress);
     await tx.wait();
     let adminRole = await freezeRegistryContract.admin(0);
     expect(adminRole).toBe(adminAddress);
 
-    const tx2 = await freezeRegistryContract.update_freeze_list(
+    const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(
       freezedAccount,
       true,
       0,

@@ -18,11 +18,12 @@ const [deployerAddress, adminAddress, freezedAccount, account] = contract.getAcc
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
-const accountPrivKey = contract.getPrivateKey(account);
 
-const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContractForAdmin = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
+
 const freezeRegistryContractForFreezedAccount = new UscrpnwqsxContract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
 
 let root: bigint;
 
@@ -39,7 +40,7 @@ describe('test freeze_registry program', () => {
   }, timeout);
 
   test(`test update_admin_address`, async () => {
-    let tx = await freezeRegistryContract.update_admin_address(freezedAccount);
+    let tx = await freezeRegistryContractForAdmin.update_admin_address(freezedAccount);
     await tx.wait();
     let adminRole = await freezeRegistryContract.admin(0);
     expect(adminRole).toBe(freezedAccount);
@@ -80,7 +81,7 @@ describe('test freeze_registry program', () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await freezeRegistryContract.update_freeze_list(
+    let tx = await freezeRegistryContractForAdmin.update_freeze_list(
       freezedAccount,
       true,
       0,
@@ -93,7 +94,7 @@ describe('test freeze_registry program', () => {
     expect(isAccountFreezed).toBe(true);
     expect(freezedAccountByIndex).toBe(freezedAccount);
 
-    tx = await freezeRegistryContract.update_freeze_list(
+    tx = await freezeRegistryContractForAdmin.update_freeze_list(
       freezedAccount,
       false,
       0,
@@ -106,7 +107,7 @@ describe('test freeze_registry program', () => {
     expect(isAccountFreezed).toBe(false);
     expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
 
-    tx = await freezeRegistryContract.update_freeze_list(
+    tx = await freezeRegistryContractForAdmin.update_freeze_list(
       freezedAccount,
       true,
       0,
