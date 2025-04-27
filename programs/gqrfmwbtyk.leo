@@ -73,7 +73,7 @@ program gqrfmwbtyk.aleo {
             0u32
         );
 
-        return (mint_token_call.0, mint_token_call.1, f_exchange_timelock_token(121700012454193788241350538767360056604864872662350field, rate, transfer_credits_call, mint_token_call.2));
+        return (mint_token_call.0, mint_token_call.1, f_exchange_timelock_token(6073470532514169675field, rate, transfer_credits_call, mint_token_call.2));
     }
 
     async function f_exchange_timelock_token(token_id: field, rate: u128,transfer_call: Future, mint_call: Future) {
