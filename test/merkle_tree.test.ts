@@ -145,6 +145,76 @@ describe("merkle_tree program tests", () => {
   );
 
   test(
+    `small tree edge cases test, depth 1`,
+    async () => {
+      const depth = 1;
+      const size = 2 ** depth;
+      const addresses = Array(size)
+        .fill(null)
+        .map(() => new Account().address().to_string());
+      const sortedAddresses = addresses
+        .map((addr) => ({
+          address: addr,
+          field: convertAddressToField(addr),
+        }))
+        .sort((a, b) => (a.field < b.field ? -1 : 1));
+      
+      const smallestAddress = sortedAddresses[0].address;
+      const smallestField = sortedAddresses[0].field;
+      const largestAddress = sortedAddresses[size - 1].address;
+      const largestField = sortedAddresses[size - 1].field;
+
+      // Generate a new address that's guaranteed to be larger than the smallest and smaller than the largest
+      let newAddress = smallestAddress;
+      while (
+        convertAddressToField(newAddress) <= smallestField || 
+        convertAddressToField(newAddress) >= largestField
+      ) {
+        newAddress = new Account().address().to_string();
+      }
+
+      sortedAddresses[0] = {
+        address: newAddress,
+        field: convertAddressToField(newAddress),
+      };
+      // Generate a new address that's guaranteed to be larger than the smallest and smaller than the largest
+      newAddress = largestAddress;
+      while (
+        convertAddressToField(newAddress) <= smallestField ||
+        convertAddressToField(newAddress) >= largestField     
+      ) {
+        newAddress = new Account().address().to_string();
+      }
+      sortedAddresses[size - 1] = {
+        address: newAddress,
+        field: convertAddressToField(newAddress),
+      };
+      const sortedFieldElements = sortedAddresses
+        .sort((a, b) => (a.field < b.field ? -1 : 1))
+        .map((item) => item.field.toString() + "field");
+
+      const tree = await buildTree(sortedFieldElements);
+
+      const merkleProof = getSiblingPath(tree, 0, MAX_TREE_SIZE);
+      let tx = await contract.verify_non_inclusion(smallestAddress, [
+        merkleProof,
+        merkleProof,
+      ]);
+      const [root] =  await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+
+      const merkleProof1 = getSiblingPath(tree, size - 1, MAX_TREE_SIZE);
+      tx = await contract.verify_non_inclusion(largestAddress, [
+        merkleProof1,
+        merkleProof1,
+      ]);
+      const [root1] =  await tx.wait();
+      expect(root1).toBe(tree[tree.length - 1]);
+    },
+    timeout,
+  );
+
+  test(
     `large tree edge cases test, depth 12`,
     async () => {
       const depth = 12;
@@ -194,17 +264,22 @@ describe("merkle_tree program tests", () => {
       const tree = await buildTree(sortedFieldElements);
       const merkleProof = getSiblingPath(tree, 0, MAX_TREE_SIZE);
 
-      await contract.verify_non_inclusion(smallestAddress, [
+      let tx = await contract.verify_non_inclusion(smallestAddress, [
         merkleProof,
         merkleProof,
       ]);
+      const [root] =  await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
 
       const merkleProof1 = getSiblingPath(tree, size - 1, MAX_TREE_SIZE);
 
-      await contract.verify_non_inclusion(largestAddress, [
+      tx = await contract.verify_non_inclusion(largestAddress, [
         merkleProof1,
         merkleProof1,
       ]);
+      const [root1] =  await tx.wait();
+      expect(root1).toBe(tree[tree.length - 1]);
+
     },
     timeout,
   );
@@ -246,10 +321,12 @@ describe("merkle_tree program tests", () => {
       const merkleProof0 = getSiblingPath(tree, leftLeafIndex, MAX_TREE_SIZE);
       const merkleProof1 = getSiblingPath(tree, rightLeafIndex, MAX_TREE_SIZE);
 
-      await contract.verify_non_inclusion(checkedAddress, [
+      const tx = await contract.verify_non_inclusion(checkedAddress, [
         merkleProof0,
         merkleProof1,
       ]);
+      const [root] =  await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
     },
     timeout,
   );
@@ -275,10 +352,12 @@ describe("merkle_tree program tests", () => {
       const merkleProof4 = getSiblingPath(tree, 4, MAX_TREE_SIZE);
       const merkleProof7 = getSiblingPath(tree, 7, MAX_TREE_SIZE);
 
-      await contract.verify_non_inclusion(
+      const tx = await contract.verify_non_inclusion(
         "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
         [merkleProof2, merkleProof3],
       );
+      const [root] =  await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
 
       // the siblings indices are not adjusted
       await expect(
@@ -369,10 +448,12 @@ describe("merkle_tree program tests", () => {
       let merkleProof0 = getSiblingPath(tree, 0, MAX_TREE_SIZE);
       let merkleProof2 = getSiblingPath(tree, 1, MAX_TREE_SIZE);
 
-      await contract.verify_non_inclusion(
+      let tx = await contract.verify_non_inclusion(
         "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
         [merkleProof2, merkleProof2],
       );
+      const [root] =  await tx.wait();
+      expect(root).toBe(tree[tree.length - 1])
 
       leaves = await genLeaves([
         "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
@@ -386,10 +467,12 @@ describe("merkle_tree program tests", () => {
       merkleProof0 = getSiblingPath(tree, 0, MAX_TREE_SIZE);
       merkleProof2 = getSiblingPath(tree, 1, MAX_TREE_SIZE);
 
-      await contract.verify_non_inclusion(
+      tx = await contract.verify_non_inclusion(
         "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
         [merkleProof2, merkleProof2],
       );
+      const [root1] =  await tx.wait();
+      expect(root1).toBe(tree[tree.length - 1])
     },
     timeout,
   );
