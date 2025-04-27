@@ -17,9 +17,11 @@ program rediwsozfo_v2.aleo {
     // Todo: add inclusion proof
 
     // Function to calculate root from the siblings path
-    inline calculate_root_siblings(leaf: field, merkle_proof: MerkleProof) -> field {
+    inline calculate_root_siblings(leaf: field, merkle_proof: MerkleProof) -> public field {
         let parent1: field = calculate_hash_for_neighbor(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8], merkle_proof.leaf_index % 2u32);
-        let parent2: field = calculate_hash_for_neighbor(parent1, merkle_proof.siblings[2u8], (merkle_proof.leaf_index / 2u32) % 2u32);
+        let parent2: field = merkle_proof.siblings[2u8] != 0field 
+            ? calculate_hash_for_neighbor(parent1, merkle_proof.siblings[2u8], (merkle_proof.leaf_index / 2u32) % 2u32)
+            : parent1;
         let parent3: field =  merkle_proof.siblings[3u8] != 0field
             ?  calculate_hash_for_neighbor(parent2, merkle_proof.siblings[3u8], (merkle_proof.leaf_index / 4u32) % 2u32)
             :  parent2;
