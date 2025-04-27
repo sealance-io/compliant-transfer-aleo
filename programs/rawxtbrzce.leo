@@ -4,7 +4,7 @@ import uscrpnwqsx.aleo;
 // The 'compliant_timelock_transfer' program.
 program rawxtbrzce.aleo {
 
-    const TOKEN_ID: field = 6073470532514169675field; // SEALED_TIMELOCK_TOKEN ascii encoded
+    const TOKEN_ID: field = 6073470532514169675field; // TIMELOCK ascii encoded
     const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
     const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
     const DECIMALS: u8 = 6u8;
