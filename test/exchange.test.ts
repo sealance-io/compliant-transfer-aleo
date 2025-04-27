@@ -28,16 +28,16 @@ const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 
 
-const creditsContract = new CreditsContract({ mode })
-const tokenRegistryContract = new Token_registryContract({ mode, privateKey: adminPrivKey });
-const freezeRegistryContract = new UscrpnwqsxContract({ mode })
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
-const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
-const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: adminPrivKey });
-
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
+const creditsContract = new CreditsContract({ mode, privateKey: deployerPrivKey })
+const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey })
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
+const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
+const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: deployerPrivKey });
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPrivKey });
 const exchangeContractForAdmin = new GqrfmwbtykContract({ mode, privateKey: adminPrivKey });
-const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: accountPrivKey });
+const exchangeContractForAccount = new GqrfmwbtykContract({ mode, privateKey: accountPrivKey });
 
 const amount = 10n;
 
@@ -73,13 +73,13 @@ describe('test exchange contract', () => {
     await expect(admin).toBe(adminAddress);
 
     // Only the admin can call to this function 
-    let rejectedTx = await exchangeContract.update_admin(adminAddress);
+    let rejectedTx = await exchangeContractForAccount.update_admin(adminAddress);
     await expect(rejectedTx.wait()).rejects.toThrow();
   })
 
   test(`test update_rate`, async () => {
     // Only the admin account can call to this function 
-    const rejectedTx = await exchangeContract.update_rate(policies.compliant.tokenId, defaultRate);
+    const rejectedTx = await exchangeContractForAccount.update_rate(policies.compliant.tokenId, defaultRate);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const tx = await exchangeContractForAdmin.update_rate(policies.compliant.tokenId, defaultRate);
@@ -91,7 +91,7 @@ describe('test exchange contract', () => {
 
   test(`test exchange_token`, async () => {
     // transaction with wrong rate will fail
-    let rejectedTx = await exchangeContract.exchange_token(
+    let rejectedTx = await exchangeContractForAccount.exchange_token(
       policies.compliant.tokenId,
       amount,
       defaultRate + 1n
@@ -99,7 +99,7 @@ describe('test exchange contract', () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-    let tx = await exchangeContract.exchange_token(
+    let tx = await exchangeContractForAccount.exchange_token(
       policies.compliant.tokenId,
       amount,
       defaultRate
@@ -114,7 +114,7 @@ describe('test exchange contract', () => {
     expect(tokenRecord.amount).toBe(amount * 10n);
 
     treasureBalanceBefore = treasureBalanceAfter;
-    tx = await exchangeContract.exchange_token(
+    tx = await exchangeContractForAccount.exchange_token(
       policies.threshold.tokenId,
       amount,
       defaultRate
@@ -131,7 +131,7 @@ describe('test exchange contract', () => {
 
   test(`test exchange_timelock_token`, async () => {
     const treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-    const tx = await exchangeContract.exchange_timelock_token(amount, defaultRate)
+    const tx = await exchangeContractForAccount.exchange_timelock_token(amount, defaultRate)
     await tx.wait();
     const treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
     expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);

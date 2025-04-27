@@ -28,13 +28,14 @@ const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
 
-const tokenRegistryContract = new Token_registryContract({ mode, privateKey: adminPrivKey });
+const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
+const tokenRegistryContractForAdmin = new Token_registryContract({ mode, privateKey: adminPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
+const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
 const compliantTransferContractForAdmin = new Tqxftxoicd_v2Contract({ mode, privateKey: adminPrivKey });
 const compliantTransferContractForAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: accountPrivKey });
 const compliantTransferContractForFreezedAccount = new Tqxftxoicd_v2Contract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: adminPrivKey });
+const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
 
 const amount = 10n;
 let root: bigint;
@@ -90,14 +91,14 @@ describe('test compliant_transfer program', () => {
   let accountRecord;
   let freezedAccountRecord;
   test('fund tokens', async () => {
-    let mintPublicTx = await tokenRegistryContract.mint_public(
+    let mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
       tokenId,
       account,
       amount * 20n,
       defaultAuthorizedUntil
     );
     await mintPublicTx.wait();
-    mintPublicTx = await tokenRegistryContract.mint_public(
+    mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
       tokenId,
       freezedAccount,
       amount * 20n,
@@ -105,7 +106,7 @@ describe('test compliant_transfer program', () => {
     );
     await mintPublicTx.wait();
 
-    let mintPrivateTx = await tokenRegistryContract.mint_private(
+    let mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
       tokenId,
       account,
       amount * 20n,
@@ -115,7 +116,7 @@ describe('test compliant_transfer program', () => {
     const [encryptedAccountRecord] = await mintPrivateTx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
 
-    mintPrivateTx = await tokenRegistryContract.mint_private(
+    mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
       tokenId,
       freezedAccount,
       amount * 20n,
