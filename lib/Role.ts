@@ -26,7 +26,7 @@ export async function updateAdminRole(privateKey: string, Contract: any, address
     const contract = new Contract({ mode, privateKey });
     const adminRole = await contract.roles(1, ZERO_ADDRESS);
     if (adminRole !== address) {
-        const tx = await contract.update_admin_address(address);
+        const tx = await contract.update_roles_address(address, 1);
         await tx.wait();
     }
 }
@@ -35,7 +35,7 @@ export async function updateInvestigatorRole(privateKey: string, Contract: any, 
     const contract = new Contract({ mode, privateKey });
     const investigatorRole = await contract.roles(2, ZERO_ADDRESS);
     if (investigatorRole !== address) {
-        const tx = await contract.update_investigator_address(address);
+        const tx = await contract.update_roles_address(address, 2);
         await tx.wait();
     }
 }

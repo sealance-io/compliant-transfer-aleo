@@ -15,7 +15,7 @@ import { decryptCompliantToken } from "../artifacts/js/leo2js/rawxtbrzce";
 import { GqrfmwbtykContract } from "../artifacts/js/gqrfmwbtyk";
 import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
 import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
-import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
+import { Riwoxowhva_v2Contract } from "../artifacts/js/riwoxowhva_v2";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -32,7 +32,7 @@ const creditsContract = new CreditsContract({ mode, privateKey: deployerPrivKey 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey })
 const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey });
-const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
+const compliantThresholdTransferContract = new Riwoxowhva_v2Contract({ mode, privateKey: deployerPrivKey });
 const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: deployerPrivKey });
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
 const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPrivKey });

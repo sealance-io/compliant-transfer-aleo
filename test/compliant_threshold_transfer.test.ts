@@ -13,7 +13,7 @@ import { initializeTokenProgram } from "../lib/Token";
 import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/riwoxowhva";
 import { getLatestBlockHeight } from "../lib/Block";
 import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
-import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
+import { Riwoxowhva_v2Contract } from "../artifacts/js/riwoxowhva_v2";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
@@ -35,10 +35,10 @@ const recipientPrivKey = contract.getPrivateKey(recipient);
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 const tokenRegistryContractForAdmin = new Token_registryContract({ mode, privateKey: adminPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
-const compliantThresholdTransferContractForAdmin = new RiwoxowhvaContract({ mode, privateKey: adminPrivKey });
-const compliantThresholdTransferContractForAccount = new RiwoxowhvaContract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContractForFreezedAccount = new RiwoxowhvaContract({ mode, privateKey: freezedAccountPrivKey });
+const compliantThresholdTransferContract = new Riwoxowhva_v2Contract({ mode, privateKey: deployerPrivKey });
+const compliantThresholdTransferContractForAdmin = new Riwoxowhva_v2Contract({ mode, privateKey: adminPrivKey });
+const compliantThresholdTransferContractForAccount = new Riwoxowhva_v2Contract({ mode, privateKey: accountPrivKey });
+const compliantThresholdTransferContractForFreezedAccount = new Riwoxowhva_v2Contract({ mode, privateKey: freezedAccountPrivKey });
 const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
 const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey });
 const freezeRegistryContractForAdmin = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
@@ -73,32 +73,32 @@ describe('test compliant_threshold_transfer program', () => {
   }, timeout);
 
   test(`test update_admin_address`, async () => {
-    let tx = await compliantThresholdTransferContractForAdmin.update_admin_address(freezedAccount);
+    let tx = await compliantThresholdTransferContractForAdmin.update_roles_address(freezedAccount, 1);
     await tx.wait();
     let adminRole = await compliantThresholdTransferContract.roles(1);
     expect(adminRole).toBe(freezedAccount);
 
-    tx = await compliantThresholdTransferContractForFreezedAccount.update_admin_address(adminAddress);
+    tx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(adminAddress, 1);
     await tx.wait();
     adminRole = await compliantThresholdTransferContract.roles(1);
     expect(adminRole).toBe(adminAddress);
 
-    tx = await compliantThresholdTransferContractForFreezedAccount.update_admin_address(freezedAccount);
+    tx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(freezedAccount, 1);
     await expect(tx.wait()).rejects.toThrow();
   }, timeout);
 
   test(`test update_investigator_address`, async () => {
-    let tx = await compliantThresholdTransferContractForAdmin.update_investigator_address(freezedAccount);
+    let tx = await compliantThresholdTransferContractForAdmin.update_roles_address(freezedAccount, 2);
     await tx.wait()
     let investigatorRole = await compliantThresholdTransferContract.roles(2);
     expect(investigatorRole).toBe(freezedAccount);
 
-    tx = await compliantThresholdTransferContractForAdmin.update_investigator_address(investigatorAddress);
+    tx = await compliantThresholdTransferContractForAdmin.update_roles_address(investigatorAddress, 2);
     await tx.wait()
     investigatorRole = await compliantThresholdTransferContract.roles(2);
     expect(investigatorRole).toBe(investigatorAddress);
 
-    let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_investigator_address(freezedAccount);
+    let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(freezedAccount, 2);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
   }, timeout);
@@ -279,6 +279,68 @@ describe('test compliant_threshold_transfer program', () => {
     // If the user have already signed the tx will fail
     tx = await compliantThresholdTransferContractForAccount.signup();
     await expect(tx.wait()).rejects.toThrow();
+  }, timeout)
+
+  test(`test signup_and_transfer_private function`, async () => {
+    const isAccountSigned = await compliantThresholdTransferContract.owned_state_record(deployerAddress, false);
+    expect(isAccountSigned).toBe(false);
+
+    const latestBlockHeight = await getLatestBlockHeight();
+    const tx = await compliantThresholdTransferContract.signup_and_transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      latestBlockHeight,
+      senderMerkleProof,
+      recipientMerkleProof,
+      investigatorAddress
+    );
+    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+
+    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    expect(accountStateRecord.owner).toBe(account);
+    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(amount);
+    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+
+    const previousAmount = accountRecord.amount;
+    accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, deployerPrivKey);
+    const recipientRecord = decryptToken((tx as any).transaction.execution.transitions[5].outputs[1].value, recipientPrivKey);
+    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.amount).toBe(previousAmount - amount);
+    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.external_authorization_required).toBe(true);
+    expect(accountRecord.authorized_until).toBe(0);
+    expect(recipientRecord.owner).toBe(recipient);
+    expect(recipientRecord.amount).toBe(amount);
+    expect(recipientRecord.token_id).toBe(tokenId);
+    expect(recipientRecord.external_authorization_required).toBe(true);
+    expect(recipientRecord.authorized_until).toBe(0);
+
+    if(accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+      expect(decryptedComplianceRecord.amount).toBe(amount);
+      expect(decryptedComplianceRecord.sender).toBe(account);
+      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    } else {
+      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+    }
+
+    // If the user have already signed the tx will fail
+    const tx2 = await compliantThresholdTransferContract.signup();
+    await expect(tx2.wait()).rejects.toThrow();
+
+    const tx3 = await compliantThresholdTransferContract.signup_and_transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      latestBlockHeight,
+      senderMerkleProof,
+      recipientMerkleProof,
+      investigatorAddress
+    );
+    await expect(tx3.wait()).rejects.toThrow();
+
   }, timeout)
 
   test('test state record behavior', async () => {
