@@ -45,22 +45,13 @@ program tqxftxoicd_v2.aleo {
         freeze_list_root.set(0u8, new_root);
     }
 
-    async transition update_investigator_address(public new_investigator_address: address) -> Future {
-        return f_update_investigator_address(new_investigator_address, self.caller);
+   async transition update_roles_address(public new_address: address, role: u8) -> Future {
+        return f_update_roles_address(new_address, self.caller, role);
     }
-    async function f_update_investigator_address(new_investigator_address: address, caller: address) {
-        let admin_address: address = roles.get(1u8);
-        assert_eq(admin_address, caller);
-        roles.set(2u8, new_investigator_address);
-    }
-
-    async transition update_admin_address(public new_admin_address: address) -> Future {
-        return f_update_admin_address(new_admin_address, self.caller);
-    }
-    async function f_update_admin_address(new_admin_address: address, caller: address) {
+    async function f_update_roles_address(new_address: address, caller: address, role: u8) {
         let admin_address: address = roles.get_or_use(1u8, caller);
         assert_eq(admin_address, caller);
-        roles.set(1u8, new_admin_address);
+        roles.set(role, new_address);
     }
 
     // -------------------------
