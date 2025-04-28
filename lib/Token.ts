@@ -16,7 +16,8 @@ export async function initializeTokenProgram(
         programAddress,
         Contract,
         initMappings, 
-        requireInitialization
+        requireInitialization,
+        blockHeightWindow
     }: IPolicy 
 ) {
     const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
@@ -81,6 +82,11 @@ export async function initializeTokenProgram(
     if(initMappings) {
         const contract = new Contract({ mode, privateKey: deployerPrivKey });
         const tx = await contract.init_mappings();
+        await tx.wait();
+    }
+    if(blockHeightWindow) {
+        const contract = new Contract({ mode, privateKey: adminPrivKey });
+        const tx = await contract.init_mappings();        
         await tx.wait();
     }
 }

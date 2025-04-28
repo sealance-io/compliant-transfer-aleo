@@ -18,8 +18,9 @@ export interface IPolicy {
     tokenId: bigint,
     programAddress: string,
     Contract: any,
-    initMappings: boolean
-    requireInitialization: boolean
+    initMappings: boolean,
+    requireInitialization: boolean,
+    blockHeightWindow: number
 }
 
 // policies specs
@@ -32,6 +33,7 @@ export const policies: {[key: string]: IPolicy} = {
         Contract: Tqxftxoicd_v2Contract,
         initMappings: false,
         requireInitialization: false,
+        blockHeightWindow: 0,
     },
     threshold: {
         tokenName: "Threshold Token",
@@ -41,6 +43,7 @@ export const policies: {[key: string]: IPolicy} = {
         Contract: RiwoxowhvaContract,
         initMappings: true,
         requireInitialization: false,
+        blockHeightWindow: 150,
     },
     timelock: {
         tokenName: "TIMELOCK_TOKEN",
@@ -50,6 +53,7 @@ export const policies: {[key: string]: IPolicy} = {
         Contract: RawxtbrzceContract,
         initMappings: false,
         requireInitialization: true,
+        blockHeightWindow: 0,
     }
 }
 
