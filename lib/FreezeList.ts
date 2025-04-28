@@ -26,15 +26,16 @@ export async function AddToFreezeList(address: string, leavesLength: number) {
     addresses.push(address);
     const leaves = genLeaves(addresses)
     const tree = await buildTree(leaves);
-    const root = tree[14];
+    const root = tree[tree.length - 1];
 
     return { lastIndex, root };
   }
 }
 
 export function getLeafIndices(merkleTree: bigint[], address: string): [number, number] {
+  const num_leaves = Math.floor((merkleTree.length + 1) / 2);
   const addressBigInt = convertAddressToField(address);
-  const leaves = merkleTree.slice(0, 8);
+  const leaves = merkleTree.slice(0, num_leaves);
   let rightLeafIndex = leaves.findIndex((leaf: bigint) => addressBigInt <= leaf);
   let leftLeafIndex = rightLeafIndex - 1;
   if (rightLeafIndex === -1) {
