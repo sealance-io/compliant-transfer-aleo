@@ -18,7 +18,7 @@ const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
 const [deployerAddress, adminAddress, investigatorAddress] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const adminPrivKey = contract.getPrivateKey(deployerAddress);
+const adminPrivKey = contract.getPrivateKey(adminAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey })
@@ -50,8 +50,11 @@ const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPriv
     await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
     await setTimelockPolicyRole(adminPrivKey, exchangeContract.address(), 2);
 
-    const tx = await exchangeContract.update_admin(adminAddress);
-    await tx.wait();
+    const updateFreezeRegistryAdmin = await freezeRegistryContract.update_admin_address(adminAddress);
+    await updateFreezeRegistryAdmin.wait();
+    const updateExchangeAdmin = await exchangeContract.update_admin(adminAddress);
+    await updateExchangeAdmin.wait();
+    
     
     process.exit(0);
 })();
