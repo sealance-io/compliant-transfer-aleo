@@ -57,32 +57,32 @@ describe('test compliant_transfer program', () => {
   }, timeout);
 
   test(`test update_admin_address`, async () => {
-    let tx = await compliantTransferContractForAdmin.update_admin_address(freezedAccount);
+    let tx = await compliantTransferContractForAdmin.update_roles_address(freezedAccount, 1);
     await tx.wait();
     let adminRole = await compliantTransferContract.roles(1);
     expect(adminRole).toBe(freezedAccount);
 
-    tx = await compliantTransferContractForFreezedAccount.update_admin_address(adminAddress);
+    tx = await compliantTransferContractForFreezedAccount.update_roles_address(adminAddress, 1);
     await tx.wait();
     adminRole = await compliantTransferContract.roles(1);
     expect(adminRole).toBe(adminAddress);
 
-    tx = await compliantTransferContractForFreezedAccount.update_admin_address(freezedAccount);
+    tx = await compliantTransferContractForFreezedAccount.update_roles_address(freezedAccount, 1);
     await expect(tx.wait()).rejects.toThrow();
   }, timeout);
 
   test(`test update_investigator_address`, async () => {
-    let tx = await compliantTransferContractForAdmin.update_investigator_address(freezedAccount);
+    let tx = await compliantTransferContractForAdmin.update_roles_address(freezedAccount, 2);
     await tx.wait()
     let investigatorRole = await compliantTransferContract.roles(2);
     expect(investigatorRole).toBe(freezedAccount);
 
-    tx = await compliantTransferContractForAdmin.update_investigator_address(investigatorAddress);
+    tx = await compliantTransferContractForAdmin.update_roles_address(investigatorAddress, 2);
     await tx.wait()
     investigatorRole = await compliantTransferContract.roles(2);
     expect(investigatorRole).toBe(investigatorAddress);
 
-    let rejectedTx = await compliantTransferContractForFreezedAccount.update_investigator_address(freezedAccount);
+    let rejectedTx = await compliantTransferContractForFreezedAccount.update_roles_address(freezedAccount, 2);
     await expect(rejectedTx.wait()).rejects.toThrow();
   
   }, timeout);

@@ -2,7 +2,7 @@ import { ExecutionMode } from "@doko-js/core";
 import { stringToBigInt } from "./Conversion";
 import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
 import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
-import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
+import { Riwoxowhva_v2Contract } from "../artifacts/js/riwoxowhva_v2";
 
 // addresses
 export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
@@ -38,7 +38,7 @@ export const policies: {[key: string]: IPolicy} = {
         tokenSymbol: "THRESHOLD",
         tokenId: stringToBigInt("Threshold Token"),
         programAddress: COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
-        Contract: RiwoxowhvaContract,
+        Contract: Riwoxowhva_v2Contract,
         initMappings: true,
         requireInitialization: false,
     },

@@ -2,7 +2,7 @@ import token_registry.aleo;
 import uscrpnwqsx.aleo;
 
 // The 'compliant_threshold_transfer' program.
-program riwoxowhva.aleo {
+program riwoxowhva_v2.aleo {
 
     const TOKEN_ID: field = 438271370123737563379885991741056366field; // "Threshold Token" ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
@@ -35,23 +35,24 @@ program riwoxowhva.aleo {
         recipient: address
     }
 
+    struct TokenOwner {
+        account: address,
+        token_id: field
+    }
+
     record TokenComplianceStateRecord {
         owner: address,
         cumulative_amount_per_epoch: u128,
         latest_block_height: u32
     }
 
-    struct TokenOwner {
-        account: address,
-        token_id: field
-    }
-
-    async transition signup() -> (TokenComplianceStateRecord ,Future){
+    async transition signup() -> (TokenComplianceStateRecord, Future){
         let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
             owner: self.caller,
             cumulative_amount_per_epoch: 0u128,
             latest_block_height: 0u32
         };
+
         return (state_record, f_signup(self.caller));
     }
     async function f_signup(caller: address) {
@@ -61,6 +62,107 @@ program riwoxowhva.aleo {
         owned_state_record.set(caller, true);
     }
 
+    async transition signup_and_transfer_private(        
+        recipient: address,
+        amount: u128,
+        input_record: token_registry.aleo/Token,
+        public estimated_block_height: u32,
+        sender_merkle_proofs: [MerkleProof;2],
+        recipient_merkle_proofs: [MerkleProof;2],
+        public investigator_address: address) -> 
+    (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) 
+    {
+        let input_state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
+            owner: self.caller,
+            cumulative_amount_per_epoch: 0u128,
+            latest_block_height: 0u32
+        };
+
+        // The transfer_private function code   
+        assert_eq(input_record.token_id, TOKEN_ID);
+
+        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+
+        let authorization_call: (
+            token_registry.aleo/Token, // unauthorized_record
+            token_registry.aleo/Token, // authorized_record
+            Future
+        ) = token_registry.aleo/prehook_private(
+            input_record, 
+            amount, 
+            AUTHORIZED_UNTIL
+        );
+
+        let transfer_call: (
+            token_registry.aleo/Token, // sender record - the amount has to be zero. we don't need to return it
+            token_registry.aleo/Token, // recipient record
+            Future
+        ) = token_registry.aleo/transfer_private(
+            recipient,
+            amount,
+            authorization_call.1,
+        );
+
+        let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
+            owner: input_state_record.owner,
+            cumulative_amount_per_epoch: amount,
+            latest_block_height: estimated_block_height
+        };
+
+        let is_above_threshold: bool = amount > THRESHOLD;
+        let compliance_record: ComplianceRecord = ComplianceRecord {
+            owner: is_above_threshold ? investigator_address : ZERO_ADDRESS,
+            amount: is_above_threshold ? amount : 0u128,
+            sender: is_above_threshold ? input_record.owner : ZERO_ADDRESS,
+            recipient: is_above_threshold ? recipient : ZERO_ADDRESS,
+        };
+
+        return (            
+            compliance_record,
+            state_record,
+            authorization_call.0, 
+            transfer_call.1,
+            f_signup_and_transfer_private(
+                self.caller,
+                investigator_address,
+                estimated_block_height,
+                verify_sender,
+                verify_recipient,
+                authorization_call.2,
+                transfer_call.2
+                ));
+    }
+
+    async function f_signup_and_transfer_private(
+        caller: address,  
+        investigator_address: address,
+        estimated_block_height: u32,
+        verify_sender: Future,
+        verify_recipient: Future,  
+        authorization_call: Future,
+        transfer_call: Future) 
+    {
+        let is_owned_state_record: bool = owned_state_record.get_or_use(caller, false);
+        assert_eq(is_owned_state_record, false);
+        owned_state_record.set(caller, true);
+
+        verify_sender.await();
+        verify_recipient.await();
+
+        let role_address: address = roles.get(2u8);
+        assert_eq(role_address, investigator_address);
+
+        assert(block.height >= estimated_block_height);
+        let window: u32 = block_height_window.get(0u8);
+        window = block.height > window 
+            ? window
+            : block.height;
+        assert(estimated_block_height > (block.height - window));
+
+        authorization_call.await();
+        transfer_call.await();
+    }
 
     async transition update_block_height_window(public blocks: u32) -> Future {
         return f_update_block_height_window(blocks, self.caller);
@@ -81,22 +183,13 @@ program riwoxowhva.aleo {
         epoch.set(0u8, EPOCH);
     }
 
-    async transition update_investigator_address(public new_investigator_address: address) -> Future {
-        return f_update_investigator_address(new_investigator_address, self.caller);
+    async transition update_roles_address(public new_address: address, role: u8) -> Future {
+        return f_update_roles_address(new_address, self.caller, role);
     }
-    async function f_update_investigator_address(new_investigator_address: address, caller: address) {
-        let admin_address: address = roles.get(1u8);
-        assert_eq(admin_address, caller);
-        roles.set(2u8, new_investigator_address);
-    }
-
-    async transition update_admin_address(public new_admin_address: address) -> Future {
-        return f_update_admin_address(new_admin_address, self.caller);
-    }
-    async function f_update_admin_address(new_admin_address: address, caller: address) {
+    async function f_update_roles_address(new_address: address, caller: address, role: u8) {
         let admin_address: address = roles.get_or_use(1u8, caller);
         assert_eq(admin_address, caller);
-        roles.set(1u8, new_admin_address);
+        roles.set(role, new_address);
     }
 
     // -------------------------
@@ -330,8 +423,8 @@ program riwoxowhva.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let caller_address: address = roles.get(2u8);
-        assert_eq(caller_address, investigator_address);
+        let role_address: address = roles.get(2u8);
+        assert_eq(role_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(0u8);
@@ -444,7 +537,7 @@ program riwoxowhva.aleo {
         transfer_call.await();
     }
 
-        async transition transfer_priv_to_public(
+    async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
         input_record: token_registry.aleo/Token,
@@ -523,8 +616,8 @@ program riwoxowhva.aleo {
         verify_sender.await();
         verify_recipient.await();
         
-        let caller_address: address = roles.get(2u8);
-        assert_eq(caller_address, investigator_address);
+        let role_address: address = roles.get(2u8);
+        assert_eq(role_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(0u8);
