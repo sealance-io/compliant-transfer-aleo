@@ -82,21 +82,20 @@ program merkle_tree.aleo {
         
         let addr_field: field = addr as field;
         if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) {
-            assert_eq(merkle_proofs[0u32].siblings, merkle_proofs[1u32].siblings);
             // Ensure that if the address is the most left leaf, it is less than the first sibling
             if (merkle_proofs[0u32].leaf_index == 0u32) {
                 assert(addr_field < merkle_proofs[0u32].siblings[0u32]);
-            } else if (merkle_proofs[0u32].leaf_index >= 7u32) {
-                // Ensure that if the address is the most right leaf, it is greater than the last leaf
+            } else {
                 let depth: u32 = calculate_tree_depth(merkle_proofs[0u32]);
-                assert_eq(merkle_proofs[0u32].leaf_index, 2u32 ** (depth - 1u32) - 1u32);
+                let last_index_leaf: u32 = 2u32 ** (depth - 1u32) - 1u32;
+                assert_eq(merkle_proofs[0u32].leaf_index, last_index_leaf);
                 assert(addr_field > merkle_proofs[0u32].siblings[0u32]);
             }
         } else {
-            // Ensure the address is in between the provided leafs
+            // Ensure the address is in between the provided leavess
             assert(addr_field > merkle_proofs[0u32].siblings[0u32]);
             assert(addr_field < merkle_proofs[1u32].siblings[0u32]);
-            // Ensure the leafs are adjacent
+            // Ensure the leavess are adjacent
             assert_eq(merkle_proofs[0u32].leaf_index + 1u32, merkle_proofs[1u32].leaf_index);
         }
         
