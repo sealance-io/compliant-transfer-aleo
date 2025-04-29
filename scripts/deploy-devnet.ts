@@ -1,18 +1,18 @@
 import { ExecutionMode } from "@doko-js/core";
 
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
+import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
+import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from '../contract/base-contract';
 import { fundedAmount, policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
 import { setTimelockPolicyRole, setTokenRegistryRole } from "../lib/Role";
-import { GqrfmwbtykContract } from "../artifacts/js/gqrfmwbtyk";
-import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
-import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
-import { RiwoxowhvaContract } from "../artifacts/js/riwoxowhva";
+import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
+import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
+import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -21,12 +21,12 @@ const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode, privateKey: deployerPrivKey })
-const compliantThresholdTransferContract = new RiwoxowhvaContract({ mode, privateKey: deployerPrivKey });
-const compliantTimelockTransferContract = new RawxtbrzceContract({ mode, privateKey: deployerPrivKey })
-const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey })
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
-const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPrivKey });
+const compliantTransferContract = new Sealed_report_policyContract({ mode, privateKey: deployerPrivKey })
+const compliantThresholdTransferContract = new Sealed_threshold_report_policyContract({ mode, privateKey: deployerPrivKey });
+const compliantTimelockTransferContract = new Sealed_timelock_policyContract({ mode, privateKey: deployerPrivKey })
+const freezeRegistryContract = new Sealance_freezelist_registryContract({ mode, privateKey: deployerPrivKey })
+const merkleTreeContract = new Merkle_treeContract({ mode, privateKey: deployerPrivKey });
+const exchangeContract = new GqrfmwbtypContract({ mode, privateKey: deployerPrivKey });
 
 (async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
@@ -54,7 +54,6 @@ const exchangeContract = new GqrfmwbtykContract({ mode, privateKey: deployerPriv
     await updateFreezeRegistryAdmin.wait();
     const updateExchangeAdmin = await exchangeContract.update_admin(adminAddress);
     await updateExchangeAdmin.wait();
-    
     
     process.exit(0);
 })();

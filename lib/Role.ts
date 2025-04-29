@@ -1,4 +1,4 @@
-import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
+import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { Token_registryContract } from "../artifacts/js/token_registry"
 import { ZERO_ADDRESS, mode } from "./Constants";
 
@@ -13,7 +13,7 @@ export async function setTokenRegistryRole(privateKey: string, tokenId: bigint, 
 }
 
 export async function setTimelockPolicyRole(privateKey: string, address: string, role: number) {
-    const timelockContract = new RawxtbrzceContract({ mode, privateKey });
+    const timelockContract = new Sealed_timelock_policyContract({ mode, privateKey });
     const onchainRole = await timelockContract.roles(address, 0);
     if (onchainRole !== role) {
         const tx = await timelockContract.update_roles(address, role)

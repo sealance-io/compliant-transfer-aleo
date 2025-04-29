@@ -81,7 +81,7 @@ jobs:
     with:
       job_name: "Merkle Tree Test"
       test_command: "npm run test:select ./test/merkle_tree.test.ts"
-      watched_paths: "programs/rediwsozfo_v2.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   compliant-transfer-test:
@@ -91,7 +91,7 @@ jobs:
     with:
       job_name: "Compliant Transfer Test"
       test_command: "npm run test:select ./test/compliant_transfer_v0.test.ts"
-      watched_paths: "programs/tqxftxoicd_v2.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   freeze-registry-test:

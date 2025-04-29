@@ -1,8 +1,8 @@
 import { ExecutionMode } from "@doko-js/core";
 import { stringToBigInt } from "./Conversion";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
-import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
-import { Riwoxowhva_v2Contract } from "../artifacts/js/riwoxowhva_v2";
+import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
+import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
+import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 
 // addresses
 export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
@@ -26,39 +26,39 @@ export interface IPolicy {
 // policies specs
 export const policies: {[key: string]: IPolicy} = {
     compliant: {
-        tokenName: "SEALEDTOKEN_V2",
-        tokenSymbol: "SEALED",
-        tokenId: stringToBigInt("SEALEDTOKEN_V2"),
+        tokenName: "Sealed report policy",
+        tokenSymbol: "SEALED_REPORT_POLICY",
+        tokenId: stringToBigInt("SEALED_REPORT_POLICY"),
         programAddress: COMPLIANT_TRANSFER_ADDRESS,
-        Contract: Tqxftxoicd_v2Contract,
+        Contract: Sealed_report_policyContract,
         initMappings: false,
         requireInitialization: false,
         blockHeightWindow: 0,
     },
     threshold: {
-        tokenName: "Threshold Token",
-        tokenSymbol: "THRESHOLD",
-        tokenId: stringToBigInt("Threshold Token"),
+        tokenName: "Sealed threshold report policy",
+        tokenSymbol: "SEALED_THRESHOLD_REPORT_POLICY",
+        tokenId: stringToBigInt("SEALED_THRESHOLD_REPORT_POLICY"),
         programAddress: COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
-        Contract: Riwoxowhva_v2Contract,
+        Contract: Sealed_threshold_report_policyContract,
         initMappings: true,
         requireInitialization: false,
         blockHeightWindow: 150,
     },
     timelock: {
-        tokenName: "TIMELOCK_TOKEN",
-        tokenSymbol: "TIMELOCK",
-        tokenId: stringToBigInt("TIMELOCK"),
+        tokenName: "Sealed timelock policy",
+        tokenSymbol: "SEALED_TIMELOCK_POLICY",
+        tokenId: stringToBigInt("SEALED_TIMELOCK_POLICY"),
         programAddress: COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
-        Contract: RawxtbrzceContract,
+        Contract: Sealed_timelock_policyContract,
         initMappings: false,
         requireInitialization: true,
         blockHeightWindow: 0,
     }
 }
 
-export const THRESHOLD = 1000000n;
-export const EPOCH = 1800;
+export const THRESHOLD = 1000000000n;
+export const EPOCH = 18000;
 
 // merkle tree
 export const MAX_TREE_SIZE = 16;

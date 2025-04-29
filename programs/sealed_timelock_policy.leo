@@ -1,15 +1,14 @@
 import token_registry.aleo;
-import uscrpnwqsx.aleo;
+import sealance_freezelist_registry.aleo;
 
-// The 'compliant_timelock_transfer' program.
-program rawxtbrzce.aleo {
+program sealed_timelock_policy.aleo {
 
-    const TOKEN_ID: field = 6073470532514169675field; // TIMELOCK ascii encoded
+    const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
     const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
     const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
     const DECIMALS: u8 = 6u8;
     const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
-    const PROGRAM_ADDRESS: address = aleo18g6qksdhstu4e9exg9mfgv6cdq84exx24za9c6e50hgsmg5xjsfqq5saq3;
+    const PROGRAM_ADDRESS: address = aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
 
@@ -145,8 +144,8 @@ program rawxtbrzce.aleo {
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, Future) {
 
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
@@ -206,8 +205,8 @@ program rawxtbrzce.aleo {
         sealed_token: CompliantToken,
         lock_until: u32
     ) -> (CompliantToken, CompliantToken, Future) {
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.signer);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.signer);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
         let owner: TokenOwner = TokenOwner {
             account: self.signer,
@@ -268,8 +267,8 @@ program rawxtbrzce.aleo {
         sealed_token: CompliantToken,
         lock_until: u32
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
         
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
@@ -366,8 +365,8 @@ program rawxtbrzce.aleo {
         assert_eq(base_token.token_id, TOKEN_ID);
         assert_eq(base_token.amount, sealed_token.amount);
 
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record
@@ -442,8 +441,8 @@ program rawxtbrzce.aleo {
         assert_eq(base_token.token_id, TOKEN_ID);
         assert_eq(base_token.amount, sealed_token.amount);
 
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record

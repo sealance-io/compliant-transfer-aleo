@@ -1,10 +1,9 @@
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { Tqxftxoicd_v2Contract } from "../artifacts/js/tqxftxoicd_v2";
-import { ZERO_ADDRESS, mode } from "./Constants";
+import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
+import { mode } from "./Constants";
 import { convertAddressToField } from "./Conversion";
 import { buildTree, genLeaves } from "./MerkleTree";
 
-const compliantTransferContract = new Tqxftxoicd_v2Contract({ mode })
+const compliantTransferContract = new Sealed_report_policyContract({ mode })
 
 export async function AddToFreezeList(address: string, leavesLength: number) {
   const isAccountFreezed = await compliantTransferContract.freeze_list(address, false)
