@@ -1,0 +1,206 @@
+name: Aleo Deployment Snapshot
+
+on:
+  # TODO: enable push to 'main' trigger
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - '.github/workflows/on-push-main.yml'
+  #     - 'src/**'
+  #     - '.dockerignore'
+  #     - '.nvmrc'
+  #     - 'Dockerfile'
+  #     - 'package.json'
+  #     - 'package-lock.json'
+  #     - 'tsconfig.json'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Specific commit SHA to build (optional)'
+        required: false
+        default: ''
+      branch:
+        description: 'Branch to build from if no commit SHA provided'
+        required: false
+        default: 'main'
+      amareleo_version:
+        description: 'Amareleo version to use'
+        required: false
+        default: 'v2.2.0'
+
+env:
+    DOCKER_BUILDKIT: 1 # enable docker buildkit
+
+jobs:
+  publish_deployment_snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      packages: 'write'
+    timeout-minutes: 90
+    container:
+      image: ghcr.io/sealance-io/leo-lang-ci:v2.5.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
+      options: --cpus 2 --add-host=host.docker.internal:host-gateway
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.inputs.commit_sha || github.ref }}
+          fetch-depth: 0 # Need full history
+
+      - name: Determine commit SHA and check if latest
+        id: commit_info
+        run: |
+          set -euo pipefail
+          
+          # Get the Amareleo version
+          AMARELEO_VERSION="${{ github.event.inputs.amareleo_version || 'v2.2.0' }}"
+          echo "amareleo_version=${AMARELEO_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Get the actual commit SHA we're building
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.commit_sha }}" ]; then
+            COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+          else
+            COMMIT_SHA=$(git rev-parse HEAD)
+          fi
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          
+          # Get latest commit on main branch
+          LATEST_MAIN=$(git ls-remote https://github.com/${{ github.repository }}.git refs/heads/main | cut -f1)
+          echo "latest_main=${LATEST_MAIN}" >> $GITHUB_OUTPUT
+          
+          # Check if this is the latest commit on main
+          if [ "$COMMIT_SHA" = "$LATEST_MAIN" ]; then
+            echo "is_latest=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_latest=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Get current date in ISO-8601 format
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
+
+      - name: Setup doko-js-cli
+        uses: ./.github/actions/setup-doko-js
+        with:
+          doko-repo: 'sealance-io/doko-js'
+          doko-branch: 'fixes_to_dokojs'
+
+      - uses: actions/setup-node@v4
+        with:
+          cache: "npm"
+          node-version-file: '.nvmrc'
+      - run: cp .env.example .env
+      - name: Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compile leo
+        run: npm run compile
+      - name: Create data directory
+        run: |
+          set -euo pipefail
+          mkdir -p data
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+
+      - name: Run container, deploy and extract state
+        run: |
+          set -euo pipefail
+
+          docker pull ghcr.io/sealance-io/amareleo-chain:v2.2.0
+          docker run -d -p 3030:3030 --name devent ghcr.io/sealance-io/amareleo-chain:v2.2.0
+          
+          npm run deploy:devnet
+          
+          docker cp devent:/data/amareleo ./data/
+          
+          docker stop devent
+          docker rm devent
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+
+      - name: Prepare tags
+        id: prepare_tags
+        run: |
+          set -euo pipefail
+          
+          AMARELEO_VERSION="${{ steps.commit_info.outputs.amareleo_version }}"
+          SHORT_SHA="${{ steps.commit_info.outputs.short_sha }}"
+          
+          # Base tag with version and commit SHA
+          BASE_TAG="ghcr.io/sealance-io/amareleo-chain-custom:${AMARELEO_VERSION}-${SHORT_SHA}"
+          
+          # Start building the tags list
+          TAGS="${BASE_TAG}"
+          
+          # Add a tag with just the Amareleo version
+          TAGS="${TAGS},ghcr.io/sealance-io/amareleo-chain-custom:${AMARELEO_VERSION}"
+          
+          # Add 'latest' tag only if this is the latest commit on main
+          if [ "${{ steps.commit_info.outputs.is_latest }}" = "true" ]; then
+            TAGS="${TAGS},ghcr.io/sealance-io/amareleo-chain-custom:latest"
+          fi
+          
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "base_tag=${BASE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.prepare_tags.outputs.tags }}
+          build-args: |
+            AMARELEO_VERSION=${{ steps.commit_info.outputs.amareleo_version }}
+            GIT_COMMIT=${{ steps.commit_info.outputs.commit_sha }}
+            BUILD_DATE=${{ steps.commit_info.outputs.build_date }}
+            REPO_URL=https://github.com/${{ github.repository }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.commit_info.outputs.build_date }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.commit_info.outputs.commit_sha }}
+            com.sealance.amareleo.version=${{ steps.commit_info.outputs.amareleo_version }}
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
+          # use layer caching. Don't forget mode=max to also cache the build image
+          # (vs only the final image - mode: min)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image information
+        run: |
+          set -euo pipefail
+          
+          echo "Successfully built and pushed:"
+          echo "Main tag: ${{ steps.prepare_tags.outputs.base_tag }}"
+          echo "All tags: ${{ steps.prepare_tags.outputs.tags }}"
+          echo "Based on Amareleo version: ${{ steps.commit_info.outputs.amareleo_version }}"
+          echo "Commit: ${{ steps.commit_info.outputs.commit_sha }}"
+          echo "Build date: ${{ steps.commit_info.outputs.build_date }}"
