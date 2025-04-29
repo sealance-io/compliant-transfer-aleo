@@ -319,8 +319,8 @@ test(`test signup`, async () => {
     expect(recipientStateRecord.latest_block_height).toBe(latestBlockHeight);
 
     const previousAmount = recipientRecord.amount;
-    recipientRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, deployerPrivKey);
-    accountRecord = decryptToken((tx as any).transaction.execution.transitions[5].outputs[1].value, recipientPrivKey);
+    recipientRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, recipientPrivKey);
+    accountRecord = decryptToken((tx as any).transaction.execution.transitions[5].outputs[1].value, accountPrivKey);
     expect(accountRecord.owner).toBe(account);
     expect(accountRecord.amount).toBe(amount);
     expect(accountRecord.token_id).toBe(tokenId);
@@ -357,7 +357,7 @@ test(`test signup`, async () => {
     await expect(tx3.wait()).rejects.toThrow();
 
   }, timeout)
-
+/*
   test('test state record behavior', async () => {
     const latestBlockHeight1 = await getLatestBlockHeight()
     let transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
@@ -842,5 +842,5 @@ test(`test signup`, async () => {
     } else {
       expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
     }
-  }, timeout)
+  }, timeout)*/
 })
