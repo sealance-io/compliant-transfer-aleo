@@ -6,7 +6,7 @@ program riwoxowhva_v2.aleo {
 
     const TOKEN_ID: field = 438271370123737563379885991741056366field; // "Threshold Token" ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const PROGRAM_ADDRESS: address = aleo1w9w0zz3xlxngpws8q7cw9c98den5u3jkqt2y60effkphhe3urs8q5xhdtz;
+    const PROGRAM_ADDRESS: address = aleo1crqfjftyxdty2ugd788j655clkptrfpqnqm0xdvt296dmtmm6gzst2qfkz;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
     const THRESHOLD: u128 = 1000000u128;
@@ -62,26 +62,19 @@ program riwoxowhva_v2.aleo {
         owned_state_record.set(caller, true);
     }
 
+    // BE AWARE: This function will reveal the sender's address 
     async transition signup_and_transfer_private(        
         recipient: address,
         amount: u128,
         input_record: token_registry.aleo/Token,
         public estimated_block_height: u32,
-        sender_merkle_proofs: [MerkleProof;2],
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address) -> 
     (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) 
     {
-        let input_state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
-            owner: self.caller,
-            cumulative_amount_per_epoch: 0u128,
-            latest_block_height: 0u32
-        };
-
-        // The transfer_private function code   
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
@@ -105,7 +98,7 @@ program riwoxowhva_v2.aleo {
         );
 
         let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
-            owner: input_state_record.owner,
+            owner: self.caller,
             cumulative_amount_per_epoch: amount,
             latest_block_height: estimated_block_height
         };
