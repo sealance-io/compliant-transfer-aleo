@@ -319,8 +319,10 @@ test(`test signup`, async () => {
     expect(recipientStateRecord.latest_block_height).toBe(latestBlockHeight);
 
     const previousAmount = recipientRecord.amount;
-    recipientRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, recipientPrivKey);
-    accountRecord = decryptToken((tx as any).transaction.execution.transitions[5].outputs[1].value, accountPrivKey);
+
+    recipientRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, recipientPrivKey);
+    accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[1].value, accountPrivKey);
+
     expect(accountRecord.owner).toBe(account);
     expect(accountRecord.amount).toBe(amount);
     expect(accountRecord.token_id).toBe(tokenId);
@@ -332,7 +334,7 @@ test(`test signup`, async () => {
     expect(recipientRecord.external_authorization_required).toBe(true);
     expect(recipientRecord.authorized_until).toBe(0);
 
-    if(accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+    if(recipientStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
       const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
       expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
       expect(decryptedComplianceRecord.amount).toBe(amount);
@@ -343,13 +345,13 @@ test(`test signup`, async () => {
     }
 
     // If the user have already signed the tx will fail
-    const tx2 = await compliantThresholdTransferContract.signup();
+    const tx2 = await compliantThresholdTransferContractForRecipient.signup();
     await expect(tx2.wait()).rejects.toThrow();
 
     const tx3 = await compliantThresholdTransferContractForRecipient.signup_and_transfer_private(
       account,
       amount,
-      accountRecord,
+      recipientRecord,
       latestBlockHeight,
       senderMerkleProof,
       investigatorAddress
@@ -357,7 +359,7 @@ test(`test signup`, async () => {
     await expect(tx3.wait()).rejects.toThrow();
 
   }, timeout)
-/*
+
   test('test state record behavior', async () => {
     const latestBlockHeight1 = await getLatestBlockHeight()
     let transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
@@ -842,5 +844,5 @@ test(`test signup`, async () => {
     } else {
       expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
     }
-  }, timeout)*/
+  }, timeout)
 })
