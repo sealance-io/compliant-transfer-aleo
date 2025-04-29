@@ -2,18 +2,18 @@ import { ExecutionMode } from "@doko-js/core";
 
 import { BaseContract } from '../contract/base-contract';
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { decryptComplianceRecord } from "../artifacts/js/leo2js/tqxftxoicd_v2";
+import { decryptComplianceRecord } from "../artifacts/js/leo2js/sealed_report_policy";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
-import { COMPLIANT_THRESHOLD_TRANSFER_ADDRESS, EPOCH, MAX_TREE_SIZE, THRESHOLD, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, policies, timeout } from "../lib/Constants";
+import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
+import { COMPLIANT_THRESHOLD_TRANSFER_ADDRESS, EPOCH, MAX_TREE_SIZE, THRESHOLD, defaultAuthorizedUntil, fundedAmount, policies, timeout } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
-import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/riwoxowhva";
+import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/sealed_threshold_report_policy";
 import { getLatestBlockHeight } from "../lib/Block";
-import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
-import { Riwoxowhva_v2Contract } from "../artifacts/js/riwoxowhva_v2";
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
+import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
@@ -35,15 +35,15 @@ const recipientPrivKey = contract.getPrivateKey(recipient);
 const tokenRegistryContract = new Token_registryContract({ mode, privateKey: deployerPrivKey });
 const tokenRegistryContractForAdmin = new Token_registryContract({ mode, privateKey: adminPrivKey });
 const tokenRegistryContractForAccount = new Token_registryContract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContract = new Riwoxowhva_v2Contract({ mode, privateKey: deployerPrivKey });
-const compliantThresholdTransferContractForAdmin = new Riwoxowhva_v2Contract({ mode, privateKey: adminPrivKey });
-const compliantThresholdTransferContractForAccount = new Riwoxowhva_v2Contract({ mode, privateKey: accountPrivKey });
-const compliantThresholdTransferContractForFreezedAccount = new Riwoxowhva_v2Contract({ mode, privateKey: freezedAccountPrivKey });
-const compliantThresholdTransferContractForRecipient = new Riwoxowhva_v2Contract({ mode, privateKey: recipientPrivKey });
+const compliantThresholdTransferContract = new Sealed_threshold_report_policyContract({ mode, privateKey: deployerPrivKey });
+const compliantThresholdTransferContractForAdmin = new Sealed_threshold_report_policyContract({ mode, privateKey: adminPrivKey });
+const compliantThresholdTransferContractForAccount = new Sealed_threshold_report_policyContract({ mode, privateKey: accountPrivKey });
+const compliantThresholdTransferContractForFreezedAccount = new Sealed_threshold_report_policyContract({ mode, privateKey: freezedAccountPrivKey });
+const compliantThresholdTransferContractForRecipient = new Sealed_threshold_report_policyContract({ mode, privateKey: recipientPrivKey });
 
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
-const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey });
-const freezeRegistryContractForAdmin = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
+const merkleTreeContract = new Merkle_treeContract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContract = new Sealance_freezelist_registryContract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({ mode, privateKey: adminPrivKey });
 
 const amount = 1n;
 let root: bigint;

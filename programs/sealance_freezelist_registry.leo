@@ -1,8 +1,7 @@
 
-import rediwsozfo_v2.aleo;
+import merkle_tree.aleo;
 
-// The 'freeze_registry' program.
-program uscrpnwqsx.aleo {
+program sealance_freezelist_registry.aleo {
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
 
     struct MerkleProof {
@@ -46,7 +45,7 @@ program uscrpnwqsx.aleo {
     }
 
     async transition verify_non_inclusion_priv(account: address, merkle_proof: [MerkleProof; 2]) -> Future {
-        let root: field = rediwsozfo_v2.aleo/verify_non_inclusion(account, merkle_proof);
+        let root: field = merkle_tree.aleo/verify_non_inclusion(account, merkle_proof);
         return f_verify_non_inclusion_priv(root);
     }
     async function f_verify_non_inclusion_priv(root: field) {

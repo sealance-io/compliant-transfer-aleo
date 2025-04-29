@@ -1,12 +1,12 @@
 import { ExecutionMode } from "@doko-js/core";
 
 import { BaseContract } from '../contract/base-contract';
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
+import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { MAX_TREE_SIZE, ZERO_ADDRESS, fundedAmount, timeout } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
@@ -19,11 +19,11 @@ const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const freezeRegistryContract = new UscrpnwqsxContract({ mode, privateKey: deployerPrivKey });
-const freezeRegistryContractForAdmin = new UscrpnwqsxContract({ mode, privateKey: adminPrivKey });
+const freezeRegistryContract = new Sealance_freezelist_registryContract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({ mode, privateKey: adminPrivKey });
 
-const freezeRegistryContractForFreezedAccount = new UscrpnwqsxContract({ mode, privateKey: freezedAccountPrivKey });
-const merkleTreeContract = new Rediwsozfo_v2Contract({ mode, privateKey: deployerPrivKey });
+const freezeRegistryContractForFreezedAccount = new Sealance_freezelist_registryContract({ mode, privateKey: freezedAccountPrivKey });
+const merkleTreeContract = new Merkle_treeContract({ mode, privateKey: deployerPrivKey });
 
 let root: bigint;
 

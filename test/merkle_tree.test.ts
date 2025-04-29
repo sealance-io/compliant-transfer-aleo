@@ -1,5 +1,5 @@
 import { ExecutionMode } from "@doko-js/core";
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
+import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { MAX_TREE_SIZE, timeout, ZERO_ADDRESS } from "../lib/Constants";
 import { getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
@@ -8,7 +8,7 @@ import { Account } from "@provablehq/sdk";
 import { convertAddressToField } from "../lib/Conversion";
 
 const mode = ExecutionMode.SnarkExecute;
-const contract = new Rediwsozfo_v2Contract({ mode });
+const contract = new Merkle_treeContract({ mode });
 
 describe("merkle_tree lib, buildTree", () => {
   it("should build a valid tree with 2 leaves", async () => {
