@@ -1,11 +1,11 @@
 import token_registry.aleo;
-import rediwsozfo_v2.aleo;
+import merkle_tree.aleo;
 
-program tqxftxoicd_v2.aleo {
+program sealed_report_policy.aleo {
 
-    const TOKEN_ID: field = 1688926949047677303695061932791346field; // SEALEDTOKEN_V2 ascii encoded
+    const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const PROGRAM_ADDRESS: address = aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc;
+    const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
 
     // Mappings
@@ -141,7 +141,7 @@ program tqxftxoicd_v2.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
-        let root: field = rediwsozfo_v2.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
@@ -233,8 +233,8 @@ program tqxftxoicd_v2.aleo {
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let sender_root: field = rediwsozfo_v2.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-        let recipient_root: field = rediwsozfo_v2.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         assert_eq(sender_root, recipient_root);
 
         let authorization_call: (
@@ -302,7 +302,7 @@ program tqxftxoicd_v2.aleo {
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let root: field = rediwsozfo_v2.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record

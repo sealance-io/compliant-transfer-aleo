@@ -1,16 +1,15 @@
 import token_registry.aleo;
-import uscrpnwqsx.aleo;
+import sealance_freezelist_registry.aleo;
 
-// The 'compliant_threshold_transfer' program.
-program riwoxowhva_v2.aleo {
+program sealed_threshold_report_policy.aleo {
 
-    const TOKEN_ID: field = 438271370123737563379885991741056366field; // "Threshold Token" ascii encoded
+    const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const PROGRAM_ADDRESS: address = aleo1crqfjftyxdty2ugd788j655clkptrfpqnqm0xdvt296dmtmm6gzst2qfkz;
+    const PROGRAM_ADDRESS: address = aleo14s6pc22xlf33wm62422v24equzj0s5wlsffrcl43lgfyy6wsdvgs9h6ns7;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
-    const THRESHOLD: u128 = 1000000u128;
-    const EPOCH: u32 = 1800u32; // 1-2.5 hours 
+    const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
+    const EPOCH: u32 = 18000u32; // 10-25 hours 
 
     // Mappings
     mapping freeze_registry_program_name: u8 => u128;
@@ -74,8 +73,8 @@ program riwoxowhva_v2.aleo {
     {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record
@@ -196,8 +195,8 @@ program riwoxowhva_v2.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Future) {
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
 
         let owner: TokenOwner = TokenOwner {
@@ -260,8 +259,8 @@ program riwoxowhva_v2.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Future) {
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.signer);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.signer);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
         let owner: TokenOwner = TokenOwner {
             account: self.signer,
@@ -325,8 +324,8 @@ program riwoxowhva_v2.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
         
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
@@ -443,8 +442,8 @@ program riwoxowhva_v2.aleo {
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record
@@ -541,8 +540,8 @@ program riwoxowhva_v2.aleo {
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
         
-        let verify_sender: Future = uscrpnwqsx.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
-        let verify_recipient: Future = uscrpnwqsx.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
         let authorization_call: (
             token_registry.aleo/Token, // unauthorized_record

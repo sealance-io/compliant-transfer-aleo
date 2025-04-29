@@ -1,5 +1,4 @@
-// The 'merkle_tree' program.
-program rediwsozfo_v2.aleo {
+program merkle_tree.aleo {
     
     struct MerkleProof {
         siblings: [field; 16],

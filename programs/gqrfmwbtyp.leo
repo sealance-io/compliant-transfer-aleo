@@ -1,10 +1,10 @@
 import credits.aleo;
 import token_registry.aleo;
-import rawxtbrzce.aleo;
+import sealed_timelock_policy.aleo;
 
 // The 'exchange' program.
 // This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
-program gqrfmwbtyk.aleo {
+program gqrfmwbtyp.aleo {
     
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     const DEFAULT_RATE: u128 = 10u128;
@@ -60,20 +60,20 @@ program gqrfmwbtyk.aleo {
         mint_call.await();
     }
 
-    async transition exchange_timelock_token(public amount: u64, public rate: u128) -> (rawxtbrzce.aleo/CompliantToken, token_registry.aleo/Token, Future) {
+    async transition exchange_timelock_token(public amount: u64, public rate: u128) -> (sealed_timelock_policy.aleo/CompliantToken, token_registry.aleo/Token, Future) {
         let transfer_credits_call: Future = credits.aleo/transfer_public_as_signer(
             TREASURY_ADDRESS,
             amount
         );
 
         let token_amount: u128 = rate * amount as u128;
-        let mint_token_call: (rawxtbrzce.aleo/CompliantToken, token_registry.aleo/Token, Future) = rawxtbrzce.aleo/mint_private(
+        let mint_token_call: (sealed_timelock_policy.aleo/CompliantToken, token_registry.aleo/Token, Future) = sealed_timelock_policy.aleo/mint_private(
             self.caller,
             token_amount,
             0u32
         );
 
-        return (mint_token_call.0, mint_token_call.1, f_exchange_timelock_token(6073470532514169675field, rate, transfer_credits_call, mint_token_call.2));
+        return (mint_token_call.0, mint_token_call.1, f_exchange_timelock_token(31155203188273609789785737924444174490841009372087129field, rate, transfer_credits_call, mint_token_call.2));
     }
 
     async function f_exchange_timelock_token(token_id: field, rate: u128,transfer_call: Future, mint_call: Future) {

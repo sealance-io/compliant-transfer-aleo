@@ -1,10 +1,10 @@
-import { ExecutionMode, PROGRAM_DIRECTORY } from "@doko-js/core";
+import { ExecutionMode } from "@doko-js/core";
 
 import { BaseContract } from "../contract/base-contract";
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { decryptCompliantToken } from "../artifacts/js/leo2js/rawxtbrzce";
+import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
-import { Rediwsozfo_v2Contract } from "../artifacts/js/rediwsozfo_v2";
+import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 
 import {
   MAX_TREE_SIZE,
@@ -17,10 +17,9 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { stringToBigInt } from "../lib/Conversion";
 import { initializeTokenProgram } from "../lib/Token";
-import { UscrpnwqsxContract } from "../artifacts/js/uscrpnwqsx";
-import { RawxtbrzceContract } from "../artifacts/js/rawxtbrzce";
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
+import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 
 const mode = ExecutionMode.SnarkExecute;
@@ -44,36 +43,36 @@ const tokenRegistryContractForAccount = new Token_registryContract({
   mode,
   privateKey: accountPrivKey,
 });
-const timelockContract = new RawxtbrzceContract({
+const timelockContract = new Sealed_timelock_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const timelockContractForAdmin = new RawxtbrzceContract({
+const timelockContractForAdmin = new Sealed_timelock_policyContract({
   mode,
   privateKey: adminPrivKey,
 });
-const timelockContractForAccount = new RawxtbrzceContract({
+const timelockContractForAccount = new Sealed_timelock_policyContract({
   mode,
   privateKey: accountPrivKey,
 });
-const timelockContractForRecipient = new RawxtbrzceContract({
+const timelockContractForRecipient = new Sealed_timelock_policyContract({
   mode,
   privateKey: recipientPrivKey,
 });
 const timelockContractForFreezedAccount =
-  new RawxtbrzceContract({
+  new Sealed_timelock_policyContract({
     mode,
     privateKey: freezedAccountPrivKey,
   });
-const merkleTreeContract = new Rediwsozfo_v2Contract({
+const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContract = new UscrpnwqsxContract({
+const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContractForAdmin = new UscrpnwqsxContract({
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
   mode,
   privateKey: adminPrivKey,
 });
