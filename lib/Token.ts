@@ -86,7 +86,7 @@ export async function initializeTokenProgram(
     }
     if(blockHeightWindow) {
         const contract = new Contract({ mode, privateKey: adminPrivKey });
-        const tx = await contract.init_mappings();        
+        const tx = await contract.update_block_height_window(blockHeightWindow);        
         await tx.wait();
     }
 }
