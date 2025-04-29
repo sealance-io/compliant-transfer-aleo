@@ -6,7 +6,7 @@ import { Riwoxowhva_v2Contract } from "../artifacts/js/riwoxowhva_v2";
 
 // addresses
 export const COMPLIANT_TRANSFER_ADDRESS = "aleo1t6aat4vk4u7jq2zk5fjk2actdp64s7n6m4pmn3xnw4quxw2545qsmk2mlc";
-export const COMPLIANT_THRESHOLD_TRANSFER_ADDRESS = "aleo1w9w0zz3xlxngpws8q7cw9c98den5u3jkqt2y60effkphhe3urs8q5xhdtz";
+export const COMPLIANT_THRESHOLD_TRANSFER_ADDRESS = "aleo1crqfjftyxdty2ugd788j655clkptrfpqnqm0xdvt296dmtmm6gzst2qfkz";
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 export const COMPLIANT_TIMELOCK_TRANSFER_ADDRESS =
   "aleo18g6qksdhstu4e9exg9mfgv6cdq84exx24za9c6e50hgsmg5xjsfqq5saq3";
