@@ -55,6 +55,18 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha || github.ref }}
           fetch-depth: 0 # Need full history
+          set-safe-directory: true # Explicitly set the repository as a safe directory
+
+      # Fallback if 'set-safe-directory' fails
+      - name: Manual safe directory configuration
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$(pwd)"
+          git config --global --add safe.directory /__w/compliant-transfer-aleo/compliant-transfer-aleo
+          # Verify configuration
+          git config --get-all safe.directory
 
       - name: Determine commit SHA and check if latest
         id: commit_info
@@ -150,7 +162,7 @@ jobs:
         id: prepare_tags
         run: |
           set -euo pipefail
-          
+
           AMARELEO_VERSION="${{ steps.commit_info.outputs.amareleo_version }}"
           SHORT_SHA="${{ steps.commit_info.outputs.short_sha }}"
           DATE_TAG=$(date -u +"%Y%m%d")
