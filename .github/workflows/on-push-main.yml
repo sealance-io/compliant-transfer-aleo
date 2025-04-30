@@ -59,7 +59,6 @@ jobs:
 
       # Fallback if 'set-safe-directory' fails
       - name: Manual safe directory configuration
-        if: ${{ failure() }}
         shell: bash
         run: |
           set -euo pipefail
