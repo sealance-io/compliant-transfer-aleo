@@ -7,7 +7,7 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { COMPLIANT_TRANSFER_ADDRESS, MAX_TREE_SIZE, ZERO_ADDRESS, defaultAuthorizedUntil, fundedAmount, policies, timeout } from "../lib/Constants";
-import { getSiblingPath } from "../lib/FreezeList";
+import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
@@ -134,9 +134,12 @@ describe('test compliant_transfer program', () => {
     const leaves = genLeaves([freezedAccount])
     const tree = await buildTree(leaves);
     root = tree[tree.length - 1];
-    senderMerkleProof = [getSiblingPath(tree, 6, MAX_TREE_SIZE), getSiblingPath(tree, 7, MAX_TREE_SIZE)];
-    recipientMerkleProof = [getSiblingPath(tree, 7, MAX_TREE_SIZE), getSiblingPath(tree, 7, MAX_TREE_SIZE)];
-    freezedAccountMerkleProof = [getSiblingPath(tree, 7, MAX_TREE_SIZE), getSiblingPath(tree, 7, MAX_TREE_SIZE)];
+    const senderLeafIndices = getLeafIndices(tree, account);
+    const recipientLeafIndices = getLeafIndices(tree, recipient);
+    const freezedAccountLeafIndices = getLeafIndices(tree, freezedAccount);    
+    senderMerkleProof = [getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE), getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE)];
+    recipientMerkleProof = [getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE), getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE)];
+    freezedAccountMerkleProof = [getSiblingPath(tree, freezedAccountLeafIndices[0], MAX_TREE_SIZE), getSiblingPath(tree, freezedAccountLeafIndices[1], MAX_TREE_SIZE)];
   }, timeout);
 
   test(`verify compliant_transfer address`, async () => {
@@ -308,6 +311,7 @@ describe('test compliant_transfer program', () => {
       recipient,
       amount
     );
+
     await tx.wait();
   }, timeout)
 

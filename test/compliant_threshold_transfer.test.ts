@@ -321,7 +321,7 @@ test(`test signup`, async () => {
     const previousAmount = recipientRecord.amount;
 
     recipientRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, recipientPrivKey);
-    accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[1].value, accountPrivKey);
+    const accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[1].value, accountPrivKey);
 
     expect(accountRecord.owner).toBe(account);
     expect(accountRecord.amount).toBe(amount);
