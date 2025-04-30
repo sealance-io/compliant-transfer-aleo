@@ -145,20 +145,24 @@ jobs:
         env:
           DOCKER_HOST: "unix:///var/run/docker.sock"
 
-      - name: Prepare tags
-        id: prepare_tags
+      - name: Prepare tags with date-based caching
         shell: bash
+        id: prepare_tags
         run: |
           set -euo pipefail
           
           AMARELEO_VERSION="${{ steps.commit_info.outputs.amareleo_version }}"
           SHORT_SHA="${{ steps.commit_info.outputs.short_sha }}"
+          DATE_TAG=$(date -u +"%Y%m%d")
           
           # Base tag with version and commit SHA
           BASE_TAG="ghcr.io/sealance-io/amareleo-chain-custom:${AMARELEO_VERSION}-${SHORT_SHA}"
           
           # Start building the tags list
           TAGS="${BASE_TAG}"
+          
+          # Add date-based tag for caching and fixed references
+          TAGS="${TAGS},ghcr.io/sealance-io/amareleo-chain-custom:${AMARELEO_VERSION}-${DATE_TAG}"
           
           # Add a tag with just the Amareleo version
           TAGS="${TAGS},ghcr.io/sealance-io/amareleo-chain-custom:${AMARELEO_VERSION}"
