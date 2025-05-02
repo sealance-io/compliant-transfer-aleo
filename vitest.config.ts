@@ -8,6 +8,10 @@ export default defineConfig({
       // Using node environment for all tests
       ['**/*.test.ts', 'node'],
     ],
+    typecheck: {
+      tsconfig: './tsconfig.vitest.json',
+      enabled: true,
+    },
     testTimeout: 3000000,
     hookTimeout: 3000000,
     
