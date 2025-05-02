@@ -18,8 +18,8 @@
     "compile": "dokojs compile",
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
-    "test": "node --no-warnings --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.js --runInBand",
-    "test:select": "npm run test --"
+    "test": "vitest run",
+    "test:select": "vitest run"
   },
   "devDependencies": {
     "cross-env": "7.0.3",
