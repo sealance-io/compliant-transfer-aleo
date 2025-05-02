@@ -4,10 +4,7 @@ export default defineConfig({
   test: {
     include: ['**/*.{test,spec}.{js,ts,jsx,tsx}'],
     globals: true,
-    environmentMatchGlobs: [
-      // Using node environment for all tests
-      ['**/*.test.ts', 'node'],
-    ],
+    environment: 'node', // Default environment
     typecheck: {
       tsconfig: './tsconfig.vitest.json',
       enabled: true,
