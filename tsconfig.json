@@ -5,6 +5,18 @@
     "moduleResolution": "Node",
     "target": "esnext",
     "allowJs": true,
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "test/**/*",
+    "*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

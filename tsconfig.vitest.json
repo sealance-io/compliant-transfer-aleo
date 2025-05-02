@@ -1,0 +1,19 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "module": "NodeNext",
+      "moduleResolution": "Node",
+      "target": "esnext",
+      "sourceMap": true,
+      "types": ["vitest/globals"]
+    },
+    "include": [
+      "src/**/*",
+      "test/**/*",
+      "vitest.*.ts",
+      "vitest.config.ts"
+    ],
+    "exclude": [
+      "node_modules"
+    ]
+  }

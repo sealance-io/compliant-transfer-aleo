@@ -11,10 +11,10 @@
     "test": "test"
   },
   "scripts": {
-    "deploy:devnet": "npx tsx scripts/deploy-devnet.ts",
-    "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx scripts/deploy-testnet.ts",
-    "update-freeze-list:devnet": "npx tsx scripts/update-freeze-list.ts",
-    "update-freeze-list:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx scripts/update-freeze-list.ts",
+    "deploy:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-devnet.ts",
+    "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-testnet.ts",
+    "update-freeze-list:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/update-freeze-list.ts",
+    "update-freeze-list:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/update-freeze-list.ts",
     "compile": "dokojs compile",
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
