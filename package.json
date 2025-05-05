@@ -15,7 +15,7 @@
     "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-testnet.ts",
     "update-freeze-list:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/update-freeze-list.ts",
     "update-freeze-list:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/update-freeze-list.ts",
-    "compile": "dokojs compile",
+    "compile": "rimraf artifacts && dokojs compile",
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "test": "vitest run",
@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "cross-env": "7.0.3",
+    "rimraf": "6.0.1",
     "testcontainers": "10.24.2",
     "tsx": "4.19.3",
     "vitest": "3.1.2"
