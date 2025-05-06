@@ -1,4 +1,5 @@
 program merkle_tree.aleo {
+    const MAX_TREE_DEPTH: u32 = 15u32;
     
     struct MerkleProof {
         siblings: [field; 16],
@@ -15,13 +16,13 @@ program merkle_tree.aleo {
     // Function to calculate root and depth from the siblings path
     inline calculate_root_depth_siblings(leaf: field, merkle_proof: MerkleProof) -> (public field, public u32) {
         let root: field = calculate_hash_for_neighbor(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
-        for i: u32 in 2u32..15u32 {
+        for i: u32 in 2u32..MAX_TREE_DEPTH {
             if(merkle_proof.siblings[i] == 0field) {
                 return (root, i);
             }
             root = calculate_hash_for_neighbor(root, merkle_proof.siblings[i], (merkle_proof.leaf_index / (2u32**(i-1u32))) % 2u32);
         }
-        return (root, 15u32);
+        return (root, MAX_TREE_DEPTH);
     }
 
     transition verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
