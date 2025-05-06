@@ -14,7 +14,7 @@ program merkle_tree.aleo {
     // Todo: add inclusion proof
 
     // Function to calculate root and depth from the siblings path
-    inline calculate_root_depth_siblings(leaf: field, merkle_proof: MerkleProof) -> (public field, public u32) {
+    inline calculate_root_depth_siblings(merkle_proof: MerkleProof) -> (public field, public u32) {
         let root: field = calculate_hash_for_neighbor(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
         for i: u32 in 2u32..MAX_TREE_DEPTH {
             if(merkle_proof.siblings[i] == 0field) {
@@ -26,10 +26,10 @@ program merkle_tree.aleo {
     }
 
     transition verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
-        let (root1, depth1): (field, u32)= calculate_root_depth_siblings(merkle_proofs[0u32].siblings[0u32], merkle_proofs[0u32]);
-        let (root2, depth2): (field, u32) = calculate_root_depth_siblings(merkle_proofs[1u32].siblings[0u32], merkle_proofs[1u32]);
+        let (root1, depth1): (field, u32)= calculate_root_depth_siblings(merkle_proofs[0u32]);
+        let (root2, depth2): (field, u32) = calculate_root_depth_siblings(merkle_proofs[1u32]);
 
-        // Ensure the roots from merkle proofs are the same
+        // Ensure the roots from the merkle proofs are the same
         assert_eq(root1, root2);
         
         let addr_field: field = addr as field;
