@@ -5,7 +5,7 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import { Account } from "@provablehq/sdk";
-import { convertAddressToField } from "../lib/Conversion";
+import { convertAddressToField, convertFieldToAddress } from "../lib/Conversion";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Merkle_treeContract({ mode });
@@ -200,7 +200,7 @@ describe("merkle_tree program tests", () => {
         merkleProof,
         merkleProof,
       ]);
-      const [root] = await tx.wait();
+      let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
       const merkleProof1 = getSiblingPath(tree, size - 1, MAX_TREE_SIZE);
@@ -208,8 +208,15 @@ describe("merkle_tree program tests", () => {
         merkleProof1,
         merkleProof1,
       ]);
-      const [root1] = await tx.wait();
-      expect(root1).toBe(tree[tree.length - 1]);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+
+      tx = await contract.verify_inclusion(sortedAddresses[0].address, merkleProof);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+      tx = await contract.verify_inclusion(sortedAddresses[size - 1].address, merkleProof1);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
     },
     timeout,
   );
@@ -268,7 +275,7 @@ describe("merkle_tree program tests", () => {
         merkleProof,
         merkleProof,
       ]);
-      const [root] = await tx.wait();
+      let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
       const merkleProof1 = getSiblingPath(tree, size - 1, MAX_TREE_SIZE);
@@ -277,9 +284,16 @@ describe("merkle_tree program tests", () => {
         merkleProof1,
         merkleProof1,
       ]);
-      const [root1] = await tx.wait();
-      expect(root1).toBe(tree[tree.length - 1]);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
 
+      tx = await contract.verify_inclusion(sortedAddresses[0].address, merkleProof);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+
+      tx = await contract.verify_inclusion(sortedAddresses[size - 1].address, merkleProof1);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
     },
     timeout,
   );
@@ -297,35 +311,23 @@ describe("merkle_tree program tests", () => {
       const tree = await buildTree(sortedAddresses);
 
       const checkedAddress = new Account().address().to_string();
-      const checkedField =
-        convertAddressToField(checkedAddress).toString() + "field";
-      const checkedBint = BigInt(checkedField.slice(0, -"field".length));
-
-      let leftLeafIndex: number;
-      let rightLeafIndex: number;
-
-      if (checkedBint < tree[0]) {
-        leftLeafIndex = rightLeafIndex = 0;
-      } else if (checkedBint > tree[size - 1]) {
-        leftLeafIndex = rightLeafIndex = size - 1;
-      } else {
-        for (let i = 0; i < sortedAddresses.length - 1; i++) {
-          if (checkedBint > tree[i] && checkedBint < tree[i + 1]) {
-            leftLeafIndex = i;
-            rightLeafIndex = i + 1;
-            break;
-          }
-        }
-      }
+      const [leftLeafIndex, rightLeafIndex] = getLeafIndices(tree, checkedAddress);
 
       const merkleProof0 = getSiblingPath(tree, leftLeafIndex, MAX_TREE_SIZE);
       const merkleProof1 = getSiblingPath(tree, rightLeafIndex, MAX_TREE_SIZE);
 
-      const tx = await contract.verify_non_inclusion(checkedAddress, [
+      let tx = await contract.verify_non_inclusion(checkedAddress, [
         merkleProof0,
         merkleProof1,
       ]);
-      const [root] = await tx.wait();
+      let [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+
+      tx = await contract.verify_inclusion(convertFieldToAddress(sortedAddresses[leftLeafIndex]), merkleProof0);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+      tx = await contract.verify_inclusion(convertFieldToAddress(sortedAddresses[rightLeafIndex]), merkleProof1);
+      [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
     },
     timeout,
@@ -352,12 +354,38 @@ describe("merkle_tree program tests", () => {
       const merkleProof4 = getSiblingPath(tree, 4, MAX_TREE_SIZE);
       const merkleProof7 = getSiblingPath(tree, 7, MAX_TREE_SIZE);
 
-      const tx = await contract.verify_non_inclusion(
+      let tx = await contract.verify_non_inclusion(
         "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
         [merkleProof2, merkleProof3],
       );
-      const [root] = await tx.wait();
+      let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
+
+      tx = await contract.verify_inclusion(convertFieldToAddress(leaves[2]), merkleProof2);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+      tx = await contract.verify_inclusion(convertFieldToAddress(leaves[3]), merkleProof3);
+      [root] = await tx.wait();
+      expect(root).toBe(tree[tree.length - 1]);
+
+      // Verify inclusion generates incorrect root if the address is not the list
+      tx = await contract.verify_inclusion(
+        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", 
+        {
+          leaf_index: 2,
+          siblings: [
+            convertAddressToField("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"), 
+            ...merkleProof2.siblings.slice(1)
+          ]
+        }
+      );
+      [root] = await tx.wait();
+      expect(root).not.toBe(tree[tree.length - 1]);
+
+      // Verify inclusion fails if the merkle proof doesn't belong to the address
+      await expect(
+        contract.verify_inclusion(leaves[1], merkleProof2),
+      ).rejects.toThrow();
 
       // the siblings indices are not adjusted
       await expect(
