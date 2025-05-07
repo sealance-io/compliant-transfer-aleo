@@ -11,7 +11,11 @@ program merkle_tree.aleo {
         return Poseidon4::hash_to_field(poseidon_params);
     }
 
-    // Todo: add inclusion proof
+    transition verify_inclusion(addr: address, merkle_proof: MerkleProof) -> field {
+      assert_eq(addr as field, merkle_proof.siblings[0u32]);
+      let (root, depth): (field, u32)= calculate_root_depth_siblings(merkle_proof);
+      return root;
+    } 
 
     // Function to calculate root and depth from the siblings path
     inline calculate_root_depth_siblings(merkle_proof: MerkleProof) -> (public field, public u32) {
