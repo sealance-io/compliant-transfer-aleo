@@ -1,6 +1,6 @@
 # Compliant Transfer - Aleo Projects
 
-This repository contains smart contracts, tests, and auxiliary scripts for implementing compliant token transfers on the Aleo blockchain.
+This repository contains programs (smart contracts), tests, and auxiliary scripts for implementing compliant token transfers on the Aleo blockchain.
 
 ## Compatibility
 
