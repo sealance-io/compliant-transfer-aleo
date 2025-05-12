@@ -24,11 +24,12 @@ This project is developed and tested with the following tooling:
 
    - `sealed_threshold_report_policy.leo`
       
-      Token program that allows senders to lock funds for a specified period. Both sender and recipient must not be on the sanctions list.
+      Token program that grants asset issuers access to transaction details when daily spent amount exceeds 1000. Both sender and recipient must not be on the sanctions list.
+
 
    - `sealed_timelock_policy.leo`
       
-      Token program that grants asset issuers access to transaction details when daily spent amount exceeds 1000. Both sender and recipient must not be on the sanctions list.
+      Token program that allows senders to lock funds for a specified period. Both sender and recipient must not be on the sanctions list.
 
    - `sealance_freezelist_registry.leo`
       
