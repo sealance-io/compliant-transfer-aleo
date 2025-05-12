@@ -1,5 +1,5 @@
 // If Jest runs in parallel mode using workers (which is default) this runs in parent process
-export default async function() {
+export default async function () {
   console.log("=== Starting global test teardown in parent process ===");
 
   try {
@@ -12,10 +12,10 @@ export default async function() {
   }
 
   // allow the process to exit even if stdin/stdout/stderr is still open
-  ['stdin', 'stdout', 'stderr'].forEach(stream => {
-    if (process[stream] && typeof process[stream].unref === 'function') {
+  ["stdin", "stdout", "stderr"].forEach(stream => {
+    if (process[stream] && typeof process[stream].unref === "function") {
       process[stream].unref();
     }
-  });  
-  console.log('Global teardown complete');
+  });
+  console.log("Global teardown complete");
 }

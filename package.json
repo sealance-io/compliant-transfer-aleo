@@ -16,6 +16,8 @@
     "update-freeze-list:devnet": "npx tsx scripts/update-freeze-list.ts",
     "update-freeze-list:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx scripts/update-freeze-list.ts",
     "compile": "dokojs compile",
+    "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
+    "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "test": "node --no-warnings --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.js --runInBand",
     "test:select": "npm run test --"
   },
@@ -30,6 +32,7 @@
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
     "jest": "29.7.0",
+    "prettier": "^3.5.3",
     "testcontainers": "10.24.2",
     "ts-jest": "29.3.2",
     "tsx": "4.19.3"

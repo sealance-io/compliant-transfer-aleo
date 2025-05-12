@@ -4,34 +4,34 @@ on:
   workflow_dispatch:
     inputs:
       run_merkle_tree:
-        description: 'Run Merkle Tree tests'
+        description: "Run Merkle Tree tests"
         type: boolean
         default: true
       run_compliant_transfer:
-        description: 'Run Compliant Transfer tests'
+        description: "Run Compliant Transfer tests"
         type: boolean
         default: true
       run_freeze_registry:
-        description: 'Run Freeze Registry tests'
+        description: "Run Freeze Registry tests"
         type: boolean
         default: true
       run_timelock_policy:
-        description: 'Run Timelock Policy tests'
+        description: "Run Timelock Policy tests"
         type: boolean
         default: true
       run_threshold_policy:
-        description: 'Run Threshold Policy tests'
+        description: "Run Threshold Policy tests"
         type: boolean
         default: true
       run_exchange:
-        description: 'Run Exchange tests'
+        description: "Run Exchange tests"
         type: boolean
         default: true
   pull_request:
     branches:
       - main
     paths-ignore:
-      - '**/*.md'
+      - "**/*.md"
 
 concurrency:
   group: ci-tests-${{ github.ref }}-1

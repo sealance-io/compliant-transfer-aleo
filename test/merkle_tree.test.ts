@@ -44,9 +44,7 @@ describe("merkle_tree lib, buildTree", () => {
 
 describe("merkle_tree lib, genLeaves", () => {
   it("should generate correct number of leaves from 1 leaf", () => {
-    const leaves = [
-      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-    ];
+    const leaves = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
     const result = genLeaves(leaves);
     expect(result).toHaveLength(2);
   });
@@ -71,29 +69,23 @@ describe("merkle_tree lib, genLeaves", () => {
   });
 
   it("should generate correct number of leaves from 5 leaves", () => {
-    const leaves = Array(5).fill(
-      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-    );
+    const leaves = Array(5).fill("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
     const result = genLeaves(leaves);
     expect(result).toHaveLength(8);
   });
 
   it("should generate correct number of leaves from 9 leaves", () => {
-    const leaves = Array(9).fill(
-      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-    );
+    const leaves = Array(9).fill("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
     const result = genLeaves(leaves);
     expect(result).toHaveLength(16);
   });
 
   it("should pad with 0field when needed", () => {
-    const leaves = [
-      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-    ];
+    const leaves = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
     const result = genLeaves(leaves);
 
     expect(result).toHaveLength(2);
-    expect(result.filter((x) => x === "0field").length).toBe(1);
+    expect(result.filter(x => x === "0field").length).toBe(1);
   });
 
   it("should sort leaves correctly", () => {
@@ -104,18 +96,14 @@ describe("merkle_tree lib, genLeaves", () => {
     const result = genLeaves(leaves);
     expect(result.length).toBe(2);
     expect(result[0]).not.toBe(result[1]);
-    expect(result[0]).toBe(
-      "1295133970529764960316948294624974168921228814652993007266766481909235735940field",
-    );
+    expect(result[0]).toBe("1295133970529764960316948294624974168921228814652993007266766481909235735940field");
   });
 
   it("should pad with 0field when needed", () => {
-    const leaves = [
-      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-    ];
+    const leaves = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
     const result = genLeaves(leaves);
     expect(result).toHaveLength(2);
-    expect(result.filter((x) => x === "0field").length).toBe(1);
+    expect(result.filter(x => x === "0field").length).toBe(1);
   });
 
   it("should filter ZERO_ADDRESS", () => {
@@ -129,9 +117,7 @@ describe("merkle_tree lib, genLeaves", () => {
     const result = genLeaves(leaves);
     expect(result).toHaveLength(2);
     expect(result[0]).toBe("0field");
-    expect(result[1]).toBe(
-      "3501665755452795161867664882580888971213780722176652848275908626939553697821field",
-    );
+    expect(result[1]).toBe("3501665755452795161867664882580888971213780722176652848275908626939553697821field");
   });
 });
 
@@ -153,7 +139,7 @@ describe("merkle_tree program tests", () => {
         .fill(null)
         .map(() => new Account().address().to_string());
       const sortedAddresses = addresses
-        .map((addr) => ({
+        .map(addr => ({
           address: addr,
           field: convertAddressToField(addr),
         }))
@@ -166,10 +152,7 @@ describe("merkle_tree program tests", () => {
 
       // Generate a new address that's guaranteed to be larger than the smallest and smaller than the largest
       let newAddress = smallestAddress;
-      while (
-        convertAddressToField(newAddress) <= smallestField ||
-        convertAddressToField(newAddress) >= largestField
-      ) {
+      while (convertAddressToField(newAddress) <= smallestField || convertAddressToField(newAddress) >= largestField) {
         newAddress = new Account().address().to_string();
       }
 
@@ -179,10 +162,7 @@ describe("merkle_tree program tests", () => {
       };
       // Generate a new address that's guaranteed to be larger than the smallest and smaller than the largest
       newAddress = largestAddress;
-      while (
-        convertAddressToField(newAddress) <= smallestField ||
-        convertAddressToField(newAddress) >= largestField
-      ) {
+      while (convertAddressToField(newAddress) <= smallestField || convertAddressToField(newAddress) >= largestField) {
         newAddress = new Account().address().to_string();
       }
       sortedAddresses[size - 1] = {
@@ -191,23 +171,17 @@ describe("merkle_tree program tests", () => {
       };
       const sortedFieldElements = sortedAddresses
         .sort((a, b) => (a.field < b.field ? -1 : 1))
-        .map((item) => item.field.toString() + "field");
+        .map(item => item.field.toString() + "field");
 
       const tree = await buildTree(sortedFieldElements);
 
       const merkleProof = getSiblingPath(tree, 0, MAX_TREE_SIZE);
-      let tx = await contract.verify_non_inclusion(smallestAddress, [
-        merkleProof,
-        merkleProof,
-      ]);
+      let tx = await contract.verify_non_inclusion(smallestAddress, [merkleProof, merkleProof]);
       let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
       const merkleProof1 = getSiblingPath(tree, size - 1, MAX_TREE_SIZE);
-      tx = await contract.verify_non_inclusion(largestAddress, [
-        merkleProof1,
-        merkleProof1,
-      ]);
+      tx = await contract.verify_non_inclusion(largestAddress, [merkleProof1, merkleProof1]);
       [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
@@ -231,7 +205,7 @@ describe("merkle_tree program tests", () => {
         .map(() => new Account().address().to_string());
 
       const sortedAddresses = addresses
-        .map((addr) => ({
+        .map(addr => ({
           address: addr,
           field: convertAddressToField(addr),
         }))
@@ -253,9 +227,7 @@ describe("merkle_tree program tests", () => {
 
       // Generate a new address that's guaranteed to be smaller than the largest
       newAddress = largestAddress;
-      while (
-        convertAddressToField(newAddress) >= sortedAddresses[size - 1].field
-      ) {
+      while (convertAddressToField(newAddress) >= sortedAddresses[size - 1].field) {
         newAddress = new Account().address().to_string();
       }
 
@@ -266,24 +238,18 @@ describe("merkle_tree program tests", () => {
 
       const sortedFieldElements = sortedAddresses
         .sort((a, b) => (a.field < b.field ? -1 : 1))
-        .map((item) => item.field.toString() + "field");
+        .map(item => item.field.toString() + "field");
 
       const tree = await buildTree(sortedFieldElements);
       const merkleProof = getSiblingPath(tree, 0, MAX_TREE_SIZE);
 
-      let tx = await contract.verify_non_inclusion(smallestAddress, [
-        merkleProof,
-        merkleProof,
-      ]);
+      let tx = await contract.verify_non_inclusion(smallestAddress, [merkleProof, merkleProof]);
       let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
       const merkleProof1 = getSiblingPath(tree, size - 1, MAX_TREE_SIZE);
 
-      tx = await contract.verify_non_inclusion(largestAddress, [
-        merkleProof1,
-        merkleProof1,
-      ]);
+      tx = await contract.verify_non_inclusion(largestAddress, [merkleProof1, merkleProof1]);
       [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
@@ -316,10 +282,7 @@ describe("merkle_tree program tests", () => {
       const merkleProof0 = getSiblingPath(tree, leftLeafIndex, MAX_TREE_SIZE);
       const merkleProof1 = getSiblingPath(tree, rightLeafIndex, MAX_TREE_SIZE);
 
-      let tx = await contract.verify_non_inclusion(checkedAddress, [
-        merkleProof0,
-        merkleProof1,
-      ]);
+      let tx = await contract.verify_non_inclusion(checkedAddress, [merkleProof0, merkleProof1]);
       let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
@@ -354,10 +317,10 @@ describe("merkle_tree program tests", () => {
       const merkleProof4 = getSiblingPath(tree, 4, MAX_TREE_SIZE);
       const merkleProof7 = getSiblingPath(tree, 7, MAX_TREE_SIZE);
 
-      let tx = await contract.verify_non_inclusion(
-        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-        [merkleProof2, merkleProof3],
-      );
+      let tx = await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [
+        merkleProof2,
+        merkleProof3,
+      ]);
       let [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
@@ -369,95 +332,90 @@ describe("merkle_tree program tests", () => {
       expect(root).toBe(tree[tree.length - 1]);
 
       // Verify inclusion generates incorrect root if the address is not the list
-      tx = await contract.verify_inclusion(
-        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", 
-        {
-          leaf_index: 2,
-          siblings: [
-            convertAddressToField("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"), 
-            ...merkleProof2.siblings.slice(1)
-          ]
-        }
-      );
+      tx = await contract.verify_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", {
+        leaf_index: 2,
+        siblings: [
+          convertAddressToField("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"),
+          ...merkleProof2.siblings.slice(1),
+        ],
+      });
       [root] = await tx.wait();
       expect(root).not.toBe(tree[tree.length - 1]);
 
       // Verify inclusion fails if the merkle proof doesn't belong to the address
-      await expect(
-        contract.verify_inclusion(leaves[1], merkleProof2),
-      ).rejects.toThrow();
+      await expect(contract.verify_inclusion(leaves[1], merkleProof2)).rejects.toThrow();
 
       // the siblings indices are not adjusted
       await expect(
-        contract.verify_non_inclusion(
-          "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-          [merkleProof2, merkleProof4],
-        ),
+        contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [
+          merkleProof2,
+          merkleProof4,
+        ]),
       ).rejects.toThrow();
 
       // the address is in the list
       await expect(
-        contract.verify_non_inclusion(
-          "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
-          [merkleProof2, merkleProof3],
-        ),
+        contract.verify_non_inclusion("aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps", [
+          merkleProof2,
+          merkleProof3,
+        ]),
       ).rejects.toThrow();
 
       // the address is not in a provided range (large)
       await expect(
-        contract.verify_non_inclusion(
-          "aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t",
-          [merkleProof2, merkleProof3],
-        ),
+        contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [
+          merkleProof2,
+          merkleProof3,
+        ]),
       ).rejects.toThrow();
 
       //  the address is not in a provided range (smaller)
       await expect(
-        contract.verify_non_inclusion(
-          "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-          [merkleProof2, merkleProof3],
-        ),
+        contract.verify_non_inclusion("aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t", [
+          merkleProof2,
+          merkleProof3,
+        ]),
       ).rejects.toThrow();
 
       //  invalid left path
       await expect(
-        contract.verify_non_inclusion(
-          "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-          [{ siblings: merkleProof2.siblings, leaf_index: 1 }, merkleProof4],
-        ),
+        contract.verify_non_inclusion("aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t", [
+          { siblings: merkleProof2.siblings, leaf_index: 1 },
+          merkleProof4,
+        ]),
       ).rejects.toThrow();
 
       //  invalid right path
       await expect(
-        contract.verify_non_inclusion(
-          "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-          [merkleProof2, { siblings: merkleProof3.siblings, leaf_index: 1 }],
-        ),
+        contract.verify_non_inclusion("aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t", [
+          merkleProof2,
+          { siblings: merkleProof3.siblings, leaf_index: 1 },
+        ]),
       ).rejects.toThrow();
 
       // the most left address
       await expect(
-        contract.verify_non_inclusion(
-          "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
-          [merkleProof0, merkleProof0],
-        ),
+        contract.verify_non_inclusion("aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps", [
+          merkleProof0,
+          merkleProof0,
+        ]),
       ).rejects.toThrow();
-      await contract.verify_non_inclusion(
-        "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-        [merkleProof0, merkleProof0],
-      );
+      await contract.verify_non_inclusion("aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t", [
+        merkleProof0,
+        merkleProof0,
+      ]);
 
       // the most right address
       await expect(
-        contract.verify_non_inclusion(
-          "aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9",
-          [merkleProof7, merkleProof7],
-        ),
+        contract.verify_non_inclusion("aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9", [
+          merkleProof7,
+          merkleProof7,
+        ]),
       ).rejects.toThrow();
-      await contract.verify_non_inclusion(
-        "aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t",
-        [merkleProof7, merkleProof7],
-      );
+      await contract.verify_non_inclusion("aleo16k94hj5nsgxpgnnk9u6580kskgucqdadzekmlmvccp25frwd8qgqvn9p9t", [
+        merkleProof7,
+        merkleProof7,
+      ]);
     },
     timeout,
   );
@@ -473,16 +431,16 @@ describe("merkle_tree program tests", () => {
 
       expect(tree).toHaveLength(3);
 
-      let leafIndices = getLeafIndices(tree, "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px")
+      let leafIndices = getLeafIndices(tree, "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
       let merkleProof0 = getSiblingPath(tree, leafIndices[0], MAX_TREE_SIZE);
       let merkleProof2 = getSiblingPath(tree, leafIndices[1], MAX_TREE_SIZE);
 
-      let tx = await contract.verify_non_inclusion(
-        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-        [merkleProof0, merkleProof2],
-      );
+      let tx = await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [
+        merkleProof0,
+        merkleProof2,
+      ]);
       const [root] = await tx.wait();
-      expect(root).toBe(tree[tree.length - 1])
+      expect(root).toBe(tree[tree.length - 1]);
 
       leaves = await genLeaves([
         "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
@@ -493,23 +451,25 @@ describe("merkle_tree program tests", () => {
 
       expect(tree).toHaveLength(7);
 
-      leafIndices = getLeafIndices(tree, "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px")
+      leafIndices = getLeafIndices(tree, "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
       merkleProof0 = getSiblingPath(tree, leafIndices[0], MAX_TREE_SIZE);
       merkleProof2 = getSiblingPath(tree, leafIndices[1], MAX_TREE_SIZE);
 
-      tx = await contract.verify_non_inclusion(
-        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-        [merkleProof0, merkleProof2],
-      );
+      tx = await contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [
+        merkleProof0,
+        merkleProof2,
+      ]);
       const [root1] = await tx.wait();
-      expect(root1).toBe(tree[tree.length - 1])
+      expect(root1).toBe(tree[tree.length - 1]);
 
       merkleProof0 = getSiblingPath(tree, 1, MAX_TREE_SIZE);
 
-      await expect(contract.verify_non_inclusion(
-        "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
-        [merkleProof0, merkleProof0]
-      )).rejects.toThrow();;
+      await expect(
+        contract.verify_non_inclusion("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px", [
+          merkleProof0,
+          merkleProof0,
+        ]),
+      ).rejects.toThrow();
     },
     timeout,
   );

@@ -5,44 +5,40 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 ## Compatibility
 
 This project is developed and tested with the following tooling:
- 
- - [Leo](https://github.com/ProvableHQ/leo) CLI v2.5.0
 
- - [Amareleo](https://github.com/kaxxa123/amareleo-chain) Aleo chain instances v2.2.0, 
+- [Leo](https://github.com/ProvableHQ/leo) CLI v2.5.0
 
- - [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
+- [Amareleo](https://github.com/kaxxa123/amareleo-chain) Aleo chain instances v2.2.0,
 
-    
+- [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
 
 ## Repository Structure
 
 - **/programs**: Aleo token programs implementing various compliance policies
 
-   - `sealed_report_policy.leo`
-      
-      Token program that grants asset issuers access to transaction details. Both sender and recipient must not be on the sanctions list.
+  - `sealed_report_policy.leo`
 
-   - `sealed_threshold_report_policy.leo`
-      
-      Token program that grants asset issuers access to transaction details when daily spent amount exceeds 1000. Both sender and recipient must not be on the sanctions list.
+    Token program that grants asset issuers access to transaction details. Both sender and recipient must not be on the sanctions list.
 
+  - `sealed_threshold_report_policy.leo`
 
-   - `sealed_timelock_policy.leo`
-      
-      Token program that allows senders to lock funds for a specified period. Both sender and recipient must not be on the sanctions list.
+    Token program that grants asset issuers access to transaction details when daily spent amount exceeds 1000. Both sender and recipient must not be on the sanctions list.
 
-   - `sealance_freezelist_registry.leo`
-      
-      Standalone program implementing a freeze list registry with functions to add/remove addresses and privately verify address status.
+  - `sealed_timelock_policy.leo`
 
-   - `merkle_tree.leo`
-      
-      Program containing functions for verifying Merkle proofs for leaf inclusion and non-inclusion.
+    Token program that allows senders to lock funds for a specified period. Both sender and recipient must not be on the sanctions list.
 
-   - `gqrfmwbtyp.leo`
-      
-      Program enabling users to exchange native Aleo tokens for compliant tokens.
-      
+  - `sealance_freezelist_registry.leo`
+
+    Standalone program implementing a freeze list registry with functions to add/remove addresses and privately verify address status.
+
+  - `merkle_tree.leo`
+
+    Program containing functions for verifying Merkle proofs for leaf inclusion and non-inclusion.
+
+  - `gqrfmwbtyp.leo`
+    Program enabling users to exchange native Aleo tokens for compliant tokens.
+
 - **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts.
 - **/test**: TypeScript tests that validate contract functionalities.
 - **/imports**: Shared modules and additional contracts (e.g., token_registry.aleo).
@@ -50,15 +46,16 @@ This project is developed and tested with the following tooling:
 ## Getting Started
 
 1. **Install Dependencies**  
-   Navigate to the repository root and run:  
+   Navigate to the repository root and run:
+
    ```bash
    npm ci
    ```
 
-2. **Install doko-js CLI**  
-   [Follow the Installation Guide](docs/doko-installation-guide.md)
+2. **Install doko-js CLI**
+   [Jump to Installation Guide](docs/doko-installation-guide.md)
 
-3. **Build the Contracts**  
+3. **Build the Contracts**
    ```bash
    dokojs compile
    ```
@@ -95,6 +92,13 @@ AMARELEO_VERBOSITY=2 npm test
 
 **Note:** The Amareleo container does not persist blockchain state by default, and the same chain is reused across all tests.
 
+#### Container Runtime Support
+
+Both Docker and Podman are supported as container runtimes. For troubleshooting container-related issues, refer to:
+
+- [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
+- [Configuration Options](https://node.testcontainers.org/configuration/)
+
 ### Alternative Testing Methods
 
 #### Option 1: Running Tests Without Containers
@@ -114,9 +118,11 @@ For instructions, refer to the [Amareleo repository](https://github.com/kaxxa123
 A slower and more cumbersome option is to use Aleo's `devnet.sh` script:
 
 1. **Run devnet**
+
    ```bash
    ./devnet.sh
    ```
+
    (Following instructions from [snarkOS](https://github.com/ProvableHQ/snarkOS/blob/staging/devnet.sh))
 
 2. **Run tests**
@@ -132,11 +138,30 @@ If you encounter issues with the containerized tests:
 
 1. Ensure Docker/Podman is running and properly configured
 2. For macOS and/or podman make sure to refer to [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
-2. Check container runtime logs for errors
-3. Try increasing Testcontainers verbosity using `DEBUG=testcontainers*` (refer to [Testcontainers configuration](https://node.testcontainers.org/configuration/))
-4. If on Linux, ensure your user has permissions to access the container runtime
-5. On macOS, ensure Docker Desktop or podman-machine is running with sufficient resources allocated
-6. Try increasing Amareleo node's verbosity with `AMARELEO_VERBOSITY=4`
+3. Check container runtime logs for errors
+4. Try increasing Testcontainers verbosity using `DEBUG=testcontainers*` (refer to [Testcontainers configuration](https://node.testcontainers.org/configuration/))
+5. If on Linux, ensure your user has permissions to access the container runtime
+6. On macOS, ensure Docker Desktop or podman-machine is running with sufficient resources allocated
+7. Try increasing Amareleo node's verbosity with `AMARELEO_VERBOSITY=4`
+
+#### Container Registry Authentication
+
+If you're using an image from a container registry that requires authentication (such as GitHub Container Registry - ghcr.io) and experience authentication issues:
+
+1. Run `docker login` or `podman login` in the same terminal session you'll use to run tests
+2. Explicitly pull the target Amareleo image before running tests:
+
+   ```bash
+   # For Docker
+   docker pull ghcr.io/sealance-io/amareleo-chain:latest
+
+   # For Podman
+   podman pull ghcr.io/sealance-io/amareleo-chain:latest
+   ```
+
+This can help resolve authentication timeouts or permission issues that might occur when Testcontainers attempts to pull images automatically.
+
+For container-specific issues, refer to the [Testcontainers documentation](https://node.testcontainers.org/).
 
 ### CI Test Workflows
 
