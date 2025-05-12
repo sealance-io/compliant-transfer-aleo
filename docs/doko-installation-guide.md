@@ -6,11 +6,11 @@ This guide covers different methods to install the Doko-JS CLI tool, which allow
 
 There are three ways to install the Doko-JS CLI, depending on your needs:
 
-| Method | Best For | Prerequisites |
-|--------|----------|---------------|
-| **Installation Script** | Most users | git, curl, Node.js, minimal setup effort |
-| **Manual Installation** | Developers, customization | Full development environment |
-| **NPM Installation** | Quick testing, stable releases only | Node.js, npm |
+| Method                  | Best For                            | Prerequisites                            |
+| ----------------------- | ----------------------------------- | ---------------------------------------- |
+| **Installation Script** | Most users                          | git, curl, Node.js, minimal setup effort |
+| **Manual Installation** | Developers, customization           | Full development environment             |
+| **NPM Installation**    | Quick testing, stable releases only | Node.js, npm                             |
 
 ## Option 1: Using the Installation Script (Recommended)
 
@@ -19,6 +19,7 @@ Our installation script handles **some** dependencies and build steps automatica
 ### Prerequisites
 
 The script will check for and help install most dependencies, but you'll need:
+
 - git
 - curl
 - Node.js (version 22 recommended)
@@ -33,6 +34,7 @@ To install using the default repository and version:
 ```
 
 The default settings use:
+
 - Repository: https://github.com/venture23-aleo/doko-js.git
 - Branch: main
 
@@ -62,28 +64,33 @@ If you prefer to handle the installation steps yourself or need more control ove
 ### Step-by-Step Manual Installation
 
 1. Clone the repository:
+
    ```bash
    git clone -b main https://github.com/venture23-aleo/doko-js.git
    cd doko-js
    ```
 
    Or for a patched version:
+
    ```bash
    git clone -b fixes_to_dokojs https://github.com/sealance-io/doko-js.git
    cd doko-js
    ```
 
 2. Install dependencies:
+
    ```bash
    pnpm install
    ```
 
 3. Build the project:
+
    ```bash
    npm run build
    ```
 
 4. Install the CLI globally:
+
    ```bash
    npm run install:cli
    ```
@@ -132,15 +139,18 @@ For more detailed help, check the [Doko-JS repository issues](https://github.com
 ## Platform-Specific Notes
 
 ### macOS
+
 - The installation script works on both Intel and Apple Silicon Macs
 - No sudo permissions are typically required
 
 ### Linux
+
 - The installation script has been thoroughly tested on Debian, Ubuntu, and Fedora distributions
 - Different distributions may require different permissions for npm global packages
 - The installation script will guide you through permission options if needed
 - On some distributions, you may need to manually add npm bin directories to your PATH if not automatically done
 
 ### Windows
+
 - **Important:** This installation script does not support Windows natively
 - For Windows 10/11 users, you can use Windows Subsystem for Linux (WSL)
