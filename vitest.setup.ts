@@ -1,5 +1,5 @@
-import console from 'console';
-import { afterAll } from 'vitest';
+import console from "console";
+import { afterAll } from "vitest";
 
 // Set up global console
 global.console = console;
@@ -12,8 +12,8 @@ afterAll(() => {
   // Root cause is at '@doko-js/utils' Shell class
 
   // allow the process to exit even if stdin/stdout/stderr is still open
-  ['stdin', 'stdout', 'stderr'].forEach(stream => {
-    if (process[stream] && typeof process[stream].unref === 'function') {
+  ["stdin", "stdout", "stderr"].forEach(stream => {
+    if (process[stream] && typeof process[stream].unref === "function") {
       process[stream].unref();
     }
   });

@@ -10,15 +10,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": [
-    "lib/**/*",
-    "contract/**/*",
-    "artifacts/js/**/*",
-    "scripts/**/*",
-    "test/**/*",
-    "*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["lib/**/*", "contract/**/*", "artifacts/js/**/*", "scripts/**/*", "test/**/*", "*.ts"],
+  "exclude": ["node_modules"]
 }
