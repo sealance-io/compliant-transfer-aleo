@@ -130,6 +130,17 @@ describe("test freeze_registry program", () => {
     },
     timeout,
   );
+  test(
+    `test update_block_height_window`,
+    async () => {
+      const rejectedTx = await freezeRegistryContractForFreezedAccount.update_block_height_window(300);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
+      await tx.wait();
+    },
+    timeout,
+  );
 
   test(
     `test verify_non_inclusion_pub`,
@@ -149,8 +160,32 @@ describe("test freeze_registry program", () => {
         freezeRegistryContract.verify_non_inclusion_priv(freezedAccount, freezedAccountMerkleProof),
       ).rejects.toThrow();
 
-      const tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
+      let tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
       await tx.wait();
+
+      const updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
+        freezedAccount,
+        false,
+        0,
+        1n, // fake root
+      );
+      await updateFreezeListTx.wait();
+
+      const newRoot = await freezeRegistryContract.freeze_list_root(0);
+      const oldRoot = await freezeRegistryContract.freeze_list_root(1);
+      expect(oldRoot).toBe(root);
+      expect(newRoot).toBe(1n);
+
+      // The transaction succeed because the old root is match
+      tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
+      await tx.wait();
+
+      const updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(1);
+      await updateBlockHeightWindowTx.wait();
+
+      // The transaction failed because the old root is expired
+      const rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
+      await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
   );
