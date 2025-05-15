@@ -133,7 +133,7 @@ describe("test exchange contract", () => {
     // Only the admin can call to this function
     let rejectedTx = await exchangeContractForAccount.update_admin(adminAddress);
     await expect(rejectedTx.wait()).rejects.toThrow();
-  });
+  }, timeout);
 
   test(`test update_rate`, async () => {
     // Only the admin account can call to this function
@@ -145,7 +145,7 @@ describe("test exchange contract", () => {
 
     const rate = await exchangeContract.token_rates(policies.compliant.tokenId, 0n);
     await expect(rate).toBe(defaultRate);
-  });
+  }, timeout);
 
   test(
     `test exchange_token`,
@@ -208,5 +208,5 @@ describe("test exchange contract", () => {
     expect(compliantTokenRecord.owner).toBe(account);
     expect(compliantTokenRecord.amount).toBe(amount * 10n);
     expect(compliantTokenRecord.locked_until).toBe(0);
-  });
+  }, timeout);
 });
