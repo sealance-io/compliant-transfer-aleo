@@ -166,7 +166,7 @@ describe("test compliant_threshold_transfer program", () => {
       investigatorRole = await compliantThresholdTransferContract.roles(2);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(
+      const rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(
         freezedAccount,
         2,
       );
@@ -179,10 +179,14 @@ describe("test compliant_threshold_transfer program", () => {
     `test update_block_height_window`,
     async () => {
       // only the admin can call update the block height window
-      let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_block_height_window(policies.threshold.blockHeightWindow);
+      const rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_block_height_window(
+        policies.threshold.blockHeightWindow,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await compliantThresholdTransferContractForAdmin.update_block_height_window(policies.threshold.blockHeightWindow);
+      const tx = await compliantThresholdTransferContractForAdmin.update_block_height_window(
+        policies.threshold.blockHeightWindow,
+      );
       await tx.wait();
 
       const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(0);
@@ -451,7 +455,7 @@ describe("test compliant_threshold_transfer program", () => {
   );
 
   test(
-    "test state record behavior",
+    `test state record behavior`,
     async () => {
       const latestBlockHeight1 = await getLatestBlockHeight();
       let transferPublicTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
@@ -502,7 +506,9 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await expect(transferPublicTx.wait()).rejects.toThrow();
 
-      updateBlockHeightWindowTx = await compliantThresholdTransferContractForAdmin.update_block_height_window(policies.threshold.blockHeightWindow);
+      updateBlockHeightWindowTx = await compliantThresholdTransferContractForAdmin.update_block_height_window(
+        policies.threshold.blockHeightWindow,
+      );
       await updateBlockHeightWindowTx.wait();
 
       const latestBlockHeight3 = await getLatestBlockHeight();
@@ -827,7 +833,7 @@ describe("test compliant_threshold_transfer program", () => {
       ).rejects.toThrow();
 
       // If the estimated block height is too high the transaction will fail
-      let rejectedTx = await compliantThresholdTransferContractForAccount.transfer_private(
+      const rejectedTx = await compliantThresholdTransferContractForAccount.transfer_private(
         recipient,
         amount,
         accountRecord,

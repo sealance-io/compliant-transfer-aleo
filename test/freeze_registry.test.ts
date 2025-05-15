@@ -102,7 +102,7 @@ describe("test freeze_registry program", () => {
   test(
     `test update_freeze_list`,
     async () => {
-      let rejectedTx = await freezeRegistryContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
+      const rejectedTx = await freezeRegistryContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       let tx = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
