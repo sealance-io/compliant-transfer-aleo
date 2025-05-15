@@ -1,16 +1,12 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-      "module": "NodeNext",
-      "moduleResolution": "Node",
-      "target": "esnext",
-      "sourceMap": true,
-      "noEmit": true
-    },
-    "include": [
-      "scripts/**/*"
-    ],
-    "exclude": [
-      "node_modules"
-    ]
-  }
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "Node",
+    "target": "esnext",
+    "sourceMap": true,
+    "noEmit": true
+  },
+  "include": ["scripts/**/*"],
+  "exclude": ["node_modules"]
+}

@@ -1,22 +1,22 @@
 import { GenericContainer, StartedTestContainer } from "testcontainers";
 
 function parseBooleanEnv(value: string | undefined, defaultValue = true): boolean {
-  if (value === undefined || value === '') {
+  if (value === undefined || value === "") {
     return defaultValue;
   }
-  
+
   const stringValue = String(value).toLowerCase().trim();
-  
+
   // Values that should be interpreted as true
-  if (['true', 't', 'yes', 'y', '1', 'on', 'enabled'].includes(stringValue)) {
+  if (["true", "t", "yes", "y", "1", "on", "enabled"].includes(stringValue)) {
     return true;
   }
-  
+
   // Values that should be interpreted as false
-  if (['false', 'f', 'no', 'n', '0', 'off', 'disabled'].includes(stringValue)) {
+  if (["false", "f", "no", "n", "0", "off", "disabled"].includes(stringValue)) {
     return false;
   }
-  
+
   // For any other unexpected values, log a warning and use the default
   console.warn(`Warning: Unexpected boolean environment value "${value}" - using default (${defaultValue})`);
   return defaultValue;
@@ -38,14 +38,25 @@ export async function setup() {
   }
 
   amareleoContainer = await new GenericContainer(AMARELEO_IMAGE)
-    .withCommand(["--network", "1", "--verbosity", AMARELEO_VERBOSITY, "--rest", "0.0.0.0:3030", "--storage", "/data/amareleo", "--rest-rps", "100"])
+    .withCommand([
+      "--network",
+      "1",
+      "--verbosity",
+      AMARELEO_VERBOSITY,
+      "--rest",
+      "0.0.0.0:3030",
+      "--storage",
+      "/data/amareleo",
+      "--rest-rps",
+      "100",
+    ])
     .withExposedPorts({
       container: 3030,
-      host: 3030
+      host: 3030,
     })
     .withStartupTimeout(120000) // 2 minutes timeout
     .start();
-    
+
   console.log(`Container started with mapped port: ${amareleoContainer.getMappedPort(3030)}`);
 }
 
@@ -63,10 +74,10 @@ export async function teardown() {
   }
 
   // Allow the process to exit even if stdin/stdout/stderr is still open
-  ['stdin', 'stdout', 'stderr'].forEach(stream => {
-    if (process[stream] && typeof process[stream].unref === 'function') {
+  ["stdin", "stdout", "stderr"].forEach(stream => {
+    if (process[stream] && typeof process[stream].unref === "function") {
       process[stream].unref();
     }
-  });  
-  console.log('Global teardown complete');
+  });
+  console.log("Global teardown complete");
 }
