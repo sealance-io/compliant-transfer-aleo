@@ -4,9 +4,8 @@
     "module": "NodeNext",
     "moduleResolution": "Node",
     "target": "esnext",
-    "sourceMap": true,
     "types": ["vitest/globals"]
   },
-  "include": ["lib/**/*", "test/**/*", "vitest.*.ts", "vitest.config.ts"],
+  "include": ["test/**/*", "vitest.*.ts", "vitest.config.ts"],
   "exclude": ["node_modules"]
 }
