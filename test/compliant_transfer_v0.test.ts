@@ -285,6 +285,22 @@ describe("test compliant_transfer program", () => {
   );
 
   test(
+    "test update_block_height_window",
+    async () => {
+      const rejectedTx = await compliantTransferContractForAccount.update_block_height_window(
+        policies.compliant.blockHeightWindow,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      const tx = await compliantTransferContractForAdmin.update_block_height_window(
+        policies.compliant.blockHeightWindow,
+      );
+      await tx.wait();
+    },
+    timeout,
+  );
+
+  test(
     `test transfer_public`,
     async () => {
       // If the sender didn't approve the program the tx will fail
@@ -500,6 +516,51 @@ describe("test compliant_transfer program", () => {
       expect(decryptedComplianceRecord.amount).toBe(amount);
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    },
+    timeout,
+  );
+
+  test(
+    `test old root support`,
+    async () => {
+      const updateFreezeListTx = await compliantTransferContractForAdmin.update_freeze_list(
+        freezedAccount,
+        false,
+        0,
+        1n, // fake root
+      );
+      await updateFreezeListTx.wait();
+
+      const newRoot = await compliantTransferContract.freeze_list_root(0);
+      const oldRoot = await compliantTransferContract.freeze_list_root(1);
+      expect(oldRoot).toBe(root);
+      expect(newRoot).toBe(1n);
+
+      // The transaction succeed because the old root is match
+      const tx = await compliantTransferContractForAccount.transfer_private(
+        recipient,
+        amount,
+        accountRecord,
+        senderMerkleProof,
+        recipientMerkleProof,
+        investigatorAddress,
+      );
+      await tx.wait();
+      accountRecord = decryptToken((tx as any).transaction.execution.transitions[2].outputs[0].value, accountPrivKey);
+
+      const updateBlockHeightWindowTx = await compliantTransferContractForAdmin.update_block_height_window(1);
+      await updateBlockHeightWindowTx.wait();
+
+      // The transaction failed because the old root is expired
+      const rejectedTx = await compliantTransferContractForAccount.transfer_private(
+        recipient,
+        amount,
+        accountRecord,
+        senderMerkleProof,
+        recipientMerkleProof,
+        investigatorAddress,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
   );
