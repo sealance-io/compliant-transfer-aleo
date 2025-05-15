@@ -8,7 +8,7 @@
       "types": ["vitest/globals"]
     },
     "include": [
-      "src/**/*",
+      "lib/**/*",
       "test/**/*",
       "vitest.*.ts",
       "vitest.config.ts"
