@@ -238,6 +238,9 @@ describe("test compliant_timelock_transfer program", () => {
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+
+      const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
+      await tx3.wait();
     },
     timeout,
   );

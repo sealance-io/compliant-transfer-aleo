@@ -179,14 +179,14 @@ describe("test compliant_threshold_transfer program", () => {
     `test update_block_height_window`,
     async () => {
       // only the admin can call update the block height window
-      let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_block_height_window(150);
+      let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_block_height_window(policies.threshold.blockHeightWindow);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await compliantThresholdTransferContractForAdmin.update_block_height_window(150);
+      let tx = await compliantThresholdTransferContractForAdmin.update_block_height_window(policies.threshold.blockHeightWindow);
       await tx.wait();
 
       const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(0);
-      expect(blockHeightWindow).toBe(150);
+      expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
     },
     timeout,
   );
@@ -275,16 +275,19 @@ describe("test compliant_threshold_transfer program", () => {
     async () => {
       const tx = await freezeRegistryContractForAdmin.update_admin_address(adminAddress);
       await tx.wait();
-      let adminRole = await freezeRegistryContract.admin(0);
+      const adminRole = await freezeRegistryContract.admin(0);
       expect(adminRole).toBe(adminAddress);
 
       const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
       await tx2.wait();
-      let isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
-      let freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      const isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
+      const freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+
+      const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
+      await tx3.wait();
     },
     timeout,
   );
@@ -499,7 +502,7 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await expect(transferPublicTx.wait()).rejects.toThrow();
 
-      updateBlockHeightWindowTx = await compliantThresholdTransferContractForAdmin.update_block_height_window(150);
+      updateBlockHeightWindowTx = await compliantThresholdTransferContractForAdmin.update_block_height_window(policies.threshold.blockHeightWindow);
       await updateBlockHeightWindowTx.wait();
 
       const latestBlockHeight3 = await getLatestBlockHeight();
