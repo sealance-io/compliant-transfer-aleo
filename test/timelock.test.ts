@@ -130,7 +130,7 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `test update_roles`,
     async () => {
-      let adminRole = await timelockContract.roles(adminAddress);
+      const adminRole = await timelockContract.roles(adminAddress);
       expect(adminRole).toBe(1);
 
       let tx = await timelockContractForFreezedAccount.update_roles(adminAddress, 1);
@@ -228,13 +228,13 @@ describe("test compliant_timelock_transfer program", () => {
     async () => {
       const tx = await freezeRegistryContractForAdmin.update_admin_address(adminAddress);
       await tx.wait();
-      let adminRole = await freezeRegistryContract.admin(0);
+      const adminRole = await freezeRegistryContract.admin(0);
       expect(adminRole).toBe(adminAddress);
 
       const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
       await tx2.wait();
-      let isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
-      let freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      const isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
+      const freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);

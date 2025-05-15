@@ -134,7 +134,7 @@ describe("test compliant_transfer program", () => {
       investigatorRole = await compliantTransferContract.roles(2);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      let rejectedTx = await compliantTransferContractForFreezedAccount.update_roles_address(freezedAccount, 2);
+      const rejectedTx = await compliantTransferContractForFreezedAccount.update_roles_address(freezedAccount, 2);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -210,7 +210,7 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_freeze_list`,
     async () => {
-      let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
+      const rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       let tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
@@ -285,7 +285,7 @@ describe("test compliant_transfer program", () => {
   );
 
   test(
-    "test update_block_height_window",
+    `test update_block_height_window`,
     async () => {
       const rejectedTx = await compliantTransferContractForAccount.update_block_height_window(
         policies.compliant.blockHeightWindow,
@@ -486,7 +486,7 @@ describe("test compliant_transfer program", () => {
       ).rejects.toThrow();
 
       // If the recipient is freezed account it's impossible to send tokens
-      let rejectedTx = await compliantTransferContractForAccount.transfer_priv_to_public(
+      const rejectedTx = await compliantTransferContractForAccount.transfer_priv_to_public(
         freezedAccount,
         amount,
         accountRecord,

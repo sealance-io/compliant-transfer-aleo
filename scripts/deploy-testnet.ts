@@ -40,9 +40,10 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({ 
-    mode, privateKey: deployerPrivKey
-})
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
