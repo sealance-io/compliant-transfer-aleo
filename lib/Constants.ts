@@ -32,7 +32,7 @@ export const policies: { [key: string]: IPolicy } = {
     Contract: Sealed_report_policyContract,
     initMappings: false,
     requireInitialization: false,
-    blockHeightWindow: 0,
+    blockHeightWindow: 300,
   },
   threshold: {
     tokenName: "Threshold report",
@@ -42,7 +42,7 @@ export const policies: { [key: string]: IPolicy } = {
     Contract: Sealed_threshold_report_policyContract,
     initMappings: true,
     requireInitialization: false,
-    blockHeightWindow: 150,
+    blockHeightWindow: 300,
   },
   timelock: {
     tokenName: "Timelock",

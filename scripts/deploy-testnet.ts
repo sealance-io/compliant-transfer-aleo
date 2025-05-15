@@ -40,6 +40,9 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({ 
+    mode, privateKey: deployerPrivKey
+})
 const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
@@ -92,6 +95,8 @@ const exchangeContract = new GqrfmwbtypContract({
 
   const updateFreezeRegistryAdmin = await freezeRegistryContract.update_admin_address(adminAddress);
   await updateFreezeRegistryAdmin.wait();
+  const updateBlockHeightWindow = await freezeRegistryContractForAdmin.update_block_height_window(300);
+  await updateBlockHeightWindow.wait();
   const updateExchangeAdmin = await exchangeContract.update_admin(adminAddress);
   await updateExchangeAdmin.wait();
 
