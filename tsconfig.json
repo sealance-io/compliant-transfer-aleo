@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["esnext"],
-    "module": "NodeNext",
+    "module": "esnext",
     "moduleResolution": "Node",
     "target": "esnext",
     "allowJs": true,
@@ -11,7 +11,9 @@
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*",
+    "lib/**/*",
+    "contract/**/*",
+    "artifacts/js/**/*",
     "scripts/**/*",
     "test/**/*",
     "*.ts"
