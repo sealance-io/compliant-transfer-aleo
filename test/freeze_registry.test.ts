@@ -160,6 +160,17 @@ describe("test freeze_registry program", () => {
         freezeRegistryContract.verify_non_inclusion_priv(freezedAccount, freezedAccountMerkleProof),
       ).rejects.toThrow();
 
+      const leaves = genLeaves([]);
+      const tree = await buildTree(leaves);
+      const adminLeadIndices = getLeafIndices(tree, adminAddress);
+      const IncorrectAdminMerkleProof = [
+        getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE),
+      ];
+      // The transaction failed because the root is mismatch
+      let rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, IncorrectAdminMerkleProof);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
       let tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
       await tx.wait();
 
@@ -184,7 +195,7 @@ describe("test freeze_registry program", () => {
       await updateBlockHeightWindowTx.wait();
 
       // The transaction failed because the old root is expired
-      const rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
+      rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,

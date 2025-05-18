@@ -210,7 +210,12 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_freeze_list`,
     async () => {
-      const rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
+      const rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(
+        adminAddress,
+        true,
+        0,
+        root,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       let tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
@@ -523,6 +528,29 @@ describe("test compliant_transfer program", () => {
   test(
     `test old root support`,
     async () => {
+      const leaves = genLeaves([]);
+      const tree = await buildTree(leaves);
+      const senderLeafIndices = getLeafIndices(tree, account);
+      const recipientLeafIndices = getLeafIndices(tree, recipient);
+      const IncorrectSenderMerkleProof = [
+        getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+      ];
+      const IncorrectRecipientMerkleProof = [
+        getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
+      ];
+      // The transaction failed because the root is mismatch
+      let rejectedTx = await compliantTransferContractForAccount.transfer_private(
+        recipient,
+        amount,
+        accountRecord,
+        IncorrectSenderMerkleProof,
+        IncorrectRecipientMerkleProof,
+        investigatorAddress,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
       const updateFreezeListTx = await compliantTransferContractForAdmin.update_freeze_list(
         freezedAccount,
         false,
@@ -552,7 +580,7 @@ describe("test compliant_transfer program", () => {
       await updateBlockHeightWindowTx.wait();
 
       // The transaction failed because the old root is expired
-      const rejectedTx = await compliantTransferContractForAccount.transfer_private(
+      rejectedTx = await compliantTransferContractForAccount.transfer_private(
         recipient,
         amount,
         accountRecord,
