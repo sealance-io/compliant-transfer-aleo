@@ -501,4 +501,34 @@ program sealed_timelock_policy.aleo {
 
         assert(locked_until <= block.height);
     }
+
+    transition join(
+        sealed_token_1: CompliantToken,
+        base_token_1: token_registry.aleo/Token,
+        sealed_token_2: CompliantToken,
+        base_token_2: token_registry.aleo/Token
+    ) -> (CompliantToken, token_registry.aleo/Token) {
+        assert_eq(base_token_1.token_id, TOKEN_ID);
+        assert_eq(base_token_2.token_id, TOKEN_ID);
+
+        assert_eq(base_token_1.amount, sealed_token_1.amount);
+        assert_eq(base_token_2.amount, sealed_token_2.amount);
+
+        let locked_unitl: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until 
+            ? sealed_token_1.locked_until 
+            : sealed_token_2.locked_until;
+
+        let new_sealed_token: CompliantToken = CompliantToken {
+            owner: base_token_1.owner,
+            amount: sealed_token_1.amount + sealed_token_2.amount,
+            locked_until: locked_unitl
+        };
+
+        let new_base_token: token_registry.aleo/Token = token_registry.aleo/join(
+            base_token_1,
+            base_token_2
+        );
+
+        return (new_sealed_token, new_base_token);
+    }
 }
