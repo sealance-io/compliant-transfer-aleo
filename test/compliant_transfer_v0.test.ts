@@ -20,6 +20,7 @@ import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
+import type { Token } from "../artifacts/js/types/token_registry";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -140,8 +141,8 @@ describe("test compliant_transfer program", () => {
     timeout,
   );
 
-  let accountRecord;
-  let freezedAccountRecord;
+  let accountRecord: Token;
+  let freezedAccountRecord: Token;
   test(
     "fund tokens",
     async () => {
@@ -171,9 +172,9 @@ describe("test compliant_transfer program", () => {
     timeout,
   );
 
-  let senderMerkleProof;
-  let recipientMerkleProof;
-  let freezedAccountMerkleProof;
+  let senderMerkleProof: { siblings: any[]; leaf_index: any; }[];
+  let recipientMerkleProof: { siblings: any[]; leaf_index: any; }[];
+  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any; }[];
   test(
     `generate merkle proofs`,
     async () => {
