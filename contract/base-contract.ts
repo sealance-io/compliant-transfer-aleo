@@ -81,10 +81,15 @@ export class BaseContract {
     return PrivateKey.from_string(this.config.privateKey).to_address().to_string();
   }
 
-  getPrivateKey(address: string) {
-    return this.config.network.accounts.find(
+  getPrivateKey(address: string): string {
+    const pvtKeyMatch = this.config.network.accounts.find(
       (pvtKey: string) => PrivateKey.from_string(pvtKey).to_address().to_string() == address,
     );
+
+    if (!pvtKeyMatch) {
+      throw new Error(`No private key found for address ${address}`);
+    }
+    return pvtKeyMatch
   }
 
   // TODO: Handle properly
