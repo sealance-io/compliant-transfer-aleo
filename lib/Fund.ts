@@ -1,7 +1,7 @@
 import { CreditsContract } from "../artifacts/js/credits";
 import { mode } from "./Constants";
 
-export async function fundWithCredits(funderPrivKey: any, account: string, amount: bigint) {
+export async function fundWithCredits(funderPrivKey: string, account: string, amount: bigint) {
   const creditsContract = new CreditsContract({
     mode,
     privateKey: funderPrivKey,
