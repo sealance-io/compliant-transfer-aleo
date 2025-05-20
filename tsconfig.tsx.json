@@ -4,7 +4,8 @@
     "module": "NodeNext",
     "moduleResolution": "Node",
     "target": "esnext",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
   "include": ["scripts/**/*"],
   "exclude": ["node_modules"]
