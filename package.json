@@ -22,6 +22,7 @@
     "test:select": "vitest run"
   },
   "devDependencies": {
+    "@types/node": "22.15.19",
     "cross-env": "7.0.3",
     "rimraf": "6.0.1",
     "testcontainers": "10.24.2",
