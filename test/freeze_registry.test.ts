@@ -77,8 +77,8 @@ describe("test freeze_registry program", () => {
     timeout,
   );
 
-  let adminMerkleProof;
-  let freezedAccountMerkleProof;
+  let adminMerkleProof: { siblings: any[]; leaf_index: any; }[];
+  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any; }[];
   test(
     `generate merkle proofs`,
     async () => {
