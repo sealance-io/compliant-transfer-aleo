@@ -21,6 +21,8 @@ import { initializeTokenProgram } from "../lib/Token";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
+import type { Token } from "../artifacts/js/types/token_registry";
+import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -86,14 +88,14 @@ async function getLatestBlockHeight() {
   return latestBlockHeight;
 }
 
-let accountRecord, accountTokenRecord;
-let accountSealedRecord, accountSealedRecord2;
-let freezedAccountRecord;
-let freezedAccountSealedRecord, freezedAccountSealedRecord2;
+let accountRecord: Token, accountTokenRecord;
+let accountSealedRecord: CompliantToken, accountSealedRecord2;
+let freezedAccountRecord: Token;
+let freezedAccountSealedRecord: CompliantToken, freezedAccountSealedRecord2: CompliantToken;
 let recipientSealedRecord;
-let senderMerkleProof;
-let recipientMerkleProof;
-let freezedAccountMerkleProof;
+let senderMerkleProof: { siblings: any[]; leaf_index: any; }[];
+let recipientMerkleProof: { siblings: any[]; leaf_index: any; }[];
+let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any; }[];
 
 describe("test compliant_timelock_transfer program", () => {
   test(
