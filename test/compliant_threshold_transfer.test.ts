@@ -24,6 +24,8 @@ import { getLatestBlockHeight } from "../lib/Block";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
+import type { Token } from "../artifacts/js/types/token_registry";
+import type { TokenComplianceStateRecord } from "../artifacts/js/types/sealed_threshold_report_policy";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -195,8 +197,8 @@ describe("test compliant_threshold_transfer program", () => {
     timeout,
   );
 
-  let accountRecord;
-  let freezedAccountRecord;
+  let accountRecord: Token;
+  let freezedAccountRecord: Token;
   test(
     "fund tokens",
     async () => {
@@ -238,9 +240,9 @@ describe("test compliant_threshold_transfer program", () => {
     timeout,
   );
 
-  let senderMerkleProof;
-  let recipientMerkleProof;
-  let freezedAccountMerkleProof;
+  let senderMerkleProof: { siblings: any[]; leaf_index: any; }[];
+  let recipientMerkleProof: { siblings: any[]; leaf_index: any; }[];
+  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any; }[];
   test(
     `generate merkle proofs`,
     async () => {
@@ -341,8 +343,8 @@ describe("test compliant_threshold_transfer program", () => {
     timeout,
   );
 
-  let accountStateRecord;
-  let freezedAccountStateRecord;
+  let accountStateRecord: TokenComplianceStateRecord;
+  let freezedAccountStateRecord: TokenComplianceStateRecord;
   test(
     `test signup`,
     async () => {
