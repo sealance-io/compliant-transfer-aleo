@@ -1,8 +1,7 @@
 import { ExecutionMode } from "@doko-js/core";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { BaseContract } from "../contract/base-contract";
-import { AddToFreezeList } from "../lib/FreezeList";
-import networkConfig from "../aleo-config";
+import { calculateFreezeListUpdate, FreezeStatus } from "../lib/FreezeList";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -34,8 +33,18 @@ const compliantTransferContract = new Sealed_report_policyContract({
     process.exit(1);
   }
 
-  const { lastIndex, root } = await AddToFreezeList(process.argv[2], 8);
-  await compliantTransferContract.update_freeze_list(process.argv[2], true, lastIndex, root);
+  const newAddress = process.argv[2];
+  const updateResult = await calculateFreezeListUpdate(newAddress, 8);
+
+  switch (updateResult.status) {
+    case FreezeStatus.NEW_ENTRY:
+      await compliantTransferContract.update_freeze_list(newAddress, true, updateResult.lastIndex, updateResult.root);
+      break;
+      
+    case FreezeStatus.ALREADY_FROZEN:
+      console.log("Address already frozen, no action needed");
+      break;
+  }
 
   process.exit(0);
 })();
