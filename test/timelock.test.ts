@@ -196,7 +196,7 @@ describe("test compliant_timelock_transfer program", () => {
     `generate merkle proofs`,
     async () => {
       const leaves = genLeaves([freezedAccount]);
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);

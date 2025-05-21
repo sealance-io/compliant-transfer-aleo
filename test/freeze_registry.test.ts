@@ -83,7 +83,7 @@ describe("test freeze_registry program", () => {
     `generate merkle proofs`,
     async () => {
       const leaves = genLeaves([freezedAccount]);
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const adminLeadIndices = getLeafIndices(tree, adminAddress);
       const freezedAccountLeadIndices = getLeafIndices(tree, freezedAccount);
@@ -161,7 +161,7 @@ describe("test freeze_registry program", () => {
       ).rejects.toThrow();
 
       const leaves = genLeaves([]);
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       const adminLeadIndices = getLeafIndices(tree, adminAddress);
       const IncorrectAdminMerkleProof = [
         getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),

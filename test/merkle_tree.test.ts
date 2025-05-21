@@ -15,7 +15,7 @@ describe("merkle_tree lib, buildTree", () => {
     "should build a valid tree with 2 leaves",
     async () => {
       const leaves = ["1field", "2field"];
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       expect(tree).toHaveLength(3);
     },
     timeout,
@@ -25,37 +25,25 @@ describe("merkle_tree lib, buildTree", () => {
     "should build a valid tree with 4 leaves",
     async () => {
       const leaves = ["1field", "2field", "3field", "4field"];
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       expect(tree).toHaveLength(7);
     },
     timeout,
   );
 
-  it(
-    "should throw error for empty leaves",
-    async () => {
-      try {
-        await buildTree([]);
-        fail("Should have thrown error");
-      } catch (e) {
-        expect(e.message).toBe("Leaves array cannot be empty");
-      }
-    },
-    timeout,
-  );
+  it("should build a valid tree with 4 leaves", async () => {
+    const leaves = ["1field", "2field", "3field", "4field"];
+    const tree = buildTree(leaves);
+    expect(tree).toHaveLength(7);
+  });
 
-  it(
-    "should throw error for odd number of leaves",
-    async () => {
-      try {
-        await buildTree(["1field", "2field", "3field"]);
-        fail("Should have thrown error");
-      } catch (e) {
-        expect(e.message).toBe("Leaves array must have even number of elements");
-      }
-    },
-    timeout,
-  );
+  it("should throw error for empty leaves", async () => {
+    expect(() => buildTree([])).toThrow(`Leaves array cannot be empty`);
+  });
+
+  it("should throw error for odd number of leaves", async () => {
+    expect(() => buildTree(["1field", "2field", "3field"])).toThrow(`Leaves array must have even number of elements`);
+  });
 });
 
 describe("merkle_tree lib, genLeaves", () => {
@@ -225,7 +213,7 @@ describe("merkle_tree program tests", () => {
         .sort((a, b) => (a.field < b.field ? -1 : 1))
         .map(item => item.field.toString() + "field");
 
-      const tree = await buildTree(sortedFieldElements);
+      const tree = buildTree(sortedFieldElements);
 
       const merkleProof = getSiblingPath(tree, 0, MAX_TREE_SIZE);
       let tx = await contract.verify_non_inclusion(smallestAddress, [merkleProof, merkleProof]);
@@ -292,7 +280,7 @@ describe("merkle_tree program tests", () => {
         .sort((a, b) => (a.field < b.field ? -1 : 1))
         .map(item => item.field.toString() + "field");
 
-      const tree = await buildTree(sortedFieldElements);
+      const tree = buildTree(sortedFieldElements);
       const merkleProof = getSiblingPath(tree, 0, MAX_TREE_SIZE);
 
       let tx = await contract.verify_non_inclusion(smallestAddress, [merkleProof, merkleProof]);
@@ -325,8 +313,8 @@ describe("merkle_tree program tests", () => {
         .fill(null)
         .map(() => new Account().address().to_string());
 
-      const sortedAddresses = await genLeaves(addresses);
-      const tree = await buildTree(sortedAddresses);
+      const sortedAddresses = genLeaves(addresses);
+      const tree = buildTree(sortedAddresses);
 
       const checkedAddress = new Account().address().to_string();
       const [leftLeafIndex, rightLeafIndex] = getLeafIndices(tree, checkedAddress);
@@ -351,7 +339,7 @@ describe("merkle_tree program tests", () => {
   test(
     `all cases, depth 3`,
     async () => {
-      const leaves = await genLeaves([
+      const leaves = genLeaves([
         "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
         "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
         "aleo194vjp7nt6pwgpruw3kz5fk5kvj9ur6sg2f4k84fqu6cpgq5xhvrs7emymc",
@@ -361,7 +349,7 @@ describe("merkle_tree program tests", () => {
         "aleo18khmhg2nehxxsm6km43ah7qdudjkjw7mgpsfya9vvzx3vlq9hyxs8vzdds",
         "aleo17mp7lz72e7zhvzyj8u2szrts2r98vz37sd6z9w500s99aaq4sq8s34vgv9",
       ]);
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
 
       const merkleProof0 = getSiblingPath(tree, 0, MAX_TREE_SIZE);
       const merkleProof2 = getSiblingPath(tree, 2, MAX_TREE_SIZE);
@@ -475,11 +463,11 @@ describe("merkle_tree program tests", () => {
   test(
     `test various sizes of leaves array`,
     async () => {
-      let leaves = await genLeaves([
+      let leaves = genLeaves([
         "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
         "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
       ]);
-      let tree = await buildTree(leaves);
+      let tree = buildTree(leaves);
 
       expect(tree).toHaveLength(3);
 
@@ -494,12 +482,12 @@ describe("merkle_tree program tests", () => {
       const [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
 
-      leaves = await genLeaves([
+      leaves = genLeaves([
         "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
         "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
         "aleo104ur4csap6qp3fguddw3mn7f6ddpfkn4clqzzkyjhxmw5j46xsrse6vt5f",
       ]);
-      tree = await buildTree(leaves);
+      tree = buildTree(leaves);
 
       expect(tree).toHaveLength(7);
 

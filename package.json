@@ -18,8 +18,7 @@
     "compile": "rimraf artifacts && dokojs compile",
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
-    "test": "vitest run",
-    "test:select": "vitest run"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@doko-js/core": "1.0.2",
