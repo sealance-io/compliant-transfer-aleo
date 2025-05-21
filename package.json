@@ -22,25 +22,21 @@
     "test:select": "vitest run"
   },
   "devDependencies": {
+    "@doko-js/core": "1.0.2",
+    "@doko-js/utils": "1.0.0",
+    "@doko-js/wasm": "1.2.0",
+    "@provablehq/sdk": "0.9.0",
+    "@scure/base": "1.2.5",
+    "@types/bn.js": "5.1.6",
     "@types/node": "22.15.19",
+    "bn.js": "5.2.2",
     "cross-env": "7.0.3",
+    "dotenv": "16.5.0",
+    "prettier": "3.5.3",
     "rimraf": "6.0.1",
     "testcontainers": "10.24.2",
     "tsx": "4.19.3",
     "typescript": "5.8.3",
     "vitest": "3.1.2"
-  },
-  "dependencies": {
-    "@doko-js/core": "1.0.2",
-    "@doko-js/utils": "1.0.0",
-    "@doko-js/wasm": "1.0.0",
-    "@provablehq/sdk": "0.8.8",
-    "@scure/base": "1.2.4",
-    "bn.js": "5.2.1",
-    "cross-env": "7.0.3",
-    "dotenv": "16.5.0",
-    "prettier": "3.5.3",
-    "testcontainers": "10.24.2",
-    "tsx": "4.19.3"
   }
 }
