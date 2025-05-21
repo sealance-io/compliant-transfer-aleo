@@ -6,7 +6,7 @@ import { ZERO_ADDRESS, MAX_TREE_SIZE } from "./Constants";
  * Hashes two elements using Poseidon4 hash function
  * @throws {Error} If inputs are empty or invalid
  */
-function hashTwoElements(el1: string, el2: string): Promise<Field> {
+function hashTwoElements(el1: string, el2: string): Field {
   if (!el1 || !el2) {
     throw new Error("Invalid inputs: elements cannot be empty");
   }
@@ -21,7 +21,7 @@ function hashTwoElements(el1: string, el2: string): Promise<Field> {
  * Builds a Merkle tree from given leaves
  * @throws {Error} If leaves array has odd number of elements
  */
-export async function buildTree(leaves: string[]): Promise<bigint[]> {
+export function buildTree(leaves: string[]): bigint[] {
   if (leaves.length === 0) {
     throw new Error("Leaves array cannot be empty");
   }
@@ -38,7 +38,7 @@ export async function buildTree(leaves: string[]): Promise<bigint[]> {
     for (let i = 0; i < levelSize; i += 2) {
       const left = currentLevel[i];
       const right = currentLevel[i + 1];
-      const hash = await hashTwoElements(left, right);
+      const hash = hashTwoElements(left, right);
       nextLevel.push(hash.toString());
     }
     tree = [...tree, ...nextLevel];

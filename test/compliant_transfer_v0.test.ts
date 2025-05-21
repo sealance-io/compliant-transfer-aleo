@@ -179,7 +179,7 @@ describe("test compliant_transfer program", () => {
     `generate merkle proofs`,
     async () => {
       const leaves = genLeaves([freezedAccount]);
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);
@@ -530,7 +530,7 @@ describe("test compliant_transfer program", () => {
     `test old root support`,
     async () => {
       const leaves = genLeaves([]);
-      const tree = await buildTree(leaves);
+      const tree = buildTree(leaves);
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);
       const IncorrectSenderMerkleProof = [
