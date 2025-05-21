@@ -7,20 +7,20 @@ const compliantTransferContract = new Sealed_report_policyContract({ mode });
 
 export enum FreezeStatus {
   ALREADY_FROZEN,
-  NEW_ENTRY
+  NEW_ENTRY,
 }
 
-export type FreezeListUpdateResult = 
+export type FreezeListUpdateResult =
   | { status: FreezeStatus.ALREADY_FROZEN }
-  | { status: FreezeStatus.NEW_ENTRY, lastIndex: number, root: bigint }
+  | { status: FreezeStatus.NEW_ENTRY; lastIndex: number; root: bigint };
 
-  export async function calculateFreezeListUpdate(
-    address: string, 
-    leavesLength: number
-  ): Promise<FreezeListUpdateResult> {
+export async function calculateFreezeListUpdate(
+  address: string,
+  leavesLength: number,
+): Promise<FreezeListUpdateResult> {
   const isAccountFreezed = await compliantTransferContract.freeze_list(address, false);
   if (isAccountFreezed) {
-    return { status: FreezeStatus.ALREADY_FROZEN }
+    return { status: FreezeStatus.ALREADY_FROZEN };
   }
 
   let addresses: string[] = [];
@@ -60,7 +60,11 @@ export function getLeafIndices(merkleTree: bigint[], address: string): [number, 
   return [leftLeafIndex, rightLeafIndex];
 }
 
-export function getSiblingPath(tree: string | any[], leafIndex: number, depth: number): { siblings: any[]; leaf_index: number; } {
+export function getSiblingPath(
+  tree: string | any[],
+  leafIndex: number,
+  depth: number,
+): { siblings: any[]; leaf_index: number } {
   let num_leaves = Math.floor((tree.length + 1) / 2);
   const siblingPath = [];
 

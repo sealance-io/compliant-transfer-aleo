@@ -93,9 +93,9 @@ let accountSealedRecord: CompliantToken, accountSealedRecord2;
 let freezedAccountRecord: Token;
 let freezedAccountSealedRecord: CompliantToken, freezedAccountSealedRecord2: CompliantToken;
 let recipientSealedRecord;
-let senderMerkleProof: { siblings: any[]; leaf_index: any; }[];
-let recipientMerkleProof: { siblings: any[]; leaf_index: any; }[];
-let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any; }[];
+let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
+let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
+let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
 
 describe("test compliant_timelock_transfer program", () => {
   test(
