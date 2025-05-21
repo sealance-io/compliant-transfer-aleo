@@ -240,9 +240,9 @@ describe("test compliant_threshold_transfer program", () => {
     timeout,
   );
 
-  let senderMerkleProof: { siblings: any[]; leaf_index: any; }[];
-  let recipientMerkleProof: { siblings: any[]; leaf_index: any; }[];
-  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any; }[];
+  let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(
     `generate merkle proofs`,
     async () => {

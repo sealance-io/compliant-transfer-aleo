@@ -89,7 +89,7 @@ export class BaseContract {
     if (!pvtKeyMatch) {
       throw new Error(`No private key found for address ${address}`);
     }
-    return pvtKeyMatch
+    return pvtKeyMatch;
   }
 
   // TODO: Handle properly

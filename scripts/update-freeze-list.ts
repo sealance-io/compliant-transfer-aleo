@@ -40,7 +40,7 @@ const compliantTransferContract = new Sealed_report_policyContract({
     case FreezeStatus.NEW_ENTRY:
       await compliantTransferContract.update_freeze_list(newAddress, true, updateResult.lastIndex, updateResult.root);
       break;
-      
+
     case FreezeStatus.ALREADY_FROZEN:
       console.log("Address already frozen, no action needed");
       break;

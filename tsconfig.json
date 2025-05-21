@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
-    "types": ["node", "vitest/globals"],
+    "types": ["node", "vitest/globals"]
   },
   "include": ["lib/**/*", "contract/**/*", "artifacts/js/**/*", "scripts/**/*", "test/**/*", "*.ts"],
   "exclude": ["node_modules"]
