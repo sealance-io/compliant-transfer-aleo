@@ -8,7 +8,7 @@ This project is developed and tested with the following tooling:
 
 - [Leo](https://github.com/ProvableHQ/leo) CLI v2.5.0
 
-- [Amareleo](https://github.com/kaxxa123/amareleo-chain) Aleo chain instances v2.2.0,
+- [Amareleo](https://github.com/kaxxa123/amareleo-chain) Aleo chain instances v2.3.0,
 
 - [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
 
