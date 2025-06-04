@@ -1,0 +1,147 @@
+name: Aleo Program Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_merkle_tree:
+        description: "Run Merkle Tree tests"
+        type: boolean
+        default: true
+      run_compliant_transfer:
+        description: "Run Compliant Transfer tests"
+        type: boolean
+        default: true
+      run_freeze_registry:
+        description: "Run Freeze Registry tests"
+        type: boolean
+        default: true
+      run_timelock_policy:
+        description: "Run Timelock Policy tests"
+        type: boolean
+        default: true
+      run_threshold_policy:
+        description: "Run Threshold Policy tests"
+        type: boolean
+        default: true
+      run_exchange:
+        description: "Run Exchange tests"
+        type: boolean
+        default: true
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+
+concurrency:
+  group: ci-tests-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          cache: "npm"
+          node-version-file: ".nvmrc"
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
+      - name: Run prettier
+        run: npm run format
+  check-trigger:
+    runs-on: ubuntu-latest
+    outputs:
+      run_merkle_tree: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_compliant_transfer: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_compliant_transfer || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_freeze_registry: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_freeze_registry || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_timelock_policy: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_timelock_policy || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_threshold_policy: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_threshold_policy || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_exchange: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_exchange || 
+          github.event_name == 'pull_request' && false
+        }}
+    steps:
+      - run: echo "Determining which jobs to run"
+
+  merkle-tree-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_merkle_tree == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Merkle Tree Test"
+      test_command: "npm run test:select ./test/merkle_tree.test.ts"
+      watched_paths: "programs/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  compliant-transfer-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_compliant_transfer == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Compliant Transfer Test"
+      test_command: "npm run test:select ./test/compliant_transfer_v0.test.ts"
+      watched_paths: "programs/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  freeze-registry-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_freeze_registry == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Freeze Registry Test"
+      test_command: "npm run test:select ./test/freeze_registry.test.ts"
+      watched_paths: "programs/freeze_registry.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  timelock-policy-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_timelock_policy == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Timelock Policy Test"
+      test_command: "npm run test:select ./test/timelock.test.ts"
+      watched_paths: "programs/compliant_timelock_transfer.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  threshold-policy-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_threshold_policy == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Threshold Policy Test"
+      test_command: "npm run test:select ./test/compliant_threshold_transfer.test.ts"
+      watched_paths: "programs/compliant_threshold_transfer.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  exchange-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_exchange == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Threshold Policy Test"
+      test_command: "npm run test:select ./test/exchange.test.ts"
+      watched_paths: "programs/exchange.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit

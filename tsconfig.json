@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "module": "esnext",
+    "moduleResolution": "Node",
+    "target": "esnext",
+    "sourceMap": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["lib/**/*", "contract/**/*", "artifacts/js/**/*", "scripts/**/*", "test/**/*", "*.ts"],
+  "exclude": ["node_modules"]
+}
