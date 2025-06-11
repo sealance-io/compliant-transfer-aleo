@@ -5,22 +5,22 @@ import sealed_timelock_policy.aleo;
 // The 'exchange' program.
 // This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
 program gqrfmwbtyp.aleo {
-    
+
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     const DEFAULT_RATE: u128 = 10u128;
 
+    const ADMIN_INDEX: u8 = 1u8;
+
     mapping token_rates: field => u128;     
-    mapping admin: u8 => address;
+    mapping roles: u8 => address;
 
-    async transition update_admin(public new_admin: address) -> Future {
-        return f_update_admin(self.caller, new_admin);
+    async transition update_role(public new_address: address, role: u8) -> Future {
+        return f_update_role(new_address, self.caller, role);
     }
-
-    async function f_update_admin(caller: address, new_admin: address) {
-        let current_admin: address = admin.get_or_use(0u8, caller);
-        assert_eq(current_admin, caller);
-
-        admin.set(0u8, new_admin);
+    async function f_update_role(new_address: address, caller: address, role: u8) {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        assert_eq(admin_address, caller);
+        roles.set(role, new_address);
     }
 
     async transition update_rate(public token_id: field, public rate: u128) -> Future {
@@ -28,7 +28,7 @@ program gqrfmwbtyp.aleo {
     }
 
     async function f_update_rate(caller: address, token_id: field, rate: u128) {
-        let current_admin: address = admin.get(0u8);
+        let current_admin: address = roles.get(ADMIN_INDEX);
         assert_eq(caller, current_admin);
 
         token_rates.set(token_id, rate);

@@ -8,15 +8,19 @@ program sealed_report_policy.aleo {
     const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
 
+    const ADMIN_INDEX: u8 = 1u8;
+    const INVESTIGATOR_INDEX: u8 = 2u8;
+    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
+    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
+    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
+    const BLOCK_HEIGHT_WIDNOW_INDEX: bool = true;
+
     // Mappings
     mapping freeze_list: address => bool; // Indicates if address is frozen
     mapping freeze_list_index: u32 => address; // Mimic an array of all the frozen addresses
     mapping freeze_list_root: u8 => field;
-    mapping root_updated_height: u8 => u32;
-    mapping block_height_window: u8 => u32; // it defines a window of blocks within which the old root is considered valid
-
-    const ADMIN_ROLE: u8 = 1u8;
-    const INVESTIGATOR_ROLE: u8 = 2u8;
+    mapping root_updated_height: bool => u32;
+    mapping block_height_window: bool => u32; // it defines a window of blocks within which the old root is considered valid
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -40,25 +44,24 @@ program sealed_report_policy.aleo {
         return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
     async function f_update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, caller: address, new_root: field) {
-        let admin_address: address = roles.get(1u8);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        let old_root: field = freeze_list_root.get_or_use(0u8, 0field);
-        freeze_list_root.set(1u8, old_root);
-        freeze_list_root.set(0u8, new_root);
+        let old_root: field = freeze_list_root.get_or_use(CURRENT_FREEZE_LIST_ROOT_INDEX, 0field);
+        freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
+        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
 
         freeze_list.set(account, is_freezed);
         freeze_list_index.set(freezed_index, is_freezed ? account : ZERO_ADDRESS);
-        freeze_list_root.set(0u8, new_root);
 
-        root_updated_height.set(0u8, block.height);
+        root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
     }
 
-   async transition update_roles_address(public new_address: address, role: u8) -> Future {
-        return f_update_roles_address(new_address, self.caller, role);
+   async transition update_role(public new_address: address, role: u8) -> Future {
+        return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_roles_address(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(1u8, caller);
+    async function f_update_role(new_address: address, caller: address, role: u8) {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }
@@ -67,10 +70,10 @@ program sealed_report_policy.aleo {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(1u8);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        block_height_window.set(0u8, blocks);
+        block_height_window.set(BLOCK_HEIGHT_WIDNOW_INDEX, blocks);
     }
 
     // -------------------------
@@ -230,16 +233,16 @@ program sealed_report_policy.aleo {
         let is_sender_freezed: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_freezed, false);
 
-        let current_root: field = freeze_list_root.get(0u8);
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if(current_root != root) {
-            let previous_root: field = freeze_list_root.get(1u8);
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(0u8, 0u32);
-            let updated_height: u32 = root_updated_height.get(0u8);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
 
-        let caller_address: address = roles.get(2u8);
+        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(caller_address, investigator_address);
 
         authorization_call_for_caller.await();
@@ -308,16 +311,16 @@ program sealed_report_policy.aleo {
         root: field,
         investigator_address: address
     ) {
-        let current_root: field = freeze_list_root.get(0u8);
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if(current_root != root) {
-            let previous_root: field = freeze_list_root.get(1u8);
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(0u8, 0u32);
-            let updated_height: u32 = root_updated_height.get(0u8);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
         
-        let caller_address: address = roles.get(2u8);
+        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(caller_address, investigator_address);
 
         authorization_call.await();
@@ -382,16 +385,16 @@ program sealed_report_policy.aleo {
         let is_recipient_freezed: bool = freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_freezed, false);
        
-        let current_root: field = freeze_list_root.get(0u8);
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if(current_root != root) {
-            let previous_root: field = freeze_list_root.get(1u8);
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(0u8, 0u32);
-            let updated_height: u32 = root_updated_height.get(0u8);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
         
-        let caller_address: address = roles.get(2u8);
+        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(caller_address, investigator_address);
 
         authorization_call.await();
