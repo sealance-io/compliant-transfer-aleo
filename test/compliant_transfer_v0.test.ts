@@ -7,8 +7,12 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import {
+  ADMIN_INDEX,
   COMPLIANT_TRANSFER_ADDRESS,
+  CURRENT_FREEZE_LIST_ROOT_INDEX,
+  INVESTIGATOR_INDEX,
   MAX_TREE_SIZE,
+  PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
   defaultAuthorizedUntil,
   fundedAmount,
@@ -106,17 +110,17 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await compliantTransferContractForAdmin.update_roles_address(freezedAccount, 1);
+      let tx = await compliantTransferContractForAdmin.update_role(freezedAccount, ADMIN_INDEX);
       await tx.wait();
-      let adminRole = await compliantTransferContract.roles(1);
+      let adminRole = await compliantTransferContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(freezedAccount);
 
-      tx = await compliantTransferContractForFreezedAccount.update_roles_address(adminAddress, 1);
+      tx = await compliantTransferContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
-      adminRole = await compliantTransferContract.roles(1);
+      adminRole = await compliantTransferContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await compliantTransferContractForFreezedAccount.update_roles_address(freezedAccount, 1);
+      tx = await compliantTransferContractForFreezedAccount.update_role(freezedAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -125,17 +129,20 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_investigator_address`,
     async () => {
-      let tx = await compliantTransferContractForAdmin.update_roles_address(freezedAccount, 2);
+      let tx = await compliantTransferContractForAdmin.update_role(freezedAccount, INVESTIGATOR_INDEX);
       await tx.wait();
-      let investigatorRole = await compliantTransferContract.roles(2);
+      let investigatorRole = await compliantTransferContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(freezedAccount);
 
-      tx = await compliantTransferContractForAdmin.update_roles_address(investigatorAddress, 2);
+      tx = await compliantTransferContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
       await tx.wait();
-      investigatorRole = await compliantTransferContract.roles(2);
+      investigatorRole = await compliantTransferContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      const rejectedTx = await compliantTransferContractForFreezedAccount.update_roles_address(freezedAccount, 2);
+      const rejectedTx = await compliantTransferContractForFreezedAccount.update_role(
+        freezedAccount,
+        INVESTIGATOR_INDEX,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -560,8 +567,8 @@ describe("test compliant_transfer program", () => {
       );
       await updateFreezeListTx.wait();
 
-      const newRoot = await compliantTransferContract.freeze_list_root(0);
-      const oldRoot = await compliantTransferContract.freeze_list_root(1);
+      const newRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const oldRoot = await compliantTransferContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
       expect(oldRoot).toBe(root);
       expect(newRoot).toBe(1n);
 

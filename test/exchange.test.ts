@@ -5,12 +5,12 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { TREASURE_ADDRESS, fundedAmount, timeout, policies, defaultRate } from "../lib/Constants";
+import { TREASURE_ADDRESS, fundedAmount, timeout, policies, defaultRate, ADMIN_INDEX } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
 import { CreditsContract } from "../artifacts/js/credits";
-import { setTimelockPolicyRole, setTokenRegistryRole } from "../lib/Role";
+import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
 import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
@@ -50,6 +50,10 @@ const compliantThresholdTransferContract = new Sealed_threshold_report_policyCon
 const compliantTimelockTransferContract = new Sealed_timelock_policyContract({
   mode,
   privateKey: deployerPrivKey,
+});
+const compliantTimelockTransferContractForAdmin = new Sealed_timelock_policyContract({
+  mode,
+  privateKey: adminPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -118,7 +122,7 @@ describe("test exchange contract", () => {
 
       await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
       await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-      await setTimelockPolicyRole(adminPrivKey, exchangeContract.address(), 2);
+      await updateMinterRole(compliantTimelockTransferContractForAdmin, exchangeContract.address());
     },
     timeout,
   );
@@ -126,14 +130,14 @@ describe("test exchange contract", () => {
   test(
     `test update_admin`,
     async () => {
-      const tx = await exchangeContractForAdmin.update_admin(adminAddress);
+      const tx = await exchangeContractForAdmin.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
 
-      const admin = await exchangeContract.admin(0);
+      const admin = await exchangeContract.roles(ADMIN_INDEX);
       await expect(admin).toBe(adminAddress);
 
       // Only the admin can call to this function
-      const rejectedTx = await exchangeContractForAccount.update_admin(adminAddress);
+      const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, ADMIN_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,

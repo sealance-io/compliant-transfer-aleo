@@ -2,7 +2,15 @@ import { ExecutionMode } from "@doko-js/core";
 
 import { BaseContract } from "../contract/base-contract";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { MAX_TREE_SIZE, ZERO_ADDRESS, fundedAmount, timeout } from "../lib/Constants";
+import {
+  ADMIN_INDEX,
+  CURRENT_FREEZE_LIST_ROOT_INDEX,
+  MAX_TREE_SIZE,
+  PREVIOUS_FREEZE_LIST_ROOT_INDEX,
+  ZERO_ADDRESS,
+  fundedAmount,
+  timeout,
+} from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
@@ -61,17 +69,17 @@ describe("test freeze_registry program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await freezeRegistryContractForAdmin.update_admin_address(freezedAccount);
+      let tx = await freezeRegistryContractForAdmin.update_role(freezedAccount, ADMIN_INDEX);
       await tx.wait();
-      let adminRole = await freezeRegistryContract.admin(0);
+      let adminRole = await freezeRegistryContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(freezedAccount);
 
-      tx = await freezeRegistryContractForFreezedAccount.update_admin_address(adminAddress);
+      tx = await freezeRegistryContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
-      adminRole = await freezeRegistryContract.admin(0);
+      adminRole = await freezeRegistryContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await freezeRegistryContractForFreezedAccount.update_admin_address(freezedAccount);
+      tx = await freezeRegistryContractForFreezedAccount.update_role(freezedAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -182,8 +190,8 @@ describe("test freeze_registry program", () => {
       );
       await updateFreezeListTx.wait();
 
-      const newRoot = await freezeRegistryContract.freeze_list_root(0);
-      const oldRoot = await freezeRegistryContract.freeze_list_root(1);
+      const newRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const oldRoot = await freezeRegistryContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
       expect(oldRoot).toBe(root);
       expect(newRoot).toBe(1n);
 

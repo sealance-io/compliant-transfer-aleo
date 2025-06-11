@@ -56,6 +56,18 @@ export const policies: { [key: string]: IPolicy } = {
   },
 };
 
+// Indexes
+export const ADMIN_INDEX = 1;
+export const INVESTIGATOR_INDEX = 2;
+export const MINTER_INDEX = 3;
+export const CURRENT_FREEZE_LIST_ROOT_INDEX = 1;
+export const PREVIOUS_FREEZE_LIST_ROOT_INDEX = 2;
+export const ROOT_UPDATED_HEIGHT_INDEX = true;
+export const BLOCK_HEIGHT_WIDNOW_INDEX = true;
+export const FREEZE_REGISTRY_PROGRAM_INDEX = true;
+export const EPOCH_INDEX = true;
+export const THRESHOLD_INDEX = true;
+
 export const THRESHOLD = 1000000000n;
 export const EPOCH = 18000;
 
