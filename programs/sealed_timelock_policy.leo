@@ -8,16 +8,19 @@ program sealed_timelock_policy.aleo {
     const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
     const DECIMALS: u8 = 6u8;
     const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
+    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
 
-    // Mappings
-    mapping freeze_registry_program_name: u8 => u128;
+    const ADMIN_INDEX: u8 = 1u8;
+    const MINTER_INDEX: u8 = 3u8;
+    const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
 
-    const ADMIN_ROLE: u8 = 1u8;
-    const MINTER_ROLE: u8 = 2u8;
-    mapping roles: address => u8;
+    // Mappings
+    mapping freeze_registry_program_name: bool => u128;
+
+    mapping roles: u8 => address;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -54,19 +57,19 @@ program sealed_timelock_policy.aleo {
     }
 
     async function f_initialize(token_registry_call: Future, caller: address,) {
-        freeze_registry_program_name.set(0u8, FREEZE_REGISTRY_PROGRAM_NAME);
-        roles.set(caller, ADMIN_ROLE);
+        freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
+        roles.set(ADMIN_INDEX, caller);
         
         token_registry_call.await();
     }
 
-    async transition update_roles(public new_address: address, public role: u8) -> Future {
-        return f_update_roles(new_address, self.caller, role);
+    async transition update_role(public new_address: address, role: u8) -> Future {
+        return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_roles(new_address: address, caller: address, role: u8) {
-        let caller_role: u8 = roles.get(caller);
-        assert_eq(caller_role, ADMIN_ROLE);
-        roles.set(new_address, role);
+    async function f_update_role(new_address: address, caller: address, role: u8) {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        assert_eq(admin_address, caller);
+        roles.set(role, new_address);
     }
 
     async transition mint_public(
@@ -94,8 +97,9 @@ program sealed_timelock_policy.aleo {
         token_registry_call: Future,
         caller: address
     ) {
-        let role: u8 = roles.get(caller);
-        assert(role == MINTER_ROLE || role == ADMIN_ROLE);
+        let admin_address: address = roles.get(ADMIN_INDEX);
+        let minter_address: address = roles.get_or_use(MINTER_INDEX, ZERO_ADDRESS);
+        assert(admin_address == caller || minter_address == caller);
 
         token_registry_call.await();
     }
@@ -126,8 +130,9 @@ program sealed_timelock_policy.aleo {
         token_registry_call: Future,
         caller: address
     ) {
-        let role: u8 = roles.get(caller);
-        assert(role == MINTER_ROLE || role == ADMIN_ROLE);
+        let admin_address: address = roles.get(ADMIN_INDEX);
+        let minter_address: address = roles.get_or_use(MINTER_INDEX, ZERO_ADDRESS);
+        assert(admin_address == caller || minter_address == caller);
 
         token_registry_call.await();
     }

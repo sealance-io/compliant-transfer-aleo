@@ -11,15 +11,20 @@ program sealed_threshold_report_policy.aleo {
     const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
     const EPOCH: u32 = 18000u32; // 10-25 hours 
 
+    const ADMIN_INDEX: u8 = 1u8;
+    const INVESTIGATOR_INDEX: u8 = 2u8;
+    const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
+    const EPOCH_INDEX: bool = true;
+    const THRESHOLD_INDEX: bool = true;
+    const BLOCK_HEIGHT_WIDNOW_INDEX: bool = true;
+    
     // Mappings
-    mapping freeze_registry_program_name: u8 => u128;
-    mapping threshold: u8 => u128;
-    mapping epoch: u8 => u32;
-    mapping block_height_window: u8 => u32; // it defines a window of blocks within which a transaction is considered valid:  block.height - window < estimated_block_height <= block.height
+    mapping freeze_registry_program_name: bool => u128;
+    mapping threshold: bool => u128;
+    mapping epoch: bool => u32;
+    mapping block_height_window: bool => u32; // it defines a window of blocks within which a transaction is considered valid:  block.height - window < estimated_block_height <= block.height
     mapping owned_state_record: address => bool;
  
-    const ADMIN_ROLE: u8 = 1u8;
-    const INVESTIGATOR_ROLE: u8 = 2u8;
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -142,11 +147,11 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let role_address: address = roles.get(2u8);
+        let role_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(role_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(0u8);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
@@ -160,26 +165,26 @@ program sealed_threshold_report_policy.aleo {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(1u8);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        block_height_window.set(0u8, blocks);
+        block_height_window.set(BLOCK_HEIGHT_WIDNOW_INDEX, blocks);
     }
 
     async transition init_mappings() -> Future {
         return f_init_mappings();
     }
     async function f_init_mappings() {
-        freeze_registry_program_name.set(0u8, FREEZE_REGISTRY_PROGRAM_NAME);
-        threshold.set(0u8, THRESHOLD);
-        epoch.set(0u8, EPOCH);
+        freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
+        threshold.set(THRESHOLD_INDEX, THRESHOLD);
+        epoch.set(EPOCH_INDEX, EPOCH);
     }
 
-    async transition update_roles_address(public new_address: address, role: u8) -> Future {
-        return f_update_roles_address(new_address, self.caller, role);
+    async transition update_role(public new_address: address, role: u8) -> Future {
+        return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_roles_address(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(1u8, caller);
+    async function f_update_role(new_address: address, caller: address, role: u8) {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }
@@ -244,7 +249,7 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient.await();
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(0u8);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
@@ -307,7 +312,7 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient.await();
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(0u8);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
@@ -415,11 +420,11 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let role_address: address = roles.get(2u8);
+        let role_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(role_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(0u8);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
@@ -515,11 +520,11 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let caller_address: address = roles.get(2u8);
+        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(caller_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(0u8);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
@@ -608,11 +613,11 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
         
-        let role_address: address = roles.get(2u8);
+        let role_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(role_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(0u8);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
