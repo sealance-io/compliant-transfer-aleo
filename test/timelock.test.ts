@@ -13,6 +13,8 @@ import {
   fundedAmount,
   timeout,
   policies,
+  ADMIN_INDEX,
+  MINTER_INDEX,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -23,6 +25,7 @@ import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
+import { updateAdminRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -132,13 +135,13 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `test update_roles`,
     async () => {
-      const adminRole = await timelockContract.roles(adminAddress);
-      expect(adminRole).toBe(1);
+      const onChainAdmin = await timelockContract.roles(ADMIN_INDEX);
+      expect(onChainAdmin).toBe(adminAddress);
 
-      let tx = await timelockContractForFreezedAccount.update_roles(adminAddress, 1);
+      let tx = await timelockContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
 
-      tx = await timelockContractForAdmin.update_roles(recipient, 2);
+      tx = await timelockContractForAdmin.update_role(recipient, MINTER_INDEX);
       await tx.wait();
     },
     timeout,
@@ -180,7 +183,7 @@ describe("test compliant_timelock_transfer program", () => {
       // recipient is a minter, verify that they can call mint
       mintPublicTx = await timelockContractForRecipient.mint_public(account, amount * 20n, 0);
       await mintPublicTx.wait();
-      mintPrivateTx = await timelockContractForAdmin.mint_private(freezedAccount, amount * 20n, 0);
+      mintPrivateTx = await timelockContractForRecipient.mint_private(freezedAccount, amount * 20n, 0);
       await mintPrivateTx.wait();
 
       // freezed account cannot call mint
@@ -228,10 +231,7 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `freeze registry setup`,
     async () => {
-      const tx = await freezeRegistryContractForAdmin.update_admin_address(adminAddress);
-      await tx.wait();
-      const adminRole = await freezeRegistryContract.admin(0);
-      expect(adminRole).toBe(adminAddress);
+      await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
 
       const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
       await tx2.wait();

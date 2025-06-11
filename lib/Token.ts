@@ -70,8 +70,9 @@ export async function initializeTokenProgram(
       await tx.wait();
     }
 
-    await updateAdminRole(adminPrivKey, Contract, adminAddress);
-    await updateInvestigatorRole(adminPrivKey, Contract, investigatorAddress);
+    const contract = new Contract({ mode, privateKey: adminPrivKey });
+    await updateAdminRole(contract, adminAddress);
+    await updateInvestigatorRole(contract, investigatorAddress);
   }
 
   if (initMappings) {

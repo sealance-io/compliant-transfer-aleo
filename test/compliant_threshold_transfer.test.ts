@@ -6,10 +6,16 @@ import { decryptComplianceRecord } from "../artifacts/js/leo2js/sealed_report_po
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
+  ADMIN_INDEX,
+  BLOCK_HEIGHT_WIDNOW_INDEX,
   COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
   EPOCH,
+  EPOCH_INDEX,
+  FREEZE_REGISTRY_PROGRAM_INDEX,
+  INVESTIGATOR_INDEX,
   MAX_TREE_SIZE,
   THRESHOLD,
+  THRESHOLD_INDEX,
   defaultAuthorizedUntil,
   fundedAmount,
   policies,
@@ -26,6 +32,7 @@ import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_t
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { TokenComplianceStateRecord } from "../artifacts/js/types/sealed_threshold_report_policy";
+import { updateAdminRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -126,11 +133,12 @@ describe("test compliant_threshold_transfer program", () => {
     async () => {
       const tx = await compliantThresholdTransferContractForAdmin.init_mappings();
       await tx.wait();
-      const freezeRegistryName = await compliantThresholdTransferContract.freeze_registry_program_name(0);
+      const freezeRegistryName =
+        await compliantThresholdTransferContract.freeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
       expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
-      const epoch = await compliantThresholdTransferContract.epoch(0);
+      const epoch = await compliantThresholdTransferContract.epoch(EPOCH_INDEX);
       expect(epoch).toBe(EPOCH);
-      const threshold = await compliantThresholdTransferContract.threshold(0);
+      const threshold = await compliantThresholdTransferContract.threshold(THRESHOLD_INDEX);
       expect(threshold).toBe(THRESHOLD);
     },
     timeout,
@@ -139,17 +147,17 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await compliantThresholdTransferContractForAdmin.update_roles_address(freezedAccount, 1);
+      let tx = await compliantThresholdTransferContractForAdmin.update_role(freezedAccount, ADMIN_INDEX);
       await tx.wait();
-      let adminRole = await compliantThresholdTransferContract.roles(1);
+      let adminRole = await compliantThresholdTransferContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(freezedAccount);
 
-      tx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(adminAddress, 1);
+      tx = await compliantThresholdTransferContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
-      adminRole = await compliantThresholdTransferContract.roles(1);
+      adminRole = await compliantThresholdTransferContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(freezedAccount, 1);
+      tx = await compliantThresholdTransferContractForFreezedAccount.update_role(freezedAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -158,19 +166,19 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test update_investigator_address`,
     async () => {
-      let tx = await compliantThresholdTransferContractForAdmin.update_roles_address(freezedAccount, 2);
+      let tx = await compliantThresholdTransferContractForAdmin.update_role(freezedAccount, INVESTIGATOR_INDEX);
       await tx.wait();
-      let investigatorRole = await compliantThresholdTransferContract.roles(2);
+      let investigatorRole = await compliantThresholdTransferContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(freezedAccount);
 
-      tx = await compliantThresholdTransferContractForAdmin.update_roles_address(investigatorAddress, 2);
+      tx = await compliantThresholdTransferContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
       await tx.wait();
-      investigatorRole = await compliantThresholdTransferContract.roles(2);
+      investigatorRole = await compliantThresholdTransferContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      const rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_roles_address(
+      const rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_role(
         freezedAccount,
-        2,
+        INVESTIGATOR_INDEX,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
@@ -191,7 +199,7 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await tx.wait();
 
-      const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(0);
+      const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(BLOCK_HEIGHT_WIDNOW_INDEX);
       expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
     },
     timeout,
@@ -279,10 +287,7 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `freeze registry setup`,
     async () => {
-      const tx = await freezeRegistryContractForAdmin.update_admin_address(adminAddress);
-      await tx.wait();
-      const adminRole = await freezeRegistryContract.admin(0);
-      expect(adminRole).toBe(adminAddress);
+      await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
 
       const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
       await tx2.wait();
