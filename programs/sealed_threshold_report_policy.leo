@@ -52,18 +52,18 @@ program sealed_threshold_report_policy.aleo {
 
     async transition signup() -> (TokenComplianceStateRecord, Future){
         let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
-            owner: self.caller,
+            owner: self.signer,
             cumulative_amount_per_epoch: 0u128,
             latest_block_height: 0u32
         };
 
-        return (state_record, f_signup(self.caller));
+        return (state_record, f_signup(self.signer));
     }
-    async function f_signup(caller: address) {
-        let is_owned_state_record: bool = owned_state_record.get_or_use(caller, false);
+    async function f_signup(signer: address) {
+        let is_owned_state_record: bool = owned_state_record.get_or_use(signer, false);
         assert_eq(is_owned_state_record, false);
 
-        owned_state_record.set(caller, true);
+        owned_state_record.set(signer, true);
     }
 
     // BE AWARE: This function will reveal the sender's address 
@@ -78,7 +78,7 @@ program sealed_threshold_report_policy.aleo {
     {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
+        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(input_record.owner);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
@@ -102,7 +102,7 @@ program sealed_threshold_report_policy.aleo {
         );
 
         let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
-            owner: self.caller,
+            owner: input_record.owner,
             cumulative_amount_per_epoch: amount,
             latest_block_height: estimated_block_height
         };
@@ -121,7 +121,7 @@ program sealed_threshold_report_policy.aleo {
             authorization_call.0, 
             transfer_call.1,
             f_signup_and_transfer_private(
-                self.caller,
+                input_record.owner,
                 investigator_address,
                 estimated_block_height,
                 verify_sender,
@@ -132,7 +132,7 @@ program sealed_threshold_report_policy.aleo {
     }
 
     async function f_signup_and_transfer_private(
-        caller: address,  
+        sender: address,  
         investigator_address: address,
         estimated_block_height: u32,
         verify_sender: Future,
@@ -140,9 +140,9 @@ program sealed_threshold_report_policy.aleo {
         authorization_call: Future,
         transfer_call: Future) 
     {
-        let is_owned_state_record: bool = owned_state_record.get_or_use(caller, false);
+        let is_owned_state_record: bool = owned_state_record.get_or_use(sender, false);
         assert_eq(is_owned_state_record, false);
-        owned_state_record.set(caller, true);
+        owned_state_record.set(sender, true);
 
         verify_sender.await();
         verify_recipient.await();
