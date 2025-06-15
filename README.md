@@ -6,7 +6,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v2.5.0
+- [Leo](https://github.com/ProvableHQ/leo) CLI v2.6.1
 
 - [Amareleo](https://github.com/kaxxa123/amareleo-chain) Aleo chain instances v2.3.0,
 
