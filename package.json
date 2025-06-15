@@ -11,6 +11,7 @@
     "test": "test"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "deploy:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-devnet.ts",
     "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-testnet.ts",
     "update-freeze-list:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/update-freeze-list.ts",
@@ -30,6 +31,7 @@
     "@types/node": "22.15.19",
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
+    "patch-package": "^8.0.0",
     "prettier": "3.5.3",
     "rimraf": "6.0.1",
     "testcontainers": "10.24.2",
