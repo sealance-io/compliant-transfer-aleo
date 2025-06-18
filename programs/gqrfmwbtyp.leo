@@ -8,6 +8,7 @@ program gqrfmwbtyp.aleo {
 
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     const DEFAULT_RATE: u128 = 10u128;
+    const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
 
     const ADMIN_INDEX: u8 = 1u8;
 
@@ -43,7 +44,7 @@ program gqrfmwbtyp.aleo {
         let token_amount: u128 = rate * amount as u128;
         let mint_token_call: (token_registry.aleo/Token, Future) = token_registry.aleo/mint_private(
             token_id,
-            self.caller,
+            self.signer,
             token_amount, 
             true,
             0u32
@@ -68,16 +69,16 @@ program gqrfmwbtyp.aleo {
 
         let token_amount: u128 = rate * amount as u128;
         let mint_token_call: (sealed_timelock_policy.aleo/CompliantToken, token_registry.aleo/Token, Future) = sealed_timelock_policy.aleo/mint_private(
-            self.caller,
+            self.signer,
             token_amount,
             0u32
         );
 
-        return (mint_token_call.0, mint_token_call.1, f_exchange_timelock_token(31155203188273609789785737924444174490841009372087129field, rate, transfer_credits_call, mint_token_call.2));
+        return (mint_token_call.0, mint_token_call.1, f_exchange_timelock_token(rate, transfer_credits_call, mint_token_call.2));
     }
 
-    async function f_exchange_timelock_token(token_id: field, rate: u128,transfer_call: Future, mint_call: Future) {
-        let stored_rate: u128 = token_rates.get_or_use(token_id, DEFAULT_RATE);
+    async function f_exchange_timelock_token(rate: u128, transfer_call: Future, mint_call: Future) {
+        let stored_rate: u128 = token_rates.get_or_use(TIMELOCK_TOKEN_ID, DEFAULT_RATE);
         assert_eq(rate, stored_rate);
 
         transfer_call.await();

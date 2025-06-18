@@ -16,7 +16,7 @@ program sealed_threshold_report_policy.aleo {
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
     const EPOCH_INDEX: bool = true;
     const THRESHOLD_INDEX: bool = true;
-    const BLOCK_HEIGHT_WIDNOW_INDEX: bool = true;
+    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     
     // Mappings
     mapping freeze_registry_program_name: bool => u128;
@@ -24,7 +24,6 @@ program sealed_threshold_report_policy.aleo {
     mapping epoch: bool => u32;
     mapping block_height_window: bool => u32; // it defines a window of blocks within which a transaction is considered valid:  block.height - window < estimated_block_height <= block.height
     mapping owned_state_record: address => bool;
- 
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -73,9 +72,8 @@ program sealed_threshold_report_policy.aleo {
         input_record: token_registry.aleo/Token,
         public estimated_block_height: u32,
         recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address) -> 
-    (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) 
-    {
+        public investigator_address: address
+    ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(input_record.owner);
@@ -128,7 +126,7 @@ program sealed_threshold_report_policy.aleo {
                 verify_recipient,
                 authorization_call.2,
                 transfer_call.2
-                ));
+            ));
     }
 
     async function f_signup_and_transfer_private(
@@ -138,8 +136,8 @@ program sealed_threshold_report_policy.aleo {
         verify_sender: Future,
         verify_recipient: Future,  
         authorization_call: Future,
-        transfer_call: Future) 
-    {
+        transfer_call: Future
+    ) {
         let is_owned_state_record: bool = owned_state_record.get_or_use(sender, false);
         assert_eq(is_owned_state_record, false);
         owned_state_record.set(sender, true);
@@ -151,11 +149,11 @@ program sealed_threshold_report_policy.aleo {
         assert_eq(role_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height > (block.height - window));
+        assert(estimated_block_height >= (block.height - window));
 
         authorization_call.await();
         transfer_call.await();
@@ -168,7 +166,7 @@ program sealed_threshold_report_policy.aleo {
         let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        block_height_window.set(BLOCK_HEIGHT_WIDNOW_INDEX, blocks);
+        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
     async transition init_mappings() -> Future {
@@ -203,7 +201,6 @@ program sealed_threshold_report_policy.aleo {
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
-
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
@@ -235,7 +232,7 @@ program sealed_threshold_report_policy.aleo {
             latest_block_height: estimated_block_height
         };
 
-        return (state_record, finalize_transfer_public(authorization_call, transfer_call, verify_sender, verify_recipient, estimated_block_height));
+        return (state_record, finalize_transfer_public(verify_sender, verify_recipient, authorization_call, transfer_call, estimated_block_height));
     }
 
     async function finalize_transfer_public(
@@ -243,19 +240,20 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        public estimated_block_height: u32
+        estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height > (block.height - window));
-        authorization_call.await(); 
-        transfer_call.await(); 
+        assert(estimated_block_height >= (block.height - window));
+
+        authorization_call.await();
+        transfer_call.await();
     }
 
     async transition transfer_public_as_signer(
@@ -298,7 +296,7 @@ program sealed_threshold_report_policy.aleo {
             latest_block_height: estimated_block_height
         };
 
-        return (state_record, f_transfer_public_as_signer(authorization_call, transfer_call, verify_sender, verify_recipient, estimated_block_height));
+        return (state_record, f_transfer_public_as_signer(verify_sender, verify_recipient, authorization_call, transfer_call, estimated_block_height));
     }
 
     async function f_transfer_public_as_signer(
@@ -306,17 +304,18 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        public estimated_block_height: u32
+        estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height > (block.height - window));
+        assert(estimated_block_height >= (block.height - window));
+
         authorization_call.await();
         transfer_call.await();
     }
@@ -371,7 +370,7 @@ program sealed_threshold_report_policy.aleo {
         assert(estimated_block_height >= input_state_record.latest_block_height);
         let current_epoch: u32 =  estimated_block_height / EPOCH;
         let previous_epoch: u32 =  input_state_record.latest_block_height / EPOCH;
-        
+
         let cumulative_amount_per_epoch: u128 = current_epoch == previous_epoch 
             ? amount + input_state_record.cumulative_amount_per_epoch
             : amount;
@@ -415,20 +414,21 @@ program sealed_threshold_report_policy.aleo {
         authorization_call_for_program: Future,
         transfer_to_recipient: Future,
         investigator_address: address,
-        public estimated_block_height: u32
+        estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
 
-        let role_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(role_address, investigator_address);
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height > (block.height - window));
+        assert(estimated_block_height >= (block.height - window));
+
         authorization_call_for_caller.await();
         transfer_to_program.await();
         authorization_call_for_program.await();
@@ -515,20 +515,20 @@ program sealed_threshold_report_policy.aleo {
         authorization_call: Future,
         transfer_call: Future,       
         investigator_address: address,
-        public estimated_block_height: u32
+        estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
 
-        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(caller_address, investigator_address);
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height > (block.height - window));
+        assert(estimated_block_height >= (block.height - window));
 
         authorization_call.await();
         transfer_call.await();
@@ -592,10 +592,10 @@ program sealed_threshold_report_policy.aleo {
             state_record,
             authorization_call.0,
             f_transfer_priv_to_public(
-                authorization_call.2, 
-                transfer_call.1, 
                 verify_sender,
                 verify_recipient,
+                authorization_call.2, 
+                transfer_call.1, 
                 investigator_address,
                 estimated_block_height
             )
@@ -608,20 +608,21 @@ program sealed_threshold_report_policy.aleo {
         authorization_call: Future,
         transfer_call: Future,
         investigator_address: address,
-        public estimated_block_height: u32
+        estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
         
-        let role_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(role_address, investigator_address);
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WIDNOW_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height > (block.height - window));
+        assert(estimated_block_height >= (block.height - window));
+
         authorization_call.await();
         transfer_call.await();
     }

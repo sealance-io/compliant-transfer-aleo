@@ -8,7 +8,7 @@ program sealance_freezelist_registry.aleo {
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    const BLOCK_HEIGHT_WIDNOW_INDEX: bool = true;
+    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -20,7 +20,6 @@ program sealance_freezelist_registry.aleo {
     mapping freeze_list_root: u8 => field;
     mapping root_updated_height: bool => u32;
     mapping block_height_window: bool => u32; // it defines a window of blocks within which the old root is considered valid
-
     mapping roles: u8 => address;
 
     async transition update_role(public new_admin_address: address, role: u8) -> Future {
@@ -39,7 +38,7 @@ program sealance_freezelist_registry.aleo {
         let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        block_height_window.set(BLOCK_HEIGHT_WIDNOW_INDEX, blocks);
+        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
     async transition update_freeze_list(public account: address, public is_freezed: bool, public freezed_index: u32, public new_root: field) -> Future {
@@ -73,10 +72,10 @@ program sealance_freezelist_registry.aleo {
     }
     async function f_verify_non_inclusion_priv(root: field) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if(current_root != root) {
+        if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
