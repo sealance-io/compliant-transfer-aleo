@@ -441,8 +441,8 @@ describe("test compliant_timelock_transfer program", () => {
       let rejectedTx = await timelockContractForAccount.transfer_public_to_priv(
         recipient,
         amount,
-        recipientMerkleProof,
         accountSealedRecord,
+        recipientMerkleProof,
         latestBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
@@ -458,8 +458,8 @@ describe("test compliant_timelock_transfer program", () => {
       rejectedTx = await timelockContractForFreezedAccount.transfer_public_to_priv(
         recipient,
         amount,
-        recipientMerkleProof,
         freezedAccountSealedRecord,
+        recipientMerkleProof,
         latestBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
@@ -469,8 +469,8 @@ describe("test compliant_timelock_transfer program", () => {
         timelockContractForAccount.transfer_public_to_priv(
           freezedAccount,
           amount,
-          freezedAccountMerkleProof,
           accountSealedRecord,
+          freezedAccountMerkleProof,
           latestBlockHeight,
         ),
       ).rejects.toThrow();
@@ -480,8 +480,8 @@ describe("test compliant_timelock_transfer program", () => {
         timelockContractForAccount.transfer_public_to_priv(
           recipient,
           amount + 1n,
-          recipientMerkleProof,
           accountSealedRecord,
+          recipientMerkleProof,
           latestBlockHeight,
         ),
       ).rejects.toThrow();
@@ -492,8 +492,8 @@ describe("test compliant_timelock_transfer program", () => {
       const tx = await timelockContractForAccount.transfer_public_to_priv(
         recipient,
         amountToSend,
-        recipientMerkleProof,
         accountSealedRecord,
+        recipientMerkleProof,
         largeBlockHeight,
       );
 

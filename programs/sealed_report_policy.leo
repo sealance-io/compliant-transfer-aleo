@@ -13,7 +13,7 @@ program sealed_report_policy.aleo {
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    const BLOCK_HEIGHT_WIDNOW_INDEX: bool = true;
+    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
 
     // Mappings
     mapping freeze_list: address => bool; // Indicates if address is frozen
@@ -73,7 +73,7 @@ program sealed_report_policy.aleo {
         let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        block_height_window.set(BLOCK_HEIGHT_WIDNOW_INDEX, blocks);
+        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
     // -------------------------
@@ -234,16 +234,16 @@ program sealed_report_policy.aleo {
         assert_eq(is_sender_freezed, false);
 
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if(current_root != root) {
+        if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
 
-        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(caller_address, investigator_address);
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
 
         authorization_call_for_caller.await();
         transfer_to_program.await();
@@ -312,22 +312,22 @@ program sealed_report_policy.aleo {
         investigator_address: address
     ) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if(current_root != root) {
+        if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
         
-        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(caller_address, investigator_address);
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();
     }
 
-        async transition transfer_priv_to_public(
+    async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
         input_record: token_registry.aleo/Token,
@@ -386,16 +386,16 @@ program sealed_report_policy.aleo {
         assert_eq(is_recipient_freezed, false);
        
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if(current_root != root) {
+        if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WIDNOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
         
-        let caller_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(caller_address, investigator_address);
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();

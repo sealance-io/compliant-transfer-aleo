@@ -19,7 +19,6 @@ program sealed_timelock_policy.aleo {
 
     // Mappings
     mapping freeze_registry_program_name: bool => u128;
-
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -84,13 +83,13 @@ program sealed_timelock_policy.aleo {
             0u32
         );
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
-        return (authorized_record, finalize_mint_public(token_registry_call, self.caller));
+        return (recipient_compliant_record, finalize_mint_public(token_registry_call, self.caller));
     }
 
     async function finalize_mint_public(
@@ -117,13 +116,13 @@ program sealed_timelock_policy.aleo {
             0u32
         );
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
-        return (authorized_record, token_registry_call.0, finalize_mint_private(token_registry_call.1, self.caller));
+        return (recipient_compliant_record, token_registry_call.0, finalize_mint_private(token_registry_call.1, self.caller));
     }
 
     async function finalize_mint_private(
@@ -148,7 +147,6 @@ program sealed_timelock_policy.aleo {
         sealed_token: CompliantToken,
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, Future) {
-
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
@@ -169,22 +167,22 @@ program sealed_timelock_policy.aleo {
             amount
         );
 
-        let unauthorized_record: CompliantToken = CompliantToken {
+        let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
             locked_until: sealed_token.locked_until
         };
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
         return (
-            unauthorized_record,
-            authorized_record, 
-            finalize_transfer_public(sealed_token.locked_until, authorization_call, transfer_call, verify_sender, verify_recipient)
+            sender_compliant_record,
+            recipient_compliant_record, 
+            finalize_transfer_public(sealed_token.locked_until, verify_sender, verify_recipient, authorization_call, transfer_call)
             );
     }
 
@@ -230,22 +228,22 @@ program sealed_timelock_policy.aleo {
             amount
         );
 
-        let unauthorized_record: CompliantToken = CompliantToken {
+        let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
             locked_until: sealed_token.locked_until
         };
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
         return (
-            unauthorized_record,
-            authorized_record, 
-            f_transfer_public_as_signer(sealed_token.locked_until, authorization_call, transfer_call, verify_sender, verify_recipient)
+            sender_compliant_record,
+            recipient_compliant_record, 
+            f_transfer_public_as_signer(sealed_token.locked_until, verify_sender, verify_recipient, authorization_call, transfer_call)
         );
     }
 
@@ -268,8 +266,8 @@ program sealed_timelock_policy.aleo {
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2],
         sealed_token: CompliantToken,
+        recipient_merkle_proofs: [MerkleProof;2],
         lock_until: u32
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
@@ -311,21 +309,21 @@ program sealed_timelock_policy.aleo {
             true,
         );
 
-        let unauthorized_record: CompliantToken = CompliantToken {
+        let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
             locked_until: sealed_token.locked_until
         };
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
         return (
-            unauthorized_record,
-            authorized_record,
+            sender_compliant_record,
+            recipient_compliant_record,
             transfer_to_recipient.0, 
             f_transfer_public_to_priv(
                 sealed_token.locked_until,
@@ -345,7 +343,7 @@ program sealed_timelock_policy.aleo {
         authorization_call_for_caller: Future,
         transfer_to_program: Future,
         authorization_call_for_program: Future,
-        transfer_to_recipient: Future,
+        transfer_to_recipient: Future
     ) {
         verify_sender.await();
         verify_recipient.await();
@@ -393,21 +391,21 @@ program sealed_timelock_policy.aleo {
             authorization_call.1,
         );
 
-        let unauthorized_record: CompliantToken = CompliantToken {
+        let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
             locked_until: sealed_token.locked_until
         };
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
         return (
-            unauthorized_record,
-            authorized_record,
+            sender_compliant_record,
+            recipient_compliant_record,
             authorization_call.0, 
             transfer_call.1, 
             f_transfer_private(
@@ -425,7 +423,7 @@ program sealed_timelock_policy.aleo {
         verify_sender: Future,
         verify_recipient: Future,  
         authorization_call: Future,
-        transfer_call: Future,       
+        transfer_call: Future    
     ) {
         verify_sender.await();
         verify_recipient.await();
@@ -466,28 +464,28 @@ program sealed_timelock_policy.aleo {
             authorization_call.1,
         );
         
-        let unauthorized_record: CompliantToken = CompliantToken {
+        let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
             locked_until: sealed_token.locked_until
         };
 
-        let authorized_record: CompliantToken = CompliantToken {
+        let recipient_compliant_record: CompliantToken = CompliantToken {
             owner: recipient,
             amount: amount,
             locked_until: lock_until
         };
 
         return (
-            unauthorized_record,
-            authorized_record,
+            sender_compliant_record,
+            recipient_compliant_record,
             authorization_call.0,
             f_transfer_priv_to_public(
                 sealed_token.locked_until,
-                authorization_call.2, 
-                transfer_call.1, 
                 verify_sender,
                 verify_recipient,
+                authorization_call.2, 
+                transfer_call.1, 
             )
         );
     }
@@ -496,7 +494,7 @@ program sealed_timelock_policy.aleo {
         verify_sender: Future,
         verify_recipient: Future,
         authorization_call: Future,
-        transfer_call: Future,
+        transfer_call: Future
     ) {
         verify_sender.await();
         verify_recipient.await();
