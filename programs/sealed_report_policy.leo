@@ -51,8 +51,28 @@ program sealed_report_policy.aleo {
         freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
         freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
 
+        // Verify we don't unfreeze an unfrozen account or freeze a frozen account
+        let stored_is_freezed = freeze_list.get_or_use(account, false);
+        assert_neq(is_freezed, stored_is_freezed);
         freeze_list.set(account, is_freezed);
-        freeze_list_index.set(freezed_index, is_freezed ? account : ZERO_ADDRESS);
+
+        let current_freezed_index: address = freeze_list_index.get_or_use(freezed_index, ZERO_ADDRESS);
+        if (is_freezed) {
+            // Verify that the freezed_index is empty
+            assert_eq(current_freezed_index, ZERO_ADDRESS);
+            
+            // If the freezed_index is greater than 0 we verify that the prior_freezed_index is not empty
+            if (freezed_index > 0u32) {
+                let prior_freezed_index: address = freeze_list_index.get_or_use(freezed_index - 1u32, ZERO_ADDRESS);
+                assert_neq(prior_freezed_index, ZERO_ADDRESS);
+            }
+            
+            freeze_list_index.set(freezed_index, account);
+        } else {
+            // Verify we update the correct freezed_index
+            assert_eq(current_freezed_index, account);
+            freeze_list_index.set(freezed_index, ZERO_ADDRESS);
+        }
 
         root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
     }
