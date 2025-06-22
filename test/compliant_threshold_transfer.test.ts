@@ -7,7 +7,7 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
   ADMIN_INDEX,
-  BLOCK_HEIGHT_WIDNOW_INDEX,
+  BLOCK_HEIGHT_WINDOW_INDEX,
   COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
   EPOCH,
   EPOCH_INDEX,
@@ -199,7 +199,7 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await tx.wait();
 
-      const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(BLOCK_HEIGHT_WIDNOW_INDEX);
+      const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
       expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
     },
     timeout,
