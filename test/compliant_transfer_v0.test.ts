@@ -218,12 +218,16 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_freeze_list`,
     async () => {
-      const rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(
-        adminAddress,
-        true,
-        0,
-        root,
-      );
+      // Only the admin can call to update_freeze_list
+      let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // Cannot freeze an account when the freezed list index is incorrect
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // Cannot unfreeze an unfrozen account
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 0, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       let tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
@@ -233,6 +237,14 @@ describe("test compliant_transfer program", () => {
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+
+      // Cannot unfreeze an account when the freezed list index is incorrect
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // Cannot freeze a frozen account
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
 
       tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 0, root);
       await tx.wait();

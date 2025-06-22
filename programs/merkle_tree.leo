@@ -50,7 +50,7 @@ program merkle_tree.aleo {
             // Ensure the address is in between the provided leavess
             assert(addr_field > merkle_proofs[0u32].siblings[0u32]);
             assert(addr_field < merkle_proofs[1u32].siblings[0u32]);
-            // Ensure the leavess are adjacent
+            // Ensure the leaves are adjacent
             assert_eq(merkle_proofs[0u32].leaf_index + 1u32, merkle_proofs[1u32].leaf_index);
         }
         
