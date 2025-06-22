@@ -69,7 +69,7 @@ export const EPOCH_INDEX = true;
 export const THRESHOLD_INDEX = true;
 
 export const THRESHOLD = 1000000000n;
-export const EPOCH = 18000;
+export const EPOCH = 8640;
 
 // merkle tree
 export const MAX_TREE_SIZE = 16;

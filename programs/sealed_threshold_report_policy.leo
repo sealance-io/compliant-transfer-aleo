@@ -9,8 +9,10 @@ program sealed_threshold_report_policy.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
     const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
-    const EPOCH: u32 = 18000u32; // 10-25 hours 
-
+    const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
+    // Info: 1 block per 10 seconds (approx)
+    // Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
+    
     const ADMIN_INDEX: u8 = 1u8;
     const INVESTIGATOR_INDEX: u8 = 2u8;
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
