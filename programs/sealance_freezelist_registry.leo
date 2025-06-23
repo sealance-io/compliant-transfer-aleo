@@ -57,10 +57,10 @@ program sealance_freezelist_registry.aleo {
         assert_neq(is_freezed, stored_is_freezed);
         freeze_list.set(account, is_freezed);
 
-        let current_freezed_index: address = freeze_list_index.get_or_use(freezed_index, ZERO_ADDRESS);
+        let current_address_at_index: address = freeze_list_index.get_or_use(freezed_index, ZERO_ADDRESS);
         if (is_freezed) {
             // Verify that the freezed_index is empty.
-            assert_eq(current_freezed_index, ZERO_ADDRESS);
+            assert_eq(current_address_at_index, ZERO_ADDRESS);
             
             // If the freezed_index is greater than 0 we verify that the prior_freezed_index is not empty
             if (freezed_index > 0u32) {
@@ -71,7 +71,7 @@ program sealance_freezelist_registry.aleo {
             freeze_list_index.set(freezed_index, account);
         } else {
             // Verify that we update the correct freezed_index
-            assert_eq(current_freezed_index, account);
+            assert_eq(current_address_at_index, account);
             freeze_list_index.set(freezed_index, ZERO_ADDRESS);
         }
 
