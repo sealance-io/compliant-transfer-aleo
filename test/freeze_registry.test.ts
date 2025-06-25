@@ -147,7 +147,7 @@ describe("test freeze_registry program", () => {
       isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
       freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
       lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      
+
       expect(isAccountFreezed).toBe(false);
       expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
@@ -177,7 +177,6 @@ describe("test freeze_registry program", () => {
       // Cannot freeze an account when the freezed list index is greater than the last index
       rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
-
     },
     timeout,
   );
