@@ -14,10 +14,12 @@ program sealed_report_policy.aleo {
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+    const FREEZE_LIST_LAST_INDEX: bool = true;
 
     // Mappings
     mapping freeze_list: address => bool; // Indicates if address is frozen
     mapping freeze_list_index: u32 => address; // Mimic an array of all the frozen addresses
+    mapping freeze_list_last_index: bool => u32;
     mapping freeze_list_root: u8 => field;
     mapping root_updated_height: bool => u32;
     mapping block_height_window: bool => u32; // it defines a window of blocks within which the old root is considered valid
@@ -61,12 +63,22 @@ program sealed_report_policy.aleo {
             // Verify that the freezed_index is empty
             assert_eq(current_address_at_index, ZERO_ADDRESS);
             
-            // If the freezed_index is greater than 0 we verify that the prior_freezed_index is not empty
-            if (freezed_index > 0u32) {
-                let prior_freezed_index: address = freeze_list_index.get_or_use(freezed_index - 1u32, ZERO_ADDRESS);
-                assert_neq(prior_freezed_index, ZERO_ADDRESS);
+            // Verify that if the freeze_list_last_index was not initialized the freezed_index is 0
+            let is_last_index_initialized: bool = freeze_list_last_index.contains(FREEZE_LIST_LAST_INDEX);
+            if (!is_last_index_initialized) {
+                assert_eq(freezed_index, 0u32);
+                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
+            } else {
+                // Verify that the freezed index equal or smaller than the last index plus 1
+                let last_index: u32 = freeze_list_last_index.get_or_use(FREEZE_LIST_LAST_INDEX, 0u32);
+                assert(last_index + 1u32 >= freezed_index);
+        
+                // Update the freeze_list_last_index
+                if (last_index < freezed_index) {
+                    freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, freezed_index);
+                }
             }
-            
+
             freeze_list_index.set(freezed_index, account);
         } else {
             // Verify we update the correct freezed_index

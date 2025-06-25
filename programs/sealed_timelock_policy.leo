@@ -508,14 +508,14 @@ program sealed_timelock_policy.aleo {
         sealed_token_2: CompliantToken,
     ) -> CompliantToken {
 
-        let locked_unitl: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until 
+        let locked_until: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until 
             ? sealed_token_1.locked_until 
             : sealed_token_2.locked_until;
 
         let new_sealed_token: CompliantToken = CompliantToken {
             owner: sealed_token_1.owner,
             amount: sealed_token_1.amount + sealed_token_2.amount,
-            locked_until: locked_unitl
+            locked_until: locked_until
         };
 
         return new_sealed_token;
