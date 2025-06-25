@@ -517,14 +517,14 @@ program sealed_timelock_policy.aleo {
         assert_eq(base_token_1.amount, sealed_token_1.amount);
         assert_eq(base_token_2.amount, sealed_token_2.amount);
 
-        let locked_unitl: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until 
+        let locked_until: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until 
             ? sealed_token_1.locked_until 
             : sealed_token_2.locked_until;
 
         let new_sealed_token: CompliantToken = CompliantToken {
             owner: base_token_1.owner,
             amount: sealed_token_1.amount + sealed_token_2.amount,
-            locked_until: locked_unitl
+            locked_until: locked_until
         };
 
         let new_base_token: token_registry.aleo/Token = token_registry.aleo/join(

@@ -10,6 +10,7 @@ import {
   ADMIN_INDEX,
   COMPLIANT_TRANSFER_ADDRESS,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
+  FREEZE_LIST_LAST_INDEX,
   INVESTIGATOR_INDEX,
   MAX_TREE_SIZE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
@@ -25,6 +26,7 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
+import { Account } from "@provablehq/sdk";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -222,7 +224,7 @@ describe("test compliant_transfer program", () => {
       let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // Cannot freeze an account when the freezed list index is incorrect
+      // If the freeze_list_last_index was not initialized the freezed_index has to be 0
       rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -234,9 +236,11 @@ describe("test compliant_transfer program", () => {
       await tx.wait();
       let isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
       let freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+      let lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(lastIndex).toBe(0);
 
       // Cannot unfreeze an account when the freezed list index is incorrect
       rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
@@ -250,16 +254,37 @@ describe("test compliant_transfer program", () => {
       await tx.wait();
       isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
       freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+      lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFreezed).toBe(false);
       expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(lastIndex).toBe(0);
 
       tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
       await tx.wait();
       isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
       freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+      lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(lastIndex).toBe(0);
+
+      let randomAddress = new Account().address().to_string();
+      tx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 1, root);
+      await tx.wait();
+      isAccountFreezed = await compliantTransferContractForAdmin.freeze_list(randomAddress);
+      freezedAccountByIndex = await compliantTransferContractForAdmin.freeze_list_index(1);
+      lastIndex = await compliantTransferContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
+      expect(isAccountFreezed).toBe(true);
+      expect(freezedAccountByIndex).toBe(randomAddress);
+      expect(lastIndex).toBe(1);
+
+      randomAddress = new Account().address().to_string();
+      // Cannot freeze an account when the freezed list index is greater than the last index
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
   );

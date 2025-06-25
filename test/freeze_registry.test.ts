@@ -5,6 +5,7 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
   ADMIN_INDEX,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
+  FREEZE_LIST_LAST_INDEX,
   MAX_TREE_SIZE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
@@ -16,6 +17,7 @@ import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
+import { Account } from "@provablehq/sdk";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -114,7 +116,7 @@ describe("test freeze_registry program", () => {
       let rejectedTx = await freezeRegistryContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // Cannot freeze an account when the freezed list index is incorrect
+      // If the freeze_list_last_index was not initialized the freezed_index has to be 0
       rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -126,9 +128,11 @@ describe("test freeze_registry program", () => {
       await tx.wait();
       let isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
       let freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(lastIndex).toBe(0);
 
       // Cannot unfreeze an account when the freezed list index is incorrect
       rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
@@ -142,16 +146,38 @@ describe("test freeze_registry program", () => {
       await tx.wait();
       isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
       freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
-
+      lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      
       expect(isAccountFreezed).toBe(false);
       expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(lastIndex).toBe(0);
 
       tx = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
       await tx.wait();
       isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
       freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(lastIndex).toBe(0);
+
+      let randomAddress = new Account().address().to_string();
+      tx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 1, root);
+      await tx.wait();
+      isAccountFreezed = await freezeRegistryContract.freeze_list(randomAddress);
+      freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
+      lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
+      expect(isAccountFreezed).toBe(true);
+      expect(freezedAccountByIndex).toBe(randomAddress);
+      expect(lastIndex).toBe(1);
+
+      randomAddress = new Account().address().to_string();
+      // Cannot freeze an account when the freezed list index is greater than the last index
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
     },
     timeout,
   );

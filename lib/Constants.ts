@@ -67,6 +67,7 @@ export const BLOCK_HEIGHT_WINDOW_INDEX = true;
 export const FREEZE_REGISTRY_PROGRAM_INDEX = true;
 export const EPOCH_INDEX = true;
 export const THRESHOLD_INDEX = true;
+export const FREEZE_LIST_LAST_INDEX = true;
 
 export const THRESHOLD = 1000000000n;
 export const EPOCH = 8640;
