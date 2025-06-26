@@ -775,7 +775,7 @@ describe("test compliant_timelock_transfer program", () => {
         senderMerkleProof,
         largeBlockHeight,
       );
-      const [encryptedEmptySealedRecord, encryptedAccountSealedRecord] = await tx2.wait();
+      const [, encryptedAccountSealedRecord] = await tx2.wait();
 
       accountTokenRecord = decryptToken(
         (tx2 as any).transaction.execution.transitions[5].outputs[1].value,
@@ -805,51 +805,14 @@ describe("test compliant_timelock_transfer program", () => {
       let mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount, lockedUntil);
       const [encryptedLockedSealedRecord] = await mintPrivateTx.wait();
       const lockedAccountSealedRecord = decryptCompliantToken(encryptedLockedSealedRecord, accountPrivKey);
-      const lockedAccountRecord = decryptToken(
-        (mintPrivateTx as any).transaction.execution.transitions[0].outputs[0].value,
-        accountPrivKey,
-      );
       mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 2n, 0);
       let [encryptedUnlockedSealedRecord] = await mintPrivateTx.wait();
       const unlockedAccountSealedRecord1 = decryptCompliantToken(encryptedUnlockedSealedRecord, accountPrivKey);
-      const unlockedAccountRecord1 = decryptToken(
-        (mintPrivateTx as any).transaction.execution.transitions[0].outputs[0].value,
-        accountPrivKey,
-      );
       mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount, 0);
       [encryptedUnlockedSealedRecord] = await mintPrivateTx.wait();
       const unlockedAccountSealedRecord2 = decryptCompliantToken(encryptedUnlockedSealedRecord, accountPrivKey);
-      const unlockedAccountRecord2 = decryptToken(
-        (mintPrivateTx as any).transaction.execution.transitions[0].outputs[0].value,
-        accountPrivKey,
-      );
 
-      // the first pair of records doesn't have the same amount
-      await expect(
-        timelockContractForAccount.join(
-          unlockedAccountSealedRecord1,
-          lockedAccountRecord,
-          unlockedAccountSealedRecord2,
-          unlockedAccountRecord2,
-        ),
-      ).rejects.toThrow();
-
-      // the second pair of records doesn't have the same amount
-      await expect(
-        timelockContractForAccount.join(
-          unlockedAccountSealedRecord2,
-          unlockedAccountRecord2,
-          unlockedAccountSealedRecord1,
-          lockedAccountRecord,
-        ),
-      ).rejects.toThrow();
-
-      let tx = await timelockContractForAccount.join(
-        unlockedAccountSealedRecord1,
-        unlockedAccountRecord1,
-        unlockedAccountSealedRecord2,
-        unlockedAccountRecord2,
-      );
+      let tx = await timelockContractForAccount.join(unlockedAccountSealedRecord1, unlockedAccountSealedRecord2);
       let [encryptedSealedRecord] = await tx.wait();
       accountSealedRecord = decryptCompliantToken(encryptedSealedRecord, accountPrivKey);
       expect(accountSealedRecord.owner).toBe(unlockedAccountSealedRecord1.owner);
@@ -859,17 +822,7 @@ describe("test compliant_timelock_transfer program", () => {
       );
       expect(accountSealedRecord.locked_until).toBe(0);
 
-      accountRecord = decryptToken((tx as any).transaction.execution.transitions[0].outputs[0].value, accountPrivKey);
-      expect(accountRecord.owner).toBe(unlockedAccountRecord1.owner);
-      expect(accountRecord.amount).toBe(unlockedAccountRecord1.amount + unlockedAccountRecord2.amount);
-      expect(accountRecord.token_id).toBe(unlockedAccountRecord1.token_id);
-
-      tx = await timelockContractForAccount.join(
-        accountSealedRecord,
-        accountRecord,
-        lockedAccountSealedRecord,
-        lockedAccountRecord,
-      );
+      tx = await timelockContractForAccount.join(accountSealedRecord, lockedAccountSealedRecord);
       [encryptedSealedRecord] = await tx.wait();
       accountSealedRecord = decryptCompliantToken(encryptedSealedRecord, accountPrivKey);
       expect(accountSealedRecord.owner).toBe(unlockedAccountSealedRecord1.owner);
@@ -878,13 +831,6 @@ describe("test compliant_timelock_transfer program", () => {
         unlockedAccountSealedRecord1.amount + unlockedAccountSealedRecord2.amount + lockedAccountSealedRecord.amount,
       );
       expect(accountSealedRecord.locked_until).toBe(lockedAccountSealedRecord.locked_until);
-
-      accountRecord = decryptToken((tx as any).transaction.execution.transitions[0].outputs[0].value, accountPrivKey);
-      expect(accountRecord.owner).toBe(unlockedAccountRecord1.owner);
-      expect(accountRecord.amount).toBe(
-        unlockedAccountRecord1.amount + unlockedAccountRecord2.amount + lockedAccountRecord.amount,
-      );
-      expect(accountRecord.token_id).toBe(unlockedAccountRecord1.token_id);
     },
     timeout,
   );
