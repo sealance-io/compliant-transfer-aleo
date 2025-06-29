@@ -6,12 +6,13 @@ program sealed_threshold_report_policy.aleo {
     const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo14s6pc22xlf33wm62422v24equzj0s5wlsffrcl43lgfyy6wsdvgs9h6ns7;
-    const AUTHORIZED_UNTIL: u32 = 4294967295u32;
+    const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
     const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
-    const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
     // Info: 1 block per 10 seconds (approx)
     // Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
+    const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
+
     
     const ADMIN_INDEX: u8 = 1u8;
     const INVESTIGATOR_INDEX: u8 = 2u8;
@@ -21,11 +22,19 @@ program sealed_threshold_report_policy.aleo {
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     
     // Mappings
+    // Stores the ASCII-encoded name of the freeze registry program.
+    // Used by off-chain parties to locate the correct program for generating Merkle proofs.
     mapping freeze_registry_program_name: bool => u128;
+    // Stores the THRESHOLD constant for off-chain visibility.
     mapping threshold: bool => u128;
+    // Stores the EPOCH constant for off-chain visibility.
     mapping epoch: bool => u32;
-    mapping block_height_window: bool => u32; // it defines a window of blocks within which a transaction is considered valid:  block.height - window < estimated_block_height <= block.height
+    // Defines the number of blocks within which an estimated block height is considered valid:
+    // (block.height - window) < estimated_block_height ≤ block.height
+    mapping block_height_window: bool => u32;
+    // Tracks which addresses have already generated a TokenComplianceStateRecord.
     mapping owned_state_record: address => bool;
+    // Maps a role ID to an address (e.g., 1 = admin, 2 = investigator).
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -51,6 +60,9 @@ program sealed_threshold_report_policy.aleo {
         latest_block_height: u32
     }
 
+    // Initializes a new TokenComplianceStateRecord for the signer.
+    // Ensures the signer has not already registered.
+    // Marks the signer as having an active compliance state record in owned_state_record mapping.
     async transition signup() -> (TokenComplianceStateRecord, Future){
         let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
             owner: self.signer,
@@ -67,6 +79,15 @@ program sealed_threshold_report_policy.aleo {
         owned_state_record.set(signer, true);
     }
 
+    // Initializes a new TokenComplianceStateRecord for the record owner.
+    // Ensures the record owner has not already registered.
+    // Marks the record owner as having an active compliance state record in owned_state_record mapping.
+    // Transfers private tokens from the record owner to a recipient.
+    // The user provides an estimated block height, used for cumulative amount calculation.
+    // The estimated block height must be ≤ the current block height and ≥ (current block height − block_height_window).
+    // If the cumulative amount exceeds the threshold, a ComplianceRecord is emitted for the investigator, who must match the stored role.
+    // Both sender and recipient must not appear in the freeze list stored in freeze_registry.
+    // The recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     // BE AWARE: This function will reveal the sender's address 
     async transition signup_and_transfer_private(        
         recipient: address,
@@ -130,7 +151,6 @@ program sealed_threshold_report_policy.aleo {
                 transfer_call.2
             ));
     }
-
     async function f_signup_and_transfer_private(
         sender: address,  
         investigator_address: address,
@@ -161,6 +181,8 @@ program sealed_threshold_report_policy.aleo {
         transfer_call.await();
     }
 
+    // Updates the number of blocks within which an estimated block height is considered valid.
+    // Can only be called by the admin.
     async transition update_block_height_window(public blocks: u32) -> Future {
         return f_update_block_height_window(blocks, self.caller);
     }
@@ -171,6 +193,7 @@ program sealed_threshold_report_policy.aleo {
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
+    // Initializes the constant mappings used by off-chain parties: freeze_registry_program_name, threshold, epoch.
     async transition init_mappings() -> Future {
         return f_init_mappings();
     }
@@ -180,6 +203,9 @@ program sealed_threshold_report_policy.aleo {
         epoch.set(EPOCH_INDEX, EPOCH);
     }
 
+    // Updates the address assigned to a given role.
+    // Can only be called by the current admin.
+    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
@@ -193,13 +219,21 @@ program sealed_threshold_report_policy.aleo {
     // Called by token owners/DeFi contracts
     // -------------------------
 
-    // The caller has to approve this contract to call this function
+    // Transfers public tokens from the caller to the recipient.
+    // The caller must first approve this contract in the token_registry via the approve transition.
+    // The caller must also first call signup or signup_and_transfer_private to create an initial compliance state record.
+    // Generates a new TokenComplianceStateRecord that tracks the amount transferred in the current epoch.
+    // The user provides an estimated block height, used for cumulative amount calculation.
+    // The estimated block height must be ≤ the current block height and ≥ (current block height − block_height_window).
+    // Both sender and recipient must not appear in the freeze list stored in freeze_registry.
     async transition transfer_public(
         public recipient: address,
         public amount: u128,
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Future) {
+        assert_eq(input_state_record.owner, self.caller);
+
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
@@ -236,7 +270,6 @@ program sealed_threshold_report_policy.aleo {
 
         return (state_record, finalize_transfer_public(verify_sender, verify_recipient, authorization_call, transfer_call, estimated_block_height));
     }
-
     async function finalize_transfer_public(
         verify_sender: Future,
         verify_recipient: Future,
@@ -258,6 +291,12 @@ program sealed_threshold_report_policy.aleo {
         transfer_call.await();
     }
 
+    // Transfers public tokens from the signer to the recipient.
+    // The signer must also first call signup or signup_and_transfer_private to create an initial compliance state record.
+    // Generates a new TokenComplianceStateRecord that tracks the amount transferred in the current epoch.
+    // The user provides an estimated block height, used for cumulative amount calculation.
+    // The estimated block height must be ≤ the current block height and ≥ (current block height − block_height_window).
+    // Both sender and recipient must not appear in the freeze list stored in freeze_registry.
     async transition transfer_public_as_signer(
         public recipient: address,
         public amount: u128,
@@ -300,7 +339,6 @@ program sealed_threshold_report_policy.aleo {
 
         return (state_record, f_transfer_public_as_signer(verify_sender, verify_recipient, authorization_call, transfer_call, estimated_block_height));
     }
-
     async function f_transfer_public_as_signer(
         verify_sender: Future,
         verify_recipient: Future,
@@ -322,6 +360,15 @@ program sealed_threshold_report_policy.aleo {
         transfer_call.await();
     }
 
+    // Transfers public tokens from the caller to a recipient as a private token.
+    // The caller must first approve this contract in the token_registry via the approve transition.
+    // The caller must also first call signup or signup_and_transfer_private to create an initial compliance state record.
+    // Generates a new TokenComplianceStateRecord that tracks the amount transferred in the current epoch.
+    // The user provides an estimated block height, used for cumulative amount calculation.
+    // The estimated block height must be ≤ the current block height and ≥ (current block height − block_height_window).
+    // If the cumulative amount exceeds the threshold, a ComplianceRecord is emitted for the investigator, who must match the stored role.
+    // Both sender and recipient must not appear in the freeze list stored in freeze_registry.
+    // The recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
@@ -330,6 +377,8 @@ program sealed_threshold_report_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
+        assert_eq(input_state_record.owner, self.caller);
+
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
         
@@ -437,6 +486,14 @@ program sealed_threshold_report_policy.aleo {
         transfer_to_recipient.await();
     }
 
+    // Transfers private tokens from the record owner to a recipient.
+    // The record owner must also first call signup or signup_and_transfer_private to create an initial compliance state record.
+    // Generates a new TokenComplianceStateRecord that tracks the amount transferred in the current epoch.
+    // The user provides an estimated block height, used for cumulative amount calculation.
+    // The estimated block height must be ≤ the current block height and ≥ (current block height − block_height_window).
+    // If the cumulative amount exceeds the threshold, a ComplianceRecord is emitted for the investigator, who must match the stored role.
+    // Both sender and recipient must not appear in the freeze list stored in freeze_registry.
+    // The sender's and recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private(
         recipient: address,
         amount: u128,
@@ -536,6 +593,14 @@ program sealed_threshold_report_policy.aleo {
         transfer_call.await();
     }
 
+    // Transfers private tokens from the record owner to a recipient as a public tokens.
+    // The record owner must also first call signup or signup_and_transfer_private to create an initial compliance state record.
+    // Generates a new TokenComplianceStateRecord that tracks the amount transferred in the current epoch.
+    // The user provides an estimated block height, used for cumulative amount calculation.
+    // The estimated block height must be ≤ the current block height and ≥ (current block height − block_height_window).
+    // If the cumulative amount exceeds the threshold, a ComplianceRecord is emitted for the investigator, who must match the stored role.
+    // Both sender and recipient must not appear in the freeze list stored in freeze_registry.
+    // The sender's and recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
