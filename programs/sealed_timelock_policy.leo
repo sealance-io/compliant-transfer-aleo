@@ -3,14 +3,16 @@ import sealance_freezelist_registry.aleo;
 
 program sealed_timelock_policy.aleo {
 
+    // token specs
     const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
     const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
     const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
     const DECIMALS: u8 = 6u8;
     const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
+
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq;
-    const AUTHORIZED_UNTIL: u32 = 4294967295u32;
+    const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
 
     const ADMIN_INDEX: u8 = 1u8;
@@ -18,7 +20,10 @@ program sealed_timelock_policy.aleo {
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
 
     // Mappings
+    // Stores the ASCII-encoded name of the freeze registry program.
+    // Used by off-chain parties to locate the correct program for generating Merkle proofs.
     mapping freeze_registry_program_name: bool => u128;
+    // Maps a role ID to an address (e.g., 1 = admin, 3 = minter).
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -41,6 +46,9 @@ program sealed_timelock_policy.aleo {
     // Called by administrators
     // -------------------------
 
+    // Sets the admin to the caller
+    // Sets the freeze_registry_program_name mapping
+    // Registers the token and assigns this program as both the token admin and the external authorization party
     async transition initialize() -> Future {
         // Set admin and external_authorization_party to be PROGRAM_ADDRESS
         let token_registry_call: Future = token_registry.aleo/register_token(
@@ -50,18 +58,20 @@ program sealed_timelock_policy.aleo {
             DECIMALS,
             TOTAL_SUPPLY,
             true,
-            PROGRAM_ADDRESS // external_authorization_party: address
+            PROGRAM_ADDRESS // external_authorization_party
         );
         return f_initialize(token_registry_call, self.caller );
     }
-
-    async function f_initialize(token_registry_call: Future, caller: address,) {
+    async function f_initialize(token_registry_call: Future, caller: address) {
         freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
         roles.set(ADMIN_INDEX, caller);
-        
+
         token_registry_call.await();
     }
 
+    // Updates the address assigned to a given role.
+    // Can only be called by the current admin.
+    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
@@ -71,6 +81,9 @@ program sealed_timelock_policy.aleo {
         roles.set(role, new_address);
     }
 
+    // Mints public tokens to the specified recipient and creates a corresponding CompliantToken record.
+    // The caller must be the admin or an authorized minter.
+    // The CompliantToken will be locked until the specified block height.
     async transition mint_public(
         public recipient: address,
         public amount: u128,
@@ -91,7 +104,6 @@ program sealed_timelock_policy.aleo {
 
         return (recipient_compliant_record, finalize_mint_public(token_registry_call, self.caller));
     }
-
     async function finalize_mint_public(
         token_registry_call: Future,
         caller: address
@@ -103,6 +115,9 @@ program sealed_timelock_policy.aleo {
         token_registry_call.await();
     }
 
+    // Mints private tokens to the specified recipient and creates a corresponding CompliantToken record.
+    // The caller must be the admin or an authorized minter.
+    // The CompliantToken will be locked until the specified block height.
     async transition mint_private(
         recipient: address,
         public amount: u128,
@@ -124,7 +139,6 @@ program sealed_timelock_policy.aleo {
 
         return (recipient_compliant_record, token_registry_call.0, finalize_mint_private(token_registry_call.1, self.caller));
     }
-
     async function finalize_mint_private(
         token_registry_call: Future,
         caller: address
@@ -140,7 +154,11 @@ program sealed_timelock_policy.aleo {
     // Called by token owners/DeFi contracts
     // -------------------------
 
-    // The caller has to approve this contract to call this function
+    // Transfers public tokens from the caller to the recipient.
+    // The caller must first approve this contract in the token_registry via the approve transition.
+    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
+    // The user specifies the block height at which the recipient can begin using the received asset.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public(
         public recipient: address,
         public amount: u128,
@@ -185,7 +203,6 @@ program sealed_timelock_policy.aleo {
             finalize_transfer_public(sealed_token.locked_until, verify_sender, verify_recipient, authorization_call, transfer_call)
             );
     }
-
     async function finalize_transfer_public(
         locked_until: u32, 
         verify_sender: Future,
@@ -200,8 +217,12 @@ program sealed_timelock_policy.aleo {
         transfer_call.await();
 
         assert(locked_until <= block.height);
-  }
+    }
 
+    // Transfers public tokens from the signer to the recipient.
+    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
+    // The user specifies the block height at which the recipient can begin using the received asset.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public_as_signer(
         public recipient: address,
         public amount: u128,
@@ -263,6 +284,12 @@ program sealed_timelock_policy.aleo {
         assert(locked_until <= block.height);
     }
 
+    // Transfers public tokens from the caller to a recipient as a private token.
+    // The caller must first approve this contract in the token_registry via the approve transition.
+    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
+    // The user specifies the block height at which the recipient can begin using the received asset.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
@@ -356,6 +383,11 @@ program sealed_timelock_policy.aleo {
         assert(locked_until <= block.height);
     }
 
+    // Transfers private tokens from the record owner to a recipient.
+    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
+    // The user specifies the block height at which the recipient can begin using the received asset.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The sender's and recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private(
         recipient: address,
         amount: u128,
@@ -432,6 +464,11 @@ program sealed_timelock_policy.aleo {
         assert(locked_until <= block.height);
     }
 
+    // Transfers private tokens from the record owner to a recipient as a public tokens.
+    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
+    // The user specifies the block height at which the recipient can begin using the received asset.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
@@ -503,6 +540,8 @@ program sealed_timelock_policy.aleo {
         assert(locked_until <= block.height);
     }
 
+    // Joins two CompliantToken records into a single record.
+    // The resulting record is locked until the later of the two original lock times.
     transition join(
         sealed_token_1: CompliantToken,
         sealed_token_2: CompliantToken,

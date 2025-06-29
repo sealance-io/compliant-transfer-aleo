@@ -6,6 +6,7 @@ program sealed_report_policy.aleo {
     const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
+    // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
 
     const ADMIN_INDEX: u8 = 1u8;
@@ -15,12 +16,17 @@ program sealed_report_policy.aleo {
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
 
-    // Mappings
-    mapping freeze_list: address => bool; // Indicates if address is frozen
-    mapping freeze_list_index: u32 => address; // Mimic an array of all the frozen addresses
+    // Indicates whether an address is frozen.
+    mapping freeze_list: address => bool;
+    // Mimics an array of frozen addresses by storing them at sequential indexes.
+    mapping freeze_list_index: u32 => address;
+    // Stores the current and previous Merkle roots of the freeze list (e.g., 1 = current, 2 = previous).
     mapping freeze_list_root: u8 => field;
+    // Stores the block height when the root was updated.
     mapping root_updated_height: bool => u32;
-    mapping block_height_window: bool => u32; // it defines a window of blocks within which the old root is considered valid
+    // Defines the number of blocks during which the previous root is still considered valid.
+    mapping block_height_window: bool => u32;
+    // Maps a role ID to an address (e.g., 1 = admin, 2 = investigator).
     mapping roles: u8 => address;
 
     struct MerkleProof {
@@ -28,6 +34,7 @@ program sealed_report_policy.aleo {
         leaf_index: u32
     }
 
+    // Compliance record used for the investigator
     record ComplianceRecord {
         owner: address,
         amount: u128,
@@ -40,6 +47,10 @@ program sealed_report_policy.aleo {
         token_id: field
     }
 
+    // Freezes or unfreezes an account based on the is_freezed flag (true = freeze, false = unfreeze).
+    // Updates both the freeze_list and freeze_list_index mappings accordingly.
+    // Also updates the current Merkle root and stores the previous root for backward compatibility.
+    // Can only be called by the admin.
     async transition update_freeze_list(public account: address, public is_freezed: bool, public freezed_index: u32, public new_root: field) -> Future {
         return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
@@ -57,7 +68,10 @@ program sealed_report_policy.aleo {
         root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
     }
 
-   async transition update_role(public new_address: address, role: u8) -> Future {
+    // Updates the address assigned to a given role.
+    // Can only be called by the current admin.
+    // If no admin is set yet, the caller is temporarily treated as admin.
+    async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, role: u8) {
@@ -66,6 +80,8 @@ program sealed_report_policy.aleo {
         roles.set(role, new_address);
     }
 
+    // Updates the number of blocks during which the previous root is still considered valid.
+    // Can only be called by the admin.
     async transition update_block_height_window(public blocks: u32) -> Future {
         return f_update_block_height_window(blocks, self.caller);
     }
@@ -80,7 +96,9 @@ program sealed_report_policy.aleo {
     // Called by token owners/DeFi contracts
     // -------------------------
 
-    // The caller has to approve this contract to call this function
+    // Transfers public tokens from the caller to the recipient.
+    // The caller must first approve this contract in the token_registry via the approve transition.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public(
         public recipient: address,
         public amount: u128
@@ -119,6 +137,8 @@ program sealed_report_policy.aleo {
         transfer_call.await(); 
     }
 
+    // Transfers public tokens from the signer to the recipient.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public_as_signer(
         public recipient: address,
         public amount: u128
@@ -157,6 +177,11 @@ program sealed_report_policy.aleo {
         transfer_call.await();
     }
 
+    // Transfers public tokens from the caller to a recipient as a private token.
+    // The caller must first approve this contract in the token_registry via the approve transition.
+    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
@@ -251,6 +276,10 @@ program sealed_report_policy.aleo {
         transfer_to_recipient.await();
     }
 
+    // Transfers private tokens from the record owner to a recipient.
+    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The sender's and recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private(
         recipient: address,
         amount: u128,
@@ -327,6 +356,10 @@ program sealed_report_policy.aleo {
         transfer_call.await();
     }
 
+    // Transfers private tokens from the record owner to a recipient as a public tokens.
+    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_priv_to_public(
         public recipient: address,
         public amount: u128,
