@@ -7,6 +7,7 @@ program sealed_report_policy.aleo {
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
+    const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
 
     const ADMIN_INDEX: u8 = 1u8;
     const INVESTIGATOR_INDEX: u8 = 2u8;
@@ -42,6 +43,21 @@ program sealed_report_policy.aleo {
         token_id: field
     }
 
+    async transition initialize(public blocks: u32) -> Future {
+        return f_initialize(blocks);
+    }
+    // we need to decide if we want to call to 
+    async function f_initialize(blocks: u32) {
+        let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        assert_eq(is_already_initialized, false);
+
+        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
+        freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
+        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT);
+        freeze_list.set(ZERO_ADDRESS, false);
+        freeze_list_index.set(0u32, ZERO_ADDRESS);
+    }
+
     async transition update_freeze_list(public account: address, public is_freezed: bool, public freezed_index: u32, public new_root: field) -> Future {
         return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
     }
@@ -49,7 +65,7 @@ program sealed_report_policy.aleo {
         let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
-        let old_root: field = freeze_list_root.get_or_use(CURRENT_FREEZE_LIST_ROOT_INDEX, 0field);
+        let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
         freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
 
@@ -62,21 +78,14 @@ program sealed_report_policy.aleo {
         if (is_freezed) {
             // Verify that the freezed_index is empty
             assert_eq(current_address_at_index, ZERO_ADDRESS);
-            
-            // Verify that if the freeze_list_last_index was not initialized the freezed_index is 0
-            let is_last_index_initialized: bool = freeze_list_last_index.contains(FREEZE_LIST_LAST_INDEX);
-            if (!is_last_index_initialized) {
-                assert_eq(freezed_index, 0u32);
-                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
-            } else {
-                // Verify that the freezed index equal or smaller than the last index plus 1
-                let last_index: u32 = freeze_list_last_index.get_or_use(FREEZE_LIST_LAST_INDEX, 0u32);
-                assert(last_index + 1u32 >= freezed_index);
+
+            // Verify that the freezed index equal or smaller than the last index plus 1
+            let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
+            assert(last_index + 1u32 >= freezed_index);
         
-                // Update the freeze_list_last_index
-                if (last_index < freezed_index) {
-                    freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, freezed_index);
-                }
+            // Update the freeze_list_last_index
+            if (last_index < freezed_index) {
+                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, freezed_index);
             }
 
             freeze_list_index.set(freezed_index, account);
