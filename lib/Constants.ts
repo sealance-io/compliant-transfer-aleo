@@ -11,6 +11,8 @@ export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
 export const COMPLIANT_TIMELOCK_TRANSFER_ADDRESS = "aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq";
 export const TREASURE_ADDRESS = "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn";
 
+export const BLOCK_HEIGHT_WINDOW = 300;
+
 export interface IPolicy {
   tokenName: string;
   tokenSymbol: string;
@@ -32,7 +34,7 @@ export const policies: { [key: string]: IPolicy } = {
     Contract: Sealed_report_policyContract,
     initMappings: false,
     requireInitialization: false,
-    blockHeightWindow: 300,
+    blockHeightWindow: BLOCK_HEIGHT_WINDOW,
   },
   threshold: {
     tokenName: "Threshold report",
@@ -42,7 +44,7 @@ export const policies: { [key: string]: IPolicy } = {
     Contract: Sealed_threshold_report_policyContract,
     initMappings: true,
     requireInitialization: false,
-    blockHeightWindow: 300,
+    blockHeightWindow: BLOCK_HEIGHT_WINDOW,
   },
   timelock: {
     tokenName: "Timelock",
@@ -77,6 +79,7 @@ export const MAX_TREE_SIZE = 16;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;
+export const emptyRoot = 7233124799133753665783241350706390908532988676951941973288057571394699151001n;
 export const fundedAmount = 10000000000000n;
 export const timeout = 10000000;
 export const mode = ExecutionMode.SnarkExecute;

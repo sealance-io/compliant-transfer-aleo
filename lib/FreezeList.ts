@@ -1,5 +1,5 @@
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { mode } from "./Constants";
+import { BLOCK_HEIGHT_WINDOW, mode } from "./Constants";
 import { convertAddressToField } from "./Conversion";
 import { buildTree, genLeaves } from "./MerkleTree";
 
@@ -13,6 +13,11 @@ export enum FreezeStatus {
 export type FreezeListUpdateResult =
   | { status: FreezeStatus.ALREADY_FROZEN }
   | { status: FreezeStatus.NEW_ENTRY; lastIndex: number; root: bigint };
+
+export async function initializeFreezeList(contract: any) {
+  const tx = await contract.initialize(BLOCK_HEIGHT_WINDOW);
+  await tx.wait();
+}
 
 export async function calculateFreezeListUpdate(
   address: string,

@@ -8,6 +8,7 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import {
   ADMIN_INDEX,
+  BLOCK_HEIGHT_WINDOW_INDEX,
   COMPLIANT_TRANSFER_ADDRESS,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
@@ -16,6 +17,7 @@ import {
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
   defaultAuthorizedUntil,
+  emptyRoot,
   fundedAmount,
   policies,
   timeout,
@@ -218,72 +220,100 @@ describe("test compliant_transfer program", () => {
   );
 
   test(
-    `test update_freeze_list`,
+    `test initialize`,
     async () => {
-      // Only the admin can call to update_freeze_list
-      let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 0, root);
+      // Cannot update freeze list before initialization
+      let rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the freeze_list_last_index was not initialized the freezed_index has to be 0
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-
-      // Cannot unfreeze an unfrozen account
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 0, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-
-      let tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
+      const tx = await compliantTransferContract.initialize(policies.compliant.blockHeightWindow);
       await tx.wait();
-      let isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
-      let freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
-      let lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
-      expect(lastIndex).toBe(0);
-
-      // Cannot unfreeze an account when the freezed list index is incorrect
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-
-      // Cannot freeze a frozen account
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-
-      tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 0, root);
-      await tx.wait();
-      isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
-      freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
-      lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      const isAccountFreezed = await compliantTransferContract.freeze_list(ZERO_ADDRESS);
+      const freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+      const lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await compliantTransferContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
 
       expect(isAccountFreezed).toBe(false);
       expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
+      expect(initializedRoot).toBe(emptyRoot);
+      expect(blockHeightWindow).toBe(policies.compliant.blockHeightWindow);
 
-      tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
+      // It is possible to call to initialize only one time
+      rejectedTx = await compliantTransferContract.initialize(policies.compliant.blockHeightWindow);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+    },
+    timeout,
+  );
+
+  test(
+    `test update_freeze_list`,
+    async () => {
+      // Only the admin can call to update_freeze_list
+      let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 1, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // Cannot unfreeze an unfrozen account
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      let tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      await tx.wait();
+      let isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+      let freezedAccountByIndex = await compliantTransferContract.freeze_list_index(1);
+      let lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
+      expect(isAccountFreezed).toBe(true);
+      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(lastIndex).toBe(1);
+
+      // Cannot unfreeze an account when the freezed list index is incorrect
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 2, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // Cannot freeze a frozen account
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
       await tx.wait();
       isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
-      freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+      freezedAccountByIndex = await compliantTransferContract.freeze_list_index(1);
+      lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
+      expect(isAccountFreezed).toBe(false);
+      expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(lastIndex).toBe(1);
+
+      tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      await tx.wait();
+      isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
+      freezedAccountByIndex = await compliantTransferContract.freeze_list_index(1);
       lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(freezedAccount);
-      expect(lastIndex).toBe(0);
+      expect(lastIndex).toBe(1);
 
       let randomAddress = new Account().address().to_string();
-      tx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 1, root);
+      tx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
       await tx.wait();
       isAccountFreezed = await compliantTransferContractForAdmin.freeze_list(randomAddress);
-      freezedAccountByIndex = await compliantTransferContractForAdmin.freeze_list_index(1);
+      freezedAccountByIndex = await compliantTransferContractForAdmin.freeze_list_index(2);
       lastIndex = await compliantTransferContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFreezed).toBe(true);
       expect(freezedAccountByIndex).toBe(randomAddress);
-      expect(lastIndex).toBe(1);
+      expect(lastIndex).toBe(2);
 
       randomAddress = new Account().address().to_string();
       // Cannot freeze an account when the freezed list index is greater than the last index
       rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      // Cannot freeze an account when the freezed list index is already taken
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -599,7 +629,7 @@ describe("test compliant_transfer program", () => {
       const updateFreezeListTx = await compliantTransferContractForAdmin.update_freeze_list(
         freezedAccount,
         false,
-        0,
+        1,
         1n, // fake root
       );
       await updateFreezeListTx.wait();
