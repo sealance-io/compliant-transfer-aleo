@@ -12,6 +12,7 @@ import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_f
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
+import { initializeFreezeList } from "../lib/FreezeList";
 
 const mode = ExecutionMode.SnarkExecute;
 
@@ -93,6 +94,10 @@ const exchangeContract = new GqrfmwbtypContract({
     policies.timelock,
   );
 
+  // initialize freeze list
+  await initializeFreezeList(compliantTransferContract);
+  await initializeFreezeList(freezeRegistryContract);
+
   // assign exchange program to be a minter
   await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
@@ -101,9 +106,6 @@ const exchangeContract = new GqrfmwbtypContract({
   // update the admin
   await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
   await updateAdminRole(exchangeContract, adminAddress);
-
-  const updateBlockHeightWindow = await freezeRegistryContractForAdmin.update_block_height_window(300);
-  await updateBlockHeightWindow.wait();
 
   process.exit(0);
 })();
