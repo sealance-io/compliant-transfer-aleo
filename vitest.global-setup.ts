@@ -26,7 +26,7 @@ function parseBooleanEnv(value: string | undefined, defaultValue = true): boolea
 let amareleoContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const AMARELEO_IMAGE = process.env.AMARELEO_IMAGE || "ghcr.io/sealance-io/amareleo-chain:v2.3.0";
+const AMARELEO_IMAGE = process.env.AMARELEO_IMAGE || "ghcr.io/sealance-io/amareleo-chain:v2.5.0";
 const AMARELEO_VERBOSITY = process.env.AMARELEO_VERBOSITY || "1";
 
 // Setup function - executed before all tests
