@@ -2,7 +2,12 @@ import token_registry.aleo;
 import sealance_freezelist_registry.aleo;
 
 program sealed_timelock_policy.aleo {
-
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
+    
     // token specs
     const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
     const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
@@ -15,7 +20,9 @@ program sealed_timelock_policy.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
 
+    // Admin: can assign roles, mint tokens and upgrade the program 
     const ADMIN_INDEX: u8 = 1u8;
+    // Minter: allowed to mint tokens
     const MINTER_INDEX: u8 = 3u8;
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
 
