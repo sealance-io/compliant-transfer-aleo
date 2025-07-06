@@ -6,7 +6,13 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from "../contract/base-contract";
 import { policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
-import { setTokenRegistryRole, updateAdminRole, updateInvestigatorRole, updateMinterRole } from "../lib/Role";
+import {
+  setTokenRegistryRole,
+  updateAdminRole,
+  updateInvestigatorRole,
+  updateMinterRole,
+  updateOwnerRole,
+} from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
@@ -25,9 +31,17 @@ const reportPolicyContract = new Sealed_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const reportPolicyContractForAdmin = new Sealed_report_policyContract({
+  mode,
+  privateKey: adminPrivKey,
+});
 const thresholdContract = new Sealed_threshold_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
+});
+const thresholdContractForAdmin = new Sealed_threshold_report_policyContract({
+  mode,
+  privateKey: adminPrivKey,
 });
 const timelockContract = new Sealed_timelock_policyContract({
   mode,
@@ -41,6 +55,10 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
+  mode,
+  privateKey: adminPrivKey,
+});
 const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
@@ -48,6 +66,10 @@ const merkleTreeContract = new Merkle_treeContract({
 const exchangeContract = new GqrfmwbtypContract({
   mode,
   privateKey: deployerPrivKey,
+});
+const exchangeContractForAdmin = new GqrfmwbtypContract({
+  mode,
+  privateKey: adminPrivKey,
 });
 const reportTokenContract = new Sealed_report_tokenContract({
   mode,
@@ -109,6 +131,14 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   await updateAdminRole(freezeRegistryContract, adminAddress);
   await updateAdminRole(exchangeContract, adminAddress);
   await updateAdminRole(reportTokenContract, adminAddress);
+
+  // update the owner
+  await updateOwnerRole(reportPolicyContractForAdmin, deployerAddress);
+  await updateOwnerRole(freezeRegistryContractForAdmin, deployerAddress);
+  await updateOwnerRole(thresholdContractForAdmin, deployerAddress);
+  await updateOwnerRole(timelockContractForAdmin, deployerAddress);
+  await updateOwnerRole(exchangeContractForAdmin, deployerAddress);
+  await updateOwnerRole(reportTokenContractForAdmin, deployerAddress);
 
   // update the investigator
   await updateInvestigatorRole(reportTokenContractForAdmin, investigatorAddress);

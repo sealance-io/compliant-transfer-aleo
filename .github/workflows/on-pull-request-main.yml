@@ -141,7 +141,7 @@ jobs:
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Threshold Policy Test"
-      test_command: "npm run test:select ./test/compliant_threshold_transfer.test.ts"
+      test_command: "npm run test:select ./test/threshold.test.ts"
       watched_paths: "programs/sealed_threshold_report_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
@@ -150,7 +150,7 @@ jobs:
     if: ${{ needs.check-trigger.outputs.run_exchange == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
-      job_name: "Threshold Policy Test"
+      job_name: "Exchange Test"
       test_command: "npm run test:select ./test/exchange.test.ts"
       watched_paths: "programs/exchange.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
