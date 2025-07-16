@@ -7,8 +7,10 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
   ADMIN_INDEX,
+  BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
   COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
+  CURRENT_FREEZE_LIST_ROOT_INDEX,
   EPOCH,
   EPOCH_INDEX,
   FREEZE_REGISTRY_PROGRAM_INDEX,
@@ -287,9 +289,13 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `freeze registry setup`,
     async () => {
+      const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
+      await tx1.wait();
+
       await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
 
-      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
+      const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, currentRoot, root);
       await tx2.wait();
       const isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
       const freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
