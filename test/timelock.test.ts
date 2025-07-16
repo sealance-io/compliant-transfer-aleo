@@ -16,6 +16,7 @@ import {
   ADMIN_INDEX,
   MINTER_INDEX,
   BLOCK_HEIGHT_WINDOW,
+  CURRENT_FREEZE_LIST_ROOT_INDEX,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -243,7 +244,8 @@ describe("test compliant_timelock_transfer program", () => {
 
       let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
       if (!isAccountFrozen) {
-        const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, root);
+        const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
         await tx2.wait();
         const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
         const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
