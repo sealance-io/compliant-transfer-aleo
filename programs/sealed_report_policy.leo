@@ -82,14 +82,21 @@ program sealed_report_policy.aleo {
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
     // Can only be called by the admin.
-    async transition update_freeze_list(public account: address, public is_frozen: bool, public frozen_index: u32, public new_root: field) -> Future {
-        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, new_root);
+    async transition update_freeze_list(
+        public account: address, 
+        public is_frozen: bool, 
+        public frozen_index: u32, 
+        public previous_root: field,
+        public new_root: field
+    ) -> Future {
+        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root);
     }
-    async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, new_root: field) {
+    async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
         let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
         let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        assert_eq(previous_root, old_root);
         freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
         freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
 

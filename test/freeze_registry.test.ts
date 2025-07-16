@@ -119,7 +119,7 @@ describe("test freeze_registry program", () => {
       const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
       if (!isFreezeRegistryInitialized) {
         // Cannot update freeze list before initialization
-        const rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
+        const rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
         await expect(rejectedTx.wait()).rejects.toThrow();
 
         const tx = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
@@ -147,21 +147,31 @@ describe("test freeze_registry program", () => {
   test(
     `test update_freeze_list`,
     async () => {
+      const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+
       // Only the admin can call to update_freeze_list
-      let rejectedTx = await freezeRegistryContractForFrozenAccount.update_freeze_list(adminAddress, true, 1, root);
+      let rejectedTx = await freezeRegistryContractForFrozenAccount.update_freeze_list(
+        adminAddress,
+        true,
+        1,
+        currentRoot,
+        root,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
-      if (!isAccountFrozen) {
-        // Cannot unfreeze an unfrozen account
-        rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 1, root);
-        await expect(rejectedTx.wait()).rejects.toThrow();
+      // Cannot unfreeze an unfrozen account
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 1, currentRoot, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
 
-        let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
-        await tx.wait();
-        isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
-        let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
-        let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      // Cannot update the root if the previous root is incorrect
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 1, 0n, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      await tx.wait();
+      let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
+      let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
+      let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
         expect(isAccountFrozen).toBe(true);
         expect(frozenAccountByIndex).toBe(frozenAccount);
@@ -169,14 +179,14 @@ describe("test freeze_registry program", () => {
       }
 
       // Cannot unfreeze an account when the frozen list index is incorrect
-      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 2, root);
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot freeze a frozen account
-      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 1, root);
+      tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 1, root, root);
       await tx.wait();
       isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
       let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
@@ -186,7 +196,7 @@ describe("test freeze_registry program", () => {
       expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(1);
 
-      tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
+      tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
       await tx.wait();
       isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
       frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
@@ -197,7 +207,7 @@ describe("test freeze_registry program", () => {
       expect(lastIndex).toBe(1);
 
       let randomAddress = new Account().address().to_string();
-      tx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
+      tx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await tx.wait();
       isAccountFrozen = await freezeRegistryContract.freeze_list(randomAddress);
       frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(2);
@@ -209,10 +219,10 @@ describe("test freeze_registry program", () => {
 
       randomAddress = new Account().address().to_string();
       // Cannot freeze an account when the frozen list index is greater than the last index
-      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 10, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
       // Cannot freeze an account when the frozen list index is already taken
-      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -265,6 +275,7 @@ describe("test freeze_registry program", () => {
         frozenAccount,
         false,
         1,
+        root,
         1n, // fake root
       );
       await updateFreezeListTx.wait();
