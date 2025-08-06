@@ -15,6 +15,7 @@ import {
   policies,
   ADMIN_INDEX,
   MINTER_INDEX,
+  BLOCK_HEIGHT_WINDOW,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -32,9 +33,9 @@ const contract = new BaseContract({ mode });
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, _, freezedAccount, account, recipient] = contract.getAccounts();
+const [deployerAddress, adminAddress, _, frozenAccount, account, recipient] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
+const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
@@ -63,9 +64,9 @@ const timelockContractForRecipient = new Sealed_timelock_policyContract({
   mode,
   privateKey: recipientPrivKey,
 });
-const timelockContractForFreezedAccount = new Sealed_timelock_policyContract({
+const timelockContractForFrozenAccount = new Sealed_timelock_policyContract({
   mode,
-  privateKey: freezedAccountPrivKey,
+  privateKey: frozenAccountPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -93,19 +94,19 @@ async function getLatestBlockHeight() {
 
 let accountRecord: Token, accountTokenRecord;
 let accountSealedRecord: CompliantToken, accountSealedRecord2;
-let freezedAccountRecord: Token;
-let freezedAccountSealedRecord: CompliantToken, freezedAccountSealedRecord2: CompliantToken;
+let frozenAccountRecord: Token;
+let frozenAccountSealedRecord: CompliantToken, frozenAccountSealedRecord2: CompliantToken;
 let recipientSealedRecord;
 let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
 let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
-let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
+let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
 
 describe("test compliant_timelock_transfer program", () => {
   test(
     `fund credits`,
     async () => {
       await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
+      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
       await fundWithCredits(deployerPrivKey, account, fundedAmount);
       await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
     },
@@ -138,7 +139,7 @@ describe("test compliant_timelock_transfer program", () => {
       const onChainAdmin = await timelockContract.roles(ADMIN_INDEX);
       expect(onChainAdmin).toBe(adminAddress);
 
-      let tx = await timelockContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
+      let tx = await timelockContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
 
       tx = await timelockContractForAdmin.update_role(recipient, MINTER_INDEX);
@@ -154,9 +155,9 @@ describe("test compliant_timelock_transfer program", () => {
       const [encryptedAccountSealedRecord] = await mintPublicTx.wait();
       accountSealedRecord = decryptCompliantToken(encryptedAccountSealedRecord, accountPrivKey);
 
-      mintPublicTx = await timelockContractForAdmin.mint_public(freezedAccount, amount * 20n, 0);
-      const [encryptedFreezedAccountSealedRecord] = await mintPublicTx.wait();
-      freezedAccountSealedRecord = decryptCompliantToken(encryptedFreezedAccountSealedRecord, freezedAccountPrivKey);
+      mintPublicTx = await timelockContractForAdmin.mint_public(frozenAccount, amount * 20n, 0);
+      const [encryptedFrozenAccountSealedRecord] = await mintPublicTx.wait();
+      frozenAccountSealedRecord = decryptCompliantToken(encryptedFrozenAccountSealedRecord, frozenAccountPrivKey);
 
       let mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 20n, 0);
       await mintPrivateTx.wait();
@@ -169,27 +170,27 @@ describe("test compliant_timelock_transfer program", () => {
         accountPrivKey,
       );
 
-      mintPrivateTx = await timelockContractForAdmin.mint_private(freezedAccount, amount * 20n, 0);
+      mintPrivateTx = await timelockContractForAdmin.mint_private(frozenAccount, amount * 20n, 0);
       await mintPrivateTx.wait();
-      freezedAccountSealedRecord2 = decryptCompliantToken(
+      frozenAccountSealedRecord2 = decryptCompliantToken(
         (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0].value,
-        freezedAccountPrivKey,
+        frozenAccountPrivKey,
       );
-      freezedAccountRecord = decryptToken(
+      frozenAccountRecord = decryptToken(
         (mintPrivateTx as any).transaction.execution.transitions[0].outputs[0].value,
-        freezedAccountPrivKey,
+        frozenAccountPrivKey,
       );
 
       // recipient is a minter, verify that they can call mint
       mintPublicTx = await timelockContractForRecipient.mint_public(account, amount * 20n, 0);
       await mintPublicTx.wait();
-      mintPrivateTx = await timelockContractForRecipient.mint_private(freezedAccount, amount * 20n, 0);
+      mintPrivateTx = await timelockContractForRecipient.mint_private(frozenAccount, amount * 20n, 0);
       await mintPrivateTx.wait();
 
-      // freezed account cannot call mint
-      const rejectedTx = await timelockContractForFreezedAccount.mint_public(account, amount * 20n, 0);
+      // frozen account cannot call mint
+      const rejectedTx = await timelockContractForFrozenAccount.mint_public(account, amount * 20n, 0);
       await expect(rejectedTx.wait()).rejects.toThrow();
-      const rejectedTx2 = await timelockContractForFreezedAccount.mint_private(freezedAccount, amount * 20n, 0);
+      const rejectedTx2 = await timelockContractForFrozenAccount.mint_private(frozenAccount, amount * 20n, 0);
       await expect(rejectedTx2.wait()).rejects.toThrow();
     },
     timeout,
@@ -198,12 +199,12 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `generate merkle proofs`,
     async () => {
-      const leaves = genLeaves([freezedAccount]);
+      const leaves = genLeaves([frozenAccount]);
       const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);
-      const freezedAccountLeafIndices = getLeafIndices(tree, freezedAccount);
+      const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
       senderMerkleProof = [
         getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
@@ -212,9 +213,9 @@ describe("test compliant_timelock_transfer program", () => {
         getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
       ];
-      freezedAccountMerkleProof = [
-        getSiblingPath(tree, freezedAccountLeafIndices[0], MAX_TREE_SIZE),
-        getSiblingPath(tree, freezedAccountLeafIndices[1], MAX_TREE_SIZE),
+      frozenAccountMerkleProof = [
+        getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
     timeout,
@@ -231,15 +232,18 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `freeze registry setup`,
     async () => {
+      const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
+      await tx1.wait();
+
       await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
 
-      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
+      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, root);
       await tx2.wait();
-      const isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
-      const freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
+      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
 
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
@@ -326,18 +330,18 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await approvalTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await timelockContractForFreezedAccount.transfer_public(
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await timelockContractForFrozenAccount.transfer_public(
         recipient,
         amount,
-        freezedAccountSealedRecord2,
+        frozenAccountSealedRecord2,
         latestBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       rejectedTx = await timelockContractForAccount.transfer_public(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountSealedRecord,
         latestBlockHeight + 1,
@@ -387,18 +391,18 @@ describe("test compliant_timelock_transfer program", () => {
 
       const latestBlockHeight = await getLatestBlockHeight();
 
-      // If the sender is freezed account it's impossible to send tokens
-      let rejectedTx = await timelockContractForFreezedAccount.transfer_public_as_signer(
+      // If the sender is frozen account it's impossible to send tokens
+      let rejectedTx = await timelockContractForFrozenAccount.transfer_public_as_signer(
         recipient,
         amount,
-        freezedAccountSealedRecord,
+        frozenAccountSealedRecord,
         latestBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       rejectedTx = await timelockContractForAccount.transfer_public_as_signer(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountSealedRecord,
         latestBlockHeight,
@@ -454,23 +458,23 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await approvalTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await timelockContractForFreezedAccount.transfer_public_to_priv(
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await timelockContractForFrozenAccount.transfer_public_to_priv(
         recipient,
         amount,
-        freezedAccountSealedRecord,
+        frozenAccountSealedRecord,
         recipientMerkleProof,
         latestBlockHeight,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         timelockContractForAccount.transfer_public_to_priv(
-          freezedAccount,
+          frozenAccount,
           amount,
           accountSealedRecord,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           latestBlockHeight,
         ),
       ).rejects.toThrow();
@@ -546,28 +550,28 @@ describe("test compliant_timelock_transfer program", () => {
 
       const latestBlockHeight = await getLatestBlockHeight();
 
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        timelockContractForFreezedAccount.transfer_private(
+        timelockContractForFrozenAccount.transfer_private(
           recipient,
           amount,
-          freezedAccountSealedRecord,
-          freezedAccountRecord,
-          freezedAccountMerkleProof,
+          frozenAccountSealedRecord,
+          frozenAccountRecord,
+          frozenAccountMerkleProof,
           recipientMerkleProof,
           latestBlockHeight,
         ),
       ).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         timelockContractForAccount.transfer_private(
-          freezedAccount,
+          frozenAccount,
           amount,
           accountSealedRecord,
           accountRecord,
           senderMerkleProof,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           latestBlockHeight,
         ),
       ).rejects.toThrow();
@@ -695,21 +699,21 @@ describe("test compliant_timelock_transfer program", () => {
 
       const latestBlockHeight = await getLatestBlockHeight();
 
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        timelockContractForFreezedAccount.transfer_priv_to_public(
+        timelockContractForFrozenAccount.transfer_priv_to_public(
           recipient,
           amount,
-          freezedAccountSealedRecord,
-          freezedAccountRecord,
-          freezedAccountMerkleProof,
+          frozenAccountSealedRecord,
+          frozenAccountRecord,
+          frozenAccountMerkleProof,
           latestBlockHeight,
         ),
       ).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       let rejectedTx = await timelockContractForAccount.transfer_priv_to_public(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountSealedRecord,
         accountTokenRecord,
