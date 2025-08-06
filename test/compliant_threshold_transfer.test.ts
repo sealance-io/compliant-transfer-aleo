@@ -7,6 +7,7 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
   ADMIN_INDEX,
+  BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
   COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
   EPOCH,
@@ -40,10 +41,10 @@ const contract = new BaseContract({ mode });
 const { tokenId } = policies.threshold;
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, investigatorAddress, freezedAccount, account, recipient] = contract.getAccounts();
+const [deployerAddress, adminAddress, investigatorAddress, frozenAccount, account, recipient] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
-const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
+const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
@@ -72,9 +73,9 @@ const compliantThresholdTransferContractForAccount = new Sealed_threshold_report
   mode,
   privateKey: accountPrivKey,
 });
-const compliantThresholdTransferContractForFreezedAccount = new Sealed_threshold_report_policyContract({
+const compliantThresholdTransferContractForFrozenAccount = new Sealed_threshold_report_policyContract({
   mode,
-  privateKey: freezedAccountPrivKey,
+  privateKey: frozenAccountPrivKey,
 });
 const compliantThresholdTransferContractForRecipient = new Sealed_threshold_report_policyContract({
   mode,
@@ -102,7 +103,7 @@ describe("test compliant_threshold_transfer program", () => {
     `fund credits`,
     async () => {
       await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
+      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
       await fundWithCredits(deployerPrivKey, account, fundedAmount);
       await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
     },
@@ -147,17 +148,17 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await compliantThresholdTransferContractForAdmin.update_role(freezedAccount, ADMIN_INDEX);
+      let tx = await compliantThresholdTransferContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
       await tx.wait();
       let adminRole = await compliantThresholdTransferContract.roles(ADMIN_INDEX);
-      expect(adminRole).toBe(freezedAccount);
+      expect(adminRole).toBe(frozenAccount);
 
-      tx = await compliantThresholdTransferContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
+      tx = await compliantThresholdTransferContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
       adminRole = await compliantThresholdTransferContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await compliantThresholdTransferContractForFreezedAccount.update_role(freezedAccount, ADMIN_INDEX);
+      tx = await compliantThresholdTransferContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -166,18 +167,18 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test update_investigator_address`,
     async () => {
-      let tx = await compliantThresholdTransferContractForAdmin.update_role(freezedAccount, INVESTIGATOR_INDEX);
+      let tx = await compliantThresholdTransferContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await tx.wait();
       let investigatorRole = await compliantThresholdTransferContract.roles(INVESTIGATOR_INDEX);
-      expect(investigatorRole).toBe(freezedAccount);
+      expect(investigatorRole).toBe(frozenAccount);
 
       tx = await compliantThresholdTransferContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
       await tx.wait();
       investigatorRole = await compliantThresholdTransferContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      const rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_role(
-        freezedAccount,
+      const rejectedTx = await compliantThresholdTransferContractForFrozenAccount.update_role(
+        frozenAccount,
         INVESTIGATOR_INDEX,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
@@ -189,7 +190,7 @@ describe("test compliant_threshold_transfer program", () => {
     `test update_block_height_window`,
     async () => {
       // only the admin can call update the block height window
-      const rejectedTx = await compliantThresholdTransferContractForFreezedAccount.update_block_height_window(
+      const rejectedTx = await compliantThresholdTransferContractForFrozenAccount.update_block_height_window(
         policies.threshold.blockHeightWindow,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
@@ -206,7 +207,7 @@ describe("test compliant_threshold_transfer program", () => {
   );
 
   let accountRecord: Token;
-  let freezedAccountRecord: Token;
+  let frozenAccountRecord: Token;
   test(
     "fund tokens",
     async () => {
@@ -219,7 +220,7 @@ describe("test compliant_threshold_transfer program", () => {
       await mintPublicTx.wait();
       mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
         tokenId,
-        freezedAccount,
+        frozenAccount,
         amount * 20n + THRESHOLD,
         defaultAuthorizedUntil,
       );
@@ -237,29 +238,29 @@ describe("test compliant_threshold_transfer program", () => {
 
       mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
         tokenId,
-        freezedAccount,
+        frozenAccount,
         amount * 20n + THRESHOLD,
         true,
         0,
       );
-      const [encryptedFreezedAccountRecord] = await mintPrivateTx.wait();
-      freezedAccountRecord = decryptToken(encryptedFreezedAccountRecord, freezedAccountPrivKey);
+      const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
+      frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     },
     timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(
     `generate merkle proofs`,
     async () => {
-      const leaves = genLeaves([freezedAccount]);
+      const leaves = genLeaves([frozenAccount]);
       const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);
-      const freezedAccountLeafIndices = getLeafIndices(tree, freezedAccount);
+      const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
       senderMerkleProof = [
         getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
@@ -268,9 +269,9 @@ describe("test compliant_threshold_transfer program", () => {
         getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
       ];
-      freezedAccountMerkleProof = [
-        getSiblingPath(tree, freezedAccountLeafIndices[0], MAX_TREE_SIZE),
-        getSiblingPath(tree, freezedAccountLeafIndices[1], MAX_TREE_SIZE),
+      frozenAccountMerkleProof = [
+        getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
     timeout,
@@ -287,15 +288,18 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `freeze registry setup`,
     async () => {
+      const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
+      await tx1.wait();
+
       await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
 
-      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(freezedAccount, true, 0, root);
+      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, root);
       await tx2.wait();
-      const isAccountFreezed = await freezeRegistryContract.freeze_list(freezedAccount);
-      const freezedAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
+      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
 
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
@@ -349,32 +353,32 @@ describe("test compliant_threshold_transfer program", () => {
   );
 
   let accountStateRecord: TokenComplianceStateRecord;
-  let freezedAccountStateRecord: TokenComplianceStateRecord;
+  let frozenAccountStateRecord: TokenComplianceStateRecord;
   test(
     `test signup`,
     async () => {
       const isAccountSigned = await compliantThresholdTransferContractForAccount.owned_state_record(account, false);
       expect(isAccountSigned).toBe(false);
-      const isFreezedAccountSigned = await compliantThresholdTransferContractForAccount.owned_state_record(
-        freezedAccount,
+      const isFrozenAccountSigned = await compliantThresholdTransferContractForAccount.owned_state_record(
+        frozenAccount,
         false,
       );
-      expect(isFreezedAccountSigned).toBe(false);
+      expect(isFrozenAccountSigned).toBe(false);
       let tx = await compliantThresholdTransferContractForAccount.signup();
       const [encryptedAccountStateRecord] = await tx.wait();
       accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountStateRecord, accountPrivKey);
       expect(accountStateRecord.owner).toBe(account);
       expect(accountStateRecord.cumulative_amount_per_epoch).toBe(0n);
       expect(accountStateRecord.latest_block_height).toBe(0);
-      tx = await compliantThresholdTransferContractForFreezedAccount.signup();
-      const [encryptedFreezedAccountStateRecord] = await tx.wait();
-      freezedAccountStateRecord = decryptTokenComplianceStateRecord(
-        encryptedFreezedAccountStateRecord,
-        freezedAccountPrivKey,
+      tx = await compliantThresholdTransferContractForFrozenAccount.signup();
+      const [encryptedFrozenAccountStateRecord] = await tx.wait();
+      frozenAccountStateRecord = decryptTokenComplianceStateRecord(
+        encryptedFrozenAccountStateRecord,
+        frozenAccountPrivKey,
       );
-      expect(freezedAccountStateRecord.owner).toBe(freezedAccount);
-      expect(freezedAccountStateRecord.cumulative_amount_per_epoch).toBe(0n);
-      expect(freezedAccountStateRecord.latest_block_height).toBe(0);
+      expect(frozenAccountStateRecord.owner).toBe(frozenAccount);
+      expect(frozenAccountStateRecord.cumulative_amount_per_epoch).toBe(0n);
+      expect(frozenAccountStateRecord.latest_block_height).toBe(0);
 
       // If the user have already signed the tx will fail
       tx = await compliantThresholdTransferContractForAccount.signup();
@@ -573,19 +577,19 @@ describe("test compliant_threshold_transfer program", () => {
 
       await approvalTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await compliantThresholdTransferContractForFreezedAccount.transfer_public(
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await compliantThresholdTransferContractForFrozenAccount.transfer_public(
         recipient,
         amount,
-        freezedAccountStateRecord,
+        frozenAccountStateRecord,
         await getLatestBlockHeight(),
       );
 
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountStateRecord,
         await getLatestBlockHeight(),
@@ -629,19 +633,19 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test transfer_public_as_signer`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
-      let rejectedTx = await compliantThresholdTransferContractForFreezedAccount.transfer_public_as_signer(
+      // If the sender is frozen account it's impossible to send tokens
+      let rejectedTx = await compliantThresholdTransferContractForFrozenAccount.transfer_public_as_signer(
         recipient,
         amount,
-        freezedAccountStateRecord,
+        frozenAccountStateRecord,
         await getLatestBlockHeight(),
       );
 
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       rejectedTx = await compliantThresholdTransferContractForAccount.transfer_public_as_signer(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountStateRecord,
         await getLatestBlockHeight(),
@@ -706,25 +710,25 @@ describe("test compliant_threshold_transfer program", () => {
 
       await approvalTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await compliantThresholdTransferContractForFreezedAccount.transfer_public_to_priv(
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await compliantThresholdTransferContractForFrozenAccount.transfer_public_to_priv(
         recipient,
         amount,
-        freezedAccountStateRecord,
+        frozenAccountStateRecord,
         await getLatestBlockHeight(),
         recipientMerkleProof,
         investigatorAddress,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         compliantThresholdTransferContractForAccount.transfer_public_to_priv(
-          freezedAccount,
+          frozenAccount,
           amount,
           accountStateRecord,
           await getLatestBlockHeight(),
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -736,7 +740,7 @@ describe("test compliant_threshold_transfer program", () => {
           amount,
           accountStateRecord,
           0,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -798,29 +802,29 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test transfer_private`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        compliantThresholdTransferContractForFreezedAccount.transfer_private(
+        compliantThresholdTransferContractForFrozenAccount.transfer_private(
           recipient,
           amount,
-          freezedAccountRecord,
-          freezedAccountStateRecord,
+          frozenAccountRecord,
+          frozenAccountStateRecord,
           await getLatestBlockHeight(),
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           recipientMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         compliantThresholdTransferContractForAccount.transfer_private(
-          freezedAccount,
+          frozenAccount,
           amount,
           accountRecord,
           accountStateRecord,
           await getLatestBlockHeight(),
           senderMerkleProof,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -834,7 +838,7 @@ describe("test compliant_threshold_transfer program", () => {
           accountStateRecord,
           0,
           senderMerkleProof,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -908,22 +912,22 @@ describe("test compliant_threshold_transfer program", () => {
   test(
     `test transfer_priv_to_public`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        compliantThresholdTransferContractForFreezedAccount.transfer_priv_to_public(
+        compliantThresholdTransferContractForFrozenAccount.transfer_priv_to_public(
           recipient,
           amount,
-          freezedAccountRecord,
+          frozenAccountRecord,
           accountStateRecord,
           await getLatestBlockHeight(),
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       let rejectedTx = await compliantThresholdTransferContractForAccount.transfer_priv_to_public(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountRecord,
         accountStateRecord,

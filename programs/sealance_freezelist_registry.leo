@@ -51,7 +51,6 @@ program sealance_freezelist_registry.aleo {
         freeze_list_index.set(0u32, ZERO_ADDRESS);
     }
 
-    // Freezes or unfreezes an account based on the is_freezed flag (true = freeze, false = unfreeze).
     // Can only be called after the contract has been initialized.
     // Verifies that the operation is valid:
     // - Cannot freeze an already frozen account or unfreeze an account that isn't frozen.
@@ -85,14 +84,14 @@ program sealance_freezelist_registry.aleo {
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
-    // Freezes or unfreezes an account based on the is_freezed flag (true = freeze, false = unfreeze).
+    // Freezes or unfreezes an account based on the is_frozen flag (true = freeze, false = unfreeze).
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
     // Can only be called by the admin.
-    async transition update_freeze_list(public account: address, public is_freezed: bool, public freezed_index: u32, public new_root: field) -> Future {
-        return f_update_freeze_list(account, is_freezed, freezed_index, self.caller, new_root);
+    async transition update_freeze_list(public account: address, public is_frozen: bool, public frozen_index: u32, public new_root: field) -> Future {
+        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, new_root);
     }
-    async function f_update_freeze_list(account: address, is_freezed: bool, freezed_index: u32, caller: address, new_root: field) {
+    async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, new_root: field) {
         let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
 
@@ -101,29 +100,29 @@ program sealance_freezelist_registry.aleo {
         freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
 
         // Verify we don't unfreeze an unfrozen account or freeze a frozen account
-        let stored_is_freezed = freeze_list.get_or_use(account, false);
-        assert_neq(is_freezed, stored_is_freezed);
-        freeze_list.set(account, is_freezed);
+        let stored_is_frozen = freeze_list.get_or_use(account, false);
+        assert_neq(is_frozen, stored_is_frozen);
+        freeze_list.set(account, is_frozen);
 
-        let current_address_at_index: address = freeze_list_index.get_or_use(freezed_index, ZERO_ADDRESS);
-        if (is_freezed) {
-            // Verify that the freezed_index is empty.
+        let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
+        if (is_frozen) {
+            // Verify that the frozen_index is empty.
             assert_eq(current_address_at_index, ZERO_ADDRESS);
             
-            // Verify that the freezed index equal or smaller than the last index plus 1
+            // Verify that the frozen index equal or smaller than the last index plus 1
             let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
-            assert(last_index + 1u32 >= freezed_index);
+            assert(last_index + 1u32 >= frozen_index);
         
             // Update the freeze_list_last_index
-            if (last_index < freezed_index) {
-                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, freezed_index);
+            if (last_index < frozen_index) {
+                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, frozen_index);
             }
 
-            freeze_list_index.set(freezed_index, account);
+            freeze_list_index.set(frozen_index, account);
         } else {
-            // Verify that we update the correct freezed_index
+            // Verify that we update the correct frozen_index
             assert_eq(current_address_at_index, account);
-            freeze_list_index.set(freezed_index, ZERO_ADDRESS);
+            freeze_list_index.set(frozen_index, ZERO_ADDRESS);
         }
 
         root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
@@ -136,8 +135,8 @@ program sealance_freezelist_registry.aleo {
         return f_verify_non_inclusion_pub(account);
     }
     async function f_verify_non_inclusion_pub(account: address) {
-        let is_freezed: bool = freeze_list.get_or_use(account, false);
-        assert_eq(is_freezed, false);
+        let is_frozen: bool = freeze_list.get_or_use(account, false);
+        assert_eq(is_frozen, false);
     }
 
     // Verifies that an account is not included in the freeze list Merkle tree.

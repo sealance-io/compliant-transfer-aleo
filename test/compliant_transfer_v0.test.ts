@@ -37,10 +37,10 @@ const { tokenId } = policies.compliant;
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, investigatorAddress, freezedAccount, account, recipient] = contract.getAccounts();
+const [deployerAddress, adminAddress, investigatorAddress, frozenAccount, account, recipient] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
-const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
+const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
@@ -69,9 +69,9 @@ const compliantTransferContractForAccount = new Sealed_report_policyContract({
   mode,
   privateKey: accountPrivKey,
 });
-const compliantTransferContractForFreezedAccount = new Sealed_report_policyContract({
+const compliantTransferContractForFrozenAccount = new Sealed_report_policyContract({
   mode,
-  privateKey: freezedAccountPrivKey,
+  privateKey: frozenAccountPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -86,7 +86,7 @@ describe("test compliant_transfer program", () => {
     `fund credits`,
     async () => {
       await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
+      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
       await fundWithCredits(deployerPrivKey, account, fundedAmount);
     },
     timeout,
@@ -114,17 +114,17 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await compliantTransferContractForAdmin.update_role(freezedAccount, ADMIN_INDEX);
+      let tx = await compliantTransferContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
       await tx.wait();
       let adminRole = await compliantTransferContract.roles(ADMIN_INDEX);
-      expect(adminRole).toBe(freezedAccount);
+      expect(adminRole).toBe(frozenAccount);
 
-      tx = await compliantTransferContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
+      tx = await compliantTransferContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
       adminRole = await compliantTransferContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await compliantTransferContractForFreezedAccount.update_role(freezedAccount, ADMIN_INDEX);
+      tx = await compliantTransferContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -133,27 +133,24 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_investigator_address`,
     async () => {
-      let tx = await compliantTransferContractForAdmin.update_role(freezedAccount, INVESTIGATOR_INDEX);
+      let tx = await compliantTransferContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await tx.wait();
       let investigatorRole = await compliantTransferContract.roles(INVESTIGATOR_INDEX);
-      expect(investigatorRole).toBe(freezedAccount);
+      expect(investigatorRole).toBe(frozenAccount);
 
       tx = await compliantTransferContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
       await tx.wait();
       investigatorRole = await compliantTransferContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      const rejectedTx = await compliantTransferContractForFreezedAccount.update_role(
-        freezedAccount,
-        INVESTIGATOR_INDEX,
-      );
+      const rejectedTx = await compliantTransferContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
   );
 
   let accountRecord: Token;
-  let freezedAccountRecord: Token;
+  let frozenAccountRecord: Token;
   test(
     "fund tokens",
     async () => {
@@ -166,7 +163,7 @@ describe("test compliant_transfer program", () => {
       await mintPublicTx.wait();
       mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
         tokenId,
-        freezedAccount,
+        frozenAccount,
         amount * 20n,
         defaultAuthorizedUntil,
       );
@@ -176,25 +173,25 @@ describe("test compliant_transfer program", () => {
       const [encryptedAccountRecord] = await mintPrivateTx.wait();
       accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
 
-      mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(tokenId, freezedAccount, amount * 20n, true, 0);
-      const [encryptedFreezedAccountRecord] = await mintPrivateTx.wait();
-      freezedAccountRecord = decryptToken(encryptedFreezedAccountRecord, freezedAccountPrivKey);
+      mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(tokenId, frozenAccount, amount * 20n, true, 0);
+      const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
+      frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     },
     timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(
     `generate merkle proofs`,
     async () => {
-      const leaves = genLeaves([freezedAccount]);
+      const leaves = genLeaves([frozenAccount]);
       const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);
-      const freezedAccountLeafIndices = getLeafIndices(tree, freezedAccount);
+      const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
       senderMerkleProof = [
         getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
@@ -203,9 +200,9 @@ describe("test compliant_transfer program", () => {
         getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
       ];
-      freezedAccountMerkleProof = [
-        getSiblingPath(tree, freezedAccountLeafIndices[0], MAX_TREE_SIZE),
-        getSiblingPath(tree, freezedAccountLeafIndices[1], MAX_TREE_SIZE),
+      frozenAccountMerkleProof = [
+        getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
     timeout,
@@ -223,19 +220,19 @@ describe("test compliant_transfer program", () => {
     `test initialize`,
     async () => {
       // Cannot update freeze list before initialization
-      let rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      let rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const tx = await compliantTransferContract.initialize(policies.compliant.blockHeightWindow);
       await tx.wait();
-      const isAccountFreezed = await compliantTransferContract.freeze_list(ZERO_ADDRESS);
-      const freezedAccountByIndex = await compliantTransferContract.freeze_list_index(0);
+      const isAccountFrozen = await compliantTransferContract.freeze_list(ZERO_ADDRESS);
+      const frozenAccountByIndex = await compliantTransferContract.freeze_list_index(0);
       const lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
       const initializedRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
       const blockHeightWindow = await compliantTransferContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
 
-      expect(isAccountFreezed).toBe(false);
-      expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(isAccountFrozen).toBe(false);
+      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
       expect(initializedRoot).toBe(emptyRoot);
       expect(blockHeightWindow).toBe(policies.compliant.blockHeightWindow);
@@ -251,68 +248,68 @@ describe("test compliant_transfer program", () => {
     `test update_freeze_list`,
     async () => {
       // Only the admin can call to update_freeze_list
-      let rejectedTx = await compliantTransferContractForFreezedAccount.update_freeze_list(adminAddress, true, 1, root);
+      let rejectedTx = await compliantTransferContractForFrozenAccount.update_freeze_list(adminAddress, true, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot unfreeze an unfrozen account
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, false, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      let tx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
       await tx.wait();
-      let isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
-      let freezedAccountByIndex = await compliantTransferContract.freeze_list_index(1);
+      let isAccountFrozen = await compliantTransferContract.freeze_list(frozenAccount);
+      let frozenAccountByIndex = await compliantTransferContract.freeze_list_index(1);
       let lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
       expect(lastIndex).toBe(1);
 
-      // Cannot unfreeze an account when the freezed list index is incorrect
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 2, root);
+      // Cannot unfreeze an account when the frozen list index is incorrect
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, false, 2, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot freeze a frozen account
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
+      tx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, false, 1, root);
       await tx.wait();
-      isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
-      freezedAccountByIndex = await compliantTransferContract.freeze_list_index(1);
+      isAccountFrozen = await compliantTransferContract.freeze_list(frozenAccount);
+      frozenAccountByIndex = await compliantTransferContract.freeze_list_index(1);
       lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(false);
-      expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(isAccountFrozen).toBe(false);
+      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(1);
 
-      tx = await compliantTransferContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      tx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, root);
       await tx.wait();
-      isAccountFreezed = await compliantTransferContract.freeze_list(freezedAccount);
-      freezedAccountByIndex = await compliantTransferContract.freeze_list_index(1);
+      isAccountFrozen = await compliantTransferContract.freeze_list(frozenAccount);
+      frozenAccountByIndex = await compliantTransferContract.freeze_list_index(1);
       lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
       expect(lastIndex).toBe(1);
 
       let randomAddress = new Account().address().to_string();
       tx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
       await tx.wait();
-      isAccountFreezed = await compliantTransferContractForAdmin.freeze_list(randomAddress);
-      freezedAccountByIndex = await compliantTransferContractForAdmin.freeze_list_index(2);
+      isAccountFrozen = await compliantTransferContractForAdmin.freeze_list(randomAddress);
+      frozenAccountByIndex = await compliantTransferContractForAdmin.freeze_list_index(2);
       lastIndex = await compliantTransferContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(randomAddress);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(randomAddress);
       expect(lastIndex).toBe(2);
 
       randomAddress = new Account().address().to_string();
-      // Cannot freeze an account when the freezed list index is greater than the last index
+      // Cannot freeze an account when the frozen list index is greater than the last index
       rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // Cannot freeze an account when the freezed list index is already taken
+      // Cannot freeze an account when the frozen list index is already taken
       rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
@@ -394,12 +391,12 @@ describe("test compliant_transfer program", () => {
       );
       await approvalTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForFreezedAccount.transfer_public(recipient, amount);
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await compliantTransferContractForFrozenAccount.transfer_public(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForAccount.transfer_public(freezedAccount, amount);
+      // If the recipient is frozen account it's impossible to send tokens
+      rejectedTx = await compliantTransferContractForAccount.transfer_public(frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const tx = await compliantTransferContractForAccount.transfer_public(recipient, amount);
@@ -411,12 +408,12 @@ describe("test compliant_transfer program", () => {
   test(
     `test transfer_public_as_signer`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
-      let rejectedTx = await compliantTransferContractForFreezedAccount.transfer_public_as_signer(recipient, amount);
+      // If the sender is frozen account it's impossible to send tokens
+      let rejectedTx = await compliantTransferContractForFrozenAccount.transfer_public_as_signer(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForAccount.transfer_public_as_signer(freezedAccount, amount);
+      // If the recipient is frozen account it's impossible to send tokens
+      rejectedTx = await compliantTransferContractForAccount.transfer_public_as_signer(frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const tx = await compliantTransferContractForAccount.transfer_public_as_signer(recipient, amount);
@@ -445,8 +442,8 @@ describe("test compliant_transfer program", () => {
       );
       await approvalTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForFreezedAccount.transfer_public_to_priv(
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await compliantTransferContractForFrozenAccount.transfer_public_to_priv(
         recipient,
         amount,
         recipientMerkleProof,
@@ -454,12 +451,12 @@ describe("test compliant_transfer program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         compliantTransferContractForAccount.transfer_public_to_priv(
-          freezedAccount,
+          frozenAccount,
           amount,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -492,25 +489,25 @@ describe("test compliant_transfer program", () => {
   test(
     `test transfer_private`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        compliantTransferContractForFreezedAccount.transfer_private(
+        compliantTransferContractForFrozenAccount.transfer_private(
           recipient,
           amount,
           accountRecord,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           recipientMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         compliantTransferContractForAccount.transfer_private(
-          freezedAccount,
+          frozenAccount,
           amount,
           accountRecord,
           senderMerkleProof,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -554,20 +551,20 @@ describe("test compliant_transfer program", () => {
   test(
     `test transfer_priv_to_public`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        compliantTransferContractForFreezedAccount.transfer_priv_to_public(
+        compliantTransferContractForFrozenAccount.transfer_priv_to_public(
           recipient,
           amount,
-          freezedAccountRecord,
-          freezedAccountMerkleProof,
+          frozenAccountRecord,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       const rejectedTx = await compliantTransferContractForAccount.transfer_priv_to_public(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountRecord,
         senderMerkleProof,
@@ -627,7 +624,7 @@ describe("test compliant_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const updateFreezeListTx = await compliantTransferContractForAdmin.update_freeze_list(
-        freezedAccount,
+        frozenAccount,
         false,
         1,
         1n, // fake root
