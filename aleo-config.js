@@ -31,7 +31,7 @@ export default {
         process.env.ALEO_DEVNET_DEPLOYER_PRIVATE_KEY,
         process.env.ALEO_DEVNET_ADMIN_PRIVATE_KEY,
         process.env.ALEO_DEVNET_INVESTIGATOR_PRIVATE_KEY,
-        process.env.ALEO_DEVNET_FREEZED_ADDRESS_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_FROZEN_ADDRESS_PRIVATE_KEY,
         process.env.ALEO_DEVNET_SENDER_PRIVATE_KEY,
         process.env.ALEO_DEVNET_RECIPIENT_PRIVATE_KEY,
       ],

@@ -23,8 +23,8 @@ export async function calculateFreezeListUpdate(
   address: string,
   leavesLength: number,
 ): Promise<FreezeListUpdateResult> {
-  const isAccountFreezed = await compliantTransferContract.freeze_list(address, false);
-  if (isAccountFreezed) {
+  const isAccountFrozen = await compliantTransferContract.freeze_list(address, false);
+  if (isAccountFrozen) {
     return { status: FreezeStatus.ALREADY_FROZEN };
   }
 
@@ -39,7 +39,7 @@ export async function calculateFreezeListUpdate(
     }
   }
   if (addresses.length === leavesLength) {
-    throw new Error("Merkle tree is full, there is no place for the new freezed account");
+    throw new Error("Merkle tree is full, there is no place for the new frozen account");
   }
   addresses.push(address);
   const leaves = genLeaves(addresses);
