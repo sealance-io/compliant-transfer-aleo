@@ -26,10 +26,10 @@ import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import { Account } from "@provablehq/sdk";
-import { Report_tokenContract } from "../artifacts/js/report_token";
+import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
 import { stringToBigInt } from "../lib/Conversion";
-import { decryptToken } from "../artifacts/js/leo2js/report_token";
-import { Token } from "../artifacts/js/types/report_token";
+import { decryptToken } from "../artifacts/js/leo2js/sealed_report_token";
+import { Token } from "../artifacts/js/types/sealed_report_token";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -59,35 +59,35 @@ const burnerPrivKey = contract.getPrivateKey(burner);
 const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
 const spenderPrivKey = contract.getPrivateKey(spender);
 
-const reportTokenContract = new Report_tokenContract({
+const reportTokenContract = new Sealed_report_tokenContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const reportTokenContractForAdmin = new Report_tokenContract({
+const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   mode,
   privateKey: adminPrivKey,
 });
-const reportTokenContractForAccount = new Report_tokenContract({
+const reportTokenContractForAccount = new Sealed_report_tokenContract({
   mode,
   privateKey: accountPrivKey,
 });
-const reportTokenContractForMinter = new Report_tokenContract({
+const reportTokenContractForMinter = new Sealed_report_tokenContract({
   mode,
   privateKey: minterPrivKey,
 });
-const reportTokenContractForBurner = new Report_tokenContract({
+const reportTokenContractForBurner = new Sealed_report_tokenContract({
   mode,
   privateKey: burnerPrivKey,
 });
-const reportTokenContractForSupplyManager = new Report_tokenContract({
+const reportTokenContractForSupplyManager = new Sealed_report_tokenContract({
   mode,
   privateKey: supplyManagerPrivKey,
 });
-const reportTokenContractForSpender = new Report_tokenContract({
+const reportTokenContractForSpender = new Sealed_report_tokenContract({
   mode,
   privateKey: spenderPrivKey,
 });
-const reportTokenContractForFreezedAccount = new Report_tokenContract({
+const reportTokenContractForFreezedAccount = new Sealed_report_tokenContract({
   mode,
   privateKey: freezedAccountPrivKey,
 });
@@ -99,7 +99,7 @@ const merkleTreeContract = new Merkle_treeContract({
 const amount = 10n;
 let root: bigint;
 
-describe("test report_token program", () => {
+describe("test sealed_report_token program", () => {
   test(
     `fund credits`,
     async () => {
