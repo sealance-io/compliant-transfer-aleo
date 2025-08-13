@@ -1,6 +1,6 @@
 import merkle_tree.aleo;
 
-program report_token.aleo {
+program sealed_report_token.aleo {
     record Token {
         owner: address,
         amount: u128
@@ -37,7 +37,6 @@ program report_token.aleo {
     mapping token_metadata: bool => TokenMetadata;
 
     mapping balances: address => u128;
-    mapping authorized_balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => Allowance
 
     const NONE_ROLE: u8 = 0u8;
