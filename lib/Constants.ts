@@ -74,6 +74,11 @@ export const FREEZE_LIST_LAST_INDEX = true;
 export const THRESHOLD = 1000000000n;
 export const EPOCH = 8640;
 
+export const NONE_ROLE = 0;
+export const MINTER_ROLE = 1;
+export const BURNER_ROLE = 2;
+export const SUPPLY_MANAGER_ROLE = 3;
+
 // merkle tree
 export const MAX_TREE_SIZE = 16;
 
