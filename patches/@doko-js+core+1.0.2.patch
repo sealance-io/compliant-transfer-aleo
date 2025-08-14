@@ -1,34 +1,51 @@
 diff --git a/node_modules/@doko-js/core/dist/index.js b/node_modules/@doko-js/core/dist/index.js
-index 4d3b119..d837147 100644
+index 4d3b119..33e15d2 100644
 --- a/node_modules/@doko-js/core/dist/index.js
 +++ b/node_modules/@doko-js/core/dist/index.js
-@@ -1391,15 +1391,18 @@ const snarkDeploy = async ({config}) => {
+@@ -1359,10 +1359,11 @@ async function deployAleo(aleoCode, config, aleoFilesDir) {
+     DokoJSLogger.log(`Deploying program ${config.appName}`);
+     const projectDir = await makeProjectForDeploy(`${config.appName}.aleo`, aleoCode, aleoFilesDir);
+     const priorityFee = config.priorityFee || 0;
+-    const cmd = leoDeployCommand(projectDir, config.privateKey, nodeEndPoint, config.networkName, priorityFee, true);
++    const isDevnet = nodeEndPoint.includes("localhost")
++    const cmd = leoDeployCommand(projectDir, config.privateKey, nodeEndPoint, config.networkName, priorityFee, isDevnet);
+     DokoJSLogger.debug(cmd);
+     const {stdout} = await execute(cmd);
+-    const result = transactionHashToTransactionResponseObject(stdout.split("Deployment")[2].split(" ")[1], "deploy");
++    const result = transactionHashToTransactionResponseObject(stdout.split("- transaction ID: '").pop().split("'")[0], "deploy");
+     return new SnarkDeployResponse(result?.id || "", config);
+ }
+ 
+@@ -1391,15 +1392,19 @@ const snarkDeploy = async ({config}) => {
              programName: config.appName
          });
      }
 +
      DokoJSLogger.info(`Deploying program ${config.appName}`);
-     const cmd = leoDeployCommand(config.contractPath, config.privateKey, nodeEndPoint, config.networkName, priorityFee);
+-    const cmd = leoDeployCommand(config.contractPath, config.privateKey, nodeEndPoint, config.networkName, priorityFee);
++    const isDevnet = nodeEndPoint.includes("localhost")
++    const cmd = leoDeployCommand(config.contractPath, config.privateKey, nodeEndPoint, config.networkName, priorityFee, isDevnet);
      DokoJSLogger.debug(cmd);
 +
      const {stdout} = await execute(cmd);
 -    const result = transactionHashToTransactionResponseObject(stdout.split("Deployment")[2].split(" ")[1], "deploy");
-+    const result = transactionHashToTransactionResponseObject(stdout.split('id": "')[1].split('"')[0], "deploy");
++    const result = transactionHashToTransactionResponseObject(stdout.split("- transaction ID: '").pop().split("'")[0], "deploy");
 +
      return new SnarkDeployResponse(result?.id || "", config);
  };
  
 -const leoDeployCommand = (path, privateKey, endpoint, network = "testnet", priorityFee = 0, noBuild = false) => `cd ${path} && leo deploy --home ${ALEO_REGISTRY_DIR} --priority-fee ${priorityFee}  --private-key ${privateKey} --endpoint ${endpoint} --network ${network} --yes ${noBuild ? "--no-build" : ""}`;
-+const leoDeployCommand = (path, privateKey, endpoint, network = "testnet", priorityFee = 0, noBuild = false) => `cd ${path} && leo deploy --priority-fees ${priorityFee}  --private-key "${privateKey}" --endpoint ${endpoint} --network ${network} --yes --print --broadcast ${noBuild ? "--no-build" : ""}`;
++const leoDeployCommand = (path, privateKey, endpoint, network = "testnet", priorityFee = 0, devnet = true) => `cd ${path} && leo deploy --priority-fees ${priorityFee}  --private-key "${privateKey}" --endpoint ${endpoint} --network ${network} --yes --print --broadcast ${devnet ? "--devnet" : ""}`;
  
  const transactionHashToTransactionResponseObject = (transactionHash, type) => {
      const transaction = {
-@@ -1582,7 +1585,7 @@ class SnarkExecuteContext {
+@@ -1582,7 +1587,8 @@ class SnarkExecuteContext {
          const transitionArgs = formatArgs(args);
          const cdCmd = this.params.isImportedAleo ? "" : `cd ${this.params.contractPath} && `;
          const programName = this.params.appName + ".aleo";
 -        const cmd = `${cdCmd}leo execute --program ${programName} ${transitionName} ${transitionArgs} --network ${this.params.networkName} --private-key ${this.params.privateKey} --endpoint ${nodeEndPoint} --broadcast --yes`;
-+        const cmd = `${cdCmd}leo execute ${programName}/${transitionName} ${transitionArgs} --network ${this.params.networkName} --private-key ${this.params.privateKey} --endpoint ${nodeEndPoint} --print --broadcast --yes`;
++        const isDevnet = nodeEndPoint.includes("localhost");
++        const cmd = `${cdCmd}leo execute ${programName}/${transitionName} ${transitionArgs} --network ${this.params.networkName} ${isDevnet ? "--devnet" : ""} --private-key ${this.params.privateKey} --endpoint ${nodeEndPoint} --print --broadcast --yes`;
          DokoJSLogger.debug(cmd);
          const {stdout} = await execute(cmd);
          const {transaction} = this.parser.parse(stdout);
