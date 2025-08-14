@@ -2,6 +2,9 @@ import credits.aleo;
 
 // The 'mtsp' program.
 program token_registry.aleo {
+  @noupgrade
+  async constructor() {}
+
   record Token {
     owner: address,
     amount: u128,
