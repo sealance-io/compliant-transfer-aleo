@@ -5,7 +5,9 @@ import sealed_timelock_policy.aleo;
 // The 'exchange' program.
 // This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
 program gqrfmwbtyp.aleo {
-
+    @noupgrade
+    async constructor() {}
+    
     // The address that received the Aleo credits in the swap
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     // The rate that we will use in case there is no defined rate. 

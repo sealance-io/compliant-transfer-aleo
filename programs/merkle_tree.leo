@@ -1,4 +1,7 @@
 program merkle_tree.aleo {
+
+    @noupgrade
+    async constructor() {}
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
@@ -7,6 +10,7 @@ program merkle_tree.aleo {
         siblings: [field; 16],
         leaf_index: u32
     }
+
 
     // Calculates the hash of two sibling nodes in a Merkle tree.
     // The order of the siblings depends on the index bit (0 = left, 1 = right).
