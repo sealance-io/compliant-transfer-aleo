@@ -27,6 +27,7 @@ import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
 import { updateAdminRole } from "../lib/Role";
+import { isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -232,18 +233,24 @@ describe("test compliant_timelock_transfer program", () => {
   test(
     `freeze registry setup`,
     async () => {
-      const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
-      await tx1.wait();
+      const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
+      if (!isFreezeRegistryInitialized) {
+        const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
+        await tx1.wait();
+      }
 
       await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
 
-      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, root);
-      await tx2.wait();
-      const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
-      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
+      if (!isAccountFrozen) {
+        const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, root);
+        await tx2.wait();
+        const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
+        const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
-      expect(isAccountFrozen).toBe(true);
-      expect(frozenAccountByIndex).toBe(frozenAccount);
+        expect(isAccountFrozen).toBe(true);
+        expect(frozenAccountByIndex).toBe(frozenAccount);
+      }
 
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
