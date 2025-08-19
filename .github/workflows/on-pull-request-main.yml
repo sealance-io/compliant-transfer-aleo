@@ -27,6 +27,10 @@ on:
         description: "Run Exchange tests"
         type: boolean
         default: true
+      run_sealed_report_token: 
+        description: "Run Sealed Report Token tests"
+        type: boolean
+        default: true
   pull_request:
     branches:
       - main
@@ -81,6 +85,11 @@ jobs:
       run_exchange: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_exchange || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_sealed_report_token: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_sealed_report_token || 
           github.event_name == 'pull_request' && false
         }}
     steps:
@@ -144,4 +153,14 @@ jobs:
       job_name: "Threshold Policy Test"
       test_command: "npm run test:select ./test/exchange.test.ts"
       watched_paths: "programs/exchange.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  sealed-report-token-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_sealed_report_token == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Sealed Report Token Test"
+      test_command: "npm run test:select ./test/report_token.test.ts"
+      watched_paths: "programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
