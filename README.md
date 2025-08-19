@@ -22,7 +22,7 @@ This project is developed and tested with the following tooling:
 
   - `sealed_report_token.leo`
 
-    Token program that grants asset issuers access to transaction details. Manages its own supply and balances without relying on a `token_registry.aleo` Both sender and recipient must not be on the sanctions list. 
+    Token program that grants asset issuers access to transaction details. Manages its own supply and balances without relying on a `token_registry.aleo` Both sender and recipient must not be on the sanctions list.
 
   - `sealed_threshold_report_policy.leo`
 

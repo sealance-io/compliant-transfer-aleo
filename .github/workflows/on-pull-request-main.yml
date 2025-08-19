@@ -27,7 +27,7 @@ on:
         description: "Run Exchange tests"
         type: boolean
         default: true
-      run_sealed_report_token: 
+      run_sealed_report_token:
         description: "Run Sealed Report Token tests"
         type: boolean
         default: true
