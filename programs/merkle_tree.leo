@@ -1,7 +1,7 @@
 program merkle_tree.aleo {
-
     @noupgrade
     async constructor() {}
+
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;

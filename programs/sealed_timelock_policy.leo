@@ -2,8 +2,11 @@ import token_registry.aleo;
 import sealance_freezelist_registry.aleo;
 
 program sealed_timelock_policy.aleo {
-    @noupgrade
-    async constructor() {}
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
     
     // token specs
     const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
