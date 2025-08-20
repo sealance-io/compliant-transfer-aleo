@@ -2,8 +2,11 @@
 import merkle_tree.aleo;
 
 program sealance_freezelist_registry.aleo {
-    @noupgrade
-    async constructor() {}
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
     
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
