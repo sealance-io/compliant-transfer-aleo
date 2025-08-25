@@ -79,6 +79,7 @@ program sealed_report_policy.aleo {
     //   - If the index equals last index + 1, updates freeze_list_last_index.
     // - When unfreezing:
     //   - Ensures the specified index currently holds the account being removed.
+    // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
     // Can only be called by the admin.
