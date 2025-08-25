@@ -10,6 +10,7 @@ import {
   BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
   COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
+  CURRENT_FREEZE_LIST_ROOT_INDEX,
   EPOCH,
   EPOCH_INDEX,
   FREEZE_REGISTRY_PROGRAM_INDEX,
@@ -299,7 +300,9 @@ describe("test compliant_threshold_transfer program", () => {
 
       let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
       if (!isAccountFrozen) {
-        const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, root);
+        const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+
+        const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
         await tx2.wait();
         const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
         const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);

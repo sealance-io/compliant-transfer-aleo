@@ -2,6 +2,7 @@ import { ExecutionMode } from "@doko-js/core";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { BaseContract } from "../contract/base-contract";
 import { calculateFreezeListUpdate, FreezeStatus } from "../lib/FreezeList";
+import { CURRENT_FREEZE_LIST_ROOT_INDEX } from "../lib/Constants";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -34,11 +35,18 @@ const compliantTransferContract = new Sealed_report_policyContract({
   }
 
   const newAddress = process.argv[2];
+  const previousRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
   const updateResult = await calculateFreezeListUpdate(newAddress, 8);
 
   switch (updateResult.status) {
     case FreezeStatus.NEW_ENTRY:
-      await compliantTransferContract.update_freeze_list(newAddress, true, updateResult.lastIndex, updateResult.root);
+      await compliantTransferContract.update_freeze_list(
+        newAddress,
+        true,
+        updateResult.lastIndex,
+        previousRoot,
+        updateResult.root,
+      );
       break;
 
     case FreezeStatus.ALREADY_FROZEN:
