@@ -1,6 +1,12 @@
 import merkle_tree.aleo;
 
 program sealed_report_token.aleo {
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
+    
     record Token {
         owner: address,
         amount: u128

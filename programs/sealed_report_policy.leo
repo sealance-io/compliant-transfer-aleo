@@ -2,7 +2,12 @@ import token_registry.aleo;
 import merkle_tree.aleo;
 
 program sealed_report_policy.aleo {
-
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
+    
     const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
