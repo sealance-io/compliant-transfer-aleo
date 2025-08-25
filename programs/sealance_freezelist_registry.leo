@@ -85,6 +85,16 @@ program sealance_freezelist_registry.aleo {
     }
 
     // Freezes or unfreezes an account based on the is_frozen flag (true = freeze, false = unfreeze).
+    // Can only be called after the contract has been initialized.
+    // Verifies that the operation is valid:
+    // - Cannot freeze an already frozen account or unfreeze an account that isn't frozen.
+    // - When freezing:
+    //   - Ensures the target index in freeze_list_index is empty.
+    //   - Ensures the index is not greater than the last index + 1.
+    //   - If the index equals last index + 1, updates freeze_list_last_index.
+    // - When unfreezing:
+    //   - Ensures the specified index currently holds the account being removed.
+    // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
     // Can only be called by the admin.

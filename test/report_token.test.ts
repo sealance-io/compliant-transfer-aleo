@@ -40,7 +40,7 @@ const [
   deployerAddress,
   adminAddress,
   investigatorAddress,
-  freezedAccount,
+  frozenAccount,
   account,
   recipient,
   minter,
@@ -50,7 +50,7 @@ const [
 ] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
-const freezedAccountPrivKey = contract.getPrivateKey(freezedAccount);
+const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
@@ -87,9 +87,9 @@ const reportTokenContractForSpender = new Sealed_report_tokenContract({
   mode,
   privateKey: spenderPrivKey,
 });
-const reportTokenContractForFreezedAccount = new Sealed_report_tokenContract({
+const reportTokenContractForFrozenAccount = new Sealed_report_tokenContract({
   mode,
-  privateKey: freezedAccountPrivKey,
+  privateKey: frozenAccountPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -104,7 +104,7 @@ describe("test sealed_report_token program", () => {
     `fund credits`,
     async () => {
       await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, freezedAccount, fundedAmount);
+      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
       await fundWithCredits(deployerPrivKey, account, fundedAmount);
 
       await fundWithCredits(deployerPrivKey, minter, fundedAmount);
@@ -127,17 +127,17 @@ describe("test sealed_report_token program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await reportTokenContractForAdmin.update_role(freezedAccount, ADMIN_INDEX);
+      let tx = await reportTokenContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
       await tx.wait();
       let adminRole = await reportTokenContract.roles(ADMIN_INDEX);
-      expect(adminRole).toBe(freezedAccount);
+      expect(adminRole).toBe(frozenAccount);
 
-      tx = await reportTokenContractForFreezedAccount.update_role(adminAddress, ADMIN_INDEX);
+      tx = await reportTokenContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
       adminRole = await reportTokenContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await reportTokenContractForFreezedAccount.update_role(freezedAccount, ADMIN_INDEX);
+      tx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -146,17 +146,17 @@ describe("test sealed_report_token program", () => {
   test(
     `test update_investigator_address`,
     async () => {
-      let tx = await reportTokenContractForAdmin.update_role(freezedAccount, INVESTIGATOR_INDEX);
+      let tx = await reportTokenContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await tx.wait();
       let investigatorRole = await reportTokenContract.roles(INVESTIGATOR_INDEX);
-      expect(investigatorRole).toBe(freezedAccount);
+      expect(investigatorRole).toBe(frozenAccount);
 
       tx = await reportTokenContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
       await tx.wait();
       investigatorRole = await reportTokenContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      const rejectedTx = await reportTokenContractForFreezedAccount.update_role(freezedAccount, INVESTIGATOR_INDEX);
+      const rejectedTx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -164,16 +164,16 @@ describe("test sealed_report_token program", () => {
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let freezedAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(
     `generate merkle proofs`,
     async () => {
-      const leaves = genLeaves([freezedAccount]);
+      const leaves = genLeaves([frozenAccount]);
       const tree = buildTree(leaves);
       root = tree[tree.length - 1];
       const senderLeafIndices = getLeafIndices(tree, account);
       const recipientLeafIndices = getLeafIndices(tree, recipient);
-      const freezedAccountLeafIndices = getLeafIndices(tree, freezedAccount);
+      const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
       senderMerkleProof = [
         getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
@@ -182,9 +182,9 @@ describe("test sealed_report_token program", () => {
         getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
         getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
       ];
-      freezedAccountMerkleProof = [
-        getSiblingPath(tree, freezedAccountLeafIndices[0], MAX_TREE_SIZE),
-        getSiblingPath(tree, freezedAccountLeafIndices[1], MAX_TREE_SIZE),
+      frozenAccountMerkleProof = [
+        getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
+        getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
     timeout,
@@ -194,7 +194,7 @@ describe("test sealed_report_token program", () => {
     `test initialize`,
     async () => {
       // Cannot update freeze list before initialization
-      let rejectedTx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      let rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
       const name = stringToBigInt("Report Token");
       const symbol = stringToBigInt("REPORT_TOKEN");
@@ -204,14 +204,14 @@ describe("test sealed_report_token program", () => {
       const tx = await reportTokenContract.initialize(name, symbol, decimals, maxSupply, BLOCK_HEIGHT_WINDOW);
       await tx.wait();
 
-      const isAccountFreezed = await reportTokenContract.freeze_list(ZERO_ADDRESS);
-      const freezedAccountByIndex = await reportTokenContract.freeze_list_index(0);
+      const isAccountFrozen = await reportTokenContract.freeze_list(ZERO_ADDRESS);
+      const frozenAccountByIndex = await reportTokenContract.freeze_list_index(0);
       const lastIndex = await reportTokenContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
       const initializedRoot = await reportTokenContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
       const blockHeightWindow = await reportTokenContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
 
-      expect(isAccountFreezed).toBe(false);
-      expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(isAccountFrozen).toBe(false);
+      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
       expect(initializedRoot).toBe(emptyRoot);
       expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
@@ -263,7 +263,7 @@ describe("test sealed_report_token program", () => {
   );
 
   let accountRecord: Token;
-  let freezedAccountRecord: Token;
+  let frozenAccountRecord: Token;
   test(
     `test mint_private`,
     async () => {
@@ -280,11 +280,11 @@ describe("test sealed_report_token program", () => {
       expect(accountRecord.amount).toBe(amount * 20n);
       expect(accountRecord.owner).toBe(account);
 
-      tx = await reportTokenContractForMinter.mint_private(freezedAccount, amount * 20n);
-      const [encryptedFreezedAccountRecord] = await tx.wait();
-      freezedAccountRecord = decryptToken(encryptedFreezedAccountRecord, freezedAccountPrivKey);
-      expect(freezedAccountRecord.amount).toBe(amount * 20n);
-      expect(freezedAccountRecord.owner).toBe(freezedAccount);
+      tx = await reportTokenContractForMinter.mint_private(frozenAccount, amount * 20n);
+      const [encryptedFrozenAccountRecord] = await tx.wait();
+      frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
+      expect(frozenAccountRecord.amount).toBe(amount * 20n);
+      expect(frozenAccountRecord.owner).toBe(frozenAccount);
 
       tx = await reportTokenContractForSupplyManager.mint_private(account, amount * 20n);
       await tx.wait();
@@ -307,9 +307,9 @@ describe("test sealed_report_token program", () => {
       let balance = await reportTokenContract.balances(account);
       expect(balance).toBe(amount * 20n);
 
-      tx = await reportTokenContractForMinter.mint_public(freezedAccount, amount * 20n);
+      tx = await reportTokenContractForMinter.mint_public(frozenAccount, amount * 20n);
       await tx.wait();
-      balance = await reportTokenContract.balances(freezedAccount);
+      balance = await reportTokenContract.balances(frozenAccount);
       expect(balance).toBe(amount * 20n);
 
       tx = await reportTokenContractForSupplyManager.mint_public(account, amount * 20n);
@@ -396,70 +396,81 @@ describe("test sealed_report_token program", () => {
   test(
     `test update_freeze_list`,
     async () => {
+      const currentRoot = await reportTokenContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+
       // Only the admin can call to update_freeze_list
-      let rejectedTx = await reportTokenContractForFreezedAccount.update_freeze_list(adminAddress, true, 1, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
+      let rejectedTx = await reportTokenContractForFrozenAccount.update_freeze_list(
+        adminAddress,
+        true,
+        1,
+        currentRoot,
+        root,
+      );
 
       // Cannot unfreeze an unfrozen account
-      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
+      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 1, currentRoot, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      // Cannot update the root if the previous root is incorrect
+      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 1, 0n, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      let tx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
       await tx.wait();
-      let isAccountFreezed = await reportTokenContract.freeze_list(freezedAccount);
-      let freezedAccountByIndex = await reportTokenContract.freeze_list_index(1);
+      let isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
+      let frozenAccountByIndex = await reportTokenContract.freeze_list_index(1);
       let lastIndex = await reportTokenContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
       expect(lastIndex).toBe(1);
 
-      // Cannot unfreeze an account when the freezed list index is incorrect
-      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, false, 2, root);
+      // Cannot unfreeze an account when the frozen list index is incorrect
+      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot freeze a frozen account
-      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      tx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, false, 1, root);
+      tx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 1, root, root);
       await tx.wait();
-      isAccountFreezed = await reportTokenContract.freeze_list(freezedAccount);
-      freezedAccountByIndex = await reportTokenContract.freeze_list_index(1);
+      isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
+      frozenAccountByIndex = await reportTokenContract.freeze_list_index(1);
       lastIndex = await reportTokenContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(false);
-      expect(freezedAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(isAccountFrozen).toBe(false);
+      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(1);
 
-      tx = await reportTokenContractForAdmin.update_freeze_list(freezedAccount, true, 1, root);
+      tx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
       await tx.wait();
-      isAccountFreezed = await reportTokenContract.freeze_list(freezedAccount);
-      freezedAccountByIndex = await reportTokenContract.freeze_list_index(1);
+      isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
+      frozenAccountByIndex = await reportTokenContract.freeze_list_index(1);
       lastIndex = await reportTokenContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(freezedAccount);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
       expect(lastIndex).toBe(1);
 
       let randomAddress = new Account().address().to_string();
-      tx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
+      tx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await tx.wait();
-      isAccountFreezed = await reportTokenContractForAdmin.freeze_list(randomAddress);
-      freezedAccountByIndex = await reportTokenContractForAdmin.freeze_list_index(2);
+      isAccountFrozen = await reportTokenContractForAdmin.freeze_list(randomAddress);
+      frozenAccountByIndex = await reportTokenContractForAdmin.freeze_list_index(2);
       lastIndex = await reportTokenContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
-      expect(isAccountFreezed).toBe(true);
-      expect(freezedAccountByIndex).toBe(randomAddress);
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(randomAddress);
       expect(lastIndex).toBe(2);
 
       randomAddress = new Account().address().to_string();
-      // Cannot freeze an account when the freezed list index is greater than the last index
-      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 10, root);
+      // Cannot freeze an account when the frozen list index is greater than the last index
+      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 10, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // Cannot freeze an account when the freezed list index is already taken
-      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
+      // Cannot freeze an account when the frozen list index is already taken
+      rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -480,12 +491,12 @@ describe("test sealed_report_token program", () => {
   test(
     `test transfer_public`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
-      let rejectedTx = await reportTokenContractForFreezedAccount.transfer_public(recipient, amount);
+      // If the sender is frozen account it's impossible to send tokens
+      let rejectedTx = await reportTokenContractForFrozenAccount.transfer_public(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
-      rejectedTx = await reportTokenContractForAccount.transfer_public(freezedAccount, amount);
+      // If the recipient is frozen account it's impossible to send tokens
+      rejectedTx = await reportTokenContractForAccount.transfer_public(frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const previousAccountPublicBalance = await reportTokenContract.balances(account);
@@ -505,12 +516,12 @@ describe("test sealed_report_token program", () => {
   test(
     `test transfer_public_as_signer`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
-      let rejectedTx = await reportTokenContractForFreezedAccount.transfer_public_as_signer(recipient, amount);
+      // If the sender is frozen account it's impossible to send tokens
+      let rejectedTx = await reportTokenContractForFrozenAccount.transfer_public_as_signer(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
-      rejectedTx = await reportTokenContractForAccount.transfer_public_as_signer(freezedAccount, amount);
+      // If the recipient is frozen account it's impossible to send tokens
+      rejectedTx = await reportTokenContractForAccount.transfer_public_as_signer(frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const previousAccountPublicBalance = await reportTokenContract.balances(account);
@@ -546,15 +557,15 @@ describe("test sealed_report_token program", () => {
       // approve the spender
       approveTx = await reportTokenContractForAccount.approve_public(spender, amount);
       await approveTx.wait();
-      approveTx = await reportTokenContractForFreezedAccount.approve_public(spender, amount);
+      approveTx = await reportTokenContractForFrozenAccount.approve_public(spender, amount);
       await approveTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
-      rejectedTx = await reportTokenContractForSpender.transfer_from_public(freezedAccount, recipient, amount);
+      // If the sender is frozen account it's impossible to send tokens
+      rejectedTx = await reportTokenContractForSpender.transfer_from_public(frozenAccount, recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
-      rejectedTx = await reportTokenContractForSpender.transfer_from_public(account, freezedAccount, amount);
+      // If the recipient is frozen account it's impossible to send tokens
+      rejectedTx = await reportTokenContractForSpender.transfer_from_public(account, frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const previousAccountPublicBalance = await reportTokenContract.balances(account);
@@ -602,12 +613,12 @@ describe("test sealed_report_token program", () => {
       // approve the spender
       approveTx = await reportTokenContractForAccount.approve_public(spender, amount);
       await approveTx.wait();
-      approveTx = await reportTokenContractForFreezedAccount.approve_public(spender, amount);
+      approveTx = await reportTokenContractForFrozenAccount.approve_public(spender, amount);
       await approveTx.wait();
 
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       rejectedTx = await reportTokenContractForSpender.transfer_from_public_to_private(
-        freezedAccount,
+        frozenAccount,
         recipient,
         amount,
         recipientMerkleProof,
@@ -615,13 +626,13 @@ describe("test sealed_report_token program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         reportTokenContractForSpender.transfer_from_public_to_private(
           account,
-          freezedAccount,
+          frozenAccount,
           amount,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -665,8 +676,8 @@ describe("test sealed_report_token program", () => {
   test(
     `test transfer_public_to_priv`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
-      let rejectedTx = await reportTokenContractForFreezedAccount.transfer_public_to_private(
+      // If the sender is frozen account it's impossible to send tokens
+      let rejectedTx = await reportTokenContractForFrozenAccount.transfer_public_to_private(
         recipient,
         amount,
         recipientMerkleProof,
@@ -674,12 +685,12 @@ describe("test sealed_report_token program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         reportTokenContractForAccount.transfer_public_to_private(
-          freezedAccount,
+          frozenAccount,
           amount,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -721,25 +732,25 @@ describe("test sealed_report_token program", () => {
   test(
     `test transfer_private`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        reportTokenContractForFreezedAccount.transfer_private(
+        reportTokenContractForFrozenAccount.transfer_private(
           recipient,
           amount,
           accountRecord,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           recipientMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       await expect(
         reportTokenContractForAccount.transfer_private(
-          freezedAccount,
+          frozenAccount,
           amount,
           accountRecord,
           senderMerkleProof,
-          freezedAccountMerkleProof,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
@@ -785,20 +796,20 @@ describe("test sealed_report_token program", () => {
   test(
     `test transfer_priv_to_public`,
     async () => {
-      // If the sender is freezed account it's impossible to send tokens
+      // If the sender is frozen account it's impossible to send tokens
       await expect(
-        reportTokenContractForFreezedAccount.transfer_private_to_public(
+        reportTokenContractForFrozenAccount.transfer_private_to_public(
           recipient,
           amount,
-          freezedAccountRecord,
-          freezedAccountMerkleProof,
+          frozenAccountRecord,
+          frozenAccountMerkleProof,
           investigatorAddress,
         ),
       ).rejects.toThrow();
 
-      // If the recipient is freezed account it's impossible to send tokens
+      // If the recipient is frozen account it's impossible to send tokens
       let rejectedTx = await reportTokenContractForAccount.transfer_private_to_public(
-        freezedAccount,
+        frozenAccount,
         amount,
         accountRecord,
         senderMerkleProof,
@@ -871,9 +882,10 @@ describe("test sealed_report_token program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const updateFreezeListTx = await reportTokenContractForAdmin.update_freeze_list(
-        freezedAccount,
+        frozenAccount,
         false,
         1,
+        root,
         1n, // fake root
       );
       await updateFreezeListTx.wait();
