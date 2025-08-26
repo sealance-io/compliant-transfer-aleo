@@ -8,12 +8,14 @@ import { BaseContract } from "../contract/base-contract";
 import { fundedAmount, policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
-import { setTokenRegistryRole, updateAdminRole, updateMinterRole } from "../lib/Role";
+import { setTokenRegistryRole, updateAdminRole, updateInvestigatorRole, updateMinterRole } from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
-import { initializeFreezeList } from "../lib/FreezeList";
+import { initializeFreezeList, initializeFreezeListAndTokenDetails } from "../lib/Initalize";
+import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
+import { stringToBigInt } from "../lib/Conversion";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -45,10 +47,6 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
 const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
@@ -56,6 +54,14 @@ const merkleTreeContract = new Merkle_treeContract({
 const exchangeContract = new GqrfmwbtypContract({
   mode,
   privateKey: deployerPrivKey,
+});
+const reportTokenContract = new Sealed_report_tokenContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
+const reportTokenContractForAdmin = new Sealed_report_tokenContract({
+  mode,
+  privateKey: adminPrivKey,
 });
 
 (async () => {
@@ -69,6 +75,7 @@ const exchangeContract = new GqrfmwbtypContract({
   await deployIfNotDeployed(compliantThresholdTransferContract);
   await deployIfNotDeployed(compliantTimelockTransferContract);
   await deployIfNotDeployed(exchangeContract);
+  await deployIfNotDeployed(reportTokenContract);
 
   // register token and assign compliant transfer contract as external_authorization_party
   await initializeTokenProgram(
@@ -99,15 +106,26 @@ const exchangeContract = new GqrfmwbtypContract({
   // initialize freeze list
   await initializeFreezeList(compliantTransferContract);
   await initializeFreezeList(freezeRegistryContract);
+  await initializeFreezeListAndTokenDetails(
+    reportTokenContract,
+    stringToBigInt("Report Token"),
+    stringToBigInt("REPORT_TOKEN"),
+    6,
+    1000_000000000000n,
+  );
+
+  // update the admin
+  await updateAdminRole(freezeRegistryContract, adminAddress);
+  await updateAdminRole(exchangeContract, adminAddress);
+  await updateAdminRole(reportTokenContract, adminAddress);
+
+  // update the investigator
+  await updateInvestigatorRole(reportTokenContractForAdmin, investigatorAddress);
 
   // assign exchange program to be a minter
   await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
   await updateMinterRole(compliantTimelockTransferContractForAdmin, exchangeContract.address());
-
-  // update the admin
-  await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
-  await updateAdminRole(exchangeContract, adminAddress);
 
   process.exit(0);
 })();
