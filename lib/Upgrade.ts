@@ -4,8 +4,6 @@ import networkConfig from "../aleo-config";
 
 const execAsync = promisify(exec);
 
-// get the program name. maybe we can get all the info from the config. devnet and network details from the config.
-// I'm not sure what actually we need.
 export async function upgradeProgram(programName: string, privateKey: string) {
   const endpoint = networkConfig.networks[networkConfig.defaultNetwork].endpoint;
   const networkName = networkConfig.defaultNetwork;
