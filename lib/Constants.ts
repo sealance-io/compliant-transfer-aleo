@@ -81,6 +81,9 @@ export const SUPPLY_MANAGER_ROLE = 3;
 
 // merkle tree
 export const MAX_TREE_SIZE = 16;
+export const MAX_TREE_SIZE8 = 9;
+export const MAX_TREE_SIZE12 = 13;
+
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;

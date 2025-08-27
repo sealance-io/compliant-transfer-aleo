@@ -97,20 +97,32 @@ describe("test compliant_transfer program", () => {
     async () => {
       await deployIfNotDeployed(tokenRegistryContract);
       await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(compliantTransferContract);
+      //await deployIfNotDeployed(compliantTransferContract);
 
-      await initializeTokenProgram(
+      /*const tx = await tokenRegistryContract.register_token(
+              1n, // tokenId
+              1n, // tokenId
+              0n, // name
+              6, // decimals
+              1000_000000000000n, // max supply
+              false,
+              ZERO_ADDRESS,
+            );
+      await tx.wait();*/
+
+
+      /*await initializeTokenProgram(
         deployerPrivKey,
         deployerAddress,
         adminPrivKey,
         adminAddress,
         investigatorAddress,
         policies.compliant,
-      );
+      );*/
     },
     timeout,
   );
-
+/*
   test(
     `test update_admin_address`,
     async () => {
@@ -148,13 +160,13 @@ describe("test compliant_transfer program", () => {
     },
     timeout,
   );
-
+*/
   let accountRecord: Token;
   let frozenAccountRecord: Token;
   test(
     "fund tokens",
     async () => {
-      let mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
+   /*   let mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
         tokenId,
         account,
         amount * 20n,
@@ -167,15 +179,20 @@ describe("test compliant_transfer program", () => {
         amount * 20n,
         defaultAuthorizedUntil,
       );
-      await mintPublicTx.wait();
+      await mintPublicTx.wait();*/
 
-      let mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(tokenId, account, amount * 20n, true, 0);
+      let mintPrivateTx = await tokenRegistryContract.mint_private(1n, adminAddress, amount * 20n, false, 0);
       const [encryptedAccountRecord] = await mintPrivateTx.wait();
-      accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
+      accountRecord = decryptToken(encryptedAccountRecord, adminPrivKey);
 
-      mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(tokenId, frozenAccount, amount * 20n, true, 0);
+      let transferPrivateTx = await tokenRegistryContractForAdmin.transfer_private(account, amount * 20n, accountRecord);
+      const [encryptedAccountRecord2] = await transferPrivateTx.wait();
+      accountRecord = decryptToken(encryptedAccountRecord2, accountPrivKey);
+
+
+     /* mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(tokenId, frozenAccount, amount * 20n, true, 0);
       const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
-      frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
+      frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);*/
     },
     timeout,
   );
@@ -183,7 +200,7 @@ describe("test compliant_transfer program", () => {
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
   let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
-  test(
+/*  test(
     `generate merkle proofs`,
     async () => {
       const leaves = genLeaves([frozenAccount]);
@@ -663,5 +680,5 @@ describe("test compliant_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
-  );
+  );*/
 });

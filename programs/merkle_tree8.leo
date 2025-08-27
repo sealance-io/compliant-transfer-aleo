@@ -1,13 +1,13 @@
-program merkle_tree.aleo {
+program merkle_tree8.aleo {
     @noupgrade
     async constructor() {}
 
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
-    const MAX_TREE_DEPTH: u32 = 15u32;
+    const MAX_TREE_DEPTH: u32 = 8u32;
     
     struct MerkleProof {
-        siblings: [field; 16],
+        siblings: [field; 9],
         leaf_index: u32
     }
 
@@ -78,7 +78,6 @@ program merkle_tree.aleo {
         return root1;
     } 
 
-
     function verify_non_inclusion_f(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
         let (root1, depth1): (field, u32)= calculate_root_depth_siblings(merkle_proofs[0u32]);
         let (root2, depth2): (field, u32) = calculate_root_depth_siblings(merkle_proofs[1u32]);
@@ -117,6 +116,5 @@ program merkle_tree.aleo {
         
         return root1;
     }
-
-
+    
 }

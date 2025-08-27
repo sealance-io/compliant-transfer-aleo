@@ -1,6 +1,6 @@
-import merkle_tree.aleo;
+import merkle_tree12.aleo;
 
-program sealed_report_token.aleo {
+program sealed_report_token_v12.aleo {
     @custom
     async constructor() {
         let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
@@ -21,7 +21,7 @@ program sealed_report_token.aleo {
     }
 
     struct MerkleProof {
-        siblings: [field; 16],
+        siblings: [field; 13],
         leaf_index: u32
     }
 
@@ -537,7 +537,7 @@ program sealed_report_token.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let token: Token = Token {
             owner: recipient,
@@ -591,7 +591,7 @@ program sealed_report_token.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         
         let token: Token = Token {
             owner: recipient,
@@ -656,11 +656,10 @@ program sealed_report_token.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Token, Future) {
-        //let sender_root: field = merkle_tree.aleo/verify_non_inclusion2(input_record.owner, sender_merkle_proofs, recipient, recipient_merkle_proofs);
-
-        let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-        //let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
-        //assert_eq(sender_root, recipient_root);
+        //let sender_root: field = merkle_tree12.aleo/verify_non_inclusion2(input_record.owner, sender_merkle_proofs, recipient, recipient_merkle_proofs);
+        let sender_root: field = merkle_tree12.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let recipient_root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        assert_eq(sender_root, recipient_root);
 
         let updated_record: Token = Token {
             owner: input_record.owner,
@@ -707,7 +706,7 @@ program sealed_report_token.aleo {
         sender_merkle_proofs: [MerkleProof; 2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let updated_record: Token = Token {
             owner: input_record.owner,

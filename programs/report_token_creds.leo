@@ -1,6 +1,6 @@
-import merkle_tree.aleo;
+import merkle_tree12.aleo;
 
-program sealed_report_token.aleo {
+program report_token_creds.aleo {
     @custom
     async constructor() {
         let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
@@ -20,8 +20,13 @@ program sealed_report_token.aleo {
         recipient: address
     }
 
+    record Credentials {
+        owner: address,
+        verified_at: u32,
+    }
+
     struct MerkleProof {
-        siblings: [field; 16],
+        siblings: [field; 13],
         leaf_index: u32
     }
 
@@ -78,7 +83,6 @@ program sealed_report_token.aleo {
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
 
-
     // -------------------------
     // Called by token admins
     // -------------------------
@@ -134,6 +138,29 @@ program sealed_report_token.aleo {
         }
 
         root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+    }
+
+
+    async transition get_credentials(sender_merkle_proofs: [MerkleProof;2], block_height: u32) -> (Credentials, Future) {
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(self.signer, sender_merkle_proofs);
+
+        let creds_record: Credentials = Credentials {
+            owner: self.signer,
+            verified_at: block_height,
+        };
+
+        return (creds_record, f_get_credentials(root, block_height));
+    }
+
+    async function f_get_credentials(root: field, block_height: u32) {
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        if (current_root != root) {
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(root, previous_root);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            assert(updated_height + window > block.height);
+        }
     }
 
     // Updates the address assigned to a given role.
@@ -219,6 +246,7 @@ program sealed_report_token.aleo {
         freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT);
         freeze_list.set(ZERO_ADDRESS, false);
         freeze_list_index.set(0u32, ZERO_ADDRESS);
+        root_updated_height.set(true, block.height);
     }
 
     // Mints new public tokens to the specified recipient’s balance.
@@ -537,7 +565,7 @@ program sealed_report_token.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let token: Token = Token {
             owner: recipient,
@@ -591,7 +619,7 @@ program sealed_report_token.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         
         let token: Token = Token {
             owner: recipient,
@@ -656,11 +684,10 @@ program sealed_report_token.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Token, Future) {
-        //let sender_root: field = merkle_tree.aleo/verify_non_inclusion2(input_record.owner, sender_merkle_proofs, recipient, recipient_merkle_proofs);
-
-        let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-        //let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
-        //assert_eq(sender_root, recipient_root);
+        //let sender_root: field = merkle_tree12.aleo/verify_non_inclusion2(input_record.owner, sender_merkle_proofs, recipient, recipient_merkle_proofs);
+        let sender_root: field = merkle_tree12.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let recipient_root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+        assert_eq(sender_root, recipient_root);
 
         let updated_record: Token = Token {
             owner: input_record.owner,
@@ -696,6 +723,58 @@ program sealed_report_token.aleo {
         assert_eq(stored_investigator_address, investigator_address);
     }
 
+    async transition transfer_private_with_creds(
+        recipient: address,
+        amount: u128,
+        input_record: Token,
+        creds: Credentials,
+        recipient_merkle_proofs: [MerkleProof;2],
+        public investigator_address: address
+    ) -> (ComplianceRecord, Token, Token, Credentials, Future) {
+
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
+
+        let updated_record: Token = Token {
+            owner: input_record.owner,
+            amount: input_record.amount - amount
+        };
+
+        let transfer_record: Token = Token {
+            owner: recipient,
+            amount: amount
+        };
+
+        let compliance_record: ComplianceRecord = ComplianceRecord {
+            owner: investigator_address,
+            amount: amount,
+            sender: input_record.owner,
+            recipient: recipient,
+        };
+
+        let creds_record: Credentials = Credentials {
+            owner: creds.owner,
+            verified_at: creds.verified_at,
+        };
+
+        return (compliance_record, updated_record, transfer_record, creds_record, f_transfer_private_creds(root, investigator_address, creds.verified_at));
+    }
+
+    async function f_transfer_private_creds(root: field, investigator_address: address, verified_at: u32) {
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        if (current_root != root) {
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(root, previous_root);
+            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            assert(updated_height + window > block.height);
+            assert(verified_at + window > block.height);
+        }
+
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
+
+    }
+
     // Transfers private tokens from the record owner to a recipient as a public tokens.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // Both sender and recipient must not be frozen in the freeze list.
@@ -707,7 +786,7 @@ program sealed_report_token.aleo {
         sender_merkle_proofs: [MerkleProof; 2],
         public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
+        let root: field = merkle_tree12.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let updated_record: Token = Token {
             owner: input_record.owner,
@@ -784,4 +863,5 @@ program sealed_report_token.aleo {
 
         return (new_token_1, new_token_2);
     }
+
 }
