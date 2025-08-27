@@ -108,6 +108,7 @@ describe("test sealed_report_token program", () => {
     await fundWithCredits(deployerPrivKey, minter, fundedAmount);
     await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
     await fundWithCredits(deployerPrivKey, burner, fundedAmount);
+    await fundWithCredits(deployerPrivKey, spender, fundedAmount);
 
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(reportTokenContract);
