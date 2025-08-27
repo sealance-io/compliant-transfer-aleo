@@ -82,34 +82,25 @@ const amount = 10n;
 let root: bigint;
 
 describe("test sealed_report_policy program", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-      await fundWithCredits(deployerPrivKey, account, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(tokenRegistryContract);
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(reportPolicyContract);
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
+    await fundWithCredits(deployerPrivKey, account, fundedAmount);
 
-      await initializeTokenProgram(
-        deployerPrivKey,
-        deployerAddress,
-        adminPrivKey,
-        adminAddress,
-        investigatorAddress,
-        policies.report,
-      );
-    },
-    timeout,
-  );
+    await deployIfNotDeployed(tokenRegistryContract);
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(reportPolicyContract);
+
+    await initializeTokenProgram(
+      deployerPrivKey,
+      deployerAddress,
+      adminPrivKey,
+      adminAddress,
+      investigatorAddress,
+      policies.report,
+    );
+  });
 
   test(
     `test update_admin_address`,

@@ -104,36 +104,27 @@ let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
 let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
 
 describe("test sealed_timelock_policy program", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-      await fundWithCredits(deployerPrivKey, account, fundedAmount);
-      await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(tokenRegistryContract);
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(freezeRegistryContract);
-      await deployIfNotDeployed(timelockContract);
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
+    await fundWithCredits(deployerPrivKey, account, fundedAmount);
+    await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
 
-      await initializeTokenProgram(
-        deployerPrivKey,
-        deployerAddress,
-        adminPrivKey,
-        adminAddress,
-        ZERO_ADDRESS,
-        policies.timelock,
-      );
-    },
-    timeout,
-  );
+    await deployIfNotDeployed(tokenRegistryContract);
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(freezeRegistryContract);
+    await deployIfNotDeployed(timelockContract);
+
+    await initializeTokenProgram(
+      deployerPrivKey,
+      deployerAddress,
+      adminPrivKey,
+      adminAddress,
+      ZERO_ADDRESS,
+      policies.timelock,
+    );
+  });
 
   test(
     `test update_roles`,

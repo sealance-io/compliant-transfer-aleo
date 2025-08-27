@@ -75,57 +75,48 @@ const exchangeContractForAccount = new GqrfmwbtypContract({
 const amount = 10n;
 
 describe("test exchange contract", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, account, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(tokenRegistryContract);
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(reportPolicyContract);
-      await deployIfNotDeployed(freezeRegistryContract);
-      await deployIfNotDeployed(thresholdContract);
-      await deployIfNotDeployed(timelockContract);
-      await deployIfNotDeployed(exchangeContract);
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, account, fundedAmount);
 
-      await initializeTokenProgram(
-        deployerPrivKey,
-        deployerAddress,
-        adminPrivKey,
-        adminAddress,
-        investigatorAddress,
-        policies.report,
-      );
-      await initializeTokenProgram(
-        deployerPrivKey,
-        deployerAddress,
-        adminPrivKey,
-        adminAddress,
-        investigatorAddress,
-        policies.threshold,
-      );
-      await initializeTokenProgram(
-        deployerPrivKey,
-        deployerAddress,
-        adminPrivKey,
-        adminAddress,
-        investigatorAddress,
-        policies.timelock,
-      );
+    await deployIfNotDeployed(tokenRegistryContract);
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(reportPolicyContract);
+    await deployIfNotDeployed(freezeRegistryContract);
+    await deployIfNotDeployed(thresholdContract);
+    await deployIfNotDeployed(timelockContract);
+    await deployIfNotDeployed(exchangeContract);
 
-      await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
-      await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-      await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
-    },
-    timeout,
-  );
+    await initializeTokenProgram(
+      deployerPrivKey,
+      deployerAddress,
+      adminPrivKey,
+      adminAddress,
+      investigatorAddress,
+      policies.report,
+    );
+    await initializeTokenProgram(
+      deployerPrivKey,
+      deployerAddress,
+      adminPrivKey,
+      adminAddress,
+      investigatorAddress,
+      policies.threshold,
+    );
+    await initializeTokenProgram(
+      deployerPrivKey,
+      deployerAddress,
+      adminPrivKey,
+      adminAddress,
+      investigatorAddress,
+      policies.timelock,
+    );
+
+    await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
+    await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
+    await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
+  });
 
   test(
     `test update_admin`,

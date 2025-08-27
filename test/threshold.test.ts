@@ -101,20 +101,13 @@ const amount = 1n;
 let root: bigint;
 
 describe("test sealed_threshold_policy program", () => {
-  test(
-    `fund credits`,
-    async () => {
+
+  beforeAll(async () => {
       await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
       await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
       await fundWithCredits(deployerPrivKey, account, fundedAmount);
       await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
       await deployIfNotDeployed(tokenRegistryContract);
       await deployIfNotDeployed(merkleTreeContract);
       await deployIfNotDeployed(freezeRegistryContract);
@@ -127,10 +120,8 @@ describe("test sealed_threshold_policy program", () => {
         investigatorAddress,
         policies.threshold,
       );
-    },
-    timeout,
-  );
-
+  });
+  
   test(
     `test init_mappings`,
     async () => {

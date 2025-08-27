@@ -100,29 +100,19 @@ const amount = 10n;
 let root: bigint;
 
 describe("test sealed_report_token program", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-      await fundWithCredits(deployerPrivKey, account, fundedAmount);
 
-      await fundWithCredits(deployerPrivKey, minter, fundedAmount);
-      await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
-      await fundWithCredits(deployerPrivKey, burner, fundedAmount);
-      await fundWithCredits(deployerPrivKey, spender, fundedAmount);
-    },
-    timeout,
-  );
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
+    await fundWithCredits(deployerPrivKey, account, fundedAmount);
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(reportTokenContract);
-    },
-    timeout,
-  );
+    await fundWithCredits(deployerPrivKey, minter, fundedAmount);
+    await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
+    await fundWithCredits(deployerPrivKey, burner, fundedAmount);
+
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(reportTokenContract);
+  });
 
   test(
     `test update_admin_address`,
