@@ -1,6 +1,6 @@
 import { ExecutionMode } from "@doko-js/core";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { MAX_TREE_SIZE, timeout, ZERO_ADDRESS } from "../lib/Constants";
+import { MAX_TREE_SIZE, ZERO_ADDRESS } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
@@ -18,7 +18,6 @@ describe("merkle_tree lib, buildTree", () => {
       const tree = buildTree(leaves);
       expect(tree).toHaveLength(3);
     },
-    timeout,
   );
 
   it(
@@ -28,7 +27,6 @@ describe("merkle_tree lib, buildTree", () => {
       const tree = buildTree(leaves);
       expect(tree).toHaveLength(7);
     },
-    timeout,
   );
 
   it("should build a valid tree with 4 leaves", async () => {
@@ -54,7 +52,6 @@ describe("merkle_tree lib, genLeaves", () => {
       const result = genLeaves(leaves);
       expect(result).toHaveLength(2);
     },
-    timeout,
   );
 
   it(
@@ -67,7 +64,6 @@ describe("merkle_tree lib, genLeaves", () => {
       const result = genLeaves(leaves);
       expect(result).toHaveLength(2);
     },
-    timeout,
   );
 
   it(
@@ -81,7 +77,6 @@ describe("merkle_tree lib, genLeaves", () => {
       const result = genLeaves(leaves);
       expect(result).toHaveLength(4);
     },
-    timeout,
   );
 
   it(
@@ -91,7 +86,6 @@ describe("merkle_tree lib, genLeaves", () => {
       const result = genLeaves(leaves);
       expect(result).toHaveLength(8);
     },
-    timeout,
   );
 
   it(
@@ -101,7 +95,6 @@ describe("merkle_tree lib, genLeaves", () => {
       const result = genLeaves(leaves);
       expect(result).toHaveLength(16);
     },
-    timeout,
   );
 
   it(
@@ -113,7 +106,6 @@ describe("merkle_tree lib, genLeaves", () => {
       expect(result).toHaveLength(2);
       expect(result.filter(x => x === "0field").length).toBe(1);
     },
-    timeout,
   );
 
   it(
@@ -128,7 +120,6 @@ describe("merkle_tree lib, genLeaves", () => {
       expect(result[0]).not.toBe(result[1]);
       expect(result[0]).toBe("1295133970529764960316948294624974168921228814652993007266766481909235735940field");
     },
-    timeout,
   );
 
   it(
@@ -139,7 +130,6 @@ describe("merkle_tree lib, genLeaves", () => {
       expect(result).toHaveLength(2);
       expect(result.filter(x => x === "0field").length).toBe(1);
     },
-    timeout,
   );
 
   it(
@@ -156,8 +146,7 @@ describe("merkle_tree lib, genLeaves", () => {
       expect(result).toHaveLength(2);
       expect(result[0]).toBe("0field");
       expect(result[1]).toBe("3501665755452795161867664882580888971213780722176652848275908626939553697821field");
-    },
-    timeout,
+    }
   );
 });
 
@@ -229,7 +218,6 @@ describe("merkle_tree program tests", () => {
       [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
     },
-    timeout,
   );
 
   test(
@@ -298,7 +286,6 @@ describe("merkle_tree program tests", () => {
       [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
     },
-    timeout,
   );
 
   test(
@@ -330,7 +317,6 @@ describe("merkle_tree program tests", () => {
       [root] = await tx.wait();
       expect(root).toBe(tree[tree.length - 1]);
     },
-    timeout,
   );
 
   test(
@@ -454,7 +440,6 @@ describe("merkle_tree program tests", () => {
         merkleProof7,
       ]);
     },
-    timeout,
   );
 
   test(
@@ -508,6 +493,5 @@ describe("merkle_tree program tests", () => {
         ]),
       ).rejects.toThrow();
     },
-    timeout,
   );
 });

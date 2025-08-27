@@ -20,7 +20,6 @@ import {
   emptyRoot,
   fundedAmount,
   policies,
-  timeout,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -118,7 +117,6 @@ describe("test compliant_transfer program", () => {
       tx = await compliantTransferContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -137,7 +135,6 @@ describe("test compliant_transfer program", () => {
       const rejectedTx = await compliantTransferContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   let accountRecord: Token;
@@ -168,7 +165,6 @@ describe("test compliant_transfer program", () => {
       const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
       frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     },
-    timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -196,7 +192,6 @@ describe("test compliant_transfer program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -204,7 +199,6 @@ describe("test compliant_transfer program", () => {
     async () => {
       expect(compliantTransferContract.address()).toBe(COMPLIANT_TRANSFER_ADDRESS);
     },
-    timeout,
   );
 
   test(
@@ -232,7 +226,6 @@ describe("test compliant_transfer program", () => {
       rejectedTx = await compliantTransferContract.initialize(policies.compliant.blockHeightWindow);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -304,7 +297,6 @@ describe("test compliant_transfer program", () => {
       rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -349,7 +341,6 @@ describe("test compliant_transfer program", () => {
       );
       await expect(rejectedTx7.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -365,7 +356,6 @@ describe("test compliant_transfer program", () => {
       );
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -393,7 +383,6 @@ describe("test compliant_transfer program", () => {
       const tx = await compliantTransferContractForAccount.transfer_public(recipient, amount);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -411,7 +400,6 @@ describe("test compliant_transfer program", () => {
 
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -474,7 +462,6 @@ describe("test compliant_transfer program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -536,7 +523,6 @@ describe("test compliant_transfer program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -585,7 +571,6 @@ describe("test compliant_transfer program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -653,6 +638,5 @@ describe("test compliant_transfer program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 });

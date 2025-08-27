@@ -5,7 +5,7 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { TREASURE_ADDRESS, fundedAmount, timeout, policies, defaultRate, ADMIN_INDEX } from "../lib/Constants";
+import { TREASURE_ADDRESS, fundedAmount, policies, defaultRate, ADMIN_INDEX } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { initializeTokenProgram } from "../lib/Token";
@@ -125,13 +125,12 @@ describe("test exchange contract", () => {
       await tx.wait();
 
       const admin = await exchangeContract.roles(ADMIN_INDEX);
-      await expect(admin).toBe(adminAddress);
+      expect(admin).toBe(adminAddress);
 
       // Only the admin can call to this function
       const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, ADMIN_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -145,9 +144,8 @@ describe("test exchange contract", () => {
       await tx.wait();
 
       const rate = await exchangeContract.token_rates(policies.compliant.tokenId, 0n);
-      await expect(rate).toBe(defaultRate);
+      expect(rate).toBe(defaultRate);
     },
-    timeout,
   );
 
   test(
@@ -186,7 +184,6 @@ describe("test exchange contract", () => {
       expect(thresholdTokenRecord.token_id).toBe(policies.threshold.tokenId);
       expect(thresholdTokenRecord.amount).toBe(amount * 10n);
     },
-    timeout,
   );
 
   test(
@@ -214,6 +211,5 @@ describe("test exchange contract", () => {
       expect(compliantTokenRecord.amount).toBe(amount * 10n);
       expect(compliantTokenRecord.locked_until).toBe(0);
     },
-    timeout,
   );
 });

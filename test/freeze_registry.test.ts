@@ -13,7 +13,6 @@ import {
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
-  timeout,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -58,7 +57,7 @@ describe("test freeze_registry program", () => {
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-    
+
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
   });
@@ -79,7 +78,6 @@ describe("test freeze_registry program", () => {
       tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   let adminMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -101,7 +99,6 @@ describe("test freeze_registry program", () => {
         getSiblingPath(tree, frozenAccountLeadIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -132,7 +129,6 @@ describe("test freeze_registry program", () => {
       const rejectedTx = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -206,7 +202,6 @@ describe("test freeze_registry program", () => {
       rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(randomAddress, true, 2, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
   test(
     `test update_block_height_window`,
@@ -217,7 +212,6 @@ describe("test freeze_registry program", () => {
       const tx = await freezeRegistryContractForAdmin.update_block_height_window(BLOCK_HEIGHT_WINDOW);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -228,7 +222,6 @@ describe("test freeze_registry program", () => {
       const tx = await freezeRegistryContract.verify_non_inclusion_pub(adminAddress);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -276,6 +269,5 @@ describe("test freeze_registry program", () => {
       rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 });

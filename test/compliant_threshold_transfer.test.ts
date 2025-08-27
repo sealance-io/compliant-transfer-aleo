@@ -20,7 +20,6 @@ import {
   defaultAuthorizedUntil,
   fundedAmount,
   policies,
-  timeout,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -120,7 +119,7 @@ describe("test compliant_threshold_transfer program", () => {
         policies.threshold,
       );
   });
-  
+
   test(
     `test init_mappings`,
     async () => {
@@ -134,7 +133,6 @@ describe("test compliant_threshold_transfer program", () => {
       const threshold = await compliantThresholdTransferContract.threshold(THRESHOLD_INDEX);
       expect(threshold).toBe(THRESHOLD);
     },
-    timeout,
   );
 
   test(
@@ -153,7 +151,6 @@ describe("test compliant_threshold_transfer program", () => {
       tx = await compliantThresholdTransferContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -175,7 +172,6 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -195,7 +191,6 @@ describe("test compliant_threshold_transfer program", () => {
       const blockHeightWindow = await compliantThresholdTransferContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
       expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
     },
-    timeout,
   );
 
   let accountRecord: Token;
@@ -238,7 +233,6 @@ describe("test compliant_threshold_transfer program", () => {
       const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
       frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     },
-    timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -266,7 +260,6 @@ describe("test compliant_threshold_transfer program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -274,7 +267,6 @@ describe("test compliant_threshold_transfer program", () => {
     async () => {
       expect(compliantThresholdTransferContract.address()).toBe(COMPLIANT_THRESHOLD_TRANSFER_ADDRESS);
     },
-    timeout,
   );
 
   test(
@@ -302,7 +294,6 @@ describe("test compliant_threshold_transfer program", () => {
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
     },
-    timeout,
   );
 
   test(
@@ -347,7 +338,6 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await expect(rejectedTx7.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   let accountStateRecord: TokenComplianceStateRecord;
@@ -382,7 +372,6 @@ describe("test compliant_threshold_transfer program", () => {
       tx = await compliantThresholdTransferContractForAccount.signup();
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -460,7 +449,6 @@ describe("test compliant_threshold_transfer program", () => {
       );
       await expect(tx3.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -552,7 +540,6 @@ describe("test compliant_threshold_transfer program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -625,7 +612,6 @@ describe("test compliant_threshold_transfer program", () => {
       );
       expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
     },
-    timeout,
   );
 
   test(
@@ -683,7 +669,6 @@ describe("test compliant_threshold_transfer program", () => {
       );
       expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
     },
-    timeout,
   );
 
   test(
@@ -794,7 +779,6 @@ describe("test compliant_threshold_transfer program", () => {
         expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
       }
     },
-    timeout,
   );
 
   test(
@@ -904,7 +888,6 @@ describe("test compliant_threshold_transfer program", () => {
         expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
       }
     },
-    timeout,
   );
 
   test(
@@ -1000,6 +983,5 @@ describe("test compliant_threshold_transfer program", () => {
         expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
       }
     },
-    timeout,
   );
 });

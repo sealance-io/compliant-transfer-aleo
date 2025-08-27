@@ -11,7 +11,6 @@ import {
   ZERO_ADDRESS,
   COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
   fundedAmount,
-  timeout,
   policies,
   ADMIN_INDEX,
   MINTER_INDEX,
@@ -137,7 +136,6 @@ describe("test compliant_timelock_transfer program", () => {
       tx = await timelockContractForAdmin.update_role(recipient, MINTER_INDEX);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -185,7 +183,6 @@ describe("test compliant_timelock_transfer program", () => {
       const rejectedTx2 = await timelockContractForFrozenAccount.mint_private(frozenAccount, amount * 20n, 0);
       await expect(rejectedTx2.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -210,7 +207,6 @@ describe("test compliant_timelock_transfer program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -218,7 +214,6 @@ describe("test compliant_timelock_transfer program", () => {
     async () => {
       expect(timelockContract.address()).toBe(COMPLIANT_TIMELOCK_TRANSFER_ADDRESS);
     },
-    timeout,
   );
 
   test(
@@ -246,7 +241,6 @@ describe("test compliant_timelock_transfer program", () => {
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
     },
-    timeout,
   );
 
   test(
@@ -304,7 +298,6 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await expect(rejectedTx7.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -374,7 +367,6 @@ describe("test compliant_timelock_transfer program", () => {
       tx = await timelockContractForAccount.transfer_public(recipient, 1n, accountSealedRecord, latestBlockHeight + 1);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -425,7 +417,6 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -518,7 +509,6 @@ describe("test compliant_timelock_transfer program", () => {
       expect(recipientSealedRecord.amount).toBe(amountToSend);
       expect(recipientSealedRecord.locked_until).toBe(largeBlockHeight);
     },
-    timeout,
   );
 
   test(
@@ -666,7 +656,6 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -796,7 +785,6 @@ describe("test compliant_timelock_transfer program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -834,6 +822,5 @@ describe("test compliant_timelock_transfer program", () => {
       );
       expect(accountSealedRecord.locked_until).toBe(lockedAccountSealedRecord.locked_until);
     },
-    timeout,
   );
 });
