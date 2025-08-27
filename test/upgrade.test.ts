@@ -26,22 +26,13 @@ const merkleTreeContract = new Merkle_treeContract({
 });
 
 describe("test compliant_transfer program", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(freezeRegistryContract);
-    },
-    timeout,
-  );
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(freezeRegistryContract);
+  });
 
   test(
     `test upgrades`,

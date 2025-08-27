@@ -162,13 +162,10 @@ describe("merkle_tree lib, genLeaves", () => {
 });
 
 describe("merkle_tree program tests", () => {
-  test(
-    `deploy program`,
-    async () => {
-      await deployIfNotDeployed(contract);
-    },
-    timeout,
-  );
+
+  beforeAll(async () => {
+    await deployIfNotDeployed(contract);
+  });
 
   test(
     `small tree edge cases test, depth 1`,

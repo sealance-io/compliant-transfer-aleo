@@ -82,34 +82,25 @@ const amount = 10n;
 let root: bigint;
 
 describe("test compliant_transfer program", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-      await fundWithCredits(deployerPrivKey, account, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(tokenRegistryContract);
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(compliantTransferContract);
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
+    await fundWithCredits(deployerPrivKey, account, fundedAmount);
 
-      await initializeTokenProgram(
-        deployerPrivKey,
-        deployerAddress,
-        adminPrivKey,
-        adminAddress,
-        investigatorAddress,
-        policies.compliant,
-      );
-    },
-    timeout,
-  );
+    await deployIfNotDeployed(tokenRegistryContract);
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(compliantTransferContract);
+
+    await initializeTokenProgram(
+      deployerPrivKey,
+      deployerAddress,
+      adminPrivKey,
+      adminAddress,
+      investigatorAddress,
+      policies.compliant,
+    );
+  });
 
   test(
     `test update_admin_address`,

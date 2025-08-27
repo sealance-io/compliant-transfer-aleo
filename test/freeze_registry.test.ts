@@ -54,23 +54,14 @@ const merkleTreeContract = new Merkle_treeContract({
 let root: bigint;
 
 describe("test freeze_registry program", () => {
-  test(
-    `fund credits`,
-    async () => {
-      await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-      await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-    },
-    timeout,
-  );
 
-  test(
-    `deploy needed programs`,
-    async () => {
-      await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(freezeRegistryContract);
-    },
-    timeout,
-  );
+  beforeAll(async () => {
+    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
+    
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(freezeRegistryContract);
+  });
 
   test(
     `test update_admin_address`,
