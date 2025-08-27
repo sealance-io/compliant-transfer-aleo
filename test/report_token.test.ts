@@ -19,7 +19,6 @@ import {
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
-  timeout,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -130,7 +129,6 @@ describe("test sealed_report_token program", () => {
       tx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -149,7 +147,6 @@ describe("test sealed_report_token program", () => {
       const rejectedTx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -177,7 +174,6 @@ describe("test sealed_report_token program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -210,7 +206,6 @@ describe("test sealed_report_token program", () => {
       rejectedTx = await reportTokenContract.initialize(name, symbol, decimals, maxSupply, BLOCK_HEIGHT_WINDOW);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -249,7 +244,6 @@ describe("test sealed_report_token program", () => {
       role = await reportTokenContract.supply_roles(account);
       expect(role).toBe(NONE_ROLE);
     },
-    timeout,
   );
 
   let accountRecord: Token;
@@ -279,7 +273,6 @@ describe("test sealed_report_token program", () => {
       tx = await reportTokenContractForSupplyManager.mint_private(account, amount * 20n);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -307,7 +300,6 @@ describe("test sealed_report_token program", () => {
       balance = await reportTokenContract.balances(account);
       expect(balance).toBe(amount * 40n);
     },
-    timeout,
   );
 
   test(
@@ -350,7 +342,6 @@ describe("test sealed_report_token program", () => {
       expect(supplyManagerRecord.amount).toBe(0n);
       expect(supplyManagerRecord.owner).toBe(supplyManager);
     },
-    timeout,
   );
 
   test(
@@ -380,7 +371,6 @@ describe("test sealed_report_token program", () => {
       balance = await reportTokenContract.balances(account);
       expect(balance).toBe(previousAccountPublicBalance - amount * 3n);
     },
-    timeout,
   );
 
   test(
@@ -463,7 +453,6 @@ describe("test sealed_report_token program", () => {
       rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -475,7 +464,6 @@ describe("test sealed_report_token program", () => {
       const tx = await reportTokenContractForAdmin.update_block_height_window(BLOCK_HEIGHT_WINDOW);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -500,7 +488,6 @@ describe("test sealed_report_token program", () => {
       expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
       expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
     },
-    timeout,
   );
 
   test(
@@ -525,7 +512,6 @@ describe("test sealed_report_token program", () => {
       expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
       expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
     },
-    timeout,
   );
 
   test(
@@ -569,7 +555,6 @@ describe("test sealed_report_token program", () => {
       expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
       expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
     },
-    timeout,
   );
 
   test(
@@ -660,7 +645,6 @@ describe("test sealed_report_token program", () => {
       const accountPublicBalance = await reportTokenContract.balances(account);
       expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     },
-    timeout,
   );
 
   test(
@@ -716,7 +700,6 @@ describe("test sealed_report_token program", () => {
       const accountPublicBalance = await reportTokenContract.balances(account);
       expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     },
-    timeout,
   );
 
   test(
@@ -780,7 +763,6 @@ describe("test sealed_report_token program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -842,7 +824,6 @@ describe("test sealed_report_token program", () => {
       const recipientPublicBalance = await reportTokenContract.balances(recipient);
       expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
     },
-    timeout,
   );
 
   test(
@@ -911,6 +892,5 @@ describe("test sealed_report_token program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 });

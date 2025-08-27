@@ -1,7 +1,7 @@
 import { ExecutionMode } from "@doko-js/core";
 import { BaseContract } from "../contract/base-contract";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { ADMIN_INDEX, fundedAmount, timeout } from "../lib/Constants";
+import { ADMIN_INDEX, fundedAmount } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
@@ -62,6 +62,5 @@ describe("test compliant_transfer program", () => {
       expect(isUpgradeSuccessful).toBe(false);
       expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);
     },
-    timeout,
   );
 });

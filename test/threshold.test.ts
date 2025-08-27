@@ -21,7 +21,6 @@ import {
   defaultAuthorizedUntil,
   fundedAmount,
   policies,
-  timeout,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -121,7 +120,7 @@ describe("test sealed_threshold_policy program", () => {
         policies.threshold,
       );
   });
-  
+
   test(
     `test init_mappings`,
     async () => {
@@ -134,7 +133,6 @@ describe("test sealed_threshold_policy program", () => {
       const threshold = await thresholdContract.threshold(THRESHOLD_INDEX);
       expect(threshold).toBe(THRESHOLD);
     },
-    timeout,
   );
 
   test(
@@ -153,7 +151,6 @@ describe("test sealed_threshold_policy program", () => {
       tx = await thresholdContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -172,7 +169,6 @@ describe("test sealed_threshold_policy program", () => {
       const rejectedTx = await thresholdContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -190,7 +186,6 @@ describe("test sealed_threshold_policy program", () => {
       const blockHeightWindow = await thresholdContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
       expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
     },
-    timeout,
   );
 
   let accountRecord: Token;
@@ -233,7 +228,6 @@ describe("test sealed_threshold_policy program", () => {
       const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
       frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     },
-    timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -261,7 +255,6 @@ describe("test sealed_threshold_policy program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -269,7 +262,6 @@ describe("test sealed_threshold_policy program", () => {
     async () => {
       expect(thresholdContract.address()).toBe(SEALED_THRESHOLD_POLICY_ADDRESS);
     },
-    timeout,
   );
 
   test(
@@ -299,7 +291,6 @@ describe("test sealed_threshold_policy program", () => {
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
     },
-    timeout,
   );
 
   test(
@@ -344,7 +335,6 @@ describe("test sealed_threshold_policy program", () => {
       );
       await expect(rejectedTx7.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   let accountStateRecord: TokenComplianceStateRecord;
@@ -376,7 +366,6 @@ describe("test sealed_threshold_policy program", () => {
       tx = await thresholdContractForAccount.signup();
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -454,7 +443,6 @@ describe("test sealed_threshold_policy program", () => {
       );
       await expect(tx3.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -546,7 +534,6 @@ describe("test sealed_threshold_policy program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -619,7 +606,6 @@ describe("test sealed_threshold_policy program", () => {
       );
       expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
     },
-    timeout,
   );
 
   test(
@@ -677,7 +663,6 @@ describe("test sealed_threshold_policy program", () => {
       );
       expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
     },
-    timeout,
   );
 
   test(
@@ -788,7 +773,6 @@ describe("test sealed_threshold_policy program", () => {
         expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
       }
     },
-    timeout,
   );
 
   test(
@@ -898,7 +882,6 @@ describe("test sealed_threshold_policy program", () => {
         expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
       }
     },
-    timeout,
   );
 
   test(
@@ -994,6 +977,5 @@ describe("test sealed_threshold_policy program", () => {
         expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
       }
     },
-    timeout,
   );
 });

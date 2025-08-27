@@ -20,7 +20,6 @@ import {
   emptyRoot,
   fundedAmount,
   policies,
-  timeout,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -118,7 +117,6 @@ describe("test sealed_report_policy program", () => {
       tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -137,7 +135,6 @@ describe("test sealed_report_policy program", () => {
       const rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   let accountRecord: Token;
@@ -168,7 +165,6 @@ describe("test sealed_report_policy program", () => {
       const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
       frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     },
-    timeout,
   );
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -196,7 +192,6 @@ describe("test sealed_report_policy program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -204,7 +199,6 @@ describe("test sealed_report_policy program", () => {
     async () => {
       expect(reportPolicyContract.address()).toBe(SEALED_REPORT_POLICY_ADDRESS);
     },
-    timeout,
   );
 
   test(
@@ -232,7 +226,6 @@ describe("test sealed_report_policy program", () => {
       rejectedTx = await reportPolicyContract.initialize(policies.report.blockHeightWindow);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -316,7 +309,6 @@ describe("test sealed_report_policy program", () => {
       rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -361,7 +353,6 @@ describe("test sealed_report_policy program", () => {
       );
       await expect(rejectedTx7.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -375,7 +366,6 @@ describe("test sealed_report_policy program", () => {
       const tx = await reportPolicyContractForAdmin.update_block_height_window(policies.report.blockHeightWindow);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -403,7 +393,6 @@ describe("test sealed_report_policy program", () => {
       const tx = await reportPolicyContractForAccount.transfer_public(recipient, amount);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -421,7 +410,6 @@ describe("test sealed_report_policy program", () => {
 
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -484,7 +472,6 @@ describe("test sealed_report_policy program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -546,7 +533,6 @@ describe("test sealed_report_policy program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -595,7 +581,6 @@ describe("test sealed_report_policy program", () => {
       expect(decryptedComplianceRecord.sender).toBe(account);
       expect(decryptedComplianceRecord.recipient).toBe(recipient);
     },
-    timeout,
   );
 
   test(
@@ -664,6 +649,5 @@ describe("test sealed_report_policy program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 });

@@ -11,7 +11,6 @@ import {
   ZERO_ADDRESS,
   SEALED_TIMELOCK_POLICY_ADDRESS,
   fundedAmount,
-  timeout,
   policies,
   ADMIN_INDEX,
   MINTER_INDEX,
@@ -138,7 +137,6 @@ describe("test sealed_timelock_policy program", () => {
       tx = await timelockContractForAdmin.update_role(recipient, MINTER_INDEX);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -186,7 +184,6 @@ describe("test sealed_timelock_policy program", () => {
       const rejectedTx2 = await timelockContractForFrozenAccount.mint_private(frozenAccount, amount * 20n, 0);
       await expect(rejectedTx2.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -211,7 +208,6 @@ describe("test sealed_timelock_policy program", () => {
         getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
       ];
     },
-    timeout,
   );
 
   test(
@@ -219,7 +215,6 @@ describe("test sealed_timelock_policy program", () => {
     async () => {
       expect(timelockContract.address()).toBe(SEALED_TIMELOCK_POLICY_ADDRESS);
     },
-    timeout,
   );
 
   test(
@@ -248,7 +243,6 @@ describe("test sealed_timelock_policy program", () => {
       const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
       await tx3.wait();
     },
-    timeout,
   );
 
   test(
@@ -306,7 +300,6 @@ describe("test sealed_timelock_policy program", () => {
       );
       await expect(rejectedTx7.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -376,7 +369,6 @@ describe("test sealed_timelock_policy program", () => {
       tx = await timelockContractForAccount.transfer_public(recipient, 1n, accountSealedRecord, latestBlockHeight + 1);
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -427,7 +419,6 @@ describe("test sealed_timelock_policy program", () => {
       );
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -520,7 +511,6 @@ describe("test sealed_timelock_policy program", () => {
       expect(recipientSealedRecord.amount).toBe(amountToSend);
       expect(recipientSealedRecord.locked_until).toBe(largeBlockHeight);
     },
-    timeout,
   );
 
   test(
@@ -668,7 +658,6 @@ describe("test sealed_timelock_policy program", () => {
       );
       await tx.wait();
     },
-    timeout,
   );
 
   test(
@@ -798,7 +787,6 @@ describe("test sealed_timelock_policy program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
-    timeout,
   );
 
   test(
@@ -836,6 +824,5 @@ describe("test sealed_timelock_policy program", () => {
       );
       expect(accountSealedRecord.locked_until).toBe(lockedAccountSealedRecord.locked_until);
     },
-    timeout,
   );
 });
