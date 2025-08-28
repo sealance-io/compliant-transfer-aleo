@@ -366,7 +366,7 @@ describe("merkle_tree program tests", () => {
       expect(root).not.toBe(tree[tree.length - 1]);
 
       // Verify inclusion fails if the merkle proof doesn't belong to the address
-      await expect(contract.verify_inclusion(leaves[1], merkleProof2)).rejects.toThrow();
+      await expect(contract.verify_inclusion(convertFieldToAddress(leaves[1]), merkleProof2)).rejects.toThrow();
 
       // the siblings indices are not adjusted
       await expect(
