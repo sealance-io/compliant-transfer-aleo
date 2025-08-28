@@ -44,7 +44,7 @@ class HookTimer {
           metrics.totalTime += elapsed;
           
           if (ENABLE_TEST_MARKERS && hookName !== 'beforeEach' && hookName !== 'afterEach') {
-            console.log(`  ⚙️  [HOOK END] ${hookName} (${(elapsed / 1000).toFixed(3)}s)`);
+            console.log(`  ⚙️  [HOOK END] ${hookName} (${(elapsed / 1000).toFixed(2)}s)`);
           }
         }
       };
@@ -154,7 +154,8 @@ if (ENABLE_TEST_MARKERS) {
 
   afterEach(({ task }: any) => {
     const state = task?.result?.state;
-    const duration = task?.result?.duration || 0;
+    const startTime = task?.result?.startTime ?? 0;
+    const duration = Date.now() - startTime;
     
     let icon = '✅';
     let color = colors.green;
@@ -170,7 +171,7 @@ if (ENABLE_TEST_MARKERS) {
       status = 'SKIPPED';
     }
     
-    console.log(`${color}${icon} [TEST ${status}] (${(duration / 1000).toFixed(3)}s)${colors.reset}`);
+    console.log(`${color}${icon} [TEST ${status}] (${(duration / 1000).toFixed(2)}s)${colors.reset}`);
     console.log(`${colors.dim}${'─'.repeat(60)}${colors.reset}`);
   });
 
