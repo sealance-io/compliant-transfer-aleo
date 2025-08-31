@@ -3,7 +3,7 @@ import { mode } from "./Constants";
 import { convertAddressToField } from "./Conversion";
 import { buildTree, genLeaves } from "./MerkleTree";
 
-const compliantTransferContract = new Sealed_report_policyContract({ mode });
+const reportPolicyContract = new Sealed_report_policyContract({ mode });
 
 export enum FreezeStatus {
   ALREADY_FROZEN,
@@ -18,7 +18,7 @@ export async function calculateFreezeListUpdate(
   address: string,
   leavesLength: number,
 ): Promise<FreezeListUpdateResult> {
-  const isAccountFrozen = await compliantTransferContract.freeze_list(address, false);
+  const isAccountFrozen = await reportPolicyContract.freeze_list(address, false);
   if (isAccountFrozen) {
     return { status: FreezeStatus.ALREADY_FROZEN };
   }
@@ -27,7 +27,7 @@ export async function calculateFreezeListUpdate(
   let lastIndex = 0;
   for (let i = 0; addresses.length < leavesLength; i++) {
     try {
-      addresses.push(await compliantTransferContract.freeze_list_index(i));
+      addresses.push(await reportPolicyContract.freeze_list_index(i));
       lastIndex = i + 1;
     } catch {
       break;

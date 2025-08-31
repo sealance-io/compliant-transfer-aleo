@@ -9,7 +9,7 @@ const contract = new BaseContract({ mode });
 const [_, adminAddress] = contract.getAccounts();
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const compliantTransferContract = new Sealed_report_policyContract({
+const reportPolicyContract = new Sealed_report_policyContract({
   mode,
   privateKey: adminPrivKey,
 });
@@ -20,13 +20,13 @@ const compliantTransferContract = new Sealed_report_policyContract({
     process.exit(1);
   }
 
-  const isDeployed = await compliantTransferContract.isDeployed();
+  const isDeployed = await reportPolicyContract.isDeployed();
   if (!isDeployed) {
     console.error("Contract is not deployed. Please deploy the contract first.");
     process.exit(1);
   }
 
-  let role = await compliantTransferContract.roles(1);
+  let role = await reportPolicyContract.roles(1);
   if (adminAddress !== role) {
     console.error(
       "The used account does not have admin permissions. Please check the environment file for the correct account.",
@@ -35,12 +35,12 @@ const compliantTransferContract = new Sealed_report_policyContract({
   }
 
   const newAddress = process.argv[2];
-  const previousRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+  const previousRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
   const updateResult = await calculateFreezeListUpdate(newAddress, 8);
 
   switch (updateResult.status) {
     case FreezeStatus.NEW_ENTRY:
-      await compliantTransferContract.update_freeze_list(
+      await reportPolicyContract.update_freeze_list(
         newAddress,
         true,
         updateResult.lastIndex,

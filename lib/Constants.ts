@@ -5,10 +5,10 @@ import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 
 // addresses
-export const COMPLIANT_TRANSFER_ADDRESS = "aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2";
-export const COMPLIANT_THRESHOLD_TRANSFER_ADDRESS = "aleo14s6pc22xlf33wm62422v24equzj0s5wlsffrcl43lgfyy6wsdvgs9h6ns7";
+export const SEALED_REPORT_POLICY_ADDRESS = "aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2";
+export const SEALED_THRESHOLD_POLICY_ADDRESS = "aleo14s6pc22xlf33wm62422v24equzj0s5wlsffrcl43lgfyy6wsdvgs9h6ns7";
 export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
-export const COMPLIANT_TIMELOCK_TRANSFER_ADDRESS = "aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq";
+export const SEALED_TIMELOCK_POLICY_ADDRESS = "aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq";
 export const TREASURE_ADDRESS = "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn";
 
 export const BLOCK_HEIGHT_WINDOW = 300;
@@ -26,11 +26,11 @@ export interface IPolicy {
 
 // policies specs
 export const policies: { [key: string]: IPolicy } = {
-  compliant: {
+  report: {
     tokenName: "Report",
     tokenSymbol: "REPORT",
     tokenId: stringToBigInt("SEALED_REPORT_POLICY"),
-    programAddress: COMPLIANT_TRANSFER_ADDRESS,
+    programAddress: SEALED_REPORT_POLICY_ADDRESS,
     Contract: Sealed_report_policyContract,
     initMappings: false,
     requireInitialization: false,
@@ -40,7 +40,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Threshold report",
     tokenSymbol: "THRESHOLD_REPORT",
     tokenId: stringToBigInt("SEALED_THRESHOLD_REPORT_POLICY"),
-    programAddress: COMPLIANT_THRESHOLD_TRANSFER_ADDRESS,
+    programAddress: SEALED_THRESHOLD_POLICY_ADDRESS,
     Contract: Sealed_threshold_report_policyContract,
     initMappings: true,
     requireInitialization: false,
@@ -50,7 +50,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Timelock",
     tokenSymbol: "TIMELOCK",
     tokenId: stringToBigInt("SEALED_TIMELOCK_POLICY"),
-    programAddress: COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
+    programAddress: SEALED_TIMELOCK_POLICY_ADDRESS,
     Contract: Sealed_timelock_policyContract,
     initMappings: false,
     requireInitialization: true,

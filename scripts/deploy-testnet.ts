@@ -21,19 +21,19 @@ const [deployerAddress, adminAddress, investigatorAddress] = contract.getAccount
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const compliantTransferContract = new Sealed_report_policyContract({
+const reportPolicyContract = new Sealed_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantThresholdTransferContract = new Sealed_threshold_report_policyContract({
+const thresholdContract = new Sealed_threshold_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantTimelockTransferContract = new Sealed_timelock_policyContract({
+const timelockContract = new Sealed_timelock_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantTimelockTransferContractForAdmin = new Sealed_timelock_policyContract({
+const timelockContractForAdmin = new Sealed_timelock_policyContract({
   mode,
   privateKey: adminPrivKey,
 });
@@ -61,21 +61,21 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
 (async () => {
   // deploy contracts
   await deployIfNotDeployed(merkleTreeContract);
-  await deployIfNotDeployed(compliantTransferContract);
+  await deployIfNotDeployed(reportPolicyContract);
   await deployIfNotDeployed(freezeRegistryContract);
-  await deployIfNotDeployed(compliantThresholdTransferContract);
-  await deployIfNotDeployed(compliantTimelockTransferContract);
+  await deployIfNotDeployed(thresholdContract);
+  await deployIfNotDeployed(timelockContract);
   await deployIfNotDeployed(exchangeContract);
   await deployIfNotDeployed(reportTokenContract);
 
-  // register token and assign compliant transfer contract as external_authorization_party
+  // register token and assign a policy contract as external_authorization_party
   await initializeTokenProgram(
     deployerPrivKey,
     deployerAddress,
     adminPrivKey,
     adminAddress,
     investigatorAddress,
-    policies.compliant,
+    policies.report,
   );
   await initializeTokenProgram(
     deployerPrivKey,
@@ -95,7 +95,7 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   );
 
   // initialize freeze list
-  await initializeFreezeList(compliantTransferContract);
+  await initializeFreezeList(reportPolicyContract);
   await initializeFreezeList(freezeRegistryContract);
   await initializeFreezeListAndTokenDetails(
     reportTokenContract,
@@ -114,9 +114,9 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   await updateInvestigatorRole(reportTokenContractForAdmin, investigatorAddress);
 
   // assign exchange program to be a minter
-  await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
+  await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-  await updateMinterRole(compliantTimelockTransferContractForAdmin, exchangeContract.address());
+  await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
 
   process.exit(0);
 })();

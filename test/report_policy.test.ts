@@ -9,7 +9,7 @@ import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_poli
 import {
   ADMIN_INDEX,
   BLOCK_HEIGHT_WINDOW_INDEX,
-  COMPLIANT_TRANSFER_ADDRESS,
+  SEALED_REPORT_POLICY_ADDRESS,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
   INVESTIGATOR_INDEX,
@@ -33,7 +33,7 @@ import { Account } from "@provablehq/sdk";
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
 
-const { tokenId } = policies.compliant;
+const { tokenId } = policies.report;
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
@@ -57,19 +57,19 @@ const tokenRegistryContractForAccount = new Token_registryContract({
   mode,
   privateKey: accountPrivKey,
 });
-const compliantTransferContract = new Sealed_report_policyContract({
+const reportPolicyContract = new Sealed_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantTransferContractForAdmin = new Sealed_report_policyContract({
+const reportPolicyContractForAdmin = new Sealed_report_policyContract({
   mode,
   privateKey: adminPrivKey,
 });
-const compliantTransferContractForAccount = new Sealed_report_policyContract({
+const reportPolicyContractForAccount = new Sealed_report_policyContract({
   mode,
   privateKey: accountPrivKey,
 });
-const compliantTransferContractForFrozenAccount = new Sealed_report_policyContract({
+const reportPolicyContractForFrozenAccount = new Sealed_report_policyContract({
   mode,
   privateKey: frozenAccountPrivKey,
 });
@@ -81,7 +81,7 @@ const merkleTreeContract = new Merkle_treeContract({
 const amount = 10n;
 let root: bigint;
 
-describe("test compliant_transfer program", () => {
+describe("test sealed_report_policy program", () => {
   test(
     `fund credits`,
     async () => {
@@ -97,7 +97,7 @@ describe("test compliant_transfer program", () => {
     async () => {
       await deployIfNotDeployed(tokenRegistryContract);
       await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(compliantTransferContract);
+      await deployIfNotDeployed(reportPolicyContract);
 
       await initializeTokenProgram(
         deployerPrivKey,
@@ -105,7 +105,7 @@ describe("test compliant_transfer program", () => {
         adminPrivKey,
         adminAddress,
         investigatorAddress,
-        policies.compliant,
+        policies.report,
       );
     },
     timeout,
@@ -114,17 +114,17 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_admin_address`,
     async () => {
-      let tx = await compliantTransferContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
+      let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
       await tx.wait();
-      let adminRole = await compliantTransferContract.roles(ADMIN_INDEX);
+      let adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(frozenAccount);
 
-      tx = await compliantTransferContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
+      tx = await reportPolicyContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
       await tx.wait();
-      adminRole = await compliantTransferContract.roles(ADMIN_INDEX);
+      adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
       expect(adminRole).toBe(adminAddress);
 
-      tx = await compliantTransferContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
+      tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
       await expect(tx.wait()).rejects.toThrow();
     },
     timeout,
@@ -133,17 +133,17 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_investigator_address`,
     async () => {
-      let tx = await compliantTransferContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
+      let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await tx.wait();
-      let investigatorRole = await compliantTransferContract.roles(INVESTIGATOR_INDEX);
+      let investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(frozenAccount);
 
-      tx = await compliantTransferContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
+      tx = await reportPolicyContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
       await tx.wait();
-      investigatorRole = await compliantTransferContract.roles(INVESTIGATOR_INDEX);
+      investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-      const rejectedTx = await compliantTransferContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
+      const rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -209,9 +209,9 @@ describe("test compliant_transfer program", () => {
   );
 
   test(
-    `verify compliant_transfer address`,
+    `verify sealed_report_policy address`,
     async () => {
-      expect(compliantTransferContract.address()).toBe(COMPLIANT_TRANSFER_ADDRESS);
+      expect(reportPolicyContract.address()).toBe(SEALED_REPORT_POLICY_ADDRESS);
     },
     timeout,
   );
@@ -220,25 +220,25 @@ describe("test compliant_transfer program", () => {
     `test initialize`,
     async () => {
       // Cannot update freeze list before initialization
-      let rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+      let rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const tx = await compliantTransferContract.initialize(policies.compliant.blockHeightWindow);
+      const tx = await reportPolicyContract.initialize(policies.report.blockHeightWindow);
       await tx.wait();
-      const isAccountFrozen = await compliantTransferContract.freeze_list(ZERO_ADDRESS);
-      const frozenAccountByIndex = await compliantTransferContract.freeze_list_index(0);
-      const lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await compliantTransferContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+      const isAccountFrozen = await reportPolicyContract.freeze_list(ZERO_ADDRESS);
+      const frozenAccountByIndex = await reportPolicyContract.freeze_list_index(0);
+      const lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await reportPolicyContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
 
       expect(isAccountFrozen).toBe(false);
       expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
       expect(initializedRoot).toBe(emptyRoot);
-      expect(blockHeightWindow).toBe(policies.compliant.blockHeightWindow);
+      expect(blockHeightWindow).toBe(policies.report.blockHeightWindow);
 
       // It is possible to call to initialize only one time
-      rejectedTx = await compliantTransferContract.initialize(policies.compliant.blockHeightWindow);
+      rejectedTx = await reportPolicyContract.initialize(policies.report.blockHeightWindow);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -247,10 +247,10 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_freeze_list`,
     async () => {
-      const currentRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const currentRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
       // Only the admin can call to update_freeze_list
-      let rejectedTx = await compliantTransferContractForFrozenAccount.update_freeze_list(
+      let rejectedTx = await reportPolicyContractForFrozenAccount.update_freeze_list(
         adminAddress,
         true,
         1,
@@ -260,63 +260,57 @@ describe("test compliant_transfer program", () => {
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot unfreeze an unfrozen account
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(
-        frozenAccount,
-        false,
-        1,
-        currentRoot,
-        root,
-      );
+      rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 1, currentRoot, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot update the root if the previous root is incorrect
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, false, 1, 0n, root);
+      rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 1, 0n, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      let tx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
       await tx.wait();
-      let isAccountFrozen = await compliantTransferContract.freeze_list(frozenAccount);
-      let frozenAccountByIndex = await compliantTransferContract.freeze_list_index(1);
-      let lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      let isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
+      let frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
+      let lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(true);
       expect(frozenAccountByIndex).toBe(frozenAccount);
       expect(lastIndex).toBe(1);
 
       // Cannot unfreeze an account when the frozen list index is incorrect
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, false, 2, root, root);
+      rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot freeze a frozen account
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+      rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      tx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, false, 1, root, root);
+      tx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 1, root, root);
       await tx.wait();
-      isAccountFrozen = await compliantTransferContract.freeze_list(frozenAccount);
-      frozenAccountByIndex = await compliantTransferContract.freeze_list_index(1);
-      lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
+      frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
+      lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(false);
       expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(1);
 
-      tx = await compliantTransferContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+      tx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
       await tx.wait();
-      isAccountFrozen = await compliantTransferContract.freeze_list(frozenAccount);
-      frozenAccountByIndex = await compliantTransferContract.freeze_list_index(1);
-      lastIndex = await compliantTransferContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
+      frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
+      lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(true);
       expect(frozenAccountByIndex).toBe(frozenAccount);
       expect(lastIndex).toBe(1);
 
       let randomAddress = new Account().address().to_string();
-      tx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
+      tx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await tx.wait();
-      isAccountFrozen = await compliantTransferContractForAdmin.freeze_list(randomAddress);
-      frozenAccountByIndex = await compliantTransferContractForAdmin.freeze_list_index(2);
-      lastIndex = await compliantTransferContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      isAccountFrozen = await reportPolicyContractForAdmin.freeze_list(randomAddress);
+      frozenAccountByIndex = await reportPolicyContractForAdmin.freeze_list_index(2);
+      lastIndex = await reportPolicyContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(true);
       expect(frozenAccountByIndex).toBe(randomAddress);
@@ -324,11 +318,11 @@ describe("test compliant_transfer program", () => {
 
       randomAddress = new Account().address().to_string();
       // Cannot freeze an account when the frozen list index is greater than the last index
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 10, root, root);
+      rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 10, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // Cannot freeze an account when the frozen list index is already taken
-      rejectedTx = await compliantTransferContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
+      rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
     },
     timeout,
@@ -382,14 +376,12 @@ describe("test compliant_transfer program", () => {
   test(
     `test update_block_height_window`,
     async () => {
-      const rejectedTx = await compliantTransferContractForAccount.update_block_height_window(
-        policies.compliant.blockHeightWindow,
+      const rejectedTx = await reportPolicyContractForAccount.update_block_height_window(
+        policies.report.blockHeightWindow,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const tx = await compliantTransferContractForAdmin.update_block_height_window(
-        policies.compliant.blockHeightWindow,
-      );
+      const tx = await reportPolicyContractForAdmin.update_block_height_window(policies.report.blockHeightWindow);
       await tx.wait();
     },
     timeout,
@@ -399,25 +391,25 @@ describe("test compliant_transfer program", () => {
     `test transfer_public`,
     async () => {
       // If the sender didn't approve the program the tx will fail
-      let rejectedTx = await compliantTransferContractForAccount.transfer_public(recipient, amount);
+      let rejectedTx = await reportPolicyContractForAccount.transfer_public(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       const approvalTx = await tokenRegistryContractForAccount.approve_public(
         tokenId,
-        compliantTransferContract.address(),
+        reportPolicyContract.address(),
         amount,
       );
       await approvalTx.wait();
 
       // If the sender is frozen account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForFrozenAccount.transfer_public(recipient, amount);
+      rejectedTx = await reportPolicyContractForFrozenAccount.transfer_public(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // If the recipient is frozen account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForAccount.transfer_public(frozenAccount, amount);
+      rejectedTx = await reportPolicyContractForAccount.transfer_public(frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const tx = await compliantTransferContractForAccount.transfer_public(recipient, amount);
+      const tx = await reportPolicyContractForAccount.transfer_public(recipient, amount);
       await tx.wait();
     },
     timeout,
@@ -427,14 +419,14 @@ describe("test compliant_transfer program", () => {
     `test transfer_public_as_signer`,
     async () => {
       // If the sender is frozen account it's impossible to send tokens
-      let rejectedTx = await compliantTransferContractForFrozenAccount.transfer_public_as_signer(recipient, amount);
+      let rejectedTx = await reportPolicyContractForFrozenAccount.transfer_public_as_signer(recipient, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       // If the recipient is frozen account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForAccount.transfer_public_as_signer(frozenAccount, amount);
+      rejectedTx = await reportPolicyContractForAccount.transfer_public_as_signer(frozenAccount, amount);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const tx = await compliantTransferContractForAccount.transfer_public_as_signer(recipient, amount);
+      const tx = await reportPolicyContractForAccount.transfer_public_as_signer(recipient, amount);
 
       await tx.wait();
     },
@@ -445,7 +437,7 @@ describe("test compliant_transfer program", () => {
     `test transfer_public_to_priv`,
     async () => {
       // If the sender didn't approve the program the tx will fail
-      let rejectedTx = await compliantTransferContractForAccount.transfer_public_to_priv(
+      let rejectedTx = await reportPolicyContractForAccount.transfer_public_to_priv(
         recipient,
         amount,
         recipientMerkleProof,
@@ -455,13 +447,13 @@ describe("test compliant_transfer program", () => {
 
       const approvalTx = await tokenRegistryContractForAccount.approve_public(
         tokenId,
-        compliantTransferContract.address(),
+        reportPolicyContract.address(),
         amount,
       );
       await approvalTx.wait();
 
       // If the sender is frozen account it's impossible to send tokens
-      rejectedTx = await compliantTransferContractForFrozenAccount.transfer_public_to_priv(
+      rejectedTx = await reportPolicyContractForFrozenAccount.transfer_public_to_priv(
         recipient,
         amount,
         recipientMerkleProof,
@@ -471,7 +463,7 @@ describe("test compliant_transfer program", () => {
 
       // If the recipient is frozen account it's impossible to send tokens
       await expect(
-        compliantTransferContractForAccount.transfer_public_to_priv(
+        reportPolicyContractForAccount.transfer_public_to_priv(
           frozenAccount,
           amount,
           frozenAccountMerkleProof,
@@ -479,7 +471,7 @@ describe("test compliant_transfer program", () => {
         ),
       ).rejects.toThrow();
 
-      const tx = await compliantTransferContractForAccount.transfer_public_to_priv(
+      const tx = await reportPolicyContractForAccount.transfer_public_to_priv(
         recipient,
         amount,
         recipientMerkleProof,
@@ -509,7 +501,7 @@ describe("test compliant_transfer program", () => {
     async () => {
       // If the sender is frozen account it's impossible to send tokens
       await expect(
-        compliantTransferContractForFrozenAccount.transfer_private(
+        reportPolicyContractForFrozenAccount.transfer_private(
           recipient,
           amount,
           accountRecord,
@@ -520,7 +512,7 @@ describe("test compliant_transfer program", () => {
       ).rejects.toThrow();
       // If the recipient is frozen account it's impossible to send tokens
       await expect(
-        compliantTransferContractForAccount.transfer_private(
+        reportPolicyContractForAccount.transfer_private(
           frozenAccount,
           amount,
           accountRecord,
@@ -530,7 +522,7 @@ describe("test compliant_transfer program", () => {
         ),
       ).rejects.toThrow();
 
-      const tx = await compliantTransferContractForAccount.transfer_private(
+      const tx = await reportPolicyContractForAccount.transfer_private(
         recipient,
         amount,
         accountRecord,
@@ -571,7 +563,7 @@ describe("test compliant_transfer program", () => {
     async () => {
       // If the sender is frozen account it's impossible to send tokens
       await expect(
-        compliantTransferContractForFrozenAccount.transfer_priv_to_public(
+        reportPolicyContractForFrozenAccount.transfer_priv_to_public(
           recipient,
           amount,
           frozenAccountRecord,
@@ -581,7 +573,7 @@ describe("test compliant_transfer program", () => {
       ).rejects.toThrow();
 
       // If the recipient is frozen account it's impossible to send tokens
-      const rejectedTx = await compliantTransferContractForAccount.transfer_priv_to_public(
+      const rejectedTx = await reportPolicyContractForAccount.transfer_priv_to_public(
         frozenAccount,
         amount,
         accountRecord,
@@ -589,7 +581,7 @@ describe("test compliant_transfer program", () => {
         investigatorAddress,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
-      const tx = await compliantTransferContractForAccount.transfer_priv_to_public(
+      const tx = await reportPolicyContractForAccount.transfer_priv_to_public(
         recipient,
         amount,
         accountRecord,
@@ -631,7 +623,7 @@ describe("test compliant_transfer program", () => {
         getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
       ];
       // The transaction failed because the root is mismatch
-      let rejectedTx = await compliantTransferContractForAccount.transfer_private(
+      let rejectedTx = await reportPolicyContractForAccount.transfer_private(
         recipient,
         amount,
         accountRecord,
@@ -641,7 +633,7 @@ describe("test compliant_transfer program", () => {
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const updateFreezeListTx = await compliantTransferContractForAdmin.update_freeze_list(
+      const updateFreezeListTx = await reportPolicyContractForAdmin.update_freeze_list(
         frozenAccount,
         false,
         1,
@@ -650,13 +642,13 @@ describe("test compliant_transfer program", () => {
       );
       await updateFreezeListTx.wait();
 
-      const newRoot = await compliantTransferContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const oldRoot = await compliantTransferContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+      const newRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const oldRoot = await reportPolicyContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
       expect(oldRoot).toBe(root);
       expect(newRoot).toBe(1n);
 
       // The transaction succeed because the old root is match
-      const tx = await compliantTransferContractForAccount.transfer_private(
+      const tx = await reportPolicyContractForAccount.transfer_private(
         recipient,
         amount,
         accountRecord,
@@ -667,11 +659,11 @@ describe("test compliant_transfer program", () => {
       await tx.wait();
       accountRecord = decryptToken((tx as any).transaction.execution.transitions[2].outputs[0].value, accountPrivKey);
 
-      const updateBlockHeightWindowTx = await compliantTransferContractForAdmin.update_block_height_window(1);
+      const updateBlockHeightWindowTx = await reportPolicyContractForAdmin.update_block_height_window(1);
       await updateBlockHeightWindowTx.wait();
 
       // The transaction failed because the old root is expired
-      rejectedTx = await compliantTransferContractForAccount.transfer_private(
+      rejectedTx = await reportPolicyContractForAccount.transfer_private(
         recipient,
         amount,
         accountRecord,
