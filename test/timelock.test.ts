@@ -9,7 +9,7 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
   MAX_TREE_SIZE,
   ZERO_ADDRESS,
-  COMPLIANT_TIMELOCK_TRANSFER_ADDRESS,
+  SEALED_TIMELOCK_POLICY_ADDRESS,
   fundedAmount,
   timeout,
   policies,
@@ -103,7 +103,7 @@ let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
 let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
 let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
 
-describe("test compliant_timelock_transfer program", () => {
+describe("test sealed_timelock_policy program", () => {
   test(
     `fund credits`,
     async () => {
@@ -224,9 +224,9 @@ describe("test compliant_timelock_transfer program", () => {
   );
 
   test(
-    `verify compliant_transfer address`,
+    `verify sealed_timelock_policy address`,
     async () => {
-      expect(timelockContract.address()).toBe(COMPLIANT_TIMELOCK_TRANSFER_ADDRESS);
+      expect(timelockContract.address()).toBe(SEALED_TIMELOCK_POLICY_ADDRESS);
     },
     timeout,
   );

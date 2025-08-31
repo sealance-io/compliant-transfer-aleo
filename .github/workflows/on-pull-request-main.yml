@@ -7,8 +7,8 @@ on:
         description: "Run Merkle Tree tests"
         type: boolean
         default: true
-      run_compliant_transfer:
-        description: "Run Compliant Transfer tests"
+      run_report_policy:
+        description: "Run Sealed Report Policy tests"
         type: boolean
         default: true
       run_freeze_registry:
@@ -62,9 +62,9 @@ jobs:
           github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
           github.event_name == 'pull_request' && false
         }}
-      run_compliant_transfer: >-
+      run_report_policy: >-
         ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_compliant_transfer || 
+          github.event_name == 'workflow_dispatch' && inputs.run_report_policy || 
           github.event_name == 'pull_request' && false
         }}
       run_freeze_registry: >-
@@ -105,13 +105,13 @@ jobs:
       watched_paths: "programs/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
-  compliant-transfer-test:
+  report-policy-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_compliant_transfer == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_report_policy == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
-      job_name: "Compliant Transfer Test"
-      test_command: "npm run test:select ./test/compliant_transfer_v0.test.ts"
+      job_name: "Report Policy Test"
+      test_command: "npm run test:select ./test/report_policy.test.ts"
       watched_paths: "programs/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
@@ -122,7 +122,7 @@ jobs:
     with:
       job_name: "Freeze Registry Test"
       test_command: "npm run test:select ./test/freeze_registry.test.ts"
-      watched_paths: "programs/freeze_registry.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   timelock-policy-test:
@@ -132,7 +132,7 @@ jobs:
     with:
       job_name: "Timelock Policy Test"
       test_command: "npm run test:select ./test/timelock.test.ts"
-      watched_paths: "programs/compliant_timelock_transfer.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/sealed_timelock_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   threshold-policy-test:
@@ -142,7 +142,7 @@ jobs:
     with:
       job_name: "Threshold Policy Test"
       test_command: "npm run test:select ./test/compliant_threshold_transfer.test.ts"
-      watched_paths: "programs/compliant_threshold_transfer.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/sealed_threshold_report_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   exchange-test:

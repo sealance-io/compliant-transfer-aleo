@@ -25,7 +25,7 @@ export async function initializeTokenProgram(
     privateKey: deployerPrivKey,
   });
 
-  // register token and assign compliant transfer contract as external_authorization_party
+  // register token and assign the policy contract as external_authorization_party
   const tokenMetadata = await tokenRegistryContract.registered_tokens(tokenId, {
     token_id: 0n,
     name: 0n,

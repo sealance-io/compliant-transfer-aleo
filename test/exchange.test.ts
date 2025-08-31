@@ -39,19 +39,19 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantTransferContract = new Sealed_report_policyContract({
+const reportPolicyContract = new Sealed_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantThresholdTransferContract = new Sealed_threshold_report_policyContract({
+const thresholdContract = new Sealed_threshold_report_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantTimelockTransferContract = new Sealed_timelock_policyContract({
+const timelockContract = new Sealed_timelock_policyContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const compliantTimelockTransferContractForAdmin = new Sealed_timelock_policyContract({
+const timelockContractForAdmin = new Sealed_timelock_policyContract({
   mode,
   privateKey: adminPrivKey,
 });
@@ -89,10 +89,10 @@ describe("test exchange contract", () => {
     async () => {
       await deployIfNotDeployed(tokenRegistryContract);
       await deployIfNotDeployed(merkleTreeContract);
-      await deployIfNotDeployed(compliantTransferContract);
+      await deployIfNotDeployed(reportPolicyContract);
       await deployIfNotDeployed(freezeRegistryContract);
-      await deployIfNotDeployed(compliantThresholdTransferContract);
-      await deployIfNotDeployed(compliantTimelockTransferContract);
+      await deployIfNotDeployed(thresholdContract);
+      await deployIfNotDeployed(timelockContract);
       await deployIfNotDeployed(exchangeContract);
 
       await initializeTokenProgram(
@@ -101,7 +101,7 @@ describe("test exchange contract", () => {
         adminPrivKey,
         adminAddress,
         investigatorAddress,
-        policies.compliant,
+        policies.report,
       );
       await initializeTokenProgram(
         deployerPrivKey,
@@ -120,9 +120,9 @@ describe("test exchange contract", () => {
         policies.timelock,
       );
 
-      await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
+      await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
       await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-      await updateMinterRole(compliantTimelockTransferContractForAdmin, exchangeContract.address());
+      await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
     },
     timeout,
   );
@@ -147,13 +147,13 @@ describe("test exchange contract", () => {
     `test update_rate`,
     async () => {
       // Only the admin account can call to this function
-      const rejectedTx = await exchangeContractForAccount.update_rate(policies.compliant.tokenId, defaultRate);
+      const rejectedTx = await exchangeContractForAccount.update_rate(policies.report.tokenId, defaultRate);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const tx = await exchangeContractForAdmin.update_rate(policies.compliant.tokenId, defaultRate);
+      const tx = await exchangeContractForAdmin.update_rate(policies.report.tokenId, defaultRate);
       await tx.wait();
 
-      const rate = await exchangeContract.token_rates(policies.compliant.tokenId, 0n);
+      const rate = await exchangeContract.token_rates(policies.report.tokenId, 0n);
       await expect(rate).toBe(defaultRate);
     },
     timeout,
@@ -164,21 +164,21 @@ describe("test exchange contract", () => {
     async () => {
       // transaction with wrong rate will fail
       const rejectedTx = await exchangeContractForAccount.exchange_token(
-        policies.compliant.tokenId,
+        policies.report.tokenId,
         amount,
         defaultRate + 1n,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       let treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-      let tx = await exchangeContractForAccount.exchange_token(policies.compliant.tokenId, amount, defaultRate);
+      let tx = await exchangeContractForAccount.exchange_token(policies.report.tokenId, amount, defaultRate);
       await tx.wait();
       let treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
       expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
       const tokenRecord = decryptToken((tx as any).transaction.execution.transitions[1].outputs[0], accountPrivKey);
       expect(tokenRecord.owner).toBe(account);
-      expect(tokenRecord.token_id).toBe(policies.compliant.tokenId);
+      expect(tokenRecord.token_id).toBe(policies.report.tokenId);
       expect(tokenRecord.amount).toBe(amount * 10n);
 
       treasureBalanceBefore = treasureBalanceAfter;
