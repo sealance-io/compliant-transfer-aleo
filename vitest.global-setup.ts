@@ -23,11 +23,11 @@ function parseBooleanEnv(value: string | undefined, defaultValue = true): boolea
 }
 
 // This is private to this module and not exposed globally
-let amareleoContainer: StartedTestContainer | undefined;
+let devnetContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const AMARELEO_IMAGE = process.env.AMARELEO_IMAGE || "ghcr.io/sealance-io/amareleo-chain:v2.3.0";
-const AMARELEO_VERBOSITY = process.env.AMARELEO_VERBOSITY || "1";
+const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/aleo-devnet:v4.1.0";
+const DEVNET_VERBOSITY = process.env.DEVNET_VERBOSITY || "1";
 const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "9";
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "180000", 10); // 3 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
@@ -120,18 +120,20 @@ export async function setup() {
 
   let mappedPort: number = 3030;
   if (USE_TEST_CONTAINERS) {
-    amareleoContainer = await new GenericContainer(AMARELEO_IMAGE)
+    devnetContainer = await new GenericContainer(ALEO_DEVNET_IMAGE)
+    .withEntrypoint(["/usr/local/bin/leo"])
       .withCommand([
-        "--network",
-        "1",
+        "devnet",
+        "--snarkos", 
+        "./snarkos",
+        "--yes",
+        "--clear-storage",
         "--verbosity",
-        AMARELEO_VERBOSITY,
-        "--rest",
-        "0.0.0.0:3030",
+        DEVNET_VERBOSITY,
         "--storage",
-        "/data/amareleo",
-        "--rest-rps",
-        "100",
+        "/data",
+        "--num-clients", 
+        "1"
       ])
       .withExposedPorts({
         container: 3030,
@@ -140,7 +142,7 @@ export async function setup() {
       .withStartupTimeout(120000) // 2 minutes timeout
       .start();
 
-    mappedPort = amareleoContainer.getMappedPort(3030);
+    mappedPort = devnetContainer.getMappedPort(3030);
     console.log(`Container started with mapped port: ${mappedPort}`);
   }
 
@@ -152,9 +154,9 @@ export async function teardown() {
   console.log("=== Starting global test teardown for Vitest ===");
 
   try {
-    if (amareleoContainer) {
-      await amareleoContainer.stop();
-      amareleoContainer = undefined;
+    if (devnetContainer) {
+      await devnetContainer.stop();
+      devnetContainer = undefined;
     }
   } catch (error) {
     console.error("Error stopping container:", error);
