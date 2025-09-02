@@ -58,7 +58,7 @@ jobs:
     name: ${{ inputs.job_name }}
     runs-on: ubuntu-latest
     env:
-      DEVNET_CHECK_TIMEOUT: 180000  # 3 minutes in ms
+      DEVNET_CHECK_TIMEOUT: 720000  # 12 minutes in ms
       DEVNET_CHECK_INTERVAL: 5000   # 5 seconds in ms
       PORT: 3030
     permissions:
@@ -171,5 +171,5 @@ jobs:
       - name: Stop aleo-devnet
         if: always() # Run even if previous steps fails for cleanup
         run: |
-          docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}
-          docker ps -a -q | xargs -n 1 -P 8 -I {} docker rm {}
+          docker ps -q | tr ' ' '\n' | xargs -I {} docker stop {}
+          docker ps -a -q | tr ' ' '\n' | xargs -I {} docker rm {}
