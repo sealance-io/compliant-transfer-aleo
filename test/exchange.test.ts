@@ -75,7 +75,6 @@ const exchangeContractForAccount = new GqrfmwbtypContract({
 const amount = 10n;
 
 describe("test exchange contract", () => {
-
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
@@ -113,103 +112,91 @@ describe("test exchange contract", () => {
       policies.timelock,
     );
 
-    await setTokenRegistryRole(adminPrivKey, policies.compliant.tokenId, exchangeContract.address(), 1);
+    await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
     await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
     await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
   });
 
-  test(
-    `test update_admin`,
-    async () => {
-      const tx = await exchangeContractForAdmin.update_role(adminAddress, ADMIN_INDEX);
-      await tx.wait();
+  test(`test update_admin`, async () => {
+    const tx = await exchangeContractForAdmin.update_role(adminAddress, ADMIN_INDEX);
+    await tx.wait();
 
-      const admin = await exchangeContract.roles(ADMIN_INDEX);
-      expect(admin).toBe(adminAddress);
+    const admin = await exchangeContract.roles(ADMIN_INDEX);
+    expect(admin).toBe(adminAddress);
 
-      // Only the admin can call to this function
-      const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, ADMIN_INDEX);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-    },
-  );
+    // Only the admin can call to this function
+    const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, ADMIN_INDEX);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+  });
 
-  test(
-    `test update_rate`,
-    async () => {
-      // Only the admin account can call to this function
-      const rejectedTx = await exchangeContractForAccount.update_rate(policies.report.tokenId, defaultRate);
-      await expect(rejectedTx.wait()).rejects.toThrow();
+  test(`test update_rate`, async () => {
+    // Only the admin account can call to this function
+    const rejectedTx = await exchangeContractForAccount.update_rate(policies.report.tokenId, defaultRate);
+    await expect(rejectedTx.wait()).rejects.toThrow();
 
-      const tx = await exchangeContractForAdmin.update_rate(policies.report.tokenId, defaultRate);
-      await tx.wait();
+    const tx = await exchangeContractForAdmin.update_rate(policies.report.tokenId, defaultRate);
+    await tx.wait();
 
-      const rate = await exchangeContract.token_rates(policies.report.tokenId, 0n);
-      expect(rate).toBe(defaultRate);
-    },
-  );
+    const rate = await exchangeContract.token_rates(policies.report.tokenId, 0n);
+    expect(rate).toBe(defaultRate);
+  });
 
-  test(
-    `test exchange_token`,
-    async () => {
-      // transaction with wrong rate will fail
-      const rejectedTx = await exchangeContractForAccount.exchange_token(
-        policies.report.tokenId,
-        amount,
-        defaultRate + 1n,
-      );
-      await expect(rejectedTx.wait()).rejects.toThrow();
+  test(`test exchange_token`, async () => {
+    // transaction with wrong rate will fail
+    const rejectedTx = await exchangeContractForAccount.exchange_token(
+      policies.report.tokenId,
+      amount,
+      defaultRate + 1n,
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-      let tx = await exchangeContractForAccount.exchange_token(policies.report.tokenId, amount, defaultRate);
-      await tx.wait();
-      let treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
-      expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
+    let treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    let tx = await exchangeContractForAccount.exchange_token(policies.report.tokenId, amount, defaultRate);
+    await tx.wait();
+    let treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
-      const tokenRecord = decryptToken((tx as any).transaction.execution.transitions[1].outputs[0], accountPrivKey);
-      expect(tokenRecord.owner).toBe(account);
-      expect(tokenRecord.token_id).toBe(policies.report.tokenId);
-      expect(tokenRecord.amount).toBe(amount * 10n);
+    const tokenRecord = decryptToken((tx as any).transaction.execution.transitions[1].outputs[0], accountPrivKey);
+    expect(tokenRecord.owner).toBe(account);
+    expect(tokenRecord.token_id).toBe(policies.report.tokenId);
+    expect(tokenRecord.amount).toBe(amount * 10n);
 
-      treasureBalanceBefore = treasureBalanceAfter;
-      tx = await exchangeContractForAccount.exchange_token(policies.threshold.tokenId, amount, defaultRate);
-      await tx.wait();
-      treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
-      expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
+    treasureBalanceBefore = treasureBalanceAfter;
+    tx = await exchangeContractForAccount.exchange_token(policies.threshold.tokenId, amount, defaultRate);
+    await tx.wait();
+    treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
-      const thresholdTokenRecord = decryptToken(
-        (tx as any).transaction.execution.transitions[1].outputs[0],
-        accountPrivKey,
-      );
-      expect(thresholdTokenRecord.owner).toBe(account);
-      expect(thresholdTokenRecord.token_id).toBe(policies.threshold.tokenId);
-      expect(thresholdTokenRecord.amount).toBe(amount * 10n);
-    },
-  );
+    const thresholdTokenRecord = decryptToken(
+      (tx as any).transaction.execution.transitions[1].outputs[0],
+      accountPrivKey,
+    );
+    expect(thresholdTokenRecord.owner).toBe(account);
+    expect(thresholdTokenRecord.token_id).toBe(policies.threshold.tokenId);
+    expect(thresholdTokenRecord.amount).toBe(amount * 10n);
+  });
 
-  test(
-    `test exchange_timelock_token`,
-    async () => {
-      const treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-      const tx = await exchangeContractForAccount.exchange_timelock_token(amount, defaultRate);
-      await tx.wait();
-      const treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
-      expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
+  test(`test exchange_timelock_token`, async () => {
+    const treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    const tx = await exchangeContractForAccount.exchange_timelock_token(amount, defaultRate);
+    await tx.wait();
+    const treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
-      const timelockTokenRecord = decryptToken(
-        (tx as any).transaction.execution.transitions[1].outputs[0],
-        accountPrivKey,
-      );
-      expect(timelockTokenRecord.owner).toBe(account);
-      expect(timelockTokenRecord.token_id).toBe(policies.timelock.tokenId);
-      expect(timelockTokenRecord.amount).toBe(amount * 10n);
+    const timelockTokenRecord = decryptToken(
+      (tx as any).transaction.execution.transitions[1].outputs[0],
+      accountPrivKey,
+    );
+    expect(timelockTokenRecord.owner).toBe(account);
+    expect(timelockTokenRecord.token_id).toBe(policies.timelock.tokenId);
+    expect(timelockTokenRecord.amount).toBe(amount * 10n);
 
-      const compliantTokenRecord = decryptCompliantToken(
-        (tx as any).transaction.execution.transitions[2].outputs[0],
-        accountPrivKey,
-      );
-      expect(compliantTokenRecord.owner).toBe(account);
-      expect(compliantTokenRecord.amount).toBe(amount * 10n);
-      expect(compliantTokenRecord.locked_until).toBe(0);
-    },
-  );
+    const compliantTokenRecord = decryptCompliantToken(
+      (tx as any).transaction.execution.transitions[2].outputs[0],
+      accountPrivKey,
+    );
+    expect(compliantTokenRecord.owner).toBe(account);
+    expect(compliantTokenRecord.amount).toBe(amount * 10n);
+    expect(compliantTokenRecord.locked_until).toBe(0);
+  });
 });

@@ -26,7 +26,6 @@ const merkleTreeContract = new Merkle_treeContract({
 });
 
 describe("test compliant_transfer program", () => {
-
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
 
@@ -34,33 +33,30 @@ describe("test compliant_transfer program", () => {
     await deployIfNotDeployed(freezeRegistryContract);
   });
 
-  test(
-    `test upgrades`,
-    async () => {
-      // It shouldn't be possible to upgrade the merkle_Tree program
-      const merkleTreeEditionBefore = await getProgramEdition("merkle_tree");
-      let isUpgradeSuccessful = await upgradeProgram("merkle_tree", adminPrivKey);
-      const merkleTreeEditionAfter = await getProgramEdition("merkle_tree");
-      expect(isUpgradeSuccessful).toBe(false);
-      expect(merkleTreeEditionBefore).toBe(merkleTreeEditionAfter);
+  test(`test upgrades`, async () => {
+    // It shouldn't be possible to upgrade the merkle_Tree program
+    const merkleTreeEditionBefore = await getProgramEdition("merkle_tree");
+    let isUpgradeSuccessful = await upgradeProgram("merkle_tree", adminPrivKey);
+    const merkleTreeEditionAfter = await getProgramEdition("merkle_tree");
+    expect(isUpgradeSuccessful).toBe(false);
+    expect(merkleTreeEditionBefore).toBe(merkleTreeEditionAfter);
 
-      let freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
-      isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
-      let freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
-      expect(isUpgradeSuccessful).toBe(true);
-      expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
+    let freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
+    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
+    let freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
+    expect(isUpgradeSuccessful).toBe(true);
+    expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
 
-      const admin = await freezeRegistryContract.roles(ADMIN_INDEX, deployerAddress);
-      if (admin !== adminAddress) {
-        const tx = await freezeRegistryContract.update_role(adminAddress, ADMIN_INDEX);
-        await tx.wait();
-      }
-      // only the admin should be able to upgrade freeze registry program
-      freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
-      isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", deployerPrivKey);
-      freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
-      expect(isUpgradeSuccessful).toBe(false);
-      expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);
-    },
-  );
+    const admin = await freezeRegistryContract.roles(ADMIN_INDEX, deployerAddress);
+    if (admin !== adminAddress) {
+      const tx = await freezeRegistryContract.update_role(adminAddress, ADMIN_INDEX);
+      await tx.wait();
+    }
+    // only the admin should be able to upgrade freeze registry program
+    freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
+    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", deployerPrivKey);
+    freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
+    expect(isUpgradeSuccessful).toBe(false);
+    expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);
+  });
 });

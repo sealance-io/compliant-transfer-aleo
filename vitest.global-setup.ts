@@ -36,34 +36,34 @@ async function waitForConsensusVersion(
   port: number,
   targetVersion: string,
   timeout: number = CONSENSUS_CHECK_TIMEOUT,
-  interval: number = CONSENSUS_CHECK_INTERVAL
+  interval: number = CONSENSUS_CHECK_INTERVAL,
 ): Promise<void> {
   const startTime = Date.now();
   const apiUrl = `http://localhost:${port}/testnet/consensus_version`;
-  
+
   console.log(`Waiting for consensus version >= ${targetVersion} at ${apiUrl}`);
   console.log(`Timeout: ${timeout}ms, Check interval: ${interval}ms`);
 
   while (Date.now() - startTime < timeout) {
     try {
       const response = await fetch(apiUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         signal: AbortSignal.timeout(5000), // 5 second timeout per request
       });
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // The response might be in different formats depending on the API version
         // Try to extract the consensus version from various possible response structures
         let currentVersion: string | undefined;
-        
-        if (typeof data === 'string') {
+
+        if (typeof data === "string") {
           currentVersion = data;
-        } else if (typeof data === 'number') {
+        } else if (typeof data === "number") {
           currentVersion = String(data);
         } else if (data?.result !== undefined) {
           currentVersion = String(data.result);
@@ -110,7 +110,7 @@ async function waitForConsensusVersion(
   // Timeout reached
   throw new Error(
     `Timeout waiting for consensus version >= ${targetVersion}. ` +
-    `Waited ${timeout}ms but devnet did not reach the minimum required consensus version.`
+      `Waited ${timeout}ms but devnet did not reach the minimum required consensus version.`,
   );
 }
 
@@ -121,10 +121,10 @@ export async function setup() {
   let mappedPort: number = 3030;
   if (USE_TEST_CONTAINERS) {
     devnetContainer = await new GenericContainer(ALEO_DEVNET_IMAGE)
-    .withEntrypoint(["/usr/local/bin/leo"])
+      .withEntrypoint(["/usr/local/bin/leo"])
       .withCommand([
         "devnet",
-        "--snarkos", 
+        "--snarkos",
         "./snarkos",
         "--yes",
         "--clear-storage",
@@ -132,8 +132,8 @@ export async function setup() {
         DEVNET_VERBOSITY,
         "--storage",
         "/data",
-        "--num-clients", 
-        "1"
+        "--num-clients",
+        "1",
       ])
       .withExposedPorts({
         container: 3030,
