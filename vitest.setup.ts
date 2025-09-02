@@ -1,14 +1,14 @@
 // vitest.setup.ts
 import console from "console";
-import type { SuiteHooks } from 'vitest';
-import { beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
+import type { SuiteHooks } from "vitest";
+import { beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 
 // Set up global console
 global.console = console;
 
 // Opt-in via environment variables
-const ENABLE_HOOK_TIMING = process.env.VITEST_HOOK_TIMING === 'true';
-const ENABLE_TEST_MARKERS = process.env.VITEST_TEST_MARKERS === 'true';
+const ENABLE_HOOK_TIMING = process.env.VITEST_HOOK_TIMING === "true";
+const ENABLE_TEST_MARKERS = process.env.VITEST_TEST_MARKERS === "true";
 
 interface HookMetrics {
   totalTime: number;
@@ -16,62 +16,57 @@ interface HookMetrics {
 
 class HookTimer {
   private metrics = new Map<keyof SuiteHooks, HookMetrics>([
-    ['beforeAll', { totalTime: 0 }],
-    ['beforeEach', { totalTime: 0 }],
-    ['afterEach', { totalTime: 0 }],
-    ['afterAll', { totalTime: 0 }],
+    ["beforeAll", { totalTime: 0 }],
+    ["beforeEach", { totalTime: 0 }],
+    ["afterEach", { totalTime: 0 }],
+    ["afterAll", { totalTime: 0 }],
   ]);
 
-  wrapHook<T extends (...args: any[]) => any>(
-    hookName: keyof SuiteHooks,
-    originalHook: T
-  ): T {
+  wrapHook<T extends (...args: any[]) => any>(hookName: keyof SuiteHooks, originalHook: T): T {
     return ((...args: Parameters<T>) => {
       const [fn, timeout] = args;
-      
+
       const wrappedFn = async () => {
         const start = performance.now();
-        
-        if (ENABLE_TEST_MARKERS && hookName !== 'beforeEach' && hookName !== 'afterEach') {
+
+        if (ENABLE_TEST_MARKERS && hookName !== "beforeEach" && hookName !== "afterEach") {
           console.log(`  ⚙️  [HOOK START] ${hookName}`);
         }
-        
+
         try {
           return await fn();
         } finally {
           const elapsed = performance.now() - start;
           const metrics = this.metrics.get(hookName)!;
           metrics.totalTime += elapsed;
-          
-          if (ENABLE_TEST_MARKERS && hookName !== 'beforeEach' && hookName !== 'afterEach') {
+
+          if (ENABLE_TEST_MARKERS && hookName !== "beforeEach" && hookName !== "afterEach") {
             console.log(`  ⚙️  [HOOK END] ${hookName} (${(elapsed / 1000).toFixed(2)}s)`);
           }
         }
       };
-      
+
       return originalHook(wrappedFn, timeout);
     }) as T;
   }
 
   printReport(): void {
-    console.log('\n' + '═'.repeat(80));
-    console.log('  📊 HOOK PERFORMANCE SUMMARY (Entire Test Run)');
-    console.log('═'.repeat(80));
-    
+    console.log("\n" + "═".repeat(80));
+    console.log("  📊 HOOK PERFORMANCE SUMMARY (Entire Test Run)");
+    console.log("═".repeat(80));
+
     let totalTime = 0;
-    
+
     this.metrics.forEach((metrics, hookName) => {
       const timeInSeconds = (metrics.totalTime / 1000).toFixed(2);
-      
-      console.log(
-        `  ${hookName.padEnd(12)} : ${timeInSeconds.padStart(10)}s`
-      );
+
+      console.log(`  ${hookName.padEnd(12)} : ${timeInSeconds.padStart(10)}s`);
       totalTime += metrics.totalTime;
     });
-    
-    console.log('─'.repeat(80));
+
+    console.log("─".repeat(80));
     console.log(`  ⏱️  Total hook time: ${(totalTime / 1000).toFixed(2)}s`);
-    console.log('═'.repeat(80) + '\n');
+    console.log("═".repeat(80) + "\n");
   }
 }
 
@@ -80,16 +75,16 @@ let hookTimer: HookTimer | null = null;
 
 if (ENABLE_HOOK_TIMING) {
   hookTimer = new HookTimer();
-  
+
   // Monkey-patch hooks to add timing
-  globalThis.beforeAll = hookTimer.wrapHook('beforeAll', globalThis.beforeAll);
-  globalThis.beforeEach = hookTimer.wrapHook('beforeEach', globalThis.beforeEach);
-  globalThis.afterEach = hookTimer.wrapHook('afterEach', globalThis.afterEach);
-  globalThis.afterAll = hookTimer.wrapHook('afterAll', globalThis.afterAll);
-  
+  globalThis.beforeAll = hookTimer.wrapHook("beforeAll", globalThis.beforeAll);
+  globalThis.beforeEach = hookTimer.wrapHook("beforeEach", globalThis.beforeEach);
+  globalThis.afterEach = hookTimer.wrapHook("afterEach", globalThis.afterEach);
+  globalThis.afterAll = hookTimer.wrapHook("afterAll", globalThis.afterAll);
+
   // Since we're in single-threaded mode, register exit handler here
   let reportPrinted = false;
-  
+
   const printReportOnce = () => {
     if (!reportPrinted && hookTimer) {
       reportPrinted = true;
@@ -98,16 +93,16 @@ if (ENABLE_HOOK_TIMING) {
   };
 
   // Register multiple handlers to ensure we catch the exit
-  process.on('exit', printReportOnce);
-  process.on('beforeExit', printReportOnce);
-  
+  process.on("exit", printReportOnce);
+  process.on("beforeExit", printReportOnce);
+
   // Also handle interrupts
-  process.once('SIGINT', () => {
+  process.once("SIGINT", () => {
     printReportOnce();
     process.exit(130);
   });
-  
-  process.once('SIGTERM', () => {
+
+  process.once("SIGTERM", () => {
     printReportOnce();
     process.exit(143);
   });
@@ -117,26 +112,26 @@ if (ENABLE_HOOK_TIMING) {
 if (ENABLE_TEST_MARKERS) {
   let testCounter = 0;
   let suiteCounter = 0;
-  let currentSuiteName = '';
+  let currentSuiteName = "";
 
   const colors = {
-    reset: '\x1b[0m',
-    bright: '\x1b[1m',
-    dim: '\x1b[2m',
-    cyan: '\x1b[36m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    red: '\x1b[31m',
-    blue: '\x1b[34m',
-    magenta: '\x1b[35m',
+    reset: "\x1b[0m",
+    bright: "\x1b[1m",
+    dim: "\x1b[2m",
+    cyan: "\x1b[36m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    red: "\x1b[31m",
+    blue: "\x1b[34m",
+    magenta: "\x1b[35m",
   };
 
   beforeAll(() => {
     suiteCounter++;
     const worker = (globalThis as any).__vitest_worker__;
     currentSuiteName = worker?.current?.file?.name || `Test Suite #${suiteCounter}`;
-    
-    const separator = '▓'.repeat(80);
+
+    const separator = "▓".repeat(80);
     console.log(`\n${colors.cyan}${separator}${colors.reset}`);
     console.log(`${colors.bright}${colors.cyan}📁 [TEST SUITE #${suiteCounter}] ${currentSuiteName}${colors.reset}`);
     console.log(`${colors.cyan}${separator}${colors.reset}\n`);
@@ -144,9 +139,9 @@ if (ENABLE_TEST_MARKERS) {
 
   beforeEach(({ task }: any) => {
     testCounter++;
-    const testName = task?.name || 'Test';
-    
-    const separator = '─'.repeat(60);
+    const testName = task?.name || "Test";
+
+    const separator = "─".repeat(60);
     console.log(`\n${colors.yellow}${separator}${colors.reset}`);
     console.log(`${colors.bright}🧪 [TEST #${testCounter}] ${testName}${colors.reset}`);
     console.log(`${colors.yellow}${separator}${colors.reset}`);
@@ -156,27 +151,27 @@ if (ENABLE_TEST_MARKERS) {
     const state = task?.result?.state;
     const startTime = task?.result?.startTime ?? 0;
     const duration = Date.now() - startTime;
-    
-    let icon = '✅';
+
+    let icon = "✅";
     let color = colors.green;
-    let status = 'PASSED';
-    
-    if (state === 'fail') {
-      icon = '❌';
+    let status = "PASSED";
+
+    if (state === "fail") {
+      icon = "❌";
       color = colors.red;
-      status = 'FAILED';
-    } else if (state === 'skip') {
-      icon = '⏭️';
+      status = "FAILED";
+    } else if (state === "skip") {
+      icon = "⏭️";
       color = colors.dim;
-      status = 'SKIPPED';
+      status = "SKIPPED";
     }
-    
+
     console.log(`${color}${icon} [TEST ${status}] (${(duration / 1000).toFixed(2)}s)${colors.reset}`);
-    console.log(`${colors.dim}${'─'.repeat(60)}${colors.reset}`);
+    console.log(`${colors.dim}${"─".repeat(60)}${colors.reset}`);
   });
 
   afterAll(() => {
-    const separator = '▓'.repeat(80);
+    const separator = "▓".repeat(80);
     console.log(`\n${colors.cyan}${separator}${colors.reset}`);
     console.log(`${colors.bright}${colors.green}✅ [SUITE COMPLETE] ${currentSuiteName}${colors.reset}`);
     console.log(`${colors.cyan}${separator}${colors.reset}\n`);
