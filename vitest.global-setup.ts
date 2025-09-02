@@ -1,4 +1,5 @@
 import { GenericContainer, StartedTestContainer } from "testcontainers";
+import networkConfig from "./aleo-config";
 
 function parseBooleanEnv(value: string | undefined, defaultValue = true): boolean {
   if (value === undefined || value === "") {
@@ -33,13 +34,14 @@ const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || 
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 
 async function waitForConsensusVersion(
-  port: number,
   targetVersion: string,
   timeout: number = CONSENSUS_CHECK_TIMEOUT,
   interval: number = CONSENSUS_CHECK_INTERVAL,
 ): Promise<void> {
+  const networkName = networkConfig.defaultNetwork;
+  const endpoint = networkConfig.networks[networkName].endpoint;
   const startTime = Date.now();
-  const apiUrl = `http://localhost:${port}/testnet/consensus_version`;
+  const apiUrl = `http://${endpoint}/testnet/consensus_version`;
 
   console.log(`Waiting for consensus version >= ${targetVersion} at ${apiUrl}`);
   console.log(`Timeout: ${timeout}ms, Check interval: ${interval}ms`);
