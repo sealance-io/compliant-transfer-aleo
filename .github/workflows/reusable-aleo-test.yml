@@ -58,8 +58,8 @@ jobs:
     name: ${{ inputs.job_name }}
     runs-on: ubuntu-latest
     env:
-      DEVNET_CHECK_TIMEOUT: 720000  # 12 minutes in ms
-      DEVNET_CHECK_INTERVAL: 5000   # 5 seconds in ms
+      DEVNET_CHECK_TIMEOUT: 720000 # 12 minutes in ms
+      DEVNET_CHECK_INTERVAL: 5000 # 5 seconds in ms
       DEVNET_ENDPOINT: "http://host.docker.internal:3030"
     permissions:
       contents: "read"
@@ -112,17 +112,17 @@ jobs:
         run: |
           # strict mode
           set -euo pipefail
-          
+
           # Configuration with defaults
           DEVNET_ENDPOINT="${DEVNET_ENDPOINT:-http://host.docker.internal:3030}"
           TIMEOUT="${DEVNET_CHECK_TIMEOUT:-180000}"  # in milliseconds
           INTERVAL="${DEVNET_CHECK_INTERVAL:-5000}"   # in milliseconds
-          
+
           # Parse DEVNET_ENDPOINT to extract host and port
           # Remove http:// or https:// prefix if present
           ENDPOINT_CLEAN="${DEVNET_ENDPOINT#http://}"
           ENDPOINT_CLEAN="${ENDPOINT_CLEAN#https://}"
-          
+
           # Extract host and port using POSIX-compliant methods
           if echo "$ENDPOINT_CLEAN" | grep -q ":"; then
               HOST=$(echo "$ENDPOINT_CLEAN" | cut -d: -f1)
@@ -131,7 +131,7 @@ jobs:
               HOST="$ENDPOINT_CLEAN"
               PORT="3030"  # Default to 3030 if no port specified
           fi
-          
+
           # Special handling for host.docker.internal
           # In GitHub Actions runners, this should be replaced with localhost
           if [ "$HOST" = "host.docker.internal" ]; then
@@ -143,27 +143,27 @@ jobs:
                   HOST="localhost"
               fi
           fi
-          
+
           # Validate port is a number using grep
           if ! echo "$PORT" | grep -qE '^[0-9]+$'; then
               echo "Error: Invalid port number: $PORT"
               exit 1
           fi
-          
+
           # Convert milliseconds to seconds for bash
           TIMEOUT_SEC=$((TIMEOUT / 1000))
           INTERVAL_SEC=$((INTERVAL / 1000))
-          
+
           # API endpoint
           API_URL="http://${HOST}:${PORT}/testnet/program/credits.aleo"
-          
+
           echo "Waiting for Aleo devnet to be ready at ${API_URL}"
           echo "Endpoint: ${DEVNET_ENDPOINT} (using ${HOST}:${PORT})"
           echo "Timeout: ${TIMEOUT}ms (${TIMEOUT_SEC}s), Check interval: ${INTERVAL}ms (${INTERVAL_SEC}s)"
-          
+
           # Track start time
           START_TIME=$(date +%s)
-          
+
           # Main polling loop
           while true; do
               # Calculate elapsed time
