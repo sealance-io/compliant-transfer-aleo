@@ -60,7 +60,9 @@ jobs:
     env:
       DEVNET_CHECK_TIMEOUT: 720000 # 12 minutes in ms
       DEVNET_CHECK_INTERVAL: 5000 # 5 seconds in ms
+      # TODO: Consolidate these 2 env vars
       DEVNET_ENDPOINT: "http://host.docker.internal:3030"
+      TESTNET_ENDPOINT: "http://host.docker.internal:3030"
     permissions:
       contents: "read"
       packages: "read"
@@ -228,7 +230,6 @@ jobs:
         env:
           DOCKER_HOST: "unix:///var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: true
-          TESTNET_ENDPOINT: "http://host.docker.internal:3030"
           USE_TEST_CONTAINERS: 0
 
       - name: Stop aleo-devnet
