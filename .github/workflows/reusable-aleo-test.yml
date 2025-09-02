@@ -57,6 +57,10 @@ jobs:
     if: ${{ needs.check-changes.outputs.should_run == 'true' }}
     name: ${{ inputs.job_name }}
     runs-on: ubuntu-latest
+    env:
+      DEVNET_CHECK_TIMEOUT: 180000  # 3 minutes in ms
+      DEVNET_CHECK_INTERVAL: 5000   # 5 seconds in ms
+      PORT: 3030
     permissions:
       contents: "read"
       packages: "read"
@@ -101,6 +105,57 @@ jobs:
       # Start devnet since compiling will try to fetch 'credits.aleo'
       - name: Start aleo-devnet
         run: docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0
+
+      # Wait for 'credit.aleo' to fetch-able
+      - name: Wait for Aleo Devnet Ready
+        run: |
+          # Wait for credits.aleo program to be available
+          PORT="${PORT:-3030}"
+          TIMEOUT="${DEVNET_CHECK_TIMEOUT:-180000}"
+          INTERVAL="${DEVNET_CHECK_INTERVAL:-5000}"
+          
+          TIMEOUT_SEC=$((TIMEOUT / 1000))
+          INTERVAL_SEC=$((INTERVAL / 1000))
+          API_URL="http://localhost:${PORT}/testnet/program/credits.aleo"
+          
+          echo "Waiting for Aleo devnet to be ready at ${API_URL}"
+          echo "Timeout: ${TIMEOUT}ms, Check interval: ${INTERVAL}ms"
+          
+          START_TIME=$(date +%s)
+          
+          while true; do
+              CURRENT_TIME=$(date +%s)
+              ELAPSED=$((CURRENT_TIME - START_TIME))
+              
+              if [ $ELAPSED -ge $TIMEOUT_SEC ]; then
+                  echo "❌ Timeout waiting for Aleo devnet to be ready."
+                  exit 1
+              fi
+              
+              # Get both HTTP status and response body
+              if FULL_RESPONSE=$(curl -s -w "\n%{http_code}" -m 5 "${API_URL}" 2>/dev/null); then
+                  HTTP_STATUS=$(echo "$FULL_RESPONSE" | tail -n 1)
+                  RESPONSE=$(echo "$FULL_RESPONSE" | head -n -1)
+                  
+                  # Check for successful HTTP status (2xx) and non-empty response
+                  if [[ "$HTTP_STATUS" =~ ^2[0-9][0-9]$ ]]; then
+                      TRIMMED_RESPONSE=$(echo "$RESPONSE" | tr -d '[:space:]')
+                      
+                      if [[ -n "$TRIMMED_RESPONSE" ]]; then
+                          echo "✅ Aleo devnet is ready! HTTP ${HTTP_STATUS} - credits.aleo program loaded"
+                          break
+                      else
+                          echo "[${ELAPSED}s] HTTP ${HTTP_STATUS} but empty response - devnet still initializing..."
+                      fi
+                  elif [[ -n "$HTTP_STATUS" ]]; then
+                      echo "[${ELAPSED}s] HTTP ${HTTP_STATUS} - waiting for devnet to be ready..."
+                  fi
+              else
+                  echo "[${ELAPSED}s] Connection failed - waiting for devnet to start..."
+              fi
+              
+              sleep $INTERVAL_SEC
+          done
 
       - name: Compile leo
         run: npm run compile
