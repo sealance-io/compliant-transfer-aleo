@@ -5,9 +5,9 @@ import networkConfig from "../aleo-config";
 const execAsync = promisify(exec);
 
 export async function upgradeProgram(programName: string, privateKey: string) {
-  const endpoint = networkConfig.networks[networkConfig.defaultNetwork].endpoint;
   const networkName = networkConfig.defaultNetwork;
-  const isDevnet = endpoint.includes("localhost");
+  const endpoint = networkConfig.networks[networkName].endpoint;
+  const isDevnet = endpoint.includes("localhost") || endpoint.includes("host.docker.internal");
   console.log(
     `cd artifacts/leo/${programName} && leo upgrade --broadcast ${isDevnet ? "--devnet" : ""} --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName}`,
   );
