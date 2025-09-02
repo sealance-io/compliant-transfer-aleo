@@ -148,7 +148,7 @@ export async function setup() {
     console.log(`Container started with mapped port: ${mappedPort}`);
   }
 
-  await waitForConsensusVersion(mappedPort, MIN_CONSENSUS_VERSION);
+  await waitForConsensusVersion(MIN_CONSENSUS_VERSION);
 }
 
 // Teardown function - executed after all tests
