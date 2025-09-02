@@ -61,7 +61,6 @@ jobs:
       DEVNET_CHECK_TIMEOUT: 720000  # 12 minutes in ms
       DEVNET_CHECK_INTERVAL: 5000   # 5 seconds in ms
       DEVNET_ENDPOINT: "http://host.docker.internal:3030"
-      PORT: 3030
     permissions:
       contents: "read"
       packages: "read"
@@ -113,7 +112,7 @@ jobs:
           #!/bin/bash
           
           # Configuration with defaults
-          DEVNET_ENDPOINT="${DEVNET_ENDPOINT:-localhost:3030}"
+          DEVNET_ENDPOINT="${DEVNET_ENDPOINT:-http://host.docker.internal:3030}"
           TIMEOUT="${DEVNET_CHECK_TIMEOUT:-180000}"  # in milliseconds
           INTERVAL="${DEVNET_CHECK_INTERVAL:-5000}"   # in milliseconds
           
@@ -133,6 +132,18 @@ jobs:
               PORT="3030"  # Default to 3030 if no port specified
           fi
           
+          # Special handling for host.docker.internal
+          # In GitHub Actions runners, this should be replaced with localhost
+          if [[ "$HOST" == "host.docker.internal" ]]; then
+              # Check if we're inside a container
+              if [ -f /.dockerenv ]; then
+                  echo "Running inside Docker, using host.docker.internal"
+              else
+                  echo "Not in Docker, converting host.docker.internal to localhost"
+                  HOST="localhost"
+              fi
+          fi
+          
           # Validate port is a number
           if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
               echo "Error: Invalid port number: $PORT"
@@ -147,7 +158,7 @@ jobs:
           API_URL="http://${HOST}:${PORT}/testnet/program/credits.aleo"
           
           echo "Waiting for Aleo devnet to be ready at ${API_URL}"
-          echo "Endpoint: ${DEVNET_ENDPOINT} (parsed as ${HOST}:${PORT})"
+          echo "Endpoint: ${DEVNET_ENDPOINT} (using ${HOST}:${PORT})"
           echo "Timeout: ${TIMEOUT}ms (${TIMEOUT_SEC}s), Check interval: ${INTERVAL}ms (${INTERVAL_SEC}s)"
           
           # Track start time
