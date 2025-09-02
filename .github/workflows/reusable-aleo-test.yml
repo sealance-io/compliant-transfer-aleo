@@ -235,5 +235,8 @@ jobs:
       - name: Stop aleo-devnet
         if: always() # Run even if previous steps fails for cleanup
         run: |
-          docker ps -q | tr ' ' '\n' | xargs -I {} docker stop {}
-          docker ps -a -q | tr ' ' '\n' | xargs -I {} docker rm {}
+          # Stop all running containers (if any exist)
+          docker ps -q | xargs -r docker stop 2>/dev/null || true
+          
+          # Remove all containers (if any exist)
+          docker ps -a -q | xargs -r docker rm -f 2>/dev/null || true
