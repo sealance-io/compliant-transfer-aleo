@@ -82,7 +82,7 @@ jobs:
         uses: sealance-io/setup-doko-js-action@v0.1.0
         with:
           doko-repo: "sealance-io/doko-js"
-          doko-branch: "0ae61e5854006dbc6dcc1fe5d7f9f39a2e1648e4"
+          doko-branch: "fixes_to_dokojs"
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
