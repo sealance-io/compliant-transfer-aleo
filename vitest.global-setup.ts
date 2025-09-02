@@ -41,7 +41,7 @@ async function waitForConsensusVersion(
   const networkName = networkConfig.defaultNetwork;
   const endpoint = networkConfig.networks[networkName].endpoint;
   const startTime = Date.now();
-  const apiUrl = `http://${endpoint}/testnet/consensus_version`;
+  const apiUrl = `${endpoint}/testnet/consensus_version`;
 
   console.log(`Waiting for consensus version >= ${targetVersion} at ${apiUrl}`);
   console.log(`Timeout: ${timeout}ms, Check interval: ${interval}ms`);
