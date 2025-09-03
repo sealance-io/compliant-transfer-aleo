@@ -265,3 +265,11 @@ jobs:
           fi
 
           echo "Docker cleanup completed"
+
+      # FINAL step to prevent post-job cleanup errors
+      - name: Disconnect Docker socket
+        if: always()
+        continue-on-error: true
+        run: |
+          # This prevents GitHub Actions from trying to use Docker in post-job cleanup
+          sudo chmod 000 /var/run/docker.sock 2>/dev/null || true
