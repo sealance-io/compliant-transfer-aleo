@@ -547,7 +547,7 @@ describe("test sealed_threshold_policy program", () => {
       account,
       amount,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -601,7 +601,7 @@ describe("test sealed_threshold_policy program", () => {
       account,
       amount,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -684,7 +684,7 @@ describe("test sealed_threshold_policy program", () => {
       recipient,
       amount,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
       recipientMerkleProof,
       investigatorAddress,
     );
@@ -779,7 +779,7 @@ describe("test sealed_threshold_policy program", () => {
       amount,
       accountRecord,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
       senderMerkleProof,
       recipientMerkleProof,
       investigatorAddress,
@@ -882,7 +882,7 @@ describe("test sealed_threshold_policy program", () => {
       amount,
       accountRecord,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
       senderMerkleProof,
       investigatorAddress,
     );
