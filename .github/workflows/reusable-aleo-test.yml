@@ -239,13 +239,13 @@ jobs:
         continue-on-error: true # Job will pass even if this step fails
         run: |
           echo "Starting Docker cleanup..."
-          
+
           # Check if Docker daemon is accessible
           if ! docker version &>/dev/null; then
             echo "Docker daemon not accessible, skipping cleanup"
             exit 0
           fi
-          
+
           # Stop all running containers gracefully
           CONTAINERS=$(docker ps -q)
           if [ -n "$CONTAINERS" ]; then
@@ -254,7 +254,7 @@ jobs:
           else
             echo "No running containers to stop"
           fi
-          
+
           # Remove all containers
           ALL_CONTAINERS=$(docker ps -a -q)
           if [ -n "$ALL_CONTAINERS" ]; then
@@ -263,5 +263,5 @@ jobs:
           else
             echo "No containers to remove"
           fi
-          
+
           echo "Docker cleanup completed"
