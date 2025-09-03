@@ -452,7 +452,7 @@ describe("test compliant_timelock_transfer program", () => {
       ),
     ).rejects.toThrow();
 
-    const largeBlockHeight = latestBlockHeight + 100;
+    const largeBlockHeight = 2 ** 32 - 1; // Max u32
     const change = 1n;
     const amountToSend = amount - change;
     const tx = await timelockContractForAccount.transfer_public_to_priv(
@@ -534,7 +534,7 @@ describe("test compliant_timelock_transfer program", () => {
       ),
     ).rejects.toThrow();
 
-    const largeBlockHeight = latestBlockHeight + 100;
+    const largeBlockHeight = 2 ** 32 - 1; // Max u32
     const change = 1n;
     const amountToSend = accountRecord.amount - change;
 
@@ -612,6 +612,7 @@ describe("test compliant_timelock_transfer program", () => {
       senderMerkleProof,
       latestBlockHeight,
     );
+    // failed here
     await expect(tx.wait()).rejects.toThrow();
 
     // can send the remaining amount
@@ -688,7 +689,7 @@ describe("test compliant_timelock_transfer program", () => {
       ),
     ).rejects.toThrow();
 
-    const largeBlockHeight = latestBlockHeight + 100;
+    const largeBlockHeight = 2 ** 32 - 1; // Max u32
     const change = 1n;
     const amountToSend = accountTokenRecord.amount - change;
 

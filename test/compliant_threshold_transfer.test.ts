@@ -548,7 +548,7 @@ describe("test compliant_threshold_transfer program", () => {
       account,
       amount,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -602,7 +602,7 @@ describe("test compliant_threshold_transfer program", () => {
       account,
       amount,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -685,7 +685,7 @@ describe("test compliant_threshold_transfer program", () => {
       recipient,
       amount,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
       recipientMerkleProof,
       investigatorAddress,
     );
@@ -780,7 +780,7 @@ describe("test compliant_threshold_transfer program", () => {
       amount,
       accountRecord,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
       senderMerkleProof,
       recipientMerkleProof,
       investigatorAddress,
@@ -883,7 +883,7 @@ describe("test compliant_threshold_transfer program", () => {
       amount,
       accountRecord,
       accountStateRecord,
-      (await getLatestBlockHeight()) + 50,
+      2 ** 32 - 1, // Max u32
       senderMerkleProof,
       investigatorAddress,
     );
