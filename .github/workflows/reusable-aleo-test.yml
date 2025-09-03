@@ -237,6 +237,6 @@ jobs:
         run: |
           # Stop all running containers (if any exist)
           docker ps -q | xargs -r docker stop 2>/dev/null || true
-          
+
           # Remove all containers (if any exist)
           docker ps -a -q | xargs -r docker rm -f 2>/dev/null || true
