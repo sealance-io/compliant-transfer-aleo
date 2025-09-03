@@ -234,7 +234,7 @@ jobs:
 
       - name: Stop aleo-devnet
         if: always() # Run even if previous steps fails for cleanup
-        continue-on-error: true  # Job will pass even if this step fails
+        continue-on-error: true # Job will pass even if this step fails
         run: |
           # Stop all running containers (if any exist)
           docker ps -q | xargs -r docker stop 2>/dev/null || true
