@@ -76,6 +76,9 @@ jobs:
       options: --cpus 2 --add-host=host.docker.internal:host-gateway
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Setup doko-js-cli
@@ -110,7 +113,6 @@ jobs:
 
       # Wait for 'credit.aleo' to fetch-able
       - name: Wait for Aleo Devnet Ready
-        shell: bash
         run: |
           # strict mode
           set -euo pipefail
@@ -236,8 +238,30 @@ jobs:
         if: always() # Run even if previous steps fails for cleanup
         continue-on-error: true # Job will pass even if this step fails
         run: |
-          # Stop all running containers (if any exist)
-          docker ps -q | xargs -r docker stop 2>/dev/null || true
-
-          # Remove all containers (if any exist)
-          docker ps -a -q | xargs -r docker rm -f 2>/dev/null || true
+          echo "Starting Docker cleanup..."
+          
+          # Check if Docker daemon is accessible
+          if ! docker version &>/dev/null; then
+            echo "Docker daemon not accessible, skipping cleanup"
+            exit 0
+          fi
+          
+          # Stop all running containers gracefully
+          CONTAINERS=$(docker ps -q)
+          if [ -n "$CONTAINERS" ]; then
+            echo "Stopping containers: $CONTAINERS"
+            echo "$CONTAINERS" | xargs -r docker stop --time 10 2>/dev/null || true
+          else
+            echo "No running containers to stop"
+          fi
+          
+          # Remove all containers
+          ALL_CONTAINERS=$(docker ps -a -q)
+          if [ -n "$ALL_CONTAINERS" ]; then
+            echo "Removing containers: $ALL_CONTAINERS"
+            echo "$ALL_CONTAINERS" | xargs -r docker rm -f 2>/dev/null || true
+          else
+            echo "No containers to remove"
+          fi
+          
+          echo "Docker cleanup completed"
