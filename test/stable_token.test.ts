@@ -9,7 +9,6 @@ import {
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
   INVESTIGATOR_INDEX,
-  MAX_TREE_SIZE12,
   MINTER_ROLE,
   NONE_ROLE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
@@ -23,10 +22,10 @@ import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import { Account } from "@provablehq/sdk";
-import { Report_token_credsContract } from "../artifacts/js/report_token_creds";
+import { Sealed_stable_tokenContract } from "../artifacts/js/sealed_stable_token";
 import { stringToBigInt } from "../lib/Conversion";
-import { decryptToken, decryptCredentials } from "../artifacts/js/leo2js/report_token_creds";
-import { Token, Credentials } from "../artifacts/js/types/report_token_creds";
+import { decryptToken, decryptCredentials } from "../artifacts/js/leo2js/sealed_stable_token";
+import { Token, Credentials } from "../artifacts/js/types/sealed_stable_token";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -56,26 +55,22 @@ const burnerPrivKey = contract.getPrivateKey(burner);
 const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
 const spenderPrivKey = contract.getPrivateKey(spender);
 
-const reportTokenContract = new Report_token_credsContract({
+const reportTokenContract = new Sealed_stable_tokenContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const reportTokenContractForAdmin = new Report_token_credsContract({
+const reportTokenContractForAdmin = new Sealed_stable_tokenContract({
   mode,
   privateKey: adminPrivKey,
 });
-const reportTokenContractForAccount = new Report_token_credsContract({
+const reportTokenContractForAccount = new Sealed_stable_tokenContract({
   mode,
   privateKey: accountPrivKey,
 });
 
-const merkleTreeContract = new Merkle_tree12Contract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-
 const amount = 10n;
 let root: bigint;
+const MAX_TREE_SIZE12 = 13; 
 
 async function getLatestBlockHeight() {
   const response = (await fetch(
@@ -97,18 +92,13 @@ describe("test sealed_report_token program", () => {
      // await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
     //  await fundWithCredits(deployerPrivKey, burner, fundedAmount);
     //  await fundWithCredits(deployerPrivKey, spender, fundedAmount);
-    },
-    timeout,
-  );
+    });
 
   test(
     `deploy needed programs`,
     async () => {
-      await deployIfNotDeployed(merkleTreeContract);
       await deployIfNotDeployed(reportTokenContract);
-    },
-    timeout,
-  );
+    });
 
   test(
     `test update_admin_address`,
@@ -120,9 +110,7 @@ describe("test sealed_report_token program", () => {
       expect(adminRole).toBe(adminAddress);
 
 
-    },
-    timeout,
-  );
+    });
 
   test(
     `test update_investigator_address`,
@@ -132,9 +120,7 @@ describe("test sealed_report_token program", () => {
       let investigatorRole = await reportTokenContract.roles(INVESTIGATOR_INDEX);
       expect(investigatorRole).toBe(investigatorAddress);
 
-    },
-    timeout,
-  );
+    });
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -160,9 +146,7 @@ describe("test sealed_report_token program", () => {
         getSiblingPath(tree, freezedAccountLeafIndices[0], MAX_TREE_SIZE12),
         getSiblingPath(tree, freezedAccountLeafIndices[1], MAX_TREE_SIZE12),
       ];
-    },
-    timeout,
-  );
+    });
 
   test(
     `test initialize`,
@@ -188,9 +172,7 @@ describe("test sealed_report_token program", () => {
       expect(initializedRoot).toBe(emptyRoot);
       expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
 
-    },
-    timeout,
-  );
+    });
 
   let accountRecord: Token;
   let freezedAccountRecord: Token;
@@ -203,9 +185,7 @@ describe("test sealed_report_token program", () => {
       accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
       expect(accountRecord.amount).toBe(amount * 20n);
       expect(accountRecord.owner).toBe(account);
-    },
-    timeout,
-  );
+    });
 
   test(
     `test update_freeze_list`,
@@ -221,9 +201,7 @@ describe("test sealed_report_token program", () => {
       expect(freezedAccountByIndex).toBe(freezedAccount);
       expect(lastIndex).toBe(1);
 
-    },
-    timeout,
-  );
+    });
 
   test(
     `test transfer_private`,
@@ -240,13 +218,10 @@ describe("test sealed_report_token program", () => {
         amount,
         accountRecord,
         accountCreds,
-        recipientMerkleProof,
         ZERO_ADDRESS,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
-    },
-    timeout,
-  );
+    });
 
 });
