@@ -141,13 +141,7 @@ describe("test freeze_registry program", () => {
     let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       // Cannot unfreeze an unfrozen account
-      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(
-        frozenAccount,
-        false,
-        1,
-        currentRoot,
-        root,
-      );
+      rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, false, 1, currentRoot, root);
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);

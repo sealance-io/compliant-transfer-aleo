@@ -144,8 +144,7 @@ describe("test sealed_threshold_policy program", () => {
 
     tx = await thresholdContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
     await expect(tx.wait()).rejects.toThrow();
-  },
-  );
+  });
 
   test(`test update_investigator_address`, async () => {
     let tx = await thresholdContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
@@ -160,8 +159,7 @@ describe("test sealed_threshold_policy program", () => {
 
     const rejectedTx = await thresholdContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
     await expect(rejectedTx.wait()).rejects.toThrow();
-  },
-  );
+  });
 
   test(`test update_block_height_window`, async () => {
     // only the admin can call update the block height window
@@ -175,8 +173,7 @@ describe("test sealed_threshold_policy program", () => {
 
     const blockHeightWindow = await thresholdContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
     expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
-  },
-  );
+  });
 
   let accountRecord: Token;
   let frozenAccountRecord: Token;
@@ -368,10 +365,7 @@ describe("test sealed_threshold_policy program", () => {
 
     const previousAmount = recipientRecord.amount;
 
-    recipientRecord = decryptToken(
-      (tx as any).transaction.execution.transitions[3].outputs[0].value,
-      recipientPrivKey,
-    );
+    recipientRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, recipientPrivKey);
     const accountRecord = decryptToken(
       (tx as any).transaction.execution.transitions[4].outputs[1].value,
       accountPrivKey,
@@ -538,9 +532,7 @@ describe("test sealed_threshold_policy program", () => {
     );
 
     // If the estimated block height is too low the transaction will fail
-    await expect(
-      thresholdContractForAccount.transfer_public(account, amount, accountStateRecord, 0),
-    ).rejects.toThrow();
+    await expect(thresholdContractForAccount.transfer_public(account, amount, accountStateRecord, 0)).rejects.toThrow();
 
     // If the estimated block height is too high the transaction will fail
     rejectedTx = await thresholdContractForAccount.transfer_public(
