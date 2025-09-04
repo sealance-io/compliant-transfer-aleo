@@ -60,8 +60,6 @@ jobs:
     env:
       DEVNET_CHECK_TIMEOUT: 720000 # 12 minutes in ms
       DEVNET_CHECK_INTERVAL: 5000 # 5 seconds in ms
-      # TODO: Consolidate these 2 env vars
-      DEVNET_ENDPOINT: "http://host.docker.internal:3030"
       TESTNET_ENDPOINT: "http://host.docker.internal:3030"
     permissions:
       contents: "read"
@@ -126,13 +124,13 @@ jobs:
           set -euo pipefail
 
           # Configuration with defaults
-          DEVNET_ENDPOINT="${DEVNET_ENDPOINT:-http://host.docker.internal:3030}"
+          TESTNET_ENDPOINT="${TESTNET_ENDPOINT:-http://host.docker.internal:3030}"
           TIMEOUT="${DEVNET_CHECK_TIMEOUT:-180000}"  # in milliseconds
           INTERVAL="${DEVNET_CHECK_INTERVAL:-5000}"   # in milliseconds
 
-          # Parse DEVNET_ENDPOINT to extract host and port
+          # Parse TESTNET_ENDPOINT to extract host and port
           # Remove http:// or https:// prefix if present
-          ENDPOINT_CLEAN="${DEVNET_ENDPOINT#http://}"
+          ENDPOINT_CLEAN="${TESTNET_ENDPOINT#http://}"
           ENDPOINT_CLEAN="${ENDPOINT_CLEAN#https://}"
 
           # Extract host and port using POSIX-compliant methods
@@ -170,7 +168,7 @@ jobs:
           API_URL="http://${HOST}:${PORT}/testnet/program/credits.aleo"
 
           echo "Waiting for Aleo devnet to be ready at ${API_URL}"
-          echo "Endpoint: ${DEVNET_ENDPOINT} (using ${HOST}:${PORT})"
+          echo "Endpoint: ${TESTNET_ENDPOINT} (using ${HOST}:${PORT})"
           echo "Timeout: ${TIMEOUT}ms (${TIMEOUT_SEC}s), Check interval: ${INTERVAL}ms (${INTERVAL_SEC}s)"
 
           # Track start time
