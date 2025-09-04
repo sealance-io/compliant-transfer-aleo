@@ -10,6 +10,7 @@ import {
   BURNER_ROLE,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
+  FREEZE_LIST_MANAGER_INDEX,
   INVESTIGATOR_INDEX,
   MAX_TREE_SIZE,
   MINTER_ROLE,
@@ -46,6 +47,7 @@ const [
   burner,
   supplyManager,
   spender,
+  freezeListManager,
 ] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
@@ -57,6 +59,7 @@ const minterPrivKey = contract.getPrivateKey(minter);
 const burnerPrivKey = contract.getPrivateKey(burner);
 const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
 const spenderPrivKey = contract.getPrivateKey(spender);
+const freezeListManagerPrivKey = contract.getPrivateKey(freezeListManager);
 
 const reportTokenContract = new Sealed_report_tokenContract({
   mode,
@@ -65,6 +68,10 @@ const reportTokenContract = new Sealed_report_tokenContract({
 const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   mode,
   privateKey: adminPrivKey,
+});
+const reportTokenContractForFreezeListManager = new Sealed_report_tokenContract({
+  mode,
+  privateKey: freezeListManagerPrivKey,
 });
 const reportTokenContractForAccount = new Sealed_report_tokenContract({
   mode,
@@ -141,6 +148,16 @@ describe("test sealed_report_token program", () => {
 
     const rejectedTx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
     await expect(rejectedTx.wait()).rejects.toThrow();
+  });
+
+  test(`test update_freeze_list_manager`, async () => {
+    let tx = await reportTokenContractForAdmin.update_role(freezeListManager, FREEZE_LIST_MANAGER_INDEX);
+    await tx.wait();
+    const freezeListManagerRole = await reportTokenContract.roles(FREEZE_LIST_MANAGER_INDEX);
+    expect(freezeListManagerRole).toBe(freezeListManager);
+
+    tx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
+    await expect(tx.wait()).rejects.toThrow();
   });
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -394,7 +411,8 @@ describe("test sealed_report_token program", () => {
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
     expect(lastIndex).toBe(1);
 
-    tx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+    // Also the freeze list manager can update the freeze list
+    tx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
     await tx.wait();
     isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
     frozenAccountByIndex = await reportTokenContract.freeze_list_index(1);

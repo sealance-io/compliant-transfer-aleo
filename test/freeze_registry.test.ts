@@ -8,6 +8,7 @@ import {
   BLOCK_HEIGHT_WINDOW_INDEX,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
+  FREEZE_LIST_MANAGER_INDEX,
   MAX_TREE_SIZE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
@@ -27,10 +28,11 @@ const contract = new BaseContract({ mode });
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, frozenAccount] = contract.getAccounts();
+const [deployerAddress, adminAddress, frozenAccount, , , , , , , freezeListManager] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
+const freezeListManagerPrivKey = contract.getPrivateKey(freezeListManager);
 
 const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
@@ -40,10 +42,13 @@ const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract(
   mode,
   privateKey: adminPrivKey,
 });
-
 const freezeRegistryContractForFrozenAccount = new Sealance_freezelist_registryContract({
   mode,
   privateKey: frozenAccountPrivKey,
+});
+const freezeRegistryContractForFreezeListManager = new Sealance_freezelist_registryContract({
+  mode,
+  privateKey: freezeListManagerPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -73,6 +78,16 @@ describe("test freeze_registry program", () => {
     expect(adminRole).toBe(adminAddress);
 
     tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
+    await expect(tx.wait()).rejects.toThrow();
+  });
+
+  test(`test update_freeze_list_manager`, async () => {
+    let tx = await freezeRegistryContractForAdmin.update_role(freezeListManager, FREEZE_LIST_MANAGER_INDEX);
+    await tx.wait();
+    const freezeListManagerRole = await freezeRegistryContract.roles(FREEZE_LIST_MANAGER_INDEX);
+    expect(freezeListManagerRole).toBe(freezeListManager);
+
+    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
     await expect(tx.wait()).rejects.toThrow();
   });
 
@@ -173,7 +188,8 @@ describe("test freeze_registry program", () => {
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
     expect(lastIndex).toBe(1);
 
-    tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+    // Also the freeze list manager can update the freeze list
+    tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
     await tx.wait();
     isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
     frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);

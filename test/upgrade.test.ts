@@ -1,12 +1,11 @@
 import { ExecutionMode } from "@doko-js/core";
 import { BaseContract } from "../contract/base-contract";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { fundedAmount, OWNER_INDEX, ZERO_ADDRESS } from "../lib/Constants";
+import { ADMIN_INDEX, fundedAmount, ZERO_ADDRESS } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { getProgramEdition, upgradeProgram } from "../lib/Upgrade";
-import { updateOwnerRole } from "../lib/Role";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -18,10 +17,6 @@ const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
 const freezeRegistryContract = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
@@ -41,24 +36,25 @@ describe("test upgradeability", () => {
   test(`test upgrades`, async () => {
     // It shouldn't be possible to upgrade the merkle_Tree program
     const merkleTreeEditionBefore = await getProgramEdition("merkle_tree");
-    let isUpgradeSuccessful = await upgradeProgram("merkle_tree", deployerPrivKey);
+    let isUpgradeSuccessful = await upgradeProgram("merkle_tree", adminPrivKey);
     const merkleTreeEditionAfter = await getProgramEdition("merkle_tree");
     expect(isUpgradeSuccessful).toBe(false);
     expect(merkleTreeEditionBefore).toBe(merkleTreeEditionAfter);
 
     let freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
-    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", deployerPrivKey);
+    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
     let freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
     expect(isUpgradeSuccessful).toBe(true);
     expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
 
-    const owner = await freezeRegistryContract.roles(OWNER_INDEX, ZERO_ADDRESS);
-    if (owner !== deployerAddress) {
-      await updateOwnerRole(freezeRegistryContractForAdmin, deployerAddress);
+    const admin = await freezeRegistryContract.roles(ADMIN_INDEX, ZERO_ADDRESS);
+    if (admin !== adminAddress) {
+      const tx = await freezeRegistryContract.update_role(adminAddress, ADMIN_INDEX);
+      await tx.wait();
     }
-    // only the owner should be able to upgrade freeze registry program
+    // only the admin should be able to upgrade freeze registry program
     freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
-    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
+    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", deployerPrivKey);
     freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
     expect(isUpgradeSuccessful).toBe(false);
     expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);

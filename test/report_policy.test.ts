@@ -20,6 +20,7 @@ import {
   emptyRoot,
   fundedAmount,
   policies,
+  FREEZE_LIST_MANAGER_INDEX,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -36,13 +37,26 @@ const { tokenId } = policies.report;
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, investigatorAddress, frozenAccount, account, recipient] = contract.getAccounts();
+const [
+  deployerAddress,
+  adminAddress,
+  investigatorAddress,
+  frozenAccount,
+  account,
+  recipient,
+  ,
+  ,
+  ,
+  ,
+  freezeListManager,
+] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
 const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
+const freezeListManagerPrivKey = contract.getPrivateKey(freezeListManager);
 
 const tokenRegistryContract = new Token_registryContract({
   mode,
@@ -71,6 +85,10 @@ const reportPolicyContractForAccount = new Sealed_report_policyContract({
 const reportPolicyContractForFrozenAccount = new Sealed_report_policyContract({
   mode,
   privateKey: frozenAccountPrivKey,
+});
+const reportPolicyContractForFreezeListManager = new Sealed_report_policyContract({
+  mode,
+  privateKey: freezeListManagerPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -128,6 +146,16 @@ describe("test sealed_report_policy program", () => {
 
     const rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
     await expect(rejectedTx.wait()).rejects.toThrow();
+  });
+
+  test(`test update_freeze_list_manager`, async () => {
+    let tx = await reportPolicyContractForAdmin.update_role(freezeListManager, FREEZE_LIST_MANAGER_INDEX);
+    await tx.wait();
+    const freezeListManagerRole = await reportPolicyContract.roles(FREEZE_LIST_MANAGER_INDEX);
+    expect(freezeListManagerRole).toBe(freezeListManager);
+
+    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
+    await expect(tx.wait()).rejects.toThrow();
   });
 
   let accountRecord: Token;
@@ -257,7 +285,8 @@ describe("test sealed_report_policy program", () => {
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
     expect(lastIndex).toBe(1);
 
-    tx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+    // Also the freeze list manager can update the freeze list
+    tx = await reportPolicyContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
     await tx.wait();
     isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
     frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
