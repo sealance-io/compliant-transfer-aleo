@@ -4,8 +4,8 @@ import merkle_tree.aleo;
 program sealed_report_policy.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        let owner_address: address = roles.get_or_use(OWNER_INDEX, self.program_owner);
+        assert_eq(owner_address, self.program_owner);
     }
     
     const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
@@ -15,8 +15,12 @@ program sealed_report_policy.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
 
+    // Admin: can assign roles and update the freeze list
     const ADMIN_INDEX: u8 = 1u8;
+    // Investigator: receives compliant records with transaction details
     const INVESTIGATOR_INDEX: u8 = 2u8;
+    // Owner: the only one allowed to upgrade the program
+    const OWNER_INDEX: u8 = 4u8;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;

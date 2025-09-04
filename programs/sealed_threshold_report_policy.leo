@@ -4,8 +4,8 @@ import sealance_freezelist_registry.aleo;
 program sealed_threshold_report_policy.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        let owner_address: address = roles.get_or_use(OWNER_INDEX, self.program_owner);
+        assert_eq(owner_address, self.program_owner);
     }
 
     const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
@@ -18,9 +18,12 @@ program sealed_threshold_report_policy.aleo {
     // Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
     const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
 
-    
+    // Admin: manages role assignments and block_height_window updates
     const ADMIN_INDEX: u8 = 1u8;
+    // Investigator: receives compliant records with the transaction details
     const INVESTIGATOR_INDEX: u8 = 2u8;
+    // Owner: the only one allowed to upgrade the program
+    const OWNER_INDEX: u8 = 4u8;
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
     const EPOCH_INDEX: bool = true;
     const THRESHOLD_INDEX: bool = true;

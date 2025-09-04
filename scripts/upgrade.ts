@@ -4,8 +4,8 @@ import { upgradeProgram } from "../lib/Upgrade";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
-const [_, adminAddress] = contract.getAccounts();
-const adminPrivKey = contract.getPrivateKey(adminAddress);
+const [deployerAddress] = await contract.getAccounts();
+const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 
 (async () => {
   if (process.argv.length <= 2) {
@@ -13,7 +13,7 @@ const adminPrivKey = contract.getPrivateKey(adminAddress);
     process.exit(1);
   }
   const programName = process.argv[2];
-  const isUpgradeSuccessful = await upgradeProgram(programName, adminPrivKey);
+  const isUpgradeSuccessful = await upgradeProgram(programName, deployerPrivKey);
   if (!isUpgradeSuccessful) {
     console.error(`Upgrading ${programName} failed`);
     process.exit(1);

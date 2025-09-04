@@ -3,10 +3,30 @@ import merkle_tree.aleo;
 program sealed_report_token.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        let owner_address: address = roles.get_or_use(OWNER_INDEX, self.program_owner);
+        assert_eq(owner_address, self.program_owner);
     }
     
+    // Admin: can assign roles, assign supply roles, mint assets, burn assets, and update the freeze list
+    const ADMIN_INDEX: u8 = 1u8;
+    // Investigator: receives compliant records with transaction details
+    const INVESTIGATOR_INDEX: u8 = 2u8;
+    // Owner: the only one allowed to upgrade the program
+    const OWNER_INDEX: u8 = 4u8;
+    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
+    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
+    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
+    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+    const FREEZE_LIST_LAST_INDEX: bool = true;
+
+    const NONE_ROLE: u8 = 0u8;
+    const MINTER_ROLE: u8 = 1u8;
+    const BURNER_ROLE: u8 = 2u8;
+    const SUPPLY_MANAGER_ROLE: u8 = 3u8;
+
+    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+    const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
+
     record Token {
         owner: address,
         amount: u128
@@ -44,27 +64,10 @@ program sealed_report_token.aleo {
 
     mapping balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => Allowance
-
-    const NONE_ROLE: u8 = 0u8;
-    const MINTER_ROLE: u8 = 1u8;
-    const BURNER_ROLE: u8 = 2u8;
-    const SUPPLY_MANAGER_ROLE: u8 = 3u8;
     mapping supply_roles: address => u8;
 
-    const ADMIN_INDEX: u8 = 1u8;
-    const INVESTIGATOR_INDEX: u8 = 2u8;
     // Maps a role ID to an address (e.g., 1 = admin).
     mapping roles: u8 => address;
-
-    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
-    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-    const FREEZE_LIST_LAST_INDEX: bool = true;
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
     // Mimics an array of frozen addresses by storing them at sequential indexes.

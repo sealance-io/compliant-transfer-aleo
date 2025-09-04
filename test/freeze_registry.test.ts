@@ -27,7 +27,7 @@ const contract = new BaseContract({ mode });
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, frozenAccount, account] = contract.getAccounts();
+const [deployerAddress, adminAddress, frozenAccount] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);

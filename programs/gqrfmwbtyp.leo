@@ -7,8 +7,8 @@ import sealed_timelock_policy.aleo;
 program gqrfmwbtyp.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        let owner_address: address = roles.get_or_use(OWNER_INDEX, self.program_owner);
+        assert_eq(owner_address, self.program_owner);
     }
     
     // The address that received the Aleo credits in the swap
@@ -17,7 +17,10 @@ program gqrfmwbtyp.aleo {
     const DEFAULT_RATE: u128 = 10u128;
     const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
 
+    // Admin: can assign roles and update the token rates
     const ADMIN_INDEX: u8 = 1u8;
+    // Owner: the only one allowed to upgrade the program
+    const OWNER_INDEX: u8 = 4u8;
 
     // Maps a token ID to its exchange rate relative to Aleo credits.
     // Used to calculate how many tokens a user receives per credit.
