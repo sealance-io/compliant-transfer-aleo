@@ -109,7 +109,15 @@ jobs:
 
       # Start devnet since compiling will try to fetch 'credits.aleo'
       - name: Start aleo-devnet
-        run: docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0
+        run: |
+          echo "Starting aleo-devnet container..."
+          docker run -it -d \
+            -p 3030:3030 \
+            --name aleo-devnet \
+            --rm \
+            ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0
+
+          echo "Container started with name: aleo-devnet"
 
       # Wait for 'credit.aleo' to fetch-able
       - name: Wait for Aleo Devnet Ready
@@ -238,38 +246,31 @@ jobs:
         if: always() # Run even if previous steps fails for cleanup
         continue-on-error: true # Job will pass even if this step fails
         run: |
-          echo "Starting Docker cleanup..."
+          echo "Cleaning up aleo-devnet container..."
 
-          # Check if Docker daemon is accessible
-          if ! docker version &>/dev/null; then
-            echo "Docker daemon not accessible, skipping cleanup"
-            exit 0
-          fi
-
-          # Stop all running containers gracefully
-          CONTAINERS=$(docker ps -q)
-          if [ -n "$CONTAINERS" ]; then
-            echo "Stopping containers: $CONTAINERS"
-            echo "$CONTAINERS" | xargs -r docker stop --time 10 2>/dev/null || true
+          # Check if container exists and is running
+          if docker ps --format '{{.Names}}' | grep -q '^aleo-devnet$'; then
+            echo "Stopping aleo-devnet container..."
+            docker stop aleo-devnet 2>/dev/null || echo "Failed to stop aleo-devnet"
+            # Note: --rm flag means container is automatically removed after stopping
+            echo "Container stopped and auto-removed due to --rm flag"
           else
-            echo "No running containers to stop"
+            echo "aleo-devnet container not found or already stopped"
           fi
 
-          # Remove all containers
-          ALL_CONTAINERS=$(docker ps -a -q)
-          if [ -n "$ALL_CONTAINERS" ]; then
-            echo "Removing containers: $ALL_CONTAINERS"
-            echo "$ALL_CONTAINERS" | xargs -r docker rm -f 2>/dev/null || true
+          # Verify cleanup
+          if docker ps -a --format '{{.Names}}' | grep -q '^aleo-devnet$'; then
+            echo "Container still exists, forcing removal..."
+            docker rm -f aleo-devnet 2>/dev/null || true
           else
-            echo "No containers to remove"
+            echo "Container successfully cleaned up"
           fi
 
-          echo "Docker cleanup completed"
+          # Clean up any orphaned containers (just in case)
+          ORPHANED=$(docker ps -aq --filter "ancestor=ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0" 2>/dev/null)
+          if [ -n "$ORPHANED" ]; then
+            echo "Found orphaned aleo-devnet containers, removing..."
+            echo "$ORPHANED" | xargs docker rm -f 2>/dev/null || true
+          fi
 
-      # FINAL step to prevent post-job cleanup errors
-      - name: Disconnect Docker socket
-        if: always()
-        continue-on-error: true
-        run: |
-          # This prevents GitHub Actions from trying to use Docker in post-job cleanup
-          sudo chmod 000 /var/run/docker.sock 2>/dev/null || true
+          echo "Cleanup completed"
