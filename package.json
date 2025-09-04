@@ -31,7 +31,7 @@
     "@types/node": "22.15.19",
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
-    "patch-package": "^8.0.0",
+    "patch-package": "8.0.0",
     "prettier": "3.5.3",
     "rimraf": "6.0.1",
     "testcontainers": "10.24.2",
