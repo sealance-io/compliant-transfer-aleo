@@ -113,11 +113,11 @@ USE_TEST_CONTAINERS=0 npm test
 ```
 
 1. `docker pull ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0`
-2. Run in background: `docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0`  or run in foreground in a dedicated terminal tab : `docker run -it -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0`
+2. Run in background: `docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0` or run in foreground in a dedicated terminal tab : `docker run -it -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0`
 3. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
 4. Kill any running containers like:
-`docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
-`docker ps -a -q | xargs -n 1 -P 8 -I {} docker rm {}`
+   `docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
+   `docker ps -a -q | xargs -n 1 -P 8 -I {} docker rm {}`
 
 When disabling containers, you'll need to run devnet manually outside the test environment.
 For instructions, refer to the [aleo-containers repository](https://github.com/sealance-io/aleo-containers).
