@@ -241,6 +241,8 @@ jobs:
           DOCKER_HOST: "unix:///var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: true
           USE_TEST_CONTAINERS: 0
+          VITEST_HOOK_TIMING: true
+          VITEST_TEST_MARKERS: true
 
       - name: Stop aleo-devnet
         if: always() # Run even if previous steps fails for cleanup
