@@ -110,6 +110,7 @@ describe("test sealed_report_token program", () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
+    await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
 
     await fundWithCredits(deployerPrivKey, minter, fundedAmount);
     await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);

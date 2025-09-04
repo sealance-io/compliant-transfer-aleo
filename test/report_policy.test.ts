@@ -103,6 +103,7 @@ describe("test sealed_report_policy program", () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
+    await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
 
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);

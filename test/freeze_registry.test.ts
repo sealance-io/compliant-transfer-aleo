@@ -61,6 +61,7 @@ describe("test freeze_registry program", () => {
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
+    await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
 
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
