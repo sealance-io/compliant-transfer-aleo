@@ -38,6 +38,7 @@ export default {
         process.env.ALEO_DEVNET_BURNER_PRIVATE_KEY,
         process.env.ALEO_DEVNET_SUPPLY_MANAGER_PRIVATE_KEY,
         process.env.ALEO_DEVNET_SPENDER_PRIVATE_KEY,
+        process.env.ALEO_DEVNET_FREEZE_LIST_MANAGER_PRIVATE_KEY,
       ],
       priorityFee: 0.01,
     },

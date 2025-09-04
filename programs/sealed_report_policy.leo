@@ -2,7 +2,12 @@ import token_registry.aleo;
 import merkle_tree.aleo;
 
 program sealed_report_policy.aleo {
-
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
+    
     const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
@@ -10,8 +15,12 @@ program sealed_report_policy.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
 
+    // Admin: can assign roles, update the freeze list and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
+    // Investigator: receives compliant records with transaction details
     const INVESTIGATOR_INDEX: u8 = 2u8;
+    // Freeze list manager: can update the freeze list
+    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
@@ -82,7 +91,7 @@ program sealed_report_policy.aleo {
     // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
-    // Can only be called by the admin.
+    // Can only be called by the admin and the freeze list manager.
     async transition update_freeze_list(
         public account: address, 
         public is_frozen: bool, 
@@ -94,7 +103,10 @@ program sealed_report_policy.aleo {
     }
     async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
         let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        if(admin_address != caller) {
+            let freeze_list_manager_address: address = roles.get(FREEZE_LIST_MANAGER_INDEX);
+            assert_eq(freeze_list_manager_address, caller);
+        }
 
         let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(previous_root, old_root);

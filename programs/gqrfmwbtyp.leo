@@ -5,13 +5,19 @@ import sealed_timelock_policy.aleo;
 // The 'exchange' program.
 // This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
 program gqrfmwbtyp.aleo {
-
+    @custom
+    async constructor() {
+        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
+        assert_eq(admin_address, self.program_owner);
+    }
+    
     // The address that received the Aleo credits in the swap
     const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
     // The rate that we will use in case there is no defined rate. 
     const DEFAULT_RATE: u128 = 10u128;
     const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
 
+    // Admin: can assign roles, update the token rates and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
 
     // Maps a token ID to its exchange rate relative to Aleo credits.
