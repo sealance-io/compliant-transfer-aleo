@@ -331,11 +331,11 @@ describe("test sealed_report_policy program", () => {
 
   test(`test update_block_height_window`, async () => {
     const rejectedTx = await reportPolicyContractForAccount.update_block_height_window(
-      policies.compliant.blockHeightWindow,
+      policies.report.blockHeightWindow,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await reportPolicyContractForAdmin.update_block_height_window(policies.compliant.blockHeightWindow);
+    const tx = await reportPolicyContractForAdmin.update_block_height_window(policies.report.blockHeightWindow);
     await tx.wait();
   });
 
