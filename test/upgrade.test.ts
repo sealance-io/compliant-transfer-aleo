@@ -25,7 +25,7 @@ const merkleTreeContract = new Merkle_treeContract({
   privateKey: deployerPrivKey,
 });
 
-describe("test compliant_transfer program", () => {
+describe("test upgradeability", () => {
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
 
