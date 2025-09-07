@@ -27,7 +27,7 @@ npm run test:select ./test/merkle_tree.test.ts
 
 # Test environment variables
 USE_TEST_CONTAINERS=false  # Disable testcontainers (requires manual Amareleo)
-AMARELEO_IMAGE=custom/image:tag  # Use custom Amareleo image
+ALEO_DEVNET_IMAGE=custom/image:tag  # Use custom Amareleo image
 AMARELEO_VERBOSITY=2  # Set verbosity (0-4, default 1)
 ```
 
@@ -119,7 +119,7 @@ Tests use a specific setup pattern:
 
 ### Configuration Files
 
-- **`aleo-config.js`**: Network endpoints, accounts, and execution modes
+- **`aleo-config.js`**: Network endpoints, accounts (11 predefined roles), and execution modes
 - **`.env`**: Private keys for different roles (deployer, admin, investigator, users)
 - **`vitest.config.ts`**: Test configuration with 50-minute timeouts, no parallelism
 
@@ -136,13 +136,18 @@ Each Leo program follows this structure:
 
 ### Private Key Management
 
-The system uses 6 predefined accounts from `aleo-config.js`:
+The system uses 11 predefined accounts from `aleo-config.js`:
 1. Deployer (index 0)
 2. Admin (index 1)
 3. Investigator (index 2)
 4. Frozen Account (index 3)
 5. Sender (index 4)
 6. Recipient (index 5)
+7. Minter (index 6)
+8. Burner (index 7)
+9. Supply Manager (index 8)
+10. Spender (index 9)
+11. Freeze List Manager (index 10)
 
 ### Freeze List Implementation
 
