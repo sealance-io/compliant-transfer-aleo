@@ -60,18 +60,9 @@ program sealance_freezelist_registry.aleo {
         freeze_list_index.set(0u32, ZERO_ADDRESS);
     }
 
-    // Can only be called after the contract has been initialized.
-    // Verifies that the operation is valid:
-    // - Cannot freeze an already frozen account or unfreeze an account that isn't frozen.
-    // - When freezing:
-    //   - Ensures the target index in freeze_list_index is empty.
-    //   - Ensures the index is not greater than the last index + 1.
-    //   - If the index equals last index + 1, updates freeze_list_last_index.
-    // - When unfreezing:
-    //   - Ensures the specified index currently holds the account being removed.
-    // Updates both the freeze_list and freeze_list_index mappings accordingly.
-    // Also updates the current Merkle root and stores the previous root for backward compatibility.
+    // Updates the address assigned to a given role.
     // Can only be called by the admin.
+    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_admin_address: address, role: u8) -> Future {
         return f_update_role(new_admin_address, self.caller, role);
     }
