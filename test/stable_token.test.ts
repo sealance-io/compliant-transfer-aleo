@@ -107,7 +107,7 @@ const merkleTreeContract = new Merkle_treeContract({
 const amount = 10n;
 let root: bigint;
 
-describe("test sealed_report_token program", () => {
+describe("test sealed_stable_token program", () => {
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
