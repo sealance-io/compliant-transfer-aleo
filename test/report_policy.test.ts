@@ -450,7 +450,7 @@ describe("test sealed_report_policy program", () => {
       investigatorAddress,
     );
     const [complianceRecord] = await tx.wait();
-    const tokenRecord = (tx as any).transaction.execution.transitions[4].outputs[0].value;
+    const tokenRecord = (tx as any).transaction.execution.transitions[2].outputs[0].value;
 
     const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);

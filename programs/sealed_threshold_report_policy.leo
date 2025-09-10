@@ -393,35 +393,18 @@ program sealed_threshold_report_policy.aleo {
             token_id: TOKEN_ID
         };
 
-        let authorization_call_for_caller: Future = token_registry.aleo/prehook_public(
+        let authorization_call: Future = token_registry.aleo/prehook_public(
             owner,
             amount,
             AUTHORIZED_UNTIL
         );
 
-        let transfer_to_program: Future = token_registry.aleo/transfer_from_public(
+        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_from_public_to_private(
             TOKEN_ID,
             self.caller,
-            PROGRAM_ADDRESS,
-            amount,
-        );
-
-        let program_owner: TokenOwner = TokenOwner {
-            account: PROGRAM_ADDRESS,
-            token_id: TOKEN_ID
-        };
-
-        let authorization_call_for_program: Future = token_registry.aleo/prehook_public(
-            program_owner,
-            amount,
-            AUTHORIZED_UNTIL
-        );
-
-        let transfer_to_recipient: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_public_to_private(
-            TOKEN_ID,
             recipient,
             amount,
-            true,
+            true
         );
 
         assert(estimated_block_height >= input_state_record.latest_block_height);
@@ -450,14 +433,12 @@ program sealed_threshold_report_policy.aleo {
         return (
             compliance_record,
             state_record, 
-            transfer_to_recipient.0, 
+            transfer_call.0, 
             f_transfer_public_to_priv(
                 verify_sender,
                 verify_recipient,
-                authorization_call_for_caller,
-                transfer_to_program,
-                authorization_call_for_program, 
-                transfer_to_recipient.1, 
+                authorization_call,
+                transfer_call.1, 
                 investigator_address,
                 estimated_block_height
             )
@@ -466,10 +447,8 @@ program sealed_threshold_report_policy.aleo {
     async function f_transfer_public_to_priv(
         verify_sender: Future,
         verify_recipient: Future,
-        authorization_call_for_caller: Future,
-        transfer_to_program: Future,
-        authorization_call_for_program: Future,
-        transfer_to_recipient: Future,
+        authorization_call: Future,
+        transfer_call: Future,
         investigator_address: address,
         estimated_block_height: u32
     ) {
@@ -486,10 +465,8 @@ program sealed_threshold_report_policy.aleo {
             : block.height;
         assert(estimated_block_height >= (block.height - window));
 
-        authorization_call_for_caller.await();
-        transfer_to_program.await();
-        authorization_call_for_program.await();
-        transfer_to_recipient.await();
+        authorization_call.await();
+        transfer_call.await();סס׳
     }
 
     // Transfers private tokens from the record owner to a recipient.
