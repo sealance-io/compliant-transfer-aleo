@@ -336,7 +336,7 @@ program sealed_report_policy.aleo {
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
@@ -418,7 +418,7 @@ program sealed_report_policy.aleo {
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
@@ -496,7 +496,7 @@ program sealed_report_policy.aleo {
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
