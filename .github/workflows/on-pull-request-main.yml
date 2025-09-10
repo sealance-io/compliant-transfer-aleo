@@ -31,8 +31,8 @@ on:
         description: "Run Sealed Report Token tests"
         type: boolean
         default: true
-      run_stable_report_token:
-        description: "Run Sealed Stable Token tests"
+      run_standalone_report_token:
+        description: "Run Sealed Standalone Token tests"
         type: boolean
         default: true
   pull_request:
@@ -96,9 +96,9 @@ jobs:
           github.event_name == 'workflow_dispatch' && inputs.run_sealed_report_token || 
           github.event_name == 'pull_request' && false
         }}
-      run_sealed_stable_token: >-
+      run_sealed_standalone_token: >-
         ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_sealed_stable_token || 
+          github.event_name == 'workflow_dispatch' && inputs.run_sealed_standalone_token || 
           github.event_name == 'pull_request' && false
         }}
     steps:
@@ -174,12 +174,12 @@ jobs:
       watched_paths: "programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
-  sealed-stable-token-test:
+  sealed-standalone-token-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_sealed_stable_token == 'true' }}
+    if: ${{ needs.check-trigger.outputs.run_sealed_standalone_token == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
-      job_name: "Sealed Stable Token Test"
-      test_command: "npm run test:select ./test/stable_token.test.ts"
-      watched_paths: "programs/sealed_stable_token.leo,package.json,package-lock.json,aleo-config.js"
+      job_name: "Sealed Standalone Token Test"
+      test_command: "npm run test:select ./test/standalone_token.test.ts"
+      watched_paths: "programs/sealed_standalone_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
