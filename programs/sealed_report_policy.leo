@@ -269,36 +269,24 @@ program sealed_report_policy.aleo {
             token_id: TOKEN_ID
         };
 
-        let authorization_call_for_caller: Future = token_registry.aleo/prehook_public(
+        let authorization_call: Future = token_registry.aleo/prehook_public(
             owner,
             amount,
             AUTHORIZED_UNTIL
         );
 
-        let transfer_to_program: Future = token_registry.aleo/transfer_from_public(
+        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_from_public_to_private(
             TOKEN_ID,
             self.caller,
-            PROGRAM_ADDRESS,
+            recipient,
             amount,
+            true
         );
 
         let program_owner: TokenOwner = TokenOwner {
             account: PROGRAM_ADDRESS,
             token_id: TOKEN_ID
         };
-
-        let authorization_call_for_program: Future = token_registry.aleo/prehook_public(
-            program_owner,
-            amount,
-            AUTHORIZED_UNTIL
-        );
-
-        let transfer_to_recipient: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_public_to_private(
-            TOKEN_ID,
-            recipient,
-            amount,
-            true,
-        );
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: investigator_address,
@@ -308,12 +296,10 @@ program sealed_report_policy.aleo {
         };
         return (
             compliance_record, 
-            transfer_to_recipient.0, 
+            transfer_call.0, 
             f_transfer_public_to_priv(
-                authorization_call_for_caller,
-                transfer_to_program,
-                authorization_call_for_program, 
-                transfer_to_recipient.1, 
+                authorization_call,
+                transfer_call.1, 
                 self.caller,
                 root,
                 investigator_address
@@ -321,10 +307,8 @@ program sealed_report_policy.aleo {
         );
     }
     async function f_transfer_public_to_priv(
-        authorization_call_for_caller: Future,
-        transfer_to_program: Future,
-        authorization_call_for_program: Future,
-        transfer_to_recipient: Future,
+        authorization_call: Future,
+        transfer_call: Future,
         sender: address,
         root: field,
         investigator_address: address
@@ -344,10 +328,8 @@ program sealed_report_policy.aleo {
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(stored_investigator_address, investigator_address);
 
-        authorization_call_for_caller.await();
-        transfer_to_program.await();
-        authorization_call_for_program.await();
-        transfer_to_recipient.await();
+        authorization_call.await();
+        transfer_call.await();
     }
 
     // Transfers private tokens from the record owner to a recipient.

@@ -312,36 +312,24 @@ program sealed_timelock_policy.aleo {
             token_id: TOKEN_ID
         };
 
-        let authorization_call_for_caller: Future = token_registry.aleo/prehook_public(
+        let authorization_call: Future = token_registry.aleo/prehook_public(
             owner,
             amount,
             AUTHORIZED_UNTIL
         );
 
-        let transfer_to_program: Future = token_registry.aleo/transfer_from_public(
+        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_from_public_to_private(
             TOKEN_ID,
             self.caller,
-            PROGRAM_ADDRESS,
+            recipient,
             amount,
+            true
         );
 
         let program_owner: TokenOwner = TokenOwner {
             account: PROGRAM_ADDRESS,
             token_id: TOKEN_ID
         };
-
-        let authorization_call_for_program: Future = token_registry.aleo/prehook_public(
-            program_owner,
-            amount,
-            AUTHORIZED_UNTIL
-        );
-
-        let transfer_to_recipient: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_public_to_private(
-            TOKEN_ID,
-            recipient,
-            amount,
-            true,
-        );
 
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
@@ -358,15 +346,13 @@ program sealed_timelock_policy.aleo {
         return (
             sender_compliant_record,
             recipient_compliant_record,
-            transfer_to_recipient.0, 
+            transfer_call.0, 
             f_transfer_public_to_priv(
                 sealed_token.locked_until,
                 verify_sender,
                 verify_recipient,
-                authorization_call_for_caller,
-                transfer_to_program,
-                authorization_call_for_program, 
-                transfer_to_recipient.1, 
+                authorization_call,
+                transfer_call.1, 
             )
         );
     }
@@ -374,18 +360,14 @@ program sealed_timelock_policy.aleo {
         locked_until: u32,
         verify_sender: Future,
         verify_recipient: Future,
-        authorization_call_for_caller: Future,
-        transfer_to_program: Future,
-        authorization_call_for_program: Future,
-        transfer_to_recipient: Future
+        authorization_call: Future,
+        transfer_call: Future
     ) {
         verify_sender.await();
         verify_recipient.await();
 
-        authorization_call_for_caller.await();
-        transfer_to_program.await();
-        authorization_call_for_program.await();
-        transfer_to_recipient.await();
+        authorization_call.await();
+        transfer_call.await();
 
         assert(locked_until <= block.height);
     }

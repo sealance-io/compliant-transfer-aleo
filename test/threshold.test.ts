@@ -704,7 +704,7 @@ describe("test sealed_threshold_policy program", () => {
     );
     expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
 
-    const tokenRecord = (tx as any).transaction.execution.transitions[6].outputs[0].value;
+    const tokenRecord = (tx as any).transaction.execution.transitions[4].outputs[0].value;
     const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);
     expect(recipientRecord.amount).toBe(amount);
