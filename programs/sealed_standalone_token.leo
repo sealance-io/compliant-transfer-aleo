@@ -1,4 +1,4 @@
-program sealed_stable_token.aleo {
+program sealed_standalone_token.aleo {
     @custom
     async constructor() {
         let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
@@ -18,7 +18,7 @@ program sealed_stable_token.aleo {
         recipient: address
     }
 
-    record Credentials {
+    record Ticket {
         owner: address,
         freeze_list_root: field,
     }
@@ -55,12 +55,12 @@ program sealed_stable_token.aleo {
     mapping supply_roles: address => u8;
 
 
-        // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
-        const ADMIN_INDEX: u8 = 1u8;
-        // Investigator: receives compliant records with transaction details
-        const INVESTIGATOR_INDEX: u8 = 2u8;
-        // Freeze list manager: can update the freeze list
-        const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
+    // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
+    const ADMIN_INDEX: u8 = 1u8;
+    // Investigator: receives compliant records with transaction details
+    const INVESTIGATOR_INDEX: u8 = 2u8;
+    // Freeze list manager: can update the freeze list
+    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     // Maps a role ID to an address (e.g., 1 = admin).
     mapping roles: u8 => address;
 
@@ -242,22 +242,22 @@ program sealed_stable_token.aleo {
         freeze_list_index.set(0u32, ZERO_ADDRESS);
     }
 
-    // Generates a Credentials record for the signer.
+    // Generates a Ticket record for the signer.
     // Allows future private transfers without needing to re-prove non-inclusion in the freeze list.
     // The signer's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
-    async transition get_credentials(sender_merkle_proofs: [MerkleProof;2]) -> (Credentials, Future) {
+    async transition get_ticket(sender_merkle_proofs: [MerkleProof;2]) -> (Ticket, Future) {
         let root: field = verify_non_inclusion(self.signer, sender_merkle_proofs);
 
-        let creds_record: Credentials = Credentials {
+        let ticket_record: Ticket = Ticket {
             owner: self.signer,
             freeze_list_root: root,
         };
 
-        return (creds_record, f_get_credentials(root));
+        return (ticket_record, f_get_ticket(root));
     }
-    async function f_get_credentials(root: field) {
+    async function f_get_ticket(root: field) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
@@ -282,7 +282,7 @@ program sealed_stable_token.aleo {
         amount: u128,
         caller: address
     ) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
@@ -311,6 +311,72 @@ program sealed_stable_token.aleo {
         token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
     }
 
+    // Mints new public tokens to the specified recipient’s balance.
+    // Can be called by the admin, a minter, or a supply manager.
+    // Ensures that the new total supply does not exceed the maximum supply.
+    // Updates the recipient’s balance and the total token supply in the token metadata.
+    // The recipient must not be frozen in the freeze list.
+    // A Ticket record is emitted for the recipient
+    async transition mint_public_gen_ticket(
+        public recipient: address,
+        public amount: u128,
+        public root: field
+    ) -> (Ticket, Future) {
+        let recipient_ticket_record: Ticket = Ticket {
+            owner: recipient,
+            freeze_list_root: root,
+        };
+        
+        return (recipient_ticket_record, finalize_mint_public_gen_ticket(recipient, amount, self.caller, root));
+    }
+    async function finalize_mint_public_gen_ticket(
+        recipient: address,
+        amount: u128,
+        caller: address,
+        root: field
+    ) {
+        let admin_address: address = roles.get(ADMIN_INDEX);
+        let is_admin: bool = caller == admin_address;
+        if(!is_admin) {
+            let role: u8 = supply_roles.get(caller);
+            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
+        }
+
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+        if (current_root != root) {
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(root, previous_root);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            assert(updated_height + window > block.height);
+        }
+
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
+
+        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+
+        // Check that the token supply + amount <= max_supply
+        let new_supply: u128 = token.supply + amount;
+        assert(new_supply <= token.max_supply);
+
+        // Update the balance
+        let balance = balances.get_or_use(recipient, 0u128);
+        let new_balance = amount + balance;
+        balances.set(recipient, new_balance);
+
+        // Update the token supply
+        let new_metadata: TokenMetadata = TokenMetadata {
+            name: token.name,
+            symbol: token.symbol,
+            decimals: token.decimals,
+            supply: new_supply,
+            max_supply: token.max_supply,
+        };
+        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+    }
+
+
     // Mints new private tokens to the specified recipient.
     // Can be called by the admin, a minter, or a supply manager.
     // Ensures that the new total supply does not exceed the maximum supply.
@@ -330,7 +396,7 @@ program sealed_stable_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
@@ -369,7 +435,7 @@ program sealed_stable_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
@@ -410,7 +476,7 @@ program sealed_stable_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
@@ -435,7 +501,7 @@ program sealed_stable_token.aleo {
     // -------------------------
 
     // Transfers public tokens from the caller to the recipient.
-    // The sender must not be frozen in the freeze list.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public(
         public recipient: address,
         public amount: u128
@@ -449,6 +515,51 @@ program sealed_stable_token.aleo {
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
+
+        let sender_balance = balances.get(sender);
+        balances.set(sender, sender_balance - amount);
+
+        let recipient_balance = balances.get_or_use(recipient, 0u128);
+        balances.set(recipient, recipient_balance + amount);
+    }
+
+    // Transfers public tokens from the caller to the recipient.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // A Ticket record is emitted for the recipient
+    async transition transfer_public_gen_ticket(
+        public recipient: address,
+        public amount: u128,
+        public root: field,
+    ) -> (Ticket, Future) {
+
+        let recipient_ticket_record: Ticket = Ticket {
+            owner: recipient,
+            freeze_list_root: root,
+        };
+
+        return (recipient_ticket_record, f_transfer_public_gen_ticket(recipient, amount, self.caller, root));
+    }
+    async function f_transfer_public_gen_ticket(
+        recipient: address,
+        amount: u128,
+        sender: address,
+        root: field
+    ) {
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+        if (current_root != root) {
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(root, previous_root);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            assert(updated_height + window > block.height);
+        }
+
+        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
+        assert_eq(is_sender_frozen, false);
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -458,7 +569,7 @@ program sealed_stable_token.aleo {
     }
 
     // Transfers public tokens from the signer to the recipient.
-    // The sender must not be frozen in the freeze list.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public_as_signer(
         public recipient: address,
         public amount: u128
@@ -472,6 +583,8 @@ program sealed_stable_token.aleo {
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -528,10 +641,11 @@ program sealed_stable_token.aleo {
         allowances.set(allowance_key, current_allowance - amount);
     }
 
+
     // Transfers public tokens from the owner to the recipient.
     // Can be called by any spender with sufficient allowance from the owner.
     // Decreases the spender’s allowance by the transferred amount.
-    // The sender must not be frozen in the freeze list.
+    // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_from_public(
         public owner: address,
         public recipient: address,
@@ -553,6 +667,8 @@ program sealed_stable_token.aleo {
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
 
         // Check that the spender is authorized to spend the amount
         let current_allowance: u128 = allowances.get(allowance_key);
@@ -657,6 +773,7 @@ program sealed_stable_token.aleo {
 
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
+    // A Ticket record is emitted for the sender
     // The sender must not be frozen in the freeze list.
     // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private(
@@ -665,7 +782,7 @@ program sealed_stable_token.aleo {
         input_record: Token,
         sender_merkle_proofs: [MerkleProof;2],
         public investigator_address: address,
-    ) -> (ComplianceRecord, Token, Token, Credentials, Future) {
+    ) -> (ComplianceRecord, Token, Token, Ticket, Future) {
         let sender_root: field = verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let updated_record: Token = Token {
@@ -685,17 +802,17 @@ program sealed_stable_token.aleo {
             recipient: recipient,
         };
 
-        let creds_record: Credentials = Credentials {
+        let ticket_record: Ticket = Ticket {
             owner: input_record.owner,
             freeze_list_root: sender_root,
         };
 
-        return (compliance_record, updated_record, transfer_record, creds_record, f_transfer_private(sender_root, investigator_address));
+        return (compliance_record, updated_record, transfer_record, ticket_record, f_transfer_private(sender_root, investigator_address));
     }
 
     async function f_transfer_private(root: field, investigator_address: address) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
@@ -711,7 +828,8 @@ program sealed_stable_token.aleo {
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // The sender must not be frozen in the freeze list.
+    // A Ticket record is emitted for the sender
+    // Both sender and recipient must not be frozen in the freeze list.
     // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private_to_public(
         public recipient: address,
@@ -719,7 +837,7 @@ program sealed_stable_token.aleo {
         input_record: Token,
         sender_merkle_proofs: [MerkleProof; 2],
         public investigator_address: address
-    ) -> (ComplianceRecord, Token, Credentials, Future) {
+    ) -> (ComplianceRecord, Token, Ticket, Future) {
         let root: field = verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let updated_record: Token = Token {
@@ -734,7 +852,7 @@ program sealed_stable_token.aleo {
             recipient: recipient,
         };
 
-        let creds_record: Credentials = Credentials {
+        let ticket_record: Ticket = Ticket {
             owner: input_record.owner,
             freeze_list_root: root,
         };
@@ -742,7 +860,7 @@ program sealed_stable_token.aleo {
         return (
             compliance_record,
             updated_record,
-            creds_record,
+            ticket_record,
             f_transfer_private_to_public(
                 root,
                 recipient,
@@ -761,10 +879,13 @@ program sealed_stable_token.aleo {
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }    
+
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
 
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
@@ -804,14 +925,14 @@ program sealed_stable_token.aleo {
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // The sender must not be frozen in the freeze list.
-    // The sender's privacy is preserved by using a Credentials record.
-    async transition transfer_private_with_creds(
+    // The sender's privacy is preserved by using a Ticket record.
+    async transition transfer_private_with_ticket(
         recipient: address,
         amount: u128,
         input_record: Token,
-        creds: Credentials,
+        ticket: Ticket,
         public investigator_address: address
-    ) -> (ComplianceRecord, Token, Token, Credentials, Future) {
+    ) -> (ComplianceRecord, Token, Token, Ticket, Future) {
         let updated_record: Token = Token {
             owner: input_record.owner,
             amount: input_record.amount - amount
@@ -829,19 +950,19 @@ program sealed_stable_token.aleo {
             recipient: recipient,
         };
 
-        let creds_record: Credentials = Credentials {
-            owner: creds.owner,
-            freeze_list_root: creds.freeze_list_root,
+        let ticket_record: Ticket = Ticket {
+            owner: ticket.owner,
+            freeze_list_root: ticket.freeze_list_root,
         };
 
-        return (compliance_record, updated_record, transfer_record, creds_record, f_transfer_private_creds(investigator_address, creds.freeze_list_root));
+        return (compliance_record, updated_record, transfer_record, ticket_record, f_transfer_private_ticket(investigator_address, ticket.freeze_list_root));
     }
-    async function f_transfer_private_creds(investigator_address: address, root: field) {
+    async function f_transfer_private_ticket(investigator_address: address, root: field) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
@@ -852,15 +973,15 @@ program sealed_stable_token.aleo {
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // The sender must not be frozen in the freeze list.
-    // The sender's privacy is preserved by using a Credentials record.
-    async transition transfer_priv_to_public_creds(
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The sender's privacy is preserved by using a Ticket record.
+    async transition transfer_priv_to_public_ticket(
         public recipient: address,
         public amount: u128,
         input_record: Token,
-        creds: Credentials,
+        ticket: Ticket,
         public investigator_address: address
-    ) -> (ComplianceRecord, Token, Credentials, Future) {
+    ) -> (ComplianceRecord, Token, Ticket, Future) {
         let updated_record: Token = Token {
             owner: input_record.owner,
             amount: input_record.amount - amount
@@ -873,24 +994,24 @@ program sealed_stable_token.aleo {
             recipient: recipient,
         };
 
-        let creds_record: Credentials = Credentials {
-            owner: creds.owner,
-            freeze_list_root: creds.freeze_list_root,
+        let ticket_record: Ticket = Ticket {
+            owner: ticket.owner,
+            freeze_list_root: ticket.freeze_list_root,
         };
 
         return (
             compliance_record,
             updated_record,
-            creds_record,
-            f_transfer_priv_to_public_creds(
-                creds.freeze_list_root,
+            ticket_record,
+            f_transfer_priv_to_pub_ticket(
+                ticket.freeze_list_root,
                 recipient,
                 amount,
                 investigator_address
             )
         );
     }
-    async function f_transfer_priv_to_public_creds(
+    async function f_transfer_priv_to_pub_ticket(
         root: field,
         recipient: address,
         amount: u128,
@@ -900,10 +1021,13 @@ program sealed_stable_token.aleo {
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get_or_use(BLOCK_HEIGHT_WINDOW_INDEX, 0u32);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
+
+        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        assert_eq(is_recipient_frozen, false);
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(stored_investigator_address, investigator_address);
