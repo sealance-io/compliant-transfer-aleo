@@ -466,7 +466,7 @@ describe("test sealed_timelock_policy program", () => {
     );
 
     const [encryptedAccountChangeSealedRecord, encryptedRecipientSealedRecord] = await tx.wait();
-    const tokenRecord = (tx as any).transaction.execution.transitions[6].outputs[0].value;
+    const tokenRecord = (tx as any).transaction.execution.transitions[4].outputs[0].value;
     const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);
     expect(recipientRecord.amount).toBe(amountToSend);
