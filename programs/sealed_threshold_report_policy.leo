@@ -466,7 +466,7 @@ program sealed_threshold_report_policy.aleo {
         assert(estimated_block_height >= (block.height - window));
 
         authorization_call.await();
-        transfer_call.await();סס׳
+        transfer_call.await();
     }
 
     // Transfers private tokens from the record owner to a recipient.
