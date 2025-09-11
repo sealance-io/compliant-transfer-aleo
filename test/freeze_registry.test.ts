@@ -242,13 +242,15 @@ describe("test freeze_registry program", () => {
 
     const leaves = genLeaves([]);
     const tree = buildTree(leaves);
+    expect(tree[tree.length - 1]).toBe(emptyRoot);
+
     const adminLeadIndices = getLeafIndices(tree, adminAddress);
-    const IncorrectAdminMerkleProof = [
+    const emptyTreeAdminMerkleProof = [
       getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),
       getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE),
     ];
     // The transaction failed because the root is mismatch
-    let rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, IncorrectAdminMerkleProof);
+    let rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, emptyTreeAdminMerkleProof);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
@@ -259,14 +261,14 @@ describe("test freeze_registry program", () => {
       false,
       1,
       root,
-      1n, // fake root
+      emptyRoot,
     );
     await updateFreezeListTx.wait();
 
     const newRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
     const oldRoot = await freezeRegistryContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(root);
-    expect(newRoot).toBe(1n);
+    expect(newRoot).toBe(emptyRoot);
 
     // The transaction succeed because the old root is match
     tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
@@ -278,5 +280,8 @@ describe("test freeze_registry program", () => {
     // The transaction failed because the old root is expired
     rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
     await expect(rejectedTx.wait()).rejects.toThrow();
+
+    tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, emptyTreeAdminMerkleProof);
+    await tx.wait();
   });
 });

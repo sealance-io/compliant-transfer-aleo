@@ -572,13 +572,14 @@ describe("test sealed_report_policy program", () => {
   test(`test old root support`, async () => {
     const leaves = genLeaves([]);
     const tree = buildTree(leaves);
+    expect(tree[tree.length - 1]).toBe(emptyRoot);
     const senderLeafIndices = getLeafIndices(tree, account);
     const recipientLeafIndices = getLeafIndices(tree, recipient);
-    const IncorrectSenderMerkleProof = [
+    const emptyTreeSenderMerkleProof = [
       getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
       getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
     ];
-    const IncorrectRecipientMerkleProof = [
+    const emptyTreeRecipientMerkleProof = [
       getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
       getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
     ];
@@ -587,8 +588,8 @@ describe("test sealed_report_policy program", () => {
       recipient,
       amount,
       accountRecord,
-      IncorrectSenderMerkleProof,
-      IncorrectRecipientMerkleProof,
+      emptyTreeSenderMerkleProof,
+      emptyTreeRecipientMerkleProof,
       investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -598,17 +599,17 @@ describe("test sealed_report_policy program", () => {
       false,
       1,
       root,
-      1n, // fake root
+      emptyRoot,
     );
     await updateFreezeListTx.wait();
 
     const newRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
     const oldRoot = await reportPolicyContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(root);
-    expect(newRoot).toBe(1n);
+    expect(newRoot).toBe(emptyRoot);
 
     // The transaction succeed because the old root is match
-    const tx = await reportPolicyContractForAccount.transfer_private(
+    let tx = await reportPolicyContractForAccount.transfer_private(
       recipient,
       amount,
       accountRecord,
@@ -632,5 +633,15 @@ describe("test sealed_report_policy program", () => {
       investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
+
+    tx = await reportPolicyContractForAccount.transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      emptyTreeSenderMerkleProof,
+      emptyTreeRecipientMerkleProof,
+      investigatorAddress,
+    );
+    await tx.wait();
   });
 });
