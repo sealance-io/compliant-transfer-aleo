@@ -1,5 +1,6 @@
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { mode } from "./Constants";
+import { FREEZE_LIST_LAST_INDEX, MAX_TREE_SIZE, mode, ZERO_ADDRESS } from "./Constants";
 import { convertAddressToField } from "./Conversion";
 import { buildTree, genLeaves } from "./MerkleTree";
 
@@ -12,7 +13,7 @@ export enum FreezeStatus {
 
 export type FreezeListUpdateResult =
   | { status: FreezeStatus.ALREADY_FROZEN }
-  | { status: FreezeStatus.NEW_ENTRY; lastIndex: number; root: bigint };
+  | { status: FreezeStatus.NEW_ENTRY; frozenIndex: number; root: bigint };
 
 export async function calculateFreezeListUpdate(
   address: string,
@@ -24,24 +25,27 @@ export async function calculateFreezeListUpdate(
   }
 
   let addresses: string[] = [];
-  let lastIndex = 0;
-  for (let i = 0; addresses.length < leavesLength; i++) {
-    try {
-      addresses.push(await reportPolicyContract.freeze_list_index(i));
-      lastIndex = i + 1;
-    } catch {
-      break;
+  const lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+  for (let i = 0; i <= lastIndex; i++) {
+    addresses.push(await reportPolicyContract.freeze_list_index(i));
+  }
+
+  let frozenIndex = addresses.findIndex(addr => addr === ZERO_ADDRESS);
+  if (frozenIndex === -1) {
+    if (addresses.length === leavesLength) {
+      throw new Error("Merkle tree is full, there is no place for the new frozen account");
     }
+    frozenIndex = addresses.length;
+    addresses.push(address);
+  } else {
+    addresses[frozenIndex] = address;
   }
-  if (addresses.length === leavesLength) {
-    throw new Error("Merkle tree is full, there is no place for the new frozen account");
-  }
-  addresses.push(address);
+
   const leaves = genLeaves(addresses);
   const tree = buildTree(leaves);
   const root = tree[tree.length - 1];
 
-  return { status: FreezeStatus.NEW_ENTRY, lastIndex, root };
+  return { status: FreezeStatus.NEW_ENTRY, frozenIndex, root };
 }
 
 export function getLeafIndices(merkleTree: bigint[], address: string): [number, number] {
