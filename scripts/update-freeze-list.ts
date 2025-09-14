@@ -43,7 +43,7 @@ const reportPolicyContract = new Sealed_report_policyContract({
       await reportPolicyContract.update_freeze_list(
         newAddress,
         true,
-        updateResult.lastIndex,
+        updateResult.frozenIndex,
         previousRoot,
         updateResult.root,
       );
