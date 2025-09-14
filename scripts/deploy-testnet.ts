@@ -6,13 +6,7 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from "../contract/base-contract";
 import { policies } from "../lib/Constants";
 import { initializeTokenProgram } from "../lib/Token";
-import {
-  setTokenRegistryRole,
-  updateAdminRole,
-  updateInvestigatorRole,
-  updateMinterRole,
-  updateOwnerRole,
-} from "../lib/Role";
+import { setTokenRegistryRole, updateAdminRole, updateInvestigatorRole, updateMinterRole } from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
@@ -131,14 +125,6 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   await updateAdminRole(freezeRegistryContract, adminAddress);
   await updateAdminRole(exchangeContract, adminAddress);
   await updateAdminRole(reportTokenContract, adminAddress);
-
-  // update the owner
-  await updateOwnerRole(reportPolicyContractForAdmin, deployerAddress);
-  await updateOwnerRole(freezeRegistryContractForAdmin, deployerAddress);
-  await updateOwnerRole(thresholdContractForAdmin, deployerAddress);
-  await updateOwnerRole(timelockContractForAdmin, deployerAddress);
-  await updateOwnerRole(exchangeContractForAdmin, deployerAddress);
-  await updateOwnerRole(reportTokenContractForAdmin, deployerAddress);
 
   // update the investigator
   await updateInvestigatorRole(reportTokenContractForAdmin, investigatorAddress);
