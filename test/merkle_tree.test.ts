@@ -466,4 +466,59 @@ describe("merkle_tree program tests", () => {
       ]),
     ).rejects.toThrow();
   });
+
+  test(`test second preimage attack`, async () => {
+    const size = 32;
+    let tree: any[] = [];
+    let addresses: string[] = [];
+    let frozenAddress = ZERO_ADDRESS;
+    let leftLeafIndex = 0;
+    let rightLeafIndex = 0;
+
+    while (frozenAddress === ZERO_ADDRESS) {
+      addresses = Array(size)
+        .fill(null)
+        .map(() => new Account().address().to_string());
+      const leaves = genLeaves(addresses);
+      tree = buildTree(leaves);
+      const root = tree[tree.length - 1];
+      for (const leaf of leaves) {
+        const bigIntLeaf = BigInt(leaf.slice(0, leaf.length - "field".length));
+        const isBiggest = tree.slice(size, size + size / 2).every(num => bigIntLeaf > num);
+        if (isBiggest) {
+          frozenAddress = convertFieldToAddress(leaf);
+          leftLeafIndex = size / 2 - 1;
+          rightLeafIndex = size / 2 - 1;
+          break;
+        }
+        const isSmallest = tree.slice(size, size + size / 2).every(num => bigIntLeaf < num);
+        if (isSmallest) {
+          frozenAddress = convertFieldToAddress(leaf);
+          leftLeafIndex = 0;
+          rightLeafIndex = 0;
+          break;
+        }
+        for (let i = 0; i < size / 2; i++) {
+          if (tree[i + size] < bigIntLeaf && tree[i + 1 + size] > bigIntLeaf) {
+            frozenAddress = convertFieldToAddress(leaf);
+            leftLeafIndex = i;
+            rightLeafIndex = i + 1;
+            break;
+          }
+        }
+        if (frozenAddress !== ZERO_ADDRESS) {
+          break;
+        }
+      }
+    }
+    const merkleProof1 = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_SIZE);
+    const merkleProof2 = getSiblingPath(tree.slice(size), rightLeafIndex, MAX_TREE_SIZE);
+
+    const tx = await contract.verify_non_inclusion(frozenAddress, [merkleProof1, merkleProof2]);
+    const [root] = await tx.wait();
+
+    expect(addresses.includes(frozenAddress));
+    // If the second preimage attack is successfull the test should fail here
+    expect(root).not.toBe(tree[tree.length - 1]);
+  });
 });
