@@ -1,4 +1,4 @@
-program sealed_standalone_token.aleo {
+program ktxtgppmki.aleo {
     @custom
     async constructor() {
         let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
@@ -311,71 +311,6 @@ program sealed_standalone_token.aleo {
         token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
     }
 
-    // Mints new public tokens to the specified recipient’s balance.
-    // Can be called by the admin, a minter, or a supply manager.
-    // Ensures that the new total supply does not exceed the maximum supply.
-    // Updates the recipient’s balance and the total token supply in the token metadata.
-    // The recipient must not be frozen in the freeze list.
-    // A Ticket record is emitted for the recipient
-    async transition mint_public_gen_ticket(
-        public recipient: address,
-        public amount: u128,
-        public root: field
-    ) -> (Ticket, Future) {
-        let recipient_ticket_record: Ticket = Ticket {
-            owner: recipient,
-            freeze_list_root: root,
-        };
-        
-        return (recipient_ticket_record, finalize_mint_public_gen_ticket(recipient, amount, self.caller, root));
-    }
-    async function finalize_mint_public_gen_ticket(
-        recipient: address,
-        amount: u128,
-        caller: address,
-        root: field
-    ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
-
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-        if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }
-
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
-
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
-
-        // Check that the token supply + amount <= max_supply
-        let new_supply: u128 = token.supply + amount;
-        assert(new_supply <= token.max_supply);
-
-        // Update the balance
-        let balance = balances.get_or_use(recipient, 0u128);
-        let new_balance = amount + balance;
-        balances.set(recipient, new_balance);
-
-        // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
-            name: token.name,
-            symbol: token.symbol,
-            decimals: token.decimals,
-            supply: new_supply,
-            max_supply: token.max_supply,
-        };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
-    }
-
 
     // Mints new private tokens to the specified recipient.
     // Can be called by the admin, a minter, or a supply manager.
@@ -415,82 +350,6 @@ program sealed_standalone_token.aleo {
             symbol: token.symbol,
             decimals: token.decimals,
             supply: new_supply,
-            max_supply: token.max_supply,
-        };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
-    }
-
-    // Burns public tokens from the specified owner’s balance.
-    // Can be called by the admin, a burner, or a supply manager.
-    // Decreases the owner’s balance and reduces the total token supply in the token metadata.
-    async transition burn_public(
-        public owner: address,
-        public amount: u128
-    ) -> Future {
-        return finalize_burn_public(owner, amount, self.caller);
-    }
-
-    async function finalize_burn_public(
-        owner: address,
-        amount: u128,
-        caller: address,
-    ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
-
-        // Update the balance
-        let balance = balances.get(owner);
-        let new_balance = balance - amount;
-        balances.set(owner, new_balance);
-
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
-
-        let new_metadata: TokenMetadata = TokenMetadata {
-            name: token.name,
-            symbol: token.symbol,
-            decimals: token.decimals,
-            supply: token.supply - amount, // underflow will be caught by the VM
-            max_supply: token.max_supply,
-        };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
-    }
-
-    // Burns tokens from a private record (non-public asset).
-    // Can be called by the admin, a burner, or a supply manager.
-    // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
-    async transition burn_private(
-        input_record: Token,
-        public amount: u128
-    ) -> (Token, Future) {
-        let output_record: Token = Token {
-            owner: input_record.owner,
-            amount: input_record.amount - amount
-        };
-        return (output_record, finalize_burn_private(amount, self.caller));
-    }
-    async function finalize_burn_private(
-        amount: u128,
-        caller: address,
-    ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
-
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
-
-        // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
-            name: token.name,
-            symbol: token.symbol,
-            decimals: token.decimals,
-            supply: token.supply - amount, // underflow will be caught by the VM
             max_supply: token.max_supply,
         };
         token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
@@ -568,120 +427,7 @@ program sealed_standalone_token.aleo {
         balances.set(recipient, recipient_balance + amount);
     }
 
-    // Transfers public tokens from the signer to the recipient.
-    // Both sender and recipient must not be frozen in the freeze list.
-    async transition transfer_public_as_signer(
-        public recipient: address,
-        public amount: u128
-    ) -> Future {
-        return f_transfer_public_as_signer(recipient, amount, self.signer);
-    }
-    async function f_transfer_public_as_signer(
-        recipient: address,
-        amount: u128,
-        sender: address
-    ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
-
-        let sender_balance = balances.get(sender);
-        balances.set(sender, sender_balance - amount);
-
-        let recipient_balance = balances.get_or_use(recipient, 0u128);
-        balances.set(recipient, recipient_balance + amount);
-    }
-
-    // Approves a spender to transfer the caller’s public assets up to a specified amount.
-    // Increases the existing allowance if one is already set, otherwise creates a new allowance.
-    // The allowance is stored using a hash of the owner–spender pair as the key.
-    async transition approve_public(
-        public spender: address,
-        public amount: u128
-    ) -> Future {
-        let allowance: Allowance = Allowance {
-            account: self.caller,
-            spender: spender
-        };
-        let allowance_key: field = BHP256::hash_to_field(allowance);
-
-        return finalize_approve_public(amount, allowance_key);
-    }
-    async function finalize_approve_public(
-        amount: u128,
-        allowance_key: field
-    ) {
-        let current_allowance: u128 = allowances.get_or_use(allowance_key, 0u128);
-        // Increase or create the allowance amount
-        allowances.set(allowance_key, current_allowance + amount);
-    }
-
-    // Reduces a spender’s allowance to transfer the caller’s public assets by a specified amount.
-    // Decreases the existing allowance stored under the hash of the owner–spender pair.
-    // If the reduction exceeds the current allowance, the VM will catch the underflow.
-    async transition unapprove_public(
-        public spender: address,
-        public amount: u128
-    ) -> Future {
-        let allowance: Allowance = Allowance {
-            account: self.caller,
-            spender: spender
-        };
-        let allowance_key: field = BHP256::hash_to_field(allowance);
-
-        return finalize_unapprove_public(amount, allowance_key);
-    }
-    async function finalize_unapprove_public(
-        amount: u128,
-        allowance_key: field
-    ) {
-        let current_allowance: u128 = allowances.get(allowance_key);
-        // Decrease the allowance amount
-        allowances.set(allowance_key, current_allowance - amount);
-    }
-
-
-    // Transfers public tokens from the owner to the recipient.
-    // Can be called by any spender with sufficient allowance from the owner.
-    // Decreases the spender’s allowance by the transferred amount.
-    // Both sender and recipient must not be frozen in the freeze list.
-    async transition transfer_from_public(
-        public owner: address,
-        public recipient: address,
-        public amount: u128
-    ) -> Future {
-        let allowance: Allowance = Allowance {
-            account: owner,
-            spender: self.caller,
-        };
-        let allowance_key: field = BHP256::hash_to_field(allowance);
-
-        return finalize_transfer_from_public(owner, recipient, amount, allowance_key);
-    }
-    async function finalize_transfer_from_public(
-        sender: address,
-        recipient: address,
-        amount: u128,
-        allowance_key: field
-    ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
-
-        // Check that the spender is authorized to spend the amount
-        let current_allowance: u128 = allowances.get(allowance_key);
-        // Decrease the allowance by the amount being spent
-        allowances.set(allowance_key, current_allowance - amount);
-
-        let sender_balance = balances.get(sender);
-        balances.set(sender, sender_balance - amount);
-
-        let recipient_balance = balances.get_or_use(recipient, 0u128);
-        balances.set(recipient, recipient_balance + amount);
-    }
-
+    
     // Transfers public tokens from the caller to a recipient as a private token.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // The sender must not be frozen in the freeze list.
@@ -714,58 +460,6 @@ program sealed_standalone_token.aleo {
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
         assert_eq(stored_investigator_address, investigator_address);
-
-        let sender_balance = balances.get(sender);
-        balances.set(sender, sender_balance - amount);
-    }
-
-    // Transfers public tokens from an owner to a recipient as a private token.
-    // Can be called by any spender with sufficient allowance from the owner.
-    // Decreases the spender’s allowance by the transferred amount.
-    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // The sender must not be frozen in the freeze list.
-    async transition transfer_from_public_to_private(
-        public owner: address,
-        recipient: address,
-        public amount: u128,
-        public investigator_address: address
-    ) -> (ComplianceRecord, Token, Future) {
-        let token: Token = Token {
-            owner: recipient,
-            amount: amount
-        };
-
-        let allowance: Allowance = Allowance {
-            account: owner,
-            spender: self.caller,
-        };
-        let allowance_key: field = BHP256::hash_to_field(allowance);
-
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
-            amount: amount,
-            sender: owner,
-            recipient: recipient,
-        };
-
-        return (compliance_record, token, f_transfer_from_public_to_priv(owner, amount, allowance_key, investigator_address));
-    }
-    async function f_transfer_from_public_to_priv(
-        sender: address,
-        amount: u128,
-        allowance_key: field,
-        investigator_address: address
-    ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
-
-        // Check that the spender is authorized to spend the amount
-        let current_allowance: u128 = allowances.get(allowance_key);
-        // Decrease the allowance by the amount being spent
-        allowances.set(allowance_key, current_allowance - amount);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -826,102 +520,7 @@ program sealed_standalone_token.aleo {
         assert_eq(stored_investigator_address, investigator_address);
     }
 
-    // Transfers private tokens from the record owner to a recipient as a public tokens.
-    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // A Ticket record is emitted for the sender
-    // Both sender and recipient must not be frozen in the freeze list.
-    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
-    async transition transfer_private_to_public(
-        public recipient: address,
-        public amount: u128,
-        input_record: Token,
-        sender_merkle_proofs: [MerkleProof; 2],
-        public investigator_address: address
-    ) -> (ComplianceRecord, Token, Ticket, Future) {
-        let root: field = verify_non_inclusion(input_record.owner, sender_merkle_proofs);
-
-        let updated_record: Token = Token {
-            owner: input_record.owner,
-            amount: input_record.amount - amount
-        };
-
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
-            amount: amount,
-            sender: input_record.owner,
-            recipient: recipient,
-        };
-
-        let ticket_record: Ticket = Ticket {
-            owner: input_record.owner,
-            freeze_list_root: root,
-        };
-
-        return (
-            compliance_record,
-            updated_record,
-            ticket_record,
-            f_transfer_private_to_public(
-                root,
-                recipient,
-                amount,
-                investigator_address
-            )
-        );
-    }
-    async function f_transfer_private_to_public(
-        root: field,
-        recipient: address,
-        amount: u128,
-        investigator_address: address
-    ) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }    
-
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
-
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
-
-        let recipient_balance = balances.get_or_use(recipient, 0u128);
-        balances.set(recipient, recipient_balance + amount);
-    }
-
-    transition join(
-        private token_1: Token,
-        private token_2: Token
-    ) -> Token {
-        let new_token: Token = Token {
-            owner: token_1.owner,
-            amount: token_1.amount + token_2.amount
-        };
-
-        return new_token;
-    }
-
-    transition split(
-        private token: Token,
-        private amount: u128
-    ) -> (Token, Token) {
-        let new_token_1: Token = Token {
-            owner: token.owner,
-            amount: amount
-        };
-        let new_token_2: Token = Token {
-            owner: token.owner,
-            amount: token.amount - amount
-        };
-
-        return (new_token_1, new_token_2);
-    }
+  
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // The sender must not be frozen in the freeze list.
@@ -971,77 +570,12 @@ program sealed_standalone_token.aleo {
         assert_eq(stored_investigator_address, investigator_address);
     }
 
-    // Transfers private tokens from the record owner to a recipient as a public tokens.
-    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // Both sender and recipient must not be frozen in the freeze list.
-    // The sender's privacy is preserved by using a Ticket record.
-    async transition transfer_priv_to_public_ticket(
-        public recipient: address,
-        public amount: u128,
-        input_record: Token,
-        ticket: Ticket,
-        public investigator_address: address
-    ) -> (ComplianceRecord, Token, Ticket, Future) {
-        let updated_record: Token = Token {
-            owner: input_record.owner,
-            amount: input_record.amount - amount
-        };
-
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
-            amount: amount,
-            sender: input_record.owner,
-            recipient: recipient,
-        };
-
-        let ticket_record: Ticket = Ticket {
-            owner: ticket.owner,
-            freeze_list_root: ticket.freeze_list_root,
-        };
-
-        return (
-            compliance_record,
-            updated_record,
-            ticket_record,
-            f_transfer_priv_to_pub_ticket(
-                ticket.freeze_list_root,
-                recipient,
-                amount,
-                investigator_address
-            )
-        );
-    }
-    async function f_transfer_priv_to_pub_ticket(
-        root: field,
-        recipient: address,
-        amount: u128,
-        investigator_address: address
-    ) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }
-
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
-
-        let recipient_balance = balances.get_or_use(recipient, 0u128);
-        balances.set(recipient, recipient_balance + amount);
-    }
-
     // Calculates the hash of two sibling nodes in a Merkle tree.
     // The order of the siblings depends on the index bit (0 = left, 1 = right).
     // Uses Poseidon hash to compute the result.
     inline calculate_hash_for_neighbor(sibling1: field, sibling2: field, indexbit: u32) -> field {
         let poseidon_params: [field; 2] = indexbit == 0u32 ? [sibling1, sibling2] : [sibling2, sibling1];
-        return Poseidon4::hash_to_field(poseidon_params);
+        return Poseidon4::hash_to_field([0field, sibling1, sibling2]);
     }
 
     // Calculates the Merkle root and the depth of a Merkle proof path.
