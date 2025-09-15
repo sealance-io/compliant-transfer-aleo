@@ -6,12 +6,12 @@ import { ZERO_ADDRESS, MAX_TREE_SIZE } from "./Constants";
  * Hashes two elements using Poseidon4 hash function
  * @throws {Error} If inputs are empty or invalid
  */
-function hashTwoElements(el1: string, el2: string): Field {
+function hashTwoElements(prefix: string, el1: string, el2: string): Field {
   if (!el1 || !el2) {
     throw new Error("Invalid inputs: elements cannot be empty");
   }
   const hasher = new Poseidon4();
-  const fields = [Field.fromString(el1), Field.fromString(el2)];
+  const fields = [Field.fromString(prefix), Field.fromString(el1), Field.fromString(el2)];
   const arrayPlaintext = Plaintext.fromString(`[${fields.map(f => f.toString()).join(",")}]`);
 
   return hasher.hash(arrayPlaintext.toFields());
@@ -38,7 +38,8 @@ export function buildTree(leaves: string[]): bigint[] {
     for (let i = 0; i < levelSize; i += 2) {
       const left = currentLevel[i];
       const right = currentLevel[i + 1];
-      const hash = hashTwoElements(left, right);
+      const prefix = leaves.length === levelSize ? "1field" : "0field";
+      const hash = hashTwoElements(prefix, left, right);
       nextLevel.push(hash.toString());
     }
     tree = [...tree, ...nextLevel];
