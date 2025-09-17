@@ -464,13 +464,18 @@ describe("test sealed_report_token program", () => {
     const previousAccountPublicBalance = await reportTokenContract.balances(account);
     const previousRecipientPublicBalance = await reportTokenContract.balances(recipient, 0n);
 
-    const tx = await reportTokenContractForAccount.transfer_public(recipient, amount);
+    let tx = await reportTokenContractForAccount.transfer_public(recipient, amount);
     await tx.wait();
 
     const accountPublicBalance = await reportTokenContract.balances(account);
     const recipientPublicBalance = await reportTokenContract.balances(recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
+
+    // test transfer to yourself
+    tx = await reportTokenContractForAccount.transfer_public(account, amount);
+    await tx.wait();
+    expect(accountPublicBalance).toBe(await reportTokenContract.balances(account));
   });
 
   test(`test transfer_public_as_signer`, async () => {
@@ -485,13 +490,18 @@ describe("test sealed_report_token program", () => {
     const previousAccountPublicBalance = await reportTokenContract.balances(account);
     const previousRecipientPublicBalance = await reportTokenContract.balances(recipient, 0n);
 
-    const tx = await reportTokenContractForAccount.transfer_public_as_signer(recipient, amount);
+    let tx = await reportTokenContractForAccount.transfer_public_as_signer(recipient, amount);
     await tx.wait();
 
     const accountPublicBalance = await reportTokenContract.balances(account);
     const recipientPublicBalance = await reportTokenContract.balances(recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
+
+    // test transfer to yourself
+    tx = await reportTokenContractForAccount.transfer_public_as_signer(account, amount);
+    await tx.wait();
+    expect(accountPublicBalance).toBe(await reportTokenContract.balances(account));
   });
 
   test(`test transfer_from_public`, async () => {
@@ -509,7 +519,7 @@ describe("test sealed_report_token program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // approve the spender
-    approveTx = await reportTokenContractForAccount.approve_public(spender, amount);
+    approveTx = await reportTokenContractForAccount.approve_public(spender, amount * 2n);
     await approveTx.wait();
     approveTx = await reportTokenContractForFrozenAccount.approve_public(spender, amount);
     await approveTx.wait();
@@ -525,13 +535,18 @@ describe("test sealed_report_token program", () => {
     const previousAccountPublicBalance = await reportTokenContract.balances(account);
     const previousRecipientPublicBalance = await reportTokenContract.balances(recipient, 0n);
 
-    const tx = await reportTokenContractForSpender.transfer_from_public(account, recipient, amount);
+    let tx = await reportTokenContractForSpender.transfer_from_public(account, recipient, amount);
     await tx.wait();
 
     const accountPublicBalance = await reportTokenContract.balances(account);
     const recipientPublicBalance = await reportTokenContract.balances(recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
+
+    // test transfer to yourself
+    tx = await reportTokenContractForAccount.transfer_from_public(account, account, amount);
+    await tx.wait();
+    expect(accountPublicBalance).toBe(await reportTokenContract.balances(account));
   });
 
   test(`test transfer_from_public_to_private`, async () => {
