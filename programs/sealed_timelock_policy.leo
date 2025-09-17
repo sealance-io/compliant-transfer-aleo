@@ -172,6 +172,8 @@ program sealed_timelock_policy.aleo {
         sealed_token: CompliantToken,
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, Future) {
+        assert_eq(self.caller, sealed_token.owner);
+        
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
