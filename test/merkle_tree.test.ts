@@ -276,6 +276,27 @@ describe("merkle_tree program tests", () => {
     expect(root).toBe(tree[tree.length - 1]);
   });
 
+  test(`large tree random test, depth 15`, async () => {
+    const depth = 15;
+    const size = 2 ** depth;
+    const addresses = Array(size)
+      .fill(null)
+      .map(() => new Account().address().to_string());
+
+    const sortedAddresses = genLeaves(addresses);
+    const tree = buildTree(sortedAddresses);
+
+    const checkedAddress = new Account().address().to_string();
+    const [leftLeafIndex, rightLeafIndex] = getLeafIndices(tree, checkedAddress);
+
+    const merkleProof0 = getSiblingPath(tree, leftLeafIndex, MAX_TREE_SIZE);
+    const merkleProof1 = getSiblingPath(tree, rightLeafIndex, MAX_TREE_SIZE);
+
+    let tx = await contract.verify_non_inclusion(checkedAddress, [merkleProof0, merkleProof1]);
+    let [root] = await tx.wait();
+    expect(root).toBe(tree[tree.length - 1]);
+  }, 200000);
+
   test(`all cases, depth 3`, async () => {
     const leaves = genLeaves([
       "aleo193cgzzpr5lcwq6rmzq4l2ctg5f4mznead080mclfgrc0e5k0w5pstfdfps",
