@@ -1,0 +1,119 @@
+diff --git a/node_modules/@doko-js/utils/dist/index.js b/node_modules/@doko-js/utils/dist/index.js
+index c690a0e..4c8d1da 100644
+--- a/node_modules/@doko-js/utils/dist/index.js
++++ b/node_modules/@doko-js/utils/dist/index.js
+@@ -497,46 +497,104 @@ class Shell {
+     command;
+     shell;
+     rl;
++    heartbeatInterval;
++    
+     constructor(command) {
+         this.command = command.replace(/\\(?! )/g, "/");
+         this.shell = getUserShell();
++        this.isTestEnv = this.detectTestEnvironment();
++        this.heartbeatInterval = null;
+         this.rl = readline.createInterface({
+             input: process.stdin,
+-            output: process.stdout
++            output: process.stdout,
++            terminal: false  // Prevents TTY-specific behavior
+         });
+     }
++
++    detectTestEnvironment() {
++        return (
++            process.env.NODE_ENV === 'test' ||
++            process.env.VITEST === 'true' ||
++            typeof process.env.VITEST_WORKER_ID !== 'undefined' ||
++            process.env.JEST_WORKER_ID !== undefined ||
++            typeof global.it === 'function' ||
++            typeof global.describe === 'function'
++        );
++    }
++    
+     async asyncExec() {
+         return new Promise(((res, rej) => {
+             const shellProcess = spawn(this.shell, [ "-c", `FORCE_COLOR=true ${this.command}` ]);
+-            this.rl.on("line", (input => {
++            
++            // Add heartbeat to keep event loop responsive
++            this.heartbeatInterval = setInterval(() => {
++                setImmediate(() => {});
++            }, 500); // Every 500ms
++            
++            // Set up readline listener
++            const lineListener = (input) => {
+                 shellProcess.stdin.write(input + "\n");
+-            }));
++            };
++            this.rl.on("line", lineListener);
++            
+             shellProcess.stdout.on("data", (data => {
+-                DokoJSLogger.info(data.toString());
++                // Yield control periodically
++                setImmediate(() => {
++                    DokoJSLogger.info(data.toString());
++                });
+             }));
++            
+             shellProcess.stdout.on("error", (err => {
+                 DokoJSLogger.error(err);
+             }));
++            
+             shellProcess.stderr.on("data", (data => {
+                 if (!data.toString().includes(ERROR_CODES.SNARK_VM_ERROR)) {
++                    // Cleanup before rejecting
++                    if (this.heartbeatInterval) {
++                        clearInterval(this.heartbeatInterval);
++                        this.heartbeatInterval = null;
++                    }
++                    this.rl.removeListener("line", lineListener);
++                    this.rl.close();
+                     rej(data.toString());
+                 } else {
+-                    DokoJSLogger.warn(data.toString());
++                    setImmediate(() => {
++                        DokoJSLogger.warn(data.toString());
++                    });
+                 }
+             }));
++            
+             shellProcess.on("close", (code => {
++                // Cleanup
++                if (this.heartbeatInterval) {
++                    clearInterval(this.heartbeatInterval);
++                    this.heartbeatInterval = null;
++                }
++                this.rl.removeListener("line", lineListener);
++                this.rl.close();
+                 res(code);
++            }));
++            
++            // Handle process errors
++            shellProcess.on("error", (error => {
++                if (this.heartbeatInterval) {
++                    clearInterval(this.heartbeatInterval);
++                    this.heartbeatInterval = null;
++                }
++                this.rl.removeListener("line", lineListener);
+                 this.rl.close();
++                rej(error);
+             }));
++            
++            // Pause stdin in test environment to prevent blocking
++            if (this.isTestEnv) {
++                process.stdin.pause();
++            }
+         }));
+     }
+ }
+ 
+-readline.createInterface({
+-    input: process.stdin,
+-    output: process.stdout
+-});
+-
+ const userShell = getUserShell();
+ 
+ DokoJSLogger.debug(`Using shell: ${userShell}`);
