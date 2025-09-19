@@ -28,6 +28,11 @@ program ktxtgppmki.aleo {
         leaf_index: u32
     }
 
+    struct Pass {
+        account: address,
+        current_root: field
+    }
+
     struct TokenMetadata {
         name: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         symbol: u128, // ASCII text represented in bits, and the u128 value of the bitstring
@@ -72,7 +77,8 @@ program ktxtgppmki.aleo {
 
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 7233124799133753665783241350706390908532988676951941973288057571394699151001field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    
+    const SIGNER: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
+
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 12u32;
@@ -267,50 +273,6 @@ program ktxtgppmki.aleo {
         }
     }
 
-    // Mints new public tokens to the specified recipient’s balance.
-    // Can be called by the admin, a minter, or a supply manager.
-    // Ensures that the new total supply does not exceed the maximum supply.
-    // Updates the recipient’s balance and the total token supply in the token metadata.
-    async transition mint_public(
-        public recipient: address,
-        public amount: u128,
-    ) -> Future {
-        return finalize_mint_public(recipient, amount, self.caller);
-    }
-    async function finalize_mint_public(
-        recipient: address,
-        amount: u128,
-        caller: address
-    ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
-
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
-
-        // Check that the token supply + amount <= max_supply
-        let new_supply: u128 = token.supply + amount;
-        assert(new_supply <= token.max_supply);
-
-        // Update the balance
-        let balance = balances.get_or_use(recipient, 0u128);
-        let new_balance = amount + balance;
-        balances.set(recipient, new_balance);
-
-        // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
-            name: token.name,
-            symbol: token.symbol,
-            decimals: token.decimals,
-            supply: new_supply,
-            max_supply: token.max_supply,
-        };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
-    }
-
 
     // Mints new private tokens to the specified recipient.
     // Can be called by the admin, a minter, or a supply manager.
@@ -326,7 +288,6 @@ program ktxtgppmki.aleo {
         };
         return (token, finalize_mint_private(amount, self.caller));
     }
-
     async function finalize_mint_private(
         amount: u128,
         caller: address,
@@ -359,111 +320,9 @@ program ktxtgppmki.aleo {
     // Called by token owners/DeFi contracts
     // -------------------------
 
-    // Transfers public tokens from the caller to the recipient.
-    // Both sender and recipient must not be frozen in the freeze list.
-    async transition transfer_public(
-        public recipient: address,
-        public amount: u128
-    ) -> Future {
-        return finalize_transfer_public(recipient, amount, self.caller);
-    }
-    async function finalize_transfer_public(
-        recipient: address,
-        amount: u128,
-        sender: address
-    ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
 
-        let sender_balance = balances.get(sender);
-        balances.set(sender, sender_balance - amount);
-
-        let recipient_balance = balances.get_or_use(recipient, 0u128);
-        balances.set(recipient, recipient_balance + amount);
-    }
-
-    // Transfers public tokens from the caller to the recipient.
-    // Both sender and recipient must not be frozen in the freeze list.
-    // A Ticket record is emitted for the recipient
-    async transition transfer_public_gen_ticket(
-        public recipient: address,
-        public amount: u128,
-        public root: field,
-    ) -> (Ticket, Future) {
-
-        let recipient_ticket_record: Ticket = Ticket {
-            owner: recipient,
-            freeze_list_root: root,
-        };
-
-        return (recipient_ticket_record, f_transfer_public_gen_ticket(recipient, amount, self.caller, root));
-    }
-    async function f_transfer_public_gen_ticket(
-        recipient: address,
-        amount: u128,
-        sender: address,
-        root: field
-    ) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-        if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }
-
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
-
-        let sender_balance = balances.get(sender);
-        balances.set(sender, sender_balance - amount);
-
-        let recipient_balance = balances.get_or_use(recipient, 0u128);
-        balances.set(recipient, recipient_balance + amount);
-    }
 
     
-    // Transfers public tokens from the caller to a recipient as a private token.
-    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // The sender must not be frozen in the freeze list.
-    async transition transfer_public_to_private(
-        recipient: address,
-        public amount: u128,
-        public investigator_address: address
-    ) -> (ComplianceRecord, Token, Future) {
-        let token: Token = Token {
-            owner: recipient,
-            amount: amount
-        };
-
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
-            amount: amount,
-            sender: self.caller,
-            recipient: recipient,
-        };
-
-        return (compliance_record, token, f_transfer_public_to_private(amount, self.caller, investigator_address));
-    }
-    async function f_transfer_public_to_private(
-        amount: u128,
-        sender: address,
-        investigator_address: address
-    ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
-
-        let sender_balance = balances.get(sender);
-        balances.set(sender, sender_balance - amount);
-    }
 
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
@@ -476,7 +335,7 @@ program ktxtgppmki.aleo {
         input_record: Token,
         sender_merkle_proofs: [MerkleProof;2],
         public investigator_address: address,
-    ) -> (ComplianceRecord, Token, Token, Ticket, Future) {
+    ) -> (ComplianceRecord, Token, Token, Future) {
         let sender_root: field = verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
         let updated_record: Token = Token {
@@ -496,12 +355,7 @@ program ktxtgppmki.aleo {
             recipient: recipient,
         };
 
-        let ticket_record: Ticket = Ticket {
-            owner: input_record.owner,
-            freeze_list_root: sender_root,
-        };
-
-        return (compliance_record, updated_record, transfer_record, ticket_record, f_transfer_private(sender_root, investigator_address));
+        return (compliance_record, updated_record, transfer_record, f_transfer_private(sender_root, investigator_address));
     }
 
     async function f_transfer_private(root: field, investigator_address: address) {
@@ -570,12 +424,70 @@ program ktxtgppmki.aleo {
         assert_eq(stored_investigator_address, investigator_address);
     }
 
+    async transition transfer_private_with_pass(
+        recipient: address,
+        amount: u128,
+        input_record: Token,
+        pass: signature,
+        public current_root: field,
+        public investigator_address: address
+    ) -> (ComplianceRecord, Token, Token, Future) {
+        let updated_record: Token = Token {
+            owner: input_record.owner,
+            amount: input_record.amount - amount
+        };
+
+        let transfer_record: Token = Token {
+            owner: recipient,
+            amount: amount
+        };
+
+        let compliance_record: ComplianceRecord = ComplianceRecord {
+            owner: investigator_address,
+            amount: amount,
+            sender: input_record.owner,
+            recipient: recipient,
+        };
+
+        let addr: field = input_record.owner as field;
+        let hashed: field = Poseidon4::hash_to_field([addr, current_root]);
+        let check: bool = pass.verify(SIGNER, hashed);
+
+        // Todo: assert that it is true once the sign operation is working 
+        assert_eq(check, false);
+
+        return (compliance_record, updated_record, transfer_record, f_transfer_private_pass(investigator_address, current_root));
+    }
+    async function f_transfer_private_pass(investigator_address: address, root: field) {
+        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        if (current_root != root) {
+            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(root, previous_root);
+            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            assert(updated_height + window > block.height);
+        }
+
+        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
+        assert_eq(stored_investigator_address, investigator_address);
+    }
+
+
+    transition verify_signature(current_root: field, pass: signature) -> field {
+
+        //let hashed: field = Poseidon4::hash_to_field([1field, current_root]);
+
+        let check: bool = pass.verify(self.signer, 1u8);
+        assert_eq(check, true);
+        return current_root;
+    }
+
     // Calculates the hash of two sibling nodes in a Merkle tree.
     // The order of the siblings depends on the index bit (0 = left, 1 = right).
     // Uses Poseidon hash to compute the result.
     inline calculate_hash_for_neighbor(sibling1: field, sibling2: field, indexbit: u32) -> field {
         let poseidon_params: [field; 2] = indexbit == 0u32 ? [sibling1, sibling2] : [sibling2, sibling1];
-        return Poseidon4::hash_to_field([0field, sibling1, sibling2]);
+        return Poseidon4::hash_to_field(poseidon_params);
     }
 
     // Calculates the Merkle root and the depth of a Merkle proof path.

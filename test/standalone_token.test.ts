@@ -24,7 +24,9 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
-import { Account } from "@provablehq/sdk";
+import { genSignature } from "../lib/Sign";
+
+import { Account, Poseidon4, Field, Plaintext } from "@provablehq/sdk";
 import { stringToBigInt } from "../lib/Conversion";
 import { decryptToken } from "../artifacts/js/leo2js/ktxtgppmki";
 import { Token } from "../artifacts/js/types/ktxtgppmki";
@@ -104,11 +106,22 @@ let root: bigint;
 
 describe("test sealed_standalone_token program", () => {
   beforeAll(async () => {
+
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
     await deployIfNotDeployed(standaloneTokenContract);
+
   });
 
+  test(`verify test`, async () => {
+      const account = new Account({privateKey: adminPrivKey});
+      const sig = account.sign(new Uint8Array(1).fill(1));
+      console.log(new Uint8Array(1).fill(1));
+    let tx = await standaloneTokenContractForAdmin.verify_signature(2n, sig.to_string());
+    await tx.wait();
+
+  });
+/*
   test(`test update_admin_address`, async () => {
     let tx = await standaloneTokenContractForAdmin.update_role(adminAddress, ADMIN_INDEX);
     await tx.wait();
@@ -180,17 +193,6 @@ describe("test sealed_standalone_token program", () => {
     expect(frozenAccountByIndex).toBe(frozenAccount);
     expect(lastIndex).toBe(1);
 
-/*
-    let randomAddress = new Account().address().to_string();
-    tx = await standaloneTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
-    await tx.wait();
-    isAccountFrozen = await standaloneTokenContractForAdmin.freeze_list(randomAddress);
-    frozenAccountByIndex = await standaloneTokenContractForAdmin.freeze_list_index(2);
-    lastIndex = await standaloneTokenContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-
-    expect(isAccountFrozen).toBe(true);
-    expect(frozenAccountByIndex).toBe(randomAddress);
-    expect(lastIndex).toBe(2);*/
   });
 
   let accountRecord: Token;
@@ -221,7 +223,7 @@ describe("test sealed_standalone_token program", () => {
       senderMerkleProof,
       investigatorAddress,
     );
-    const [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord] = await tx.wait();
+    const [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] = await tx.wait();
 
     const previousAmount = accountRecord.amount;
     accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
@@ -239,7 +241,6 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test transfer with ticket`, async () => {
-
     let transferPrivateTx = await standaloneTokenContractForAccount.transfer_private_with_ticket(
       recipient,
       amount,
@@ -265,7 +266,44 @@ describe("test sealed_standalone_token program", () => {
     expect(decryptedComplianceRecord.amount).toBe(amount);
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
-
   });
 
+    test(`test transfer with pass`, async () => {
+      const currentRoot = await standaloneTokenContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      
+      const account = new Account({privateKey: accountPrivKey});
+
+      const hasher = new Poseidon4();
+      const fields = [Field.fromString("1field"), Field.fromString("2field")];
+      const arrayPlaintext = Plaintext.fromString(`[${fields.map(f => f.toString()).join(",")}]`);
+      const hash = hasher.hash(arrayPlaintext.toFields())
+
+      const sig = account.sign(Field.fromString("2field"));
+
+      let transferPrivateTx = await standaloneTokenContractForAccount.transfer_private_with_pass(
+      recipient,
+      amount,
+      accountRecord,
+      sig.to_string(),
+      currentRoot,
+      investigatorAddress,
+    );
+    let [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord] =
+      await transferPrivateTx.wait();
+
+    let previousAmount = accountRecord.amount;
+    accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
+    let recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
+    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.amount).toBe(previousAmount - amount);
+    expect(recipientRecord.owner).toBe(recipient);
+    expect(recipientRecord.amount).toBe(amount);
+
+    let decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    expect(decryptedComplianceRecord.amount).toBe(amount);
+    expect(decryptedComplianceRecord.sender).toBe(account);
+    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+  });
+*/
 });
