@@ -23,12 +23,6 @@ describe("merkle_tree lib, buildTree", () => {
     expect(tree).toHaveLength(7);
   });
 
-  it("should build a valid tree with 4 leaves", async () => {
-    const leaves = ["1field", "2field", "3field", "4field"];
-    const tree = buildTree(leaves);
-    expect(tree).toHaveLength(7);
-  });
-
   it("should throw error for empty leaves", async () => {
     expect(() => buildTree([])).toThrow(`Leaves array cannot be empty`);
   });
