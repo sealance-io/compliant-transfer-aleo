@@ -1036,11 +1036,17 @@ program sealed_standalone_token.aleo {
         balances.set(recipient, recipient_balance + amount);
     }
 
+
     // Calculates the hash of two sibling nodes in a Merkle tree.
     // The order of the siblings depends on the index bit (0 = left, 1 = right).
     // Uses Poseidon hash to compute the result.
-    inline calculate_hash_for_neighbor(sibling1: field, sibling2: field, indexbit: u32) -> field {
-        let poseidon_params: [field; 2] = indexbit == 0u32 ? [sibling1, sibling2] : [sibling2, sibling1];
+    inline calculate_hash_for_nodes(sibling1: field, sibling2: field, indexbit: u32) -> field {
+        let poseidon_params: [field; 3] = indexbit == 0u32 ? [0field, sibling1, sibling2] : [0field, sibling2, sibling1];
+        return Poseidon4::hash_to_field(poseidon_params);
+    }
+
+    inline calculate_hash_for_leaves(sibling1: field, sibling2: field, indexbit: u32) -> field {
+        let poseidon_params: [field; 3] = indexbit == 0u32 ? [1field, sibling1, sibling2] : [1field, sibling2, sibling1];
         return Poseidon4::hash_to_field(poseidon_params);
     }
 
@@ -1049,12 +1055,12 @@ program sealed_standalone_token.aleo {
     // Stops when a zero field is encountered in the siblings array, indicating the end of the valid path.
     // Returns the calculated root and the actual depth reached.
     inline calculate_root_depth_siblings(merkle_proof: MerkleProof) -> (public field, public u32) {
-        let root: field = calculate_hash_for_neighbor(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
-        for i: u32 in 2u32..MAX_TREE_DEPTH {
+        let root: field = calculate_hash_for_leaves(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
+        for i: u32 in 2u32..MAX_TREE_DEPTH + 1u32 {
             if (merkle_proof.siblings[i] == 0field) {
                 return (root, i);
             }
-            root = calculate_hash_for_neighbor(root, merkle_proof.siblings[i], (merkle_proof.leaf_index / (2u32**(i-1u32))) % 2u32);
+            root = calculate_hash_for_nodes(root, merkle_proof.siblings[i], (merkle_proof.leaf_index / (2u32**(i-1u32))) % 2u32);
         }
         return (root, MAX_TREE_DEPTH);
     }
@@ -1091,5 +1097,5 @@ program sealed_standalone_token.aleo {
         }
         
         return root1;
-    } 
+    }
 }
