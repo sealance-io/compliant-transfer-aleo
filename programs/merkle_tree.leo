@@ -33,7 +33,7 @@ program merkle_tree.aleo {
         let root: field = calculate_hash_for_leaves(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
         for i: u32 in 2u32..MAX_TREE_DEPTH + 1u32 {
             if (merkle_proof.siblings[i] == 0field) {
-                return (root, i - 1);
+                return (root, i - 1u32);
             }
             root = calculate_hash_for_nodes(root, merkle_proof.siblings[i], (merkle_proof.leaf_index / (2u32**(i-1u32))) % 2u32);
         }
