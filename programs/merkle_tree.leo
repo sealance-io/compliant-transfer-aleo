@@ -78,7 +78,7 @@ program merkle_tree.aleo {
             assert(addr_field < merkle_proofs[1u32].siblings[0u32]);
 
             // Ensure that the leaf indexes are not greater than the last possible leaf index
-            let last_index_leaf: u32 = 2u32 ** (depth1 - 1u32) - 1u32;
+            let last_index_leaf: u32 = 2u32 ** depth1 - 1u32;
             assert(merkle_proofs[1u32].leaf_index <= last_index_leaf);
 
             // Ensure the leaves are adjacent
