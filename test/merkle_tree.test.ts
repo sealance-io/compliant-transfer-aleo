@@ -289,7 +289,7 @@ describe("merkle_tree program tests", () => {
     let tx = await contract.verify_non_inclusion(checkedAddress, [merkleProof0, merkleProof1]);
     let [root] = await tx.wait();
     expect(root).toBe(tree[tree.length - 1]);
-  }, 200000);
+  });
 
   test(`all cases, depth 3`, async () => {
     const leaves = genLeaves([
