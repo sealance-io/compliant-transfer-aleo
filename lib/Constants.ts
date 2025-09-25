@@ -85,7 +85,7 @@ export const MAX_TREE_SIZE = 16;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;
-export const emptyRoot = 7233124799133753665783241350706390908532988676951941973288057571394699151001n;
+export const emptyRoot = 3642222252059314292809609689035560016959342421640560347114299934615987159853n;
 export const fundedAmount = 10000000000000n;
 export const mode = ExecutionMode.SnarkExecute;
 export const defaultRate = 10n;
