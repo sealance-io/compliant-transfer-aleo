@@ -25,7 +25,7 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { initializeTokenProgram } from "../lib/Token";
+import { registerTokenProgram } from "../lib/Token";
 import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/sealed_threshold_report_policy";
 import { getLatestBlockHeight } from "../lib/Block";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
@@ -34,7 +34,7 @@ import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { TokenComplianceStateRecord } from "../artifacts/js/types/sealed_threshold_report_policy";
 import { updateAdminRole } from "../lib/Role";
-import { isProgramInitialized } from "../lib/Initalize";
+import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -110,25 +110,47 @@ describe("test sealed_threshold_policy program", () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(thresholdContract);
-    await initializeTokenProgram(
-      deployerPrivKey,
-      deployerAddress,
-      adminPrivKey,
-      adminAddress,
-      investigatorAddress,
-      policies.threshold,
-    );
+    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
   });
 
-  test(`test init_mappings`, async () => {
-    const tx = await thresholdContractForAdmin.init_mappings();
-    await tx.wait();
-    const freezeRegistryName = await thresholdContract.freeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
-    expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
-    const epoch = await thresholdContract.epoch(EPOCH_INDEX);
-    expect(epoch).toBe(EPOCH);
-    const threshold = await thresholdContract.threshold(THRESHOLD_INDEX);
-    expect(threshold).toBe(THRESHOLD);
+  test(`test initialize`, async () => {
+    const isInitialized = await isProgramInitialized(thresholdContract);
+    if (!isInitialized) {
+      if (deployerAddress !== adminAddress) {
+        // The caller is not the initial admin
+        const rejectedTx = await thresholdContract.initialize(
+          adminAddress,
+          policies.threshold.blockHeightWindow,
+          investigatorAddress,
+        );
+        await expect(rejectedTx.wait()).rejects.toThrow();
+      }
+
+      const tx = await thresholdContractForAdmin.initialize(
+        adminAddress,
+        policies.threshold.blockHeightWindow,
+        investigatorAddress,
+      );
+      await tx.wait();
+
+      const admin = await thresholdContract.roles(ADMIN_INDEX);
+      expect(admin).toBe(adminAddress);
+      const investigator = await thresholdContract.roles(INVESTIGATOR_INDEX);
+      expect(investigator).toBe(investigatorAddress);
+      const freezeRegistryName = await thresholdContract.freeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
+      expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
+      const epoch = await thresholdContract.epoch(EPOCH_INDEX);
+      expect(epoch).toBe(EPOCH);
+      const threshold = await thresholdContract.threshold(THRESHOLD_INDEX);
+      expect(threshold).toBe(THRESHOLD);
+      // It is possible to call to initialize only one time
+      const rejectedTx = await thresholdContractForAdmin.initialize(
+        adminAddress,
+        policies.threshold.blockHeightWindow,
+        investigatorAddress,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+    }
   });
 
   test(`test update_admin_address`, async () => {
@@ -243,19 +265,13 @@ describe("test sealed_threshold_policy program", () => {
   });
 
   test(`freeze registry setup`, async () => {
-    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
-    if (!isFreezeRegistryInitialized) {
-      const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
-      await tx1.wait();
-    }
-
-    await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
+    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
 
     let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
-      await tx2.wait();
+      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
+      await tx.wait();
       const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
       const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
@@ -263,8 +279,8 @@ describe("test sealed_threshold_policy program", () => {
       expect(frozenAccountByIndex).toBe(frozenAccount);
     }
 
-    const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
-    await tx3.wait();
+    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
+    await tx.wait();
   });
 
   test("token_registry calls should fail", async () => {

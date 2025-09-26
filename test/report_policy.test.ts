@@ -25,10 +25,11 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { initializeTokenProgram } from "../lib/Token";
+import { initializeTokenProgram, registerTokenProgram } from "../lib/Token";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import { Account } from "@provablehq/sdk";
+import { isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -109,54 +110,7 @@ describe("test sealed_report_policy program", () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(reportPolicyContract);
 
-    await initializeTokenProgram(
-      deployerPrivKey,
-      deployerAddress,
-      adminPrivKey,
-      adminAddress,
-      investigatorAddress,
-      policies.report,
-    );
-  });
-
-  test(`test update_admin_address`, async () => {
-    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
-    await tx.wait();
-    let adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(frozenAccount);
-
-    tx = await reportPolicyContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
-    await tx.wait();
-    adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(adminAddress);
-
-    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
-    await expect(tx.wait()).rejects.toThrow();
-  });
-
-  test(`test update_investigator_address`, async () => {
-    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
-    await tx.wait();
-    let investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(frozenAccount);
-
-    tx = await reportPolicyContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
-    await tx.wait();
-    investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(investigatorAddress);
-
-    const rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-  });
-
-  test(`test update_freeze_list_manager`, async () => {
-    let tx = await reportPolicyContractForAdmin.update_role(freezeListManager, FREEZE_LIST_MANAGER_INDEX);
-    await tx.wait();
-    const freezeListManagerRole = await reportPolicyContract.roles(FREEZE_LIST_MANAGER_INDEX);
-    expect(freezeListManagerRole).toBe(freezeListManager);
-
-    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
-    await expect(tx.wait()).rejects.toThrow();
+    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
   });
 
   let accountRecord: Token;
@@ -214,27 +168,92 @@ describe("test sealed_report_policy program", () => {
   });
 
   test(`test initialize`, async () => {
-    // Cannot update freeze list before initialization
-    let rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    const isFreezeRegistryInitialized = await isProgramInitialized(reportPolicyContract);
+    if (!isFreezeRegistryInitialized) {
+      // Cannot update freeze list before initialization
+      let rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await reportPolicyContract.initialize(policies.report.blockHeightWindow);
+      if (deployerAddress !== adminAddress) {
+        // The caller is not the initial admin
+        rejectedTx = await reportPolicyContract.initialize(
+          adminAddress,
+          policies.report.blockHeightWindow,
+          investigatorAddress,
+        );
+        await expect(rejectedTx.wait()).rejects.toThrow();
+      }
+
+      const tx = await reportPolicyContractForAdmin.initialize(
+        adminAddress,
+        policies.report.blockHeightWindow,
+        investigatorAddress,
+      );
+      await tx.wait();
+      const isAccountFrozen = await reportPolicyContract.freeze_list(ZERO_ADDRESS);
+      const frozenAccountByIndex = await reportPolicyContract.freeze_list_index(0);
+      const lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await reportPolicyContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+      const admin = await reportPolicyContract.roles(ADMIN_INDEX);
+      const investigator = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
+
+      expect(admin).toBe(adminAddress);
+      expect(investigator).toBe(investigatorAddress);
+      expect(isAccountFrozen).toBe(false);
+      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(lastIndex).toBe(0);
+      expect(initializedRoot).toBe(emptyRoot);
+      expect(blockHeightWindow).toBe(policies.report.blockHeightWindow);
+
+      // It is possible to call to initialize only one time
+      rejectedTx = await reportPolicyContractForAdmin.initialize(
+        adminAddress,
+        policies.report.blockHeightWindow,
+        investigatorAddress,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+    }
+  });
+
+  test(`test update_admin_address`, async () => {
+    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
     await tx.wait();
-    const isAccountFrozen = await reportPolicyContract.freeze_list(ZERO_ADDRESS);
-    const frozenAccountByIndex = await reportPolicyContract.freeze_list_index(0);
-    const lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-    const initializedRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const blockHeightWindow = await reportPolicyContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    let adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
+    expect(adminRole).toBe(frozenAccount);
 
-    expect(isAccountFrozen).toBe(false);
-    expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
-    expect(lastIndex).toBe(0);
-    expect(initializedRoot).toBe(emptyRoot);
-    expect(blockHeightWindow).toBe(policies.report.blockHeightWindow);
+    tx = await reportPolicyContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
+    await tx.wait();
+    adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
+    expect(adminRole).toBe(adminAddress);
 
-    // It is possible to call to initialize only one time
-    rejectedTx = await reportPolicyContract.initialize(policies.report.blockHeightWindow);
+    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
+    await expect(tx.wait()).rejects.toThrow();
+  });
+
+  test(`test update_investigator_address`, async () => {
+    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
+    await tx.wait();
+    let investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
+    expect(investigatorRole).toBe(frozenAccount);
+
+    tx = await reportPolicyContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
+    await tx.wait();
+    investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
+    expect(investigatorRole).toBe(investigatorAddress);
+
+    const rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
     await expect(rejectedTx.wait()).rejects.toThrow();
+  });
+
+  test(`test update_freeze_list_manager`, async () => {
+    let tx = await reportPolicyContractForAdmin.update_role(freezeListManager, FREEZE_LIST_MANAGER_INDEX);
+    await tx.wait();
+    const freezeListManagerRole = await reportPolicyContract.roles(FREEZE_LIST_MANAGER_INDEX);
+    expect(freezeListManagerRole).toBe(freezeListManager);
+
+    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
+    await expect(tx.wait()).rejects.toThrow();
   });
 
   test(`test update_freeze_list`, async () => {
