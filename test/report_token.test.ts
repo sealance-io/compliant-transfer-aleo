@@ -121,6 +121,94 @@ describe("test sealed_report_token program", () => {
     await deployIfNotDeployed(reportTokenContract);
   });
 
+  let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
+  test(`generate merkle proofs`, async () => {
+    const leaves = genLeaves([frozenAccount]);
+    const tree = buildTree(leaves);
+    root = tree[tree.length - 1];
+    const senderLeafIndices = getLeafIndices(tree, account);
+    const recipientLeafIndices = getLeafIndices(tree, recipient);
+    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
+    senderMerkleProof = [
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+    ];
+    recipientMerkleProof = [
+      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
+      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
+    ];
+    frozenAccountMerkleProof = [
+      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
+      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
+    ];
+  });
+
+  test(`test initialize`, async () => {
+    // Cannot update freeze list before initialization
+    let rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const name = stringToBigInt("Report Token");
+    const symbol = stringToBigInt("REPORT_TOKEN");
+    const decimals = 6;
+    const maxSupply = 1000_000000000000n;
+
+    if (deployerAddress !== adminAddress) {
+      // The caller is not the initial admin
+      rejectedTx = await reportTokenContract.initialize(
+        name,
+        symbol,
+        decimals,
+        maxSupply,
+        adminAddress,
+        BLOCK_HEIGHT_WINDOW,
+        investigatorAddress,
+      );
+      await expect(rejectedTx.wait()).rejects.toThrow();
+    }
+
+    const tx = await reportTokenContractForAdmin.initialize(
+      name,
+      symbol,
+      decimals,
+      maxSupply,
+      adminAddress,
+      BLOCK_HEIGHT_WINDOW,
+      investigatorAddress,
+    );
+    await tx.wait();
+
+    const isAccountFrozen = await reportTokenContract.freeze_list(ZERO_ADDRESS);
+    const frozenAccountByIndex = await reportTokenContract.freeze_list_index(0);
+    const lastIndex = await reportTokenContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    const initializedRoot = await reportTokenContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const blockHeightWindow = await reportTokenContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    const admin = await reportTokenContract.roles(ADMIN_INDEX);
+    const investigator = await reportTokenContract.roles(INVESTIGATOR_INDEX);
+
+    expect(admin).toBe(adminAddress);
+    expect(investigator).toBe(investigatorAddress);
+    expect(isAccountFrozen).toBe(false);
+    expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
+    expect(lastIndex).toBe(0);
+    expect(initializedRoot).toBe(emptyRoot);
+    expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
+
+    // It is possible to call to initialize only one time
+    rejectedTx = await reportTokenContractForAdmin.initialize(
+      name,
+      symbol,
+      decimals,
+      maxSupply,
+      adminAddress,
+      BLOCK_HEIGHT_WINDOW,
+      investigatorAddress,
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+  });
+
   test(`test update_admin_address`, async () => {
     let tx = await reportTokenContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
     await tx.wait();
@@ -159,59 +247,6 @@ describe("test sealed_report_token program", () => {
 
     tx = await reportTokenContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
     await expect(tx.wait()).rejects.toThrow();
-  });
-
-  let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
-  test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([frozenAccount]);
-    const tree = buildTree(leaves);
-    root = tree[tree.length - 1];
-    const senderLeafIndices = getLeafIndices(tree, account);
-    const recipientLeafIndices = getLeafIndices(tree, recipient);
-    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
-    senderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
-    ];
-    recipientMerkleProof = [
-      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
-    ];
-    frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
-    ];
-  });
-
-  test(`test initialize`, async () => {
-    // Cannot update freeze list before initialization
-    let rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-    const name = stringToBigInt("Report Token");
-    const symbol = stringToBigInt("REPORT_TOKEN");
-    const decimals = 6;
-    const maxSupply = 1000_000000000000n;
-
-    const tx = await reportTokenContract.initialize(name, symbol, decimals, maxSupply, BLOCK_HEIGHT_WINDOW);
-    await tx.wait();
-
-    const isAccountFrozen = await reportTokenContract.freeze_list(ZERO_ADDRESS);
-    const frozenAccountByIndex = await reportTokenContract.freeze_list_index(0);
-    const lastIndex = await reportTokenContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-    const initializedRoot = await reportTokenContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const blockHeightWindow = await reportTokenContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-
-    expect(isAccountFrozen).toBe(false);
-    expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
-    expect(lastIndex).toBe(0);
-    expect(initializedRoot).toBe(emptyRoot);
-    expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
-
-    // It is possible to call to initialize only one time
-    rejectedTx = await reportTokenContract.initialize(name, symbol, decimals, maxSupply, BLOCK_HEIGHT_WINDOW);
-    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test update_supply_role`, async () => {
@@ -544,7 +579,7 @@ describe("test sealed_report_token program", () => {
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
 
     // test transfer to yourself
-    tx = await reportTokenContractForAccount.transfer_from_public(account, account, amount);
+    tx = await reportTokenContractForSpender.transfer_from_public(account, account, amount);
     await tx.wait();
     expect(accountPublicBalance).toBe(await reportTokenContract.balances(account));
   });
