@@ -4,7 +4,7 @@ import merkle_tree.aleo;
 program sealance_freezelist_registry.aleo {
     @custom
     async constructor() {
-        if (self.edition > 1) {
+        if (self.edition > 0) {
             let admin_address: address = roles.get(ADMIN_INDEX);
             assert_eq(admin_address, self.program_owner);     
         }
