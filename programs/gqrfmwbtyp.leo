@@ -7,8 +7,10 @@ import sealed_timelock_policy.aleo;
 program gqrfmwbtyp.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        if (self.edition > 1) {
+            let admin_address: address = roles.get(ADMIN_INDEX);
+            assert_eq(admin_address, self.program_owner);     
+        }
     }
     
     // The address that received the Aleo credits in the swap
@@ -16,6 +18,8 @@ program gqrfmwbtyp.aleo {
     // The rate that we will use in case there is no defined rate. 
     const DEFAULT_RATE: u128 = 10u128;
     const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
+    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
 
     // Admin: can assign roles, update the token rates and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
@@ -28,14 +32,27 @@ program gqrfmwbtyp.aleo {
     // This program defines only one role: the admin.
     mapping roles: u8 => address;
 
+    // Initializes the admin
+    // Can only be called once — ensures the contract has not already been initialized.    
+    // Can be called only by the INITIAL_ADMIN
+    async transition initialize(public admin: address) -> Future {
+        return f_initialize(admin, self.caller);
+    }
+    async function f_initialize(admin: address, caller: address) {
+        let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
+        assert_eq(is_already_initialized, false);
+
+        assert_eq(caller, INITIAL_ADMIN);
+        roles.set(ADMIN_INDEX, admin);
+    }
+
     // Updates the address assigned to a given role.
     // Can only be called by the admin.
-    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }

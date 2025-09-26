@@ -3,8 +3,10 @@ import merkle_tree.aleo;
 program sealed_report_token.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        if (self.edition > 1) {
+            let admin_address: address = roles.get(ADMIN_INDEX);
+            assert_eq(admin_address, self.program_owner);     
+        }
     }
     
     // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
@@ -26,6 +28,7 @@ program sealed_report_token.aleo {
 
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
+    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
     record Token {
         owner: address,
@@ -152,12 +155,11 @@ program sealed_report_token.aleo {
 
     // Updates the address assigned to a given role.
     // Can only be called by the current admin.
-    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }
@@ -186,8 +188,9 @@ program sealed_report_token.aleo {
         supply_roles.set(new_address, role);
     }
 
-    // Initializes the freeze list and token specifications.
+    // Initializes the freeze list, token specifications, the admin and the investigator.
     // Can only be called once — ensures the contract has not already been initialized.    
+    // Can be called only by the INITIAL_ADMIN
     // Sets the token metadata (name, symbol, decimals, max supply).
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
@@ -196,28 +199,39 @@ program sealed_report_token.aleo {
         public symbol: u128,
         public decimals: u8,
         public max_supply: u128,
-        public blocks: u32
+        public admin: address,
+        public blocks: u32,
+        public investigator_address: address
     ) -> Future {
         return finalize_initialize(
             name,
             symbol,
             decimals,
             max_supply,
-            blocks
+            admin,
+            self.caller,
+            blocks,
+            investigator_address
         );
     }
-
     async function finalize_initialize(
         name: u128,
         symbol: u128,
         decimals: u8,
         max_supply: u128,
-        blocks: u32
+        admin: address,
+        caller: address,
+        blocks: u32,
+        investigator_address: address
     ) {
         // Check if the token has already been initialized
         let already_initialized: bool = token_metadata.contains(TOKEN_METADATA_INDEX);
         assert_eq(already_initialized, false);
-        
+
+        assert_eq(caller, INITIAL_ADMIN);
+        roles.set(ADMIN_INDEX, admin);
+        roles.set(INVESTIGATOR_INDEX, investigator_address);
+
         let token: TokenMetadata = TokenMetadata {
             name: name,
             symbol: symbol,

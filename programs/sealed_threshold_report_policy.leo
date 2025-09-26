@@ -4,8 +4,10 @@ import sealance_freezelist_registry.aleo;
 program sealed_threshold_report_policy.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        if (self.edition > 1) {
+            let admin_address: address = roles.get(ADMIN_INDEX);
+            assert_eq(admin_address, self.program_owner);     
+        }
     }
 
     const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
@@ -14,6 +16,8 @@ program sealed_threshold_report_policy.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
     const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
+    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
     // Info: 1 block per 10 seconds (approx)
     // Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
     const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
@@ -64,6 +68,28 @@ program sealed_threshold_report_policy.aleo {
         owner: address,
         cumulative_amount_per_epoch: u128,
         latest_block_height: u32
+    }
+
+    // Initializes the admin, the investigator and the the constant mappings used by off-chain parties: freeze_registry_program_name, threshold, epoch.
+    // Can only be called once — ensures the contract has not already been initialized.    
+    // Can be called only by the INITIAL_ADMIN
+    async transition initialize(public admin: address, public blocks: u32, public investigator_address: address) -> Future {
+        return f_initialize(admin, self.caller, blocks, investigator_address);
+    }
+    async function f_initialize(admin: address, caller: address, blocks: u32, investigator_address: address) {
+        let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
+        assert_eq(is_already_initialized, false);
+
+        assert_eq(caller, INITIAL_ADMIN);
+
+        roles.set(ADMIN_INDEX, admin);
+        roles.set(INVESTIGATOR_INDEX, investigator_address);
+
+        freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
+        threshold.set(THRESHOLD_INDEX, THRESHOLD);
+        epoch.set(EPOCH_INDEX, EPOCH);
+
+        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
     // Initializes a new TokenComplianceStateRecord for the signer.
@@ -199,24 +225,13 @@ program sealed_threshold_report_policy.aleo {
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
-    // Initializes the constant mappings used by off-chain parties: freeze_registry_program_name, threshold, epoch.
-    async transition init_mappings() -> Future {
-        return f_init_mappings();
-    }
-    async function f_init_mappings() {
-        freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
-        threshold.set(THRESHOLD_INDEX, THRESHOLD);
-        epoch.set(EPOCH_INDEX, EPOCH);
-    }
-
     // Updates the address assigned to a given role.
     // Can only be called by the current admin.
-    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }
