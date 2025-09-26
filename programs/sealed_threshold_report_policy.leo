@@ -4,7 +4,7 @@ import sealance_freezelist_registry.aleo;
 program sealed_threshold_report_policy.aleo {
     @custom
     async constructor() {
-        if (self.edition > 1) {
+        if (self.edition > 0) {
             let admin_address: address = roles.get(ADMIN_INDEX);
             assert_eq(admin_address, self.program_owner);     
         }
