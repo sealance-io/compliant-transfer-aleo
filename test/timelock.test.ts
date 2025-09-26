@@ -27,7 +27,7 @@ import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
 import { updateAdminRole } from "../lib/Role";
-import { isProgramInitialized } from "../lib/Initalize";
+import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -113,15 +113,27 @@ describe("test sealed_timelock_policy program", () => {
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(timelockContract);
+  });
 
-    await initializeTokenProgram(
-      deployerPrivKey,
-      deployerAddress,
-      adminPrivKey,
-      adminAddress,
-      ZERO_ADDRESS,
-      policies.timelock,
-    );
+  test(`test initialize`, async () => {
+    const isInitialized = await isProgramInitialized(timelockContract);
+    if (!isInitialized) {
+      if (deployerAddress !== adminAddress) {
+        // The caller is not the initial admin
+        const rejectedTx = await timelockContract.initialize(adminAddress);
+        await expect(rejectedTx.wait()).rejects.toThrow();
+      }
+
+      const tx = await timelockContractForAdmin.initialize(adminAddress);
+      await tx.wait();
+
+      const admin = await timelockContract.roles(ADMIN_INDEX);
+      expect(admin).toBe(adminAddress);
+
+      // It is possible to call to initialize only one time
+      const rejectedTx = await timelockContractForAdmin.initialize(adminAddress);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+    }
   });
 
   test(`test update_roles`, async () => {
@@ -205,19 +217,13 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`freeze registry setup`, async () => {
-    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
-    if (!isFreezeRegistryInitialized) {
-      const tx1 = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
-      await tx1.wait();
-    }
-
-    await updateAdminRole(freezeRegistryContractForAdmin, adminAddress);
+    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
 
     let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx2 = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
-      await tx2.wait();
+      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
+      await tx.wait();
       const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
       const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
 
@@ -225,8 +231,8 @@ describe("test sealed_timelock_policy program", () => {
       expect(frozenAccountByIndex).toBe(frozenAccount);
     }
 
-    const tx3 = await freezeRegistryContractForAdmin.update_block_height_window(300);
-    await tx3.wait();
+    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
+    await tx.wait();
   });
 
   test("token_registry calls should fail", async () => {

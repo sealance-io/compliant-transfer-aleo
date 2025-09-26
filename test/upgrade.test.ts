@@ -1,11 +1,12 @@
 import { ExecutionMode } from "@doko-js/core";
 import { BaseContract } from "../contract/base-contract";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { ADMIN_INDEX, fundedAmount, ZERO_ADDRESS } from "../lib/Constants";
+import { ADMIN_INDEX, BLOCK_HEIGHT_WINDOW, fundedAmount, ZERO_ADDRESS } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { getProgramEdition, upgradeProgram } from "../lib/Upgrade";
+import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -20,6 +21,10 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
+  mode,
+  privateKey: adminPrivKey,
+});
 const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
@@ -31,6 +36,8 @@ describe("test upgradeability", () => {
 
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
+
+    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
   });
 
   test(`test upgrades`, async () => {
@@ -47,11 +54,6 @@ describe("test upgradeability", () => {
     expect(isUpgradeSuccessful).toBe(true);
     expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
 
-    const admin = await freezeRegistryContract.roles(ADMIN_INDEX, ZERO_ADDRESS);
-    if (admin !== adminAddress) {
-      const tx = await freezeRegistryContract.update_role(adminAddress, ADMIN_INDEX);
-      await tx.wait();
-    }
     // only the admin should be able to upgrade freeze registry program
     freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
     isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", deployerPrivKey);
