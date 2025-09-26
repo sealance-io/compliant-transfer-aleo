@@ -1,8 +1,10 @@
 program sealed_standalone_token.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        if (self.edition > 0) {
+            let admin_address: address = roles.get(ADMIN_INDEX);
+            assert_eq(admin_address, self.program_owner);     
+        }
     }
 
     record Token {
@@ -54,6 +56,8 @@ program sealed_standalone_token.aleo {
     const SUPPLY_MANAGER_ROLE: u8 = 3u8;
     mapping supply_roles: address => u8;
 
+    // Only this address can deploy the program
+    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
     // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
@@ -194,8 +198,8 @@ program sealed_standalone_token.aleo {
         supply_roles.set(new_address, role);
     }
 
-    // Initializes the freeze list and token specifications.
-    // Can only be called once — ensures the contract has not already been initialized.    
+    // Initializes the freeze list, token specifications, the admin and the investigator.
+    // Can be called only once and only by the INITIAL_ADMIN    
     // Sets the token metadata (name, symbol, decimals, max supply).
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
@@ -204,14 +208,19 @@ program sealed_standalone_token.aleo {
         public symbol: u128,
         public decimals: u8,
         public max_supply: u128,
-        public blocks: u32
+        public blocks: u32,
+        public admin: address,
+        public investigator_address: address
     ) -> Future {
         return finalize_initialize(
             name,
             symbol,
             decimals,
             max_supply,
-            blocks
+            blocks,
+            admin,
+            self.caller,
+            investigator_address
         );
     }
     async function finalize_initialize(
@@ -219,12 +228,21 @@ program sealed_standalone_token.aleo {
         symbol: u128,
         decimals: u8,
         max_supply: u128,
-        blocks: u32
+        blocks: u32,
+        admin: address, 
+        caller: address,
+        investigator_address: address
     ) {
         // Check if the token has already been initialized
         let already_initialized: bool = token_metadata.contains(TOKEN_METADATA_INDEX);
         assert_eq(already_initialized, false);
         
+        // Only the INITIAL_ADMIN can initialize the contract
+        assert_eq(caller, INITIAL_ADMIN);
+        
+        roles.set(ADMIN_INDEX, admin);
+        roles.set(INVESTIGATOR_INDEX, investigator_address);
+
         let token: TokenMetadata = TokenMetadata {
             name: name,
             symbol: symbol,
