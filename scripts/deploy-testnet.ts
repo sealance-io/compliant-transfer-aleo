@@ -4,14 +4,14 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from "../contract/base-contract";
-import { policies } from "../lib/Constants";
-import { initializeTokenProgram } from "../lib/Token";
-import { setTokenRegistryRole, updateAdminRole, updateInvestigatorRole, updateMinterRole } from "../lib/Role";
+import { BLOCK_HEIGHT_WINDOW, policies } from "../lib/Constants";
+import { registerTokenProgram } from "../lib/Token";
+import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
-import { initializeFreezeList, initializeFreezeListAndTokenDetails } from "../lib/Initalize";
+import { initializeProgram } from "../lib/Initalize";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
 import { stringToBigInt } from "../lib/Conversion";
 
@@ -85,49 +85,27 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   await deployIfNotDeployed(reportTokenContract);
 
   // register token and assign a policy contract as external_authorization_party
-  await initializeTokenProgram(
-    deployerPrivKey,
-    deployerAddress,
-    adminPrivKey,
-    adminAddress,
-    investigatorAddress,
-    policies.report,
-  );
-  await initializeTokenProgram(
-    deployerPrivKey,
-    deployerAddress,
-    adminPrivKey,
-    adminAddress,
-    investigatorAddress,
-    policies.threshold,
-  );
-  await initializeTokenProgram(
-    deployerPrivKey,
-    deployerAddress,
-    adminPrivKey,
-    adminAddress,
-    investigatorAddress,
-    policies.timelock,
-  );
+  await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
+  await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
 
-  // initialize freeze list
-  await initializeFreezeList(reportPolicyContract);
-  await initializeFreezeList(freezeRegistryContract);
-  await initializeFreezeListAndTokenDetails(
-    reportTokenContract,
+  await initializeProgram(reportPolicyContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, investigatorAddress]);
+  await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
+  await initializeProgram(thresholdContractForAdmin, [
+    adminAddress,
+    policies.threshold.blockHeightWindow,
+    investigatorAddress,
+  ]);
+  await initializeProgram(timelockContractForAdmin, [adminAddress]);
+  await initializeProgram(exchangeContractForAdmin, [adminAddress]);
+  await initializeProgram(reportTokenContractForAdmin, [
     stringToBigInt("Report Token"),
     stringToBigInt("REPORT_TOKEN"),
     6,
     1000_000000000000n,
-  );
-
-  // update the admin
-  await updateAdminRole(freezeRegistryContract, adminAddress);
-  await updateAdminRole(exchangeContract, adminAddress);
-  await updateAdminRole(reportTokenContract, adminAddress);
-
-  // update the investigator
-  await updateInvestigatorRole(reportTokenContractForAdmin, investigatorAddress);
+    adminAddress,
+    BLOCK_HEIGHT_WINDOW,
+    investigatorAddress,
+  ]);
 
   // assign exchange program to be a minter
   await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
