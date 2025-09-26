@@ -8,7 +8,7 @@ import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_poli
 import { TREASURE_ADDRESS, fundedAmount, policies, defaultRate, ADMIN_INDEX } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { initializeTokenProgram } from "../lib/Token";
+import { initializeTokenProgram, registerTokenProgram } from "../lib/Token";
 import { CreditsContract } from "../artifacts/js/credits";
 import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
 import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";
@@ -16,6 +16,7 @@ import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
+import { initializeProgram } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -87,34 +88,32 @@ describe("test exchange contract", () => {
     await deployIfNotDeployed(timelockContract);
     await deployIfNotDeployed(exchangeContract);
 
-    await initializeTokenProgram(
-      deployerPrivKey,
-      deployerAddress,
-      adminPrivKey,
-      adminAddress,
-      investigatorAddress,
-      policies.report,
-    );
-    await initializeTokenProgram(
-      deployerPrivKey,
-      deployerAddress,
-      adminPrivKey,
-      adminAddress,
-      investigatorAddress,
-      policies.threshold,
-    );
-    await initializeTokenProgram(
-      deployerPrivKey,
-      deployerAddress,
-      adminPrivKey,
-      adminAddress,
-      investigatorAddress,
-      policies.timelock,
-    );
+    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
+    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
+
+    await initializeProgram(timelockContractForAdmin, [adminAddress]);
 
     await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
     await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
     await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
+  });
+
+  test(`test initialize`, async () => {
+    if (deployerAddress !== adminAddress) {
+      // The caller is not the initial admin
+      const rejectedTx = await exchangeContract.initialize(adminAddress);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+    }
+
+    const tx = await exchangeContractForAdmin.initialize(adminAddress);
+    await tx.wait();
+
+    const admin = await exchangeContract.roles(ADMIN_INDEX);
+    expect(admin).toBe(adminAddress);
+
+    // It is possible to call to initialize only one time
+    const rejectedTx = await exchangeContractForAdmin.initialize(adminAddress);
+    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test update_admin`, async () => {

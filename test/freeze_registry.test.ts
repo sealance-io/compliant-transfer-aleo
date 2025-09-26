@@ -67,6 +67,59 @@ describe("test freeze_registry program", () => {
     await deployIfNotDeployed(freezeRegistryContract);
   });
 
+  let adminMerkleProof: { siblings: any[]; leaf_index: any }[];
+  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
+  test(`generate merkle proofs`, async () => {
+    const leaves = genLeaves([frozenAccount]);
+    const tree = buildTree(leaves);
+    root = tree[tree.length - 1];
+    const adminLeadIndices = getLeafIndices(tree, adminAddress);
+    const frozenAccountLeadIndices = getLeafIndices(tree, frozenAccount);
+    adminMerkleProof = [
+      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),
+      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE),
+    ];
+    frozenAccountMerkleProof = [
+      getSiblingPath(tree, frozenAccountLeadIndices[0], MAX_TREE_SIZE),
+      getSiblingPath(tree, frozenAccountLeadIndices[1], MAX_TREE_SIZE),
+    ];
+  });
+
+  test(`test initialize`, async () => {
+    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
+    if (!isFreezeRegistryInitialized) {
+      // Cannot update freeze list before initialization
+      let rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      if (deployerAddress !== adminAddress) {
+        // The caller is not the initial admin
+        rejectedTx = await freezeRegistryContract.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
+        await expect(rejectedTx.wait()).rejects.toThrow();
+      }
+
+      const tx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
+      await tx.wait();
+      const isAccountFrozen = await freezeRegistryContract.freeze_list(ZERO_ADDRESS);
+      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
+      const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+      const admin = await freezeRegistryContract.roles(ADMIN_INDEX);
+
+      expect(admin).toBe(adminAddress);
+      expect(isAccountFrozen).toBe(false);
+      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(lastIndex).toBe(0);
+      expect(initializedRoot).toBe(emptyRoot);
+      expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
+    }
+
+    // It is possible to call to initialize only one time
+    const rejectedTx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+  });
+
   test(`test update_admin_address`, async () => {
     let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
     await tx.wait();
@@ -90,51 +143,6 @@ describe("test freeze_registry program", () => {
 
     tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
     await expect(tx.wait()).rejects.toThrow();
-  });
-
-  let adminMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
-  test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([frozenAccount]);
-    const tree = buildTree(leaves);
-    root = tree[tree.length - 1];
-    const adminLeadIndices = getLeafIndices(tree, adminAddress);
-    const frozenAccountLeadIndices = getLeafIndices(tree, frozenAccount);
-    adminMerkleProof = [
-      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE),
-    ];
-    frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeadIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, frozenAccountLeadIndices[1], MAX_TREE_SIZE),
-    ];
-  });
-
-  test(`test initialize`, async () => {
-    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
-    if (!isFreezeRegistryInitialized) {
-      // Cannot update freeze list before initialization
-      const rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-
-      const tx = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
-      await tx.wait();
-      const isAccountFrozen = await freezeRegistryContract.freeze_list(ZERO_ADDRESS);
-      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
-      const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-
-      expect(isAccountFrozen).toBe(false);
-      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
-      expect(lastIndex).toBe(0);
-      expect(initializedRoot).toBe(emptyRoot);
-      expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
-    }
-
-    // It is possible to call to initialize only one time
-    const rejectedTx = await freezeRegistryContract.initialize(BLOCK_HEIGHT_WINDOW);
-    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test update_freeze_list`, async () => {
