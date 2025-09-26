@@ -7,7 +7,7 @@ import sealed_timelock_policy.aleo;
 program gqrfmwbtyp.aleo {
     @custom
     async constructor() {
-        if (self.edition > 1) {
+        if (self.edition > 0) {
             let admin_address: address = roles.get(ADMIN_INDEX);
             assert_eq(admin_address, self.program_owner);     
         }
