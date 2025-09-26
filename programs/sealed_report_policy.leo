@@ -4,8 +4,10 @@ import merkle_tree.aleo;
 program sealed_report_policy.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        if (self.edition > 1) {
+            let admin_address: address = roles.get(ADMIN_INDEX);
+            assert_eq(admin_address, self.program_owner);     
+        }
     }
     
     const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
@@ -14,7 +16,8 @@ program sealed_report_policy.aleo {
     // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-
+    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    
     // Admin: can assign roles, update the freeze list and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
     // Investigator: receives compliant records with transaction details
@@ -60,20 +63,25 @@ program sealed_report_policy.aleo {
         token_id: field
     }
 
-    // Initializes the freeze list.
+    // Initializes the freeze list, the admin and the investigator.
     // Can only be called once — ensures the contract has not already been initialized.
+    // Can be called only by the INITIAL_ADMIN
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
-    async transition initialize(public blocks: u32) -> Future {
-        return f_initialize(blocks);
+    async transition initialize(public admin: address, public blocks: u32, public investigator_address: address) -> Future {
+        return f_initialize(admin, self.caller, blocks, investigator_address);
     }
-    async function f_initialize(blocks: u32) {
+    async function f_initialize(admin: address, caller: address, blocks: u32, investigator_address: address) {
         let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(is_already_initialized, false);
 
+        assert_eq(caller, INITIAL_ADMIN);
+        roles.set(ADMIN_INDEX, admin);
+        roles.set(INVESTIGATOR_INDEX, investigator_address);
+
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
         freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
-        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT);
+        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX,EMPTY_ROOT);
         freeze_list.set(ZERO_ADDRESS, false);
         freeze_list_index.set(0u32, ZERO_ADDRESS);
     }
@@ -144,12 +152,11 @@ program sealed_report_policy.aleo {
 
     // Updates the address assigned to a given role.
     // Can only be called by the current admin.
-    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }

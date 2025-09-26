@@ -4,8 +4,10 @@ import sealance_freezelist_registry.aleo;
 program sealed_timelock_policy.aleo {
     @custom
     async constructor() {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, self.program_owner);
-        assert_eq(admin_address, self.program_owner);
+        if (self.edition > 1) {
+            let admin_address: address = roles.get(ADMIN_INDEX);
+            assert_eq(admin_address, self.program_owner);     
+        }
     }
     
     // token specs
@@ -19,6 +21,7 @@ program sealed_timelock_policy.aleo {
     const PROGRAM_ADDRESS: address = aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
+    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
     // Admin: can assign roles, mint tokens and upgrade the program 
     const ADMIN_INDEX: u8 = 1u8;
@@ -53,10 +56,11 @@ program sealed_timelock_policy.aleo {
     // Called by administrators
     // -------------------------
 
-    // Sets the admin to the caller
-    // Sets the freeze_registry_program_name mapping
+    // Initializes the admin and the freeze_registry_program_name mapping
+    // Can only be called once — ensures the contract has not already been initialized.    
+    // Can be called only by the INITIAL_ADMIN
     // Registers the token and assigns this program as both the token admin and the external authorization party
-    async transition initialize() -> Future {
+    async transition initialize(public admin: address) -> Future {
         // Set admin and external_authorization_party to be PROGRAM_ADDRESS
         let token_registry_call: Future = token_registry.aleo/register_token(
             TOKEN_ID,
@@ -67,23 +71,27 @@ program sealed_timelock_policy.aleo {
             true,
             PROGRAM_ADDRESS // external_authorization_party
         );
-        return f_initialize(token_registry_call, self.caller );
+        return f_initialize(token_registry_call, admin, self.caller);
     }
-    async function f_initialize(token_registry_call: Future, caller: address) {
+    async function f_initialize(token_registry_call: Future, admin: address, caller: address) {
+        let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
+        assert_eq(is_already_initialized, false);
+
+        assert_eq(INITIAL_ADMIN, caller);
+        roles.set(ADMIN_INDEX, admin);
+
         freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
-        roles.set(ADMIN_INDEX, caller);
 
         token_registry_call.await();
     }
 
     // Updates the address assigned to a given role.
     // Can only be called by the current admin.
-    // If no admin is set yet, the caller is temporarily treated as admin.
     async transition update_role(public new_address: address, role: u8) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
+        let admin_address: address = roles.get(ADMIN_INDEX);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
     }
