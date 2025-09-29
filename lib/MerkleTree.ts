@@ -2,6 +2,10 @@ import { Field, Plaintext, Poseidon4 } from "@provablehq/sdk";
 import { convertAddressToField } from "./Conversion";
 import { ZERO_ADDRESS, MAX_TREE_SIZE } from "./Constants";
 
+// Create a single hasher instance for reuse (init is heavy!)
+// TODO: Should we call 'free()' to dispose underlying WASM? 
+const hasher = new Poseidon4();
+
 /**
  * Hashes two elements using Poseidon4 hash function
  * @throws {Error} If inputs are empty or invalid
@@ -10,7 +14,6 @@ function hashTwoElements(el1: string, el2: string): Field {
   if (!el1 || !el2) {
     throw new Error("Invalid inputs: elements cannot be empty");
   }
-  const hasher = new Poseidon4();
   const fields = [Field.fromString(el1), Field.fromString(el2)];
   const arrayPlaintext = Plaintext.fromString(`[${fields.map(f => f.toString()).join(",")}]`);
 
