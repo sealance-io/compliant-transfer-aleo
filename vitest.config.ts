@@ -11,6 +11,7 @@ export default defineConfig({
     },
     testTimeout: 3000000,
     hookTimeout: 3000000,
+    teardownTimeout: 60000,
 
     // 1. No file-level parallelism: run test files one after another
     fileParallelism: false,
