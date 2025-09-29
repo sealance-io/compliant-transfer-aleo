@@ -79,7 +79,7 @@ program sealed_standalone_token.aleo {
     
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
-    const MAX_TREE_DEPTH: u32 = 12u32;
+    const MAX_TREE_DEPTH: u32 = 15u32;
 
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
