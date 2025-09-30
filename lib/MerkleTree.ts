@@ -3,7 +3,7 @@ import { convertAddressToField } from "./Conversion";
 import { ZERO_ADDRESS, MAX_TREE_SIZE } from "./Constants";
 
 // Create a single hasher instance for reuse (init is heavy!)
-// TODO: Should we call 'free()' to dispose underlying WASM? 
+// TODO: Should we call 'free()' to dispose underlying WASM?
 const hasher = new Poseidon4();
 
 /**
