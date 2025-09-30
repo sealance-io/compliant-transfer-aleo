@@ -6,6 +6,7 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import { Account } from "@provablehq/sdk";
 import { convertAddressToField, convertFieldToAddress } from "../lib/Conversion";
+import { generateAddressesParallel } from "./utils/Accounts";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Merkle_treeContract({ mode });
@@ -180,9 +181,7 @@ describe("merkle_tree program tests", () => {
   test(`large tree edge cases test, depth 12`, async () => {
     const depth = 12;
     const size = 2 ** depth;
-    const addresses = Array(size)
-      .fill(null)
-      .map(() => new Account().address().to_string());
+    const addresses = await generateAddressesParallel(size);
 
     const sortedAddresses = addresses
       .map(addr => ({
@@ -245,9 +244,7 @@ describe("merkle_tree program tests", () => {
   test(`large tree random test, depth 12`, async () => {
     const depth = 12;
     const size = 2 ** depth;
-    const addresses = Array(size)
-      .fill(null)
-      .map(() => new Account().address().to_string());
+    const addresses = await generateAddressesParallel(size);
 
     const sortedAddresses = genLeaves(addresses);
     const tree = buildTree(sortedAddresses);
@@ -273,9 +270,7 @@ describe("merkle_tree program tests", () => {
   test(`large tree random test, depth 15`, async () => {
     const depth = 15;
     const size = 2 ** depth;
-    const addresses = Array(size)
-      .fill(null)
-      .map(() => new Account().address().to_string());
+    const addresses = await generateAddressesParallel(size);
 
     const sortedAddresses = genLeaves(addresses);
     const tree = buildTree(sortedAddresses);
@@ -289,7 +284,7 @@ describe("merkle_tree program tests", () => {
     let tx = await contract.verify_non_inclusion(checkedAddress, [merkleProof0, merkleProof1]);
     let [root] = await tx.wait();
     expect(root).toBe(tree[tree.length - 1]);
-  }, 200000);
+  });
 
   test(`all cases, depth 3`, async () => {
     const leaves = genLeaves([
