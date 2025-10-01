@@ -59,10 +59,11 @@ program sealed_standalone_token.aleo {
     // Only this address can deploy the program
     const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
+    // This address receives compliance records (can be updated by the admin with contract upgrade)
+    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
+
     // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
-    // Investigator: receives compliant records with transaction details
-    const INVESTIGATOR_INDEX: u8 = 2u8;
     // Freeze list manager: can update the freeze list
     const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     // Maps a role ID to an address (e.g., 1 = admin).
@@ -210,7 +211,6 @@ program sealed_standalone_token.aleo {
         public max_supply: u128,
         public blocks: u32,
         public admin: address,
-        public investigator_address: address
     ) -> Future {
         return finalize_initialize(
             name,
@@ -220,7 +220,6 @@ program sealed_standalone_token.aleo {
             blocks,
             admin,
             self.caller,
-            investigator_address
         );
     }
     async function finalize_initialize(
@@ -231,7 +230,6 @@ program sealed_standalone_token.aleo {
         blocks: u32,
         admin: address, 
         caller: address,
-        investigator_address: address
     ) {
         // Check if the token has already been initialized
         let already_initialized: bool = token_metadata.contains(TOKEN_METADATA_INDEX);
@@ -241,7 +239,6 @@ program sealed_standalone_token.aleo {
         assert_eq(caller, INITIAL_ADMIN);
         
         roles.set(ADMIN_INDEX, admin);
-        roles.set(INVESTIGATOR_INDEX, investigator_address);
 
         let token: TokenMetadata = TokenMetadata {
             name: name,
@@ -341,6 +338,7 @@ program sealed_standalone_token.aleo {
             owner: recipient,
             amount: amount,
         };
+        
         return (token, finalize_mint_private(amount, self.caller));
     }
 
@@ -424,6 +422,7 @@ program sealed_standalone_token.aleo {
         };
         return (output_record, finalize_burn_private(amount, self.caller));
     }
+
     async function finalize_burn_private(
         amount: u128,
         caller: address,
@@ -460,6 +459,7 @@ program sealed_standalone_token.aleo {
     ) -> Future {
         return finalize_transfer_public(recipient, amount, self.caller);
     }
+
     async function finalize_transfer_public(
         recipient: address,
         amount: u128,
@@ -485,6 +485,7 @@ program sealed_standalone_token.aleo {
     ) -> Future {
         return f_transfer_public_as_signer(recipient, amount, self.signer);
     }
+
     async function f_transfer_public_as_signer(
         recipient: address,
         amount: u128,
@@ -517,6 +518,7 @@ program sealed_standalone_token.aleo {
 
         return finalize_approve_public(amount, allowance_key);
     }
+
     async function finalize_approve_public(
         amount: u128,
         allowance_key: field
@@ -550,7 +552,6 @@ program sealed_standalone_token.aleo {
         allowances.set(allowance_key, current_allowance - amount);
     }
 
-
     // Transfers public tokens from the owner to the recipient.
     // Can be called by any spender with sufficient allowance from the owner.
     // Decreases the spender’s allowance by the transferred amount.
@@ -568,6 +569,7 @@ program sealed_standalone_token.aleo {
 
         return finalize_transfer_from_public(owner, recipient, amount, allowance_key);
     }
+
     async function finalize_transfer_from_public(
         sender: address,
         recipient: address,
@@ -597,7 +599,6 @@ program sealed_standalone_token.aleo {
     async transition transfer_public_to_private(
         recipient: address,
         public amount: u128,
-        public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
         let token: Token = Token {
             owner: recipient,
@@ -605,24 +606,21 @@ program sealed_standalone_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: self.caller,
             recipient: recipient,
         };
 
-        return (compliance_record, token, f_transfer_public_to_private(amount, self.caller, investigator_address));
+        return (compliance_record, token, f_transfer_public_to_private(amount, self.caller));
     }
+
     async function f_transfer_public_to_private(
         amount: u128,
         sender: address,
-        investigator_address: address
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -637,8 +635,8 @@ program sealed_standalone_token.aleo {
         public owner: address,
         recipient: address,
         public amount: u128,
-        public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
+
         let token: Token = Token {
             owner: recipient,
             amount: amount
@@ -651,25 +649,22 @@ program sealed_standalone_token.aleo {
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: owner,
             recipient: recipient,
         };
 
-        return (compliance_record, token, f_transfer_from_public_to_priv(owner, amount, allowance_key, investigator_address));
+        return (compliance_record, token, f_transfer_from_public_to_priv(owner, amount, allowance_key));
     }
+
     async function f_transfer_from_public_to_priv(
         sender: address,
         amount: u128,
         allowance_key: field,
-        investigator_address: address
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         // Check that the spender is authorized to spend the amount
         let current_allowance: u128 = allowances.get(allowance_key);
@@ -689,7 +684,6 @@ program sealed_standalone_token.aleo {
         amount: u128,
         input_record: Token,
         sender_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address,
     ) -> (ComplianceRecord, Token, Token, Future) {
         let sender_root: field = verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
@@ -704,16 +698,16 @@ program sealed_standalone_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
         };
 
-        return (compliance_record, updated_record, transfer_record, f_transfer_private(sender_root, investigator_address));
+        return (compliance_record, updated_record, transfer_record, f_transfer_private(sender_root));
     }
 
-    async function f_transfer_private(root: field, investigator_address: address) {
+    async function f_transfer_private(root: field) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
@@ -723,10 +717,6 @@ program sealed_standalone_token.aleo {
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
     }
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
@@ -739,7 +729,6 @@ program sealed_standalone_token.aleo {
         public amount: u128,
         input_record: Token,
         sender_merkle_proofs: [MerkleProof; 2],
-        public investigator_address: address
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
@@ -749,7 +738,7 @@ program sealed_standalone_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -761,17 +750,15 @@ program sealed_standalone_token.aleo {
             f_transfer_private_to_public(
                 root,
                 recipient,
-                amount,
-                investigator_address
+                amount
             )
         );
     }
+
     async function f_transfer_private_to_public(
         root: field,
         recipient: address,
-        amount: u128,
-        investigator_address: address
-    ) {
+        amount: u128    ) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
@@ -783,10 +770,6 @@ program sealed_standalone_token.aleo {
 
         let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
-
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);
@@ -819,6 +802,7 @@ program sealed_standalone_token.aleo {
 
         return (new_token_1, new_token_2);
     }
+
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // The sender must not be frozen in the freeze list.
@@ -828,7 +812,6 @@ program sealed_standalone_token.aleo {
         amount: u128,
         input_record: Token,
         ticket: Ticket,
-        public investigator_address: address
     ) -> (ComplianceRecord, Token, Token, Ticket, Future) {
         let updated_record: Token = Token {
             owner: input_record.owner,
@@ -841,7 +824,7 @@ program sealed_standalone_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -852,9 +835,10 @@ program sealed_standalone_token.aleo {
             freeze_list_root: ticket.freeze_list_root,
         };
 
-        return (compliance_record, updated_record, transfer_record, ticket_record, f_transfer_private_ticket(investigator_address, ticket.freeze_list_root));
+        return (compliance_record, updated_record, transfer_record, ticket_record, f_transfer_private_ticket(ticket.freeze_list_root));
     }
-    async function f_transfer_private_ticket(investigator_address: address, root: field) {
+
+    async function f_transfer_private_ticket(root: field) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
@@ -863,11 +847,7 @@ program sealed_standalone_token.aleo {
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
     }
-
 
     // Calculates the hash of two sibling nodes in a Merkle tree.
     // The order of the siblings depends on the index bit (0 = left, 1 = right).
