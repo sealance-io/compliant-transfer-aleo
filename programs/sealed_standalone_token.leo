@@ -332,7 +332,7 @@ program sealed_standalone_token.aleo {
     // Updates the total token supply in the token metadata.
     async transition mint_private(
         recipient: address,
-        public amount: u128
+        public amount: u128,
         ) -> (Token, ComplianceRecord, Future) {
         let token: Token = Token {
             owner: recipient,
@@ -342,7 +342,7 @@ program sealed_standalone_token.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR_ADDRESS,
             amount: amount,
-            sender: self.caller,
+            sender: ZERO_ADDRESS,
             recipient: recipient,
         };
         
@@ -406,52 +406,6 @@ program sealed_standalone_token.aleo {
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
 
-        let new_metadata: TokenMetadata = TokenMetadata {
-            name: token.name,
-            symbol: token.symbol,
-            decimals: token.decimals,
-            supply: token.supply - amount, // underflow will be caught by the VM
-            max_supply: token.max_supply,
-        };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
-    }
-
-    // Burns tokens from a private record (non-public asset).
-    // Can be called by the admin, a burner, or a supply manager.
-    // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
-    async transition burn_private(
-        input_record: Token,
-        public amount: u128
-    ) -> (Token, ComplianceRecord, Future) {
-        let output_record: Token = Token {
-            owner: input_record.owner,
-            amount: input_record.amount - amount
-        };
-
-        let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: INVESTIGATOR_ADDRESS,
-            amount: amount,
-            sender: input_record.owner,
-            recipient: ZERO_ADDRESS,
-        };
-
-        return (output_record, compliance_record, finalize_burn_private(amount, self.caller));
-    }
-
-    async function finalize_burn_private(
-        amount: u128,
-        caller: address,
-    ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
-
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
-
-        // Update the token supply
         let new_metadata: TokenMetadata = TokenMetadata {
             name: token.name,
             symbol: token.symbol,
