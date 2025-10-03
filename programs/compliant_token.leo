@@ -1,3 +1,5 @@
+import sealance_freezelist_registry.aleo;
+
 program compliant_token.aleo {
     @custom
     async constructor() {
@@ -23,11 +25,6 @@ program compliant_token.aleo {
     record Ticket {
         owner: address,
         freeze_list_root: field,
-    }
-
-    struct MerkleProof {
-        siblings: [field; MAX_TREE_DEPTH+1],
-        leaf_index: u32
     }
 
     struct TokenMetadata {
@@ -64,104 +61,25 @@ program compliant_token.aleo {
 
     // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
     const ADMIN_INDEX: u8 = 1u8;
-    // Freeze list manager: can update the freeze list
-    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
+
     // Maps a role ID to an address (e.g., 1 = admin).
     mapping roles: u8 => address;
 
+    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     const FREEZE_LIST_LAST_INDEX: bool = true;
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
-
-    // Indicates whether an address is frozen.
-    mapping freeze_list: address => bool;
-    // Mimics an array of frozen addresses by storing them at sequential indexes.
-    mapping freeze_list_index: u32 => address;
-    // Stores the highest index used in the freeze_list_index mapping.
-    mapping freeze_list_last_index: bool => u32;
-    // Stores the current and previous Merkle roots of the freeze list (e.g., 1 = current, 2 = previous).
-    mapping freeze_list_root: u8 => field;
-    // Stores the block height when the root was updated.
-    mapping root_updated_height: bool => u32;
-    // Defines the number of blocks during which the previous root is still considered valid.
-    mapping block_height_window: bool => u32;
 
     // -------------------------
     // Called by token admins
     // -------------------------
 
-    // Freezes or unfreezes an account based on the is_frozen flag (true = freeze, false = unfreeze).
-    // Can only be called after the contract has been initialized.
-    // Verifies that the operation is valid:
-    // - Cannot freeze an already frozen account or unfreeze an account that isn't frozen.
-    // - When freezing:
-    //   - Ensures the target index in freeze_list_index is empty.
-    //   - Ensures the index is not greater than the last index + 1.
-    //   - If the index equals last index + 1, updates freeze_list_last_index.
-    // - When unfreezing:
-    //   - Ensures the specified index currently holds the account being removed.
-    // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
-    // Updates both the freeze_list and freeze_list_index mappings accordingly.
-    // Also updates the current Merkle root and stores the previous root for backward compatibility.
-    // Can only be called by the admin and the freeze list manager.
-    async transition update_freeze_list(
-        public account: address, 
-        public is_frozen: bool, 
-        public frozen_index: u32, 
-        public previous_root: field,
-        public new_root: field
-    ) -> Future {
-        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root);
-    }
-    async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        if(admin_address != caller) {
-            let freeze_list_manager_address: address = roles.get(FREEZE_LIST_MANAGER_INDEX);
-            assert_eq(freeze_list_manager_address, caller);
-        }
-
-        let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        assert_eq(previous_root, old_root);
-        freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
-        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
-
-        // Verify we don't unfreeze an unfrozen account or freeze a frozen account
-        let stored_is_frozen = freeze_list.get_or_use(account, false);
-        assert_neq(is_frozen, stored_is_frozen);
-        freeze_list.set(account, is_frozen);
-
-        let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
-        if (is_frozen) {
-            // Verify that the frozen_index is empty
-            assert_eq(current_address_at_index, ZERO_ADDRESS);
-
-            // Verify that the frozen index equal or smaller than the last index plus 1
-            let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
-            assert(last_index + 1u32 >= frozen_index);
-        
-            // Update the freeze_list_last_index
-            if (last_index < frozen_index) {
-                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, frozen_index);
-            }
-
-            freeze_list_index.set(frozen_index, account);
-        } else {
-            // Verify we update the correct frozen_index
-            assert_eq(current_address_at_index, account);
-            freeze_list_index.set(frozen_index, ZERO_ADDRESS);
-        }
-
-        root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
-    }
 
     // Updates the address assigned to a given role.
     // Can only be called by the current admin.
@@ -173,18 +91,6 @@ program compliant_token.aleo {
         let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
         assert_eq(admin_address, caller);
         roles.set(role, new_address);
-    }
-
-    // Updates the number of blocks during which the previous root is still considered valid.
-    // Can only be called by the admin.
-    async transition update_block_height_window(public blocks: u32) -> Future {
-        return f_update_block_height_window(blocks, self.caller);
-    }
-    async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-
-        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
     // Assigns a supply role (minter, burner, or supply manager) to the given address.
@@ -209,7 +115,6 @@ program compliant_token.aleo {
         public symbol: u128,
         public decimals: u8,
         public max_supply: u64,
-        public blocks: u32,
         public admin: address,
     ) -> Future {
         return finalize_initialize(
@@ -217,7 +122,6 @@ program compliant_token.aleo {
             symbol,
             decimals,
             max_supply,
-            blocks,
             admin,
             self.caller,
         );
@@ -227,7 +131,6 @@ program compliant_token.aleo {
         symbol: u128,
         decimals: u8,
         max_supply: u64,
-        blocks: u32,
         admin: address, 
         caller: address,
     ) {
@@ -250,11 +153,6 @@ program compliant_token.aleo {
 
         token_metadata.set(TOKEN_METADATA_INDEX, token);
 
-        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
-        freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
-        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT);
-        freeze_list.set(ZERO_ADDRESS, false);
-        freeze_list_index.set(0u32, ZERO_ADDRESS);
     }
 
     // Generates a Ticket record for the signer.
@@ -271,13 +169,13 @@ program compliant_token.aleo {
         return (ticket_record, f_get_ticket(root));
     }
     async function f_get_ticket(root: field) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+        let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
         if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
     }
@@ -434,9 +332,9 @@ program compliant_token.aleo {
         amount: u64,
         sender: address
     ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
+        let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
 
         let sender_balance = balances.get(sender);
@@ -460,9 +358,9 @@ program compliant_token.aleo {
         amount: u64,
         sender: address
     ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
+        let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
 
         let sender_balance = balances.get(sender);
@@ -545,9 +443,9 @@ program compliant_token.aleo {
         amount: u64,
         allowance_key: field
     ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
+        let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
 
         // Check that the spender is authorized to spend the amount
@@ -588,7 +486,7 @@ program compliant_token.aleo {
         amount: u64,
         sender: address,
     ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
+        let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
 
         let sender_balance = balances.get(sender);
@@ -632,7 +530,7 @@ program compliant_token.aleo {
         amount: u64,
         allowance_key: field,
     ) {
-        let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
+        let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
 
         // Check that the spender is authorized to spend the amount
@@ -677,13 +575,13 @@ program compliant_token.aleo {
     }
 
     async function f_transfer_private(root: field) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+        let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
         if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
     }
@@ -728,16 +626,17 @@ program compliant_token.aleo {
         root: field,
         recipient: address,
         amount: u64    ) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }    
+        let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
-        let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
+        if (current_root != root) {
+            let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(root, previous_root);
+            let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            assert(updated_height + window > block.height);
+        } 
+
+        let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
 
         let recipient_balance = balances.get_or_use(recipient, 0u64);
@@ -808,12 +707,13 @@ program compliant_token.aleo {
     }
 
     async function f_transfer_private_ticket(root: field) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+
         if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+            let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
             assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+            let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
     }
