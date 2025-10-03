@@ -50,7 +50,6 @@ program compliant_token.aleo {
     const NONE_ROLE: u8 = 0u8;
     const MINTER_ROLE: u8 = 1u8;
     const BURNER_ROLE: u8 = 2u8;
-    const SUPPLY_MANAGER_ROLE: u8 = 3u8;
     mapping supply_roles: address => u8;
 
     // Only this address can deploy the program
@@ -199,7 +198,7 @@ program compliant_token.aleo {
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
+            assert(role == MINTER_ROLE);
         }
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
@@ -255,7 +254,7 @@ program compliant_token.aleo {
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
+            assert(role == MINTER_ROLE);
         }
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
@@ -294,7 +293,7 @@ program compliant_token.aleo {
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE || role == SUPPLY_MANAGER_ROLE);
+            assert(role == BURNER_ROLE);
         }
 
         // Update the balance
