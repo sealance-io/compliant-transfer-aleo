@@ -195,15 +195,11 @@ program compliant_token.aleo {
         amount: u64,
         caller: address
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role & MINTER_ROLE == MINTER_ROLE);
-        }
+
+        let role: u8 = supply_roles.get(caller);
+        assert(role & MINTER_ROLE == MINTER_ROLE);
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
-
         // Check that the token supply + amount <= max_supply
         let new_supply: u64 = token.supply + amount;
         assert(new_supply <= token.max_supply);
@@ -251,12 +247,8 @@ program compliant_token.aleo {
         amount: u64,
         caller: address,
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role & MINTER_ROLE == MINTER_ROLE);
-        }
+        let role: u8 = supply_roles.get(caller);
+        assert(role & MINTER_ROLE == MINTER_ROLE);
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
 
@@ -290,12 +282,8 @@ program compliant_token.aleo {
         amount: u64,
         caller: address,
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role & BURNER_ROLE == BURNER_ROLE);
-        }
+        let role: u8 = supply_roles.get(caller);
+        assert(role & BURNER_ROLE == BURNER_ROLE);
 
         // Update the balance
         let balance = balances.get(owner);
