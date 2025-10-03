@@ -47,6 +47,7 @@ program compliant_token.aleo {
     mapping balances: address => u64;
     mapping allowances: field => u64; // hash(account, spender) => Allowance
 
+    // Supply management roles, using bitmasking to allow multiple roles per address
     const NONE_ROLE: u8 = 0u8;
     const MINTER_ROLE: u8 = 1u8;
     const BURNER_ROLE: u8 = 2u8;
@@ -198,7 +199,7 @@ program compliant_token.aleo {
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE);
+            assert(role & MINTER_ROLE == MINTER_ROLE);
         }
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
@@ -254,7 +255,7 @@ program compliant_token.aleo {
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE);
+            assert(role & MINTER_ROLE == MINTER_ROLE);
         }
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
@@ -293,7 +294,7 @@ program compliant_token.aleo {
         let is_admin: bool = caller == admin_address;
         if(!is_admin) {
             let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE);
+            assert(role & BURNER_ROLE == BURNER_ROLE);
         }
 
         // Update the balance
