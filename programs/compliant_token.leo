@@ -54,7 +54,7 @@ program compliant_token.aleo {
     mapping supply_roles: address => u8;
 
     // Only this address can deploy the program
-    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    const INITIAL_ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
 
     // This address receives compliance records (can be updated by the admin with contract upgrade)
     const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
