@@ -12,6 +12,7 @@ import {
   MAX_TREE_SIZE,
   MINTER_ROLE,
   NONE_ROLE,
+  PAUSE_ADMIN_INDEX,
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
@@ -704,4 +705,116 @@ describe("test sealed_standalone_token program", () => {
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
 
   });
+
+  test(`test pausing the contract`, async () => {
+
+    // ensure the contract is unpaused
+    let pause_status = await tokenContractForAdmin.pause(true);
+    if (pause_status == true) {
+      let pauseTx = await tokenContractForAdmin.pause_transfers(false);
+      await pauseTx.wait();
+    }
+
+    // initial minting to ensure the account has enough balance
+    let mintPrivateTx = await tokenContractForMinter.mint_private(account, amount * 20n);
+    const [encryptedAccountRecord] = await mintPrivateTx.wait();
+    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
+
+    const getTicketTx = await tokenContractForAccount.get_ticket(senderMerkleProof);
+    const [encryptedTicket] = await getTicketTx.wait();
+    let ticket = await decryptTicket(encryptedTicket, accountPrivKey);
+
+    let mintTx = await tokenContractForSupplyManager.mint_public(account, amount * 20n);
+    await mintTx.wait();
+
+    let approveTx = await tokenContractForAccount.approve_public(spender, amount);
+    await approveTx.wait();
+
+    let updateRoleTx = await tokenContractForAdmin.update_role(adminAddress, PAUSE_ADMIN_INDEX);
+    await updateRoleTx.wait();
+    let adminRole = await tokenContract.roles(PAUSE_ADMIN_INDEX);
+    expect(adminRole).toBe(adminAddress);
+
+    // pause the contract
+    pause_status = await tokenContractForAdmin.pause(true);
+    expect(pause_status).toBe(false);
+    let pauseTx = await tokenContractForAdmin.pause_transfers(true);
+    await pauseTx.wait();
+    pause_status = await tokenContractForAdmin.pause(true);
+    expect(pause_status).toBe(true);
+
+    // verify that all the functionalities are paused
+    mintTx = await tokenContractForMinter.mint_public(recipient, amount);
+    await expect(mintTx.wait()).rejects.toThrow();
+
+    mintPrivateTx = await tokenContractForMinter.mint_private(recipient, amount);
+    await expect(mintPrivateTx.wait()).rejects.toThrow();
+
+    let burnTx = await tokenContractForBurner.burn_public(recipient, amount);
+    await expect(burnTx.wait()).rejects.toThrow();
+    
+    let publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
+    await expect(publicTx.wait()).rejects.toThrow();
+
+    let publicAsSignerTx = await tokenContractForAccount.transfer_public_as_signer(recipient, amount);
+    await expect(publicAsSignerTx.wait()).rejects.toThrow();
+    
+    approveTx = await tokenContractForAccount.approve_public(spender, amount);
+    await expect(approveTx.wait()).rejects.toThrow();
+
+    let unapproveTx = await tokenContractForAccount.unapprove_public(spender, amount);
+    await expect(unapproveTx.wait()).rejects.toThrow();
+
+    const fromPublicTx = await tokenContractForSpender.transfer_from_public(account, recipient, amount);
+    await expect(fromPublicTx.wait()).rejects.toThrow();
+
+    const fromPublicToPrivateTx = await tokenContractForSpender.transfer_from_public_to_private(
+      account,
+      recipient,
+      amount
+    );
+    await expect(fromPublicToPrivateTx.wait()).rejects.toThrow();
+
+    const publicToPrivate = await tokenContractForAccount.transfer_public_to_private(
+      recipient,
+      amount
+    );
+    await expect(publicToPrivate.wait()).rejects.toThrow();
+
+    const privateTx = await tokenContractForAccount.transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      senderMerkleProof,
+    );
+    await expect(privateTx.wait()).rejects.toThrow();
+
+    const privateToPublic = await tokenContractForAccount.transfer_private_to_public(
+      recipient,
+      amount,
+      accountRecord,
+      senderMerkleProof,
+    );
+    await expect(privateToPublic.wait()).rejects.toThrow();
+
+
+    let privateWithTicketTx = await tokenContractForAccount.transfer_private_with_ticket(
+      recipient,
+      amount,
+      accountRecord,
+      ticket,
+    );
+    await expect(privateWithTicketTx.wait()).rejects.toThrow();
+
+    // unpause the contract
+    pauseTx = await tokenContractForAdmin.pause_transfers(false);
+    await pauseTx.wait();
+    pause_status = await tokenContractForAdmin.pause(true);
+    expect(pause_status).toBe(false);
+
+    //verify that the functionalities are back (one is enough)
+    publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
+    await publicTx.wait();
+  });
+
 });

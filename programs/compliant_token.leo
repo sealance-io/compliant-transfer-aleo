@@ -51,6 +51,7 @@ program compliant_token.aleo {
     const NONE_ROLE: u8 = 0u8;
     const MINTER_ROLE: u8 = 1u8;
     const BURNER_ROLE: u8 = 2u8;
+    const PAUSE_ADMIN_INDEX: u8 = 4u8;
     mapping supply_roles: address => u8;
 
     // Only this address can deploy the program
@@ -65,13 +66,14 @@ program compliant_token.aleo {
     // Maps a role ID to an address (e.g., 1 = admin).
     mapping roles: u8 => address;
 
+    const PAUSE_STATUS_INDEX: bool = true;
+    mapping pause: bool => bool;
+
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-    const FREEZE_LIST_LAST_INDEX: bool = true;
+    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
@@ -153,6 +155,7 @@ program compliant_token.aleo {
 
         token_metadata.set(TOKEN_METADATA_INDEX, token);
 
+        pause.set(PAUSE_STATUS_INDEX, false);
     }
 
     // Generates a Ticket record for the signer.
@@ -198,6 +201,9 @@ program compliant_token.aleo {
 
         let role: u8 = supply_roles.get(caller);
         assert(role & MINTER_ROLE == MINTER_ROLE);
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
         // Check that the token supply + amount <= max_supply
@@ -250,6 +256,9 @@ program compliant_token.aleo {
         let role: u8 = supply_roles.get(caller);
         assert(role & MINTER_ROLE == MINTER_ROLE);
 
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
 
         // Check that the token supply + amount <= max_supply
@@ -284,6 +293,9 @@ program compliant_token.aleo {
     ) {
         let role: u8 = supply_roles.get(caller);
         assert(role & BURNER_ROLE == BURNER_ROLE);
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
 
         // Update the balance
         let balance = balances.get(owner);
@@ -325,6 +337,9 @@ program compliant_token.aleo {
         let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
 
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
 
@@ -350,6 +365,9 @@ program compliant_token.aleo {
         assert_eq(is_sender_frozen, false);
         let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -378,6 +396,10 @@ program compliant_token.aleo {
         amount: u64,
         allowance_key: field
     ) {
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let current_allowance: u64 = allowances.get_or_use(allowance_key, 0u64);
         // Increase or create the allowance amount
         allowances.set(allowance_key, current_allowance + amount);
@@ -402,6 +424,10 @@ program compliant_token.aleo {
         amount: u64,
         allowance_key: field
     ) {
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let current_allowance: u64 = allowances.get(allowance_key);
         // Decrease the allowance amount
         allowances.set(allowance_key, current_allowance - amount);
@@ -435,6 +461,9 @@ program compliant_token.aleo {
         assert_eq(is_sender_frozen, false);
         let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
 
         // Check that the spender is authorized to spend the amount
         let current_allowance: u64 = allowances.get(allowance_key);
@@ -476,6 +505,9 @@ program compliant_token.aleo {
     ) {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -521,6 +553,9 @@ program compliant_token.aleo {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
 
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         // Check that the spender is authorized to spend the amount
         let current_allowance: u64 = allowances.get(allowance_key);
         // Decrease the allowance by the amount being spent
@@ -563,6 +598,10 @@ program compliant_token.aleo {
     }
 
     async function f_transfer_private(root: field) {
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
@@ -614,6 +653,10 @@ program compliant_token.aleo {
         root: field,
         recipient: address,
         amount: u64    ) {
+        
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
@@ -630,6 +673,22 @@ program compliant_token.aleo {
         let recipient_balance = balances.get_or_use(recipient, 0u64);
         balances.set(recipient, recipient_balance + amount);
     }
+
+    // Transfers private tokens from the record owner to a recipient.
+    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
+    // The sender must not be frozen in the freeze list.
+    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
+    async transition pause_transfers(pause_status: bool) -> Future {
+        return f_pause_transfers(pause_status, self.caller);
+    }
+
+    async function f_pause_transfers(new_pause_status: bool, caller: address) {
+        let admin_address: address = roles.get(PAUSE_ADMIN_INDEX);
+        assert_eq(admin_address, caller);
+        
+        pause.set(PAUSE_STATUS_INDEX, new_pause_status);
+    }
+
 
     transition join(
         private token_1: Token,
@@ -695,6 +754,10 @@ program compliant_token.aleo {
     }
 
     async function f_transfer_private_ticket(root: field) {
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
         let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
