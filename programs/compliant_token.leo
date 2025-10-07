@@ -11,13 +11,13 @@ program compliant_token.aleo {
 
     record Token {
         owner: address,
-        amount: u64
+        amount: u128
     }
 
     // Compliance record used for the investigator
     record ComplianceRecord {
         owner: address,
-        amount: u64,
+        amount: u128,
         sender: address,
         recipient: address
     }
@@ -31,8 +31,8 @@ program compliant_token.aleo {
         name: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         symbol: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         decimals: u8,
-        supply: u64,
-        max_supply: u64,
+        supply: u128,
+        max_supply: u128,
     }
 
     struct Allowance {
@@ -44,8 +44,8 @@ program compliant_token.aleo {
     // token specs
     mapping token_metadata: bool => TokenMetadata;
 
-    mapping balances: address => u64;
-    mapping allowances: field => u64; // hash(account, spender) => Allowance
+    mapping balances: address => u128;
+    mapping allowances: field => u128; // hash(account, spender) => Allowance
 
     // Supply management roles, using bitmasking to allow multiple roles per address
     const NONE_ROLE: u8 = 0u8;
@@ -116,7 +116,7 @@ program compliant_token.aleo {
         public name: u128,
         public symbol: u128,
         public decimals: u8,
-        public max_supply: u64,
+        public max_supply: u128,
         public admin: address,
     ) -> Future {
         return finalize_initialize(
@@ -132,7 +132,7 @@ program compliant_token.aleo {
         name: u128,
         symbol: u128,
         decimals: u8,
-        max_supply: u64,
+        max_supply: u128,
         admin: address, 
         caller: address,
     ) {
@@ -149,7 +149,7 @@ program compliant_token.aleo {
             name: name,
             symbol: symbol,
             decimals: decimals,
-            supply: 0u64, // placeholder value; not used
+            supply: 0u128, // placeholder value; not used
             max_supply: max_supply
         };
 
@@ -189,13 +189,13 @@ program compliant_token.aleo {
     // Updates the recipient’s balance and the total token supply in the token metadata.
     async transition mint_public(
         public recipient: address,
-        public amount: u64,
+        public amount: u128,
     ) -> Future {
         return finalize_mint_public(recipient, amount, self.caller);
     }
     async function finalize_mint_public(
         recipient: address,
-        amount: u64,
+        amount: u128,
         caller: address
     ) {
 
@@ -207,11 +207,11 @@ program compliant_token.aleo {
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
         // Check that the token supply + amount <= max_supply
-        let new_supply: u64 = token.supply + amount;
+        let new_supply: u128 = token.supply + amount;
         assert(new_supply <= token.max_supply);
 
         // Update the balance
-        let balance = balances.get_or_use(recipient, 0u64);
+        let balance = balances.get_or_use(recipient, 0u128);
         let new_balance = amount + balance;
         balances.set(recipient, new_balance);
 
@@ -232,7 +232,7 @@ program compliant_token.aleo {
     // Updates the total token supply in the token metadata.
     async transition mint_private(
         recipient: address,
-        public amount: u64,
+        public amount: u128,
         ) -> (Token, ComplianceRecord, Future) {
         let token: Token = Token {
             owner: recipient,
@@ -250,7 +250,7 @@ program compliant_token.aleo {
     }
 
     async function finalize_mint_private(
-        amount: u64,
+        amount: u128,
         caller: address,
     ) {
         let role: u8 = supply_roles.get(caller);
@@ -262,7 +262,7 @@ program compliant_token.aleo {
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
 
         // Check that the token supply + amount <= max_supply
-        let new_supply: u64 = token.supply + amount;
+        let new_supply: u128 = token.supply + amount;
         assert(new_supply <= token.max_supply);
 
         // Update the token supply
@@ -281,14 +281,14 @@ program compliant_token.aleo {
     // Decreases the owner’s balance and reduces the total token supply in the token metadata.
     async transition burn_public(
         public owner: address,
-        public amount: u64
+        public amount: u128
     ) -> Future {
         return finalize_burn_public(owner, amount, self.caller);
     }
 
     async function finalize_burn_public(
         owner: address,
-        amount: u64,
+        amount: u128,
         caller: address,
     ) {
         let role: u8 = supply_roles.get(caller);
@@ -322,14 +322,14 @@ program compliant_token.aleo {
     // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public(
         public recipient: address,
-        public amount: u64
+        public amount: u128
     ) -> Future {
         return finalize_transfer_public(recipient, amount, self.caller);
     }
 
     async function finalize_transfer_public(
         recipient: address,
-        amount: u64,
+        amount: u128,
         sender: address
     ) {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
@@ -343,7 +343,7 @@ program compliant_token.aleo {
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
 
-        let recipient_balance = balances.get_or_use(recipient, 0u64);
+        let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);
     }
 
@@ -351,14 +351,14 @@ program compliant_token.aleo {
     // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_public_as_signer(
         public recipient: address,
-        public amount: u64
+        public amount: u128
     ) -> Future {
         return f_transfer_public_as_signer(recipient, amount, self.signer);
     }
 
     async function f_transfer_public_as_signer(
         recipient: address,
-        amount: u64,
+        amount: u128,
         sender: address
     ) {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
@@ -372,7 +372,7 @@ program compliant_token.aleo {
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
 
-        let recipient_balance = balances.get_or_use(recipient, 0u64);
+        let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);
     }
 
@@ -381,7 +381,7 @@ program compliant_token.aleo {
     // The allowance is stored using a hash of the owner–spender pair as the key.
     async transition approve_public(
         public spender: address,
-        public amount: u64
+        public amount: u128
     ) -> Future {
         let allowance: Allowance = Allowance {
             account: self.caller,
@@ -393,14 +393,14 @@ program compliant_token.aleo {
     }
 
     async function finalize_approve_public(
-        amount: u64,
+        amount: u128,
         allowance_key: field
     ) {
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
 
-        let current_allowance: u64 = allowances.get_or_use(allowance_key, 0u64);
+        let current_allowance: u128 = allowances.get_or_use(allowance_key, 0u128);
         // Increase or create the allowance amount
         allowances.set(allowance_key, current_allowance + amount);
     }
@@ -410,7 +410,7 @@ program compliant_token.aleo {
     // If the reduction exceeds the current allowance, the VM will catch the underflow.
     async transition unapprove_public(
         public spender: address,
-        public amount: u64
+        public amount: u128
     ) -> Future {
         let allowance: Allowance = Allowance {
             account: self.caller,
@@ -421,14 +421,14 @@ program compliant_token.aleo {
         return finalize_unapprove_public(amount, allowance_key);
     }
     async function finalize_unapprove_public(
-        amount: u64,
+        amount: u128,
         allowance_key: field
     ) {
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
 
-        let current_allowance: u64 = allowances.get(allowance_key);
+        let current_allowance: u128 = allowances.get(allowance_key);
         // Decrease the allowance amount
         allowances.set(allowance_key, current_allowance - amount);
     }
@@ -440,7 +440,7 @@ program compliant_token.aleo {
     async transition transfer_from_public(
         public owner: address,
         public recipient: address,
-        public amount: u64
+        public amount: u128
     ) -> Future {
         let allowance: Allowance = Allowance {
             account: owner,
@@ -454,7 +454,7 @@ program compliant_token.aleo {
     async function finalize_transfer_from_public(
         sender: address,
         recipient: address,
-        amount: u64,
+        amount: u128,
         allowance_key: field
     ) {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
@@ -466,14 +466,14 @@ program compliant_token.aleo {
         assert_eq(is_paused, false);
 
         // Check that the spender is authorized to spend the amount
-        let current_allowance: u64 = allowances.get(allowance_key);
+        let current_allowance: u128 = allowances.get(allowance_key);
         // Decrease the allowance by the amount being spent
         allowances.set(allowance_key, current_allowance - amount);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
 
-        let recipient_balance = balances.get_or_use(recipient, 0u64);
+        let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);
     }
 
@@ -482,7 +482,7 @@ program compliant_token.aleo {
     // The sender must not be frozen in the freeze list.
     async transition transfer_public_to_private(
         recipient: address,
-        public amount: u64,
+        public amount: u128,
     ) -> (ComplianceRecord, Token, Future) {
         let token: Token = Token {
             owner: recipient,
@@ -500,7 +500,7 @@ program compliant_token.aleo {
     }
 
     async function f_transfer_public_to_private(
-        amount: u64,
+        amount: u128,
         sender: address,
     ) {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
@@ -521,7 +521,7 @@ program compliant_token.aleo {
     async transition transfer_from_public_to_private(
         public owner: address,
         recipient: address,
-        public amount: u64,
+        public amount: u128,
     ) -> (ComplianceRecord, Token, Future) {
 
         let token: Token = Token {
@@ -547,7 +547,7 @@ program compliant_token.aleo {
 
     async function f_transfer_from_public_to_priv(
         sender: address,
-        amount: u64,
+        amount: u128,
         allowance_key: field,
     ) {
         let is_sender_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(sender, false);
@@ -557,7 +557,7 @@ program compliant_token.aleo {
         assert_eq(is_paused, false);
 
         // Check that the spender is authorized to spend the amount
-        let current_allowance: u64 = allowances.get(allowance_key);
+        let current_allowance: u128 = allowances.get(allowance_key);
         // Decrease the allowance by the amount being spent
         allowances.set(allowance_key, current_allowance - amount);
 
@@ -571,7 +571,7 @@ program compliant_token.aleo {
     // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private(
         recipient: address,
-        amount: u64,
+        amount: u128,
         input_record: Token,
         sender_merkle_proofs: [MerkleProof;2],
     ) -> (ComplianceRecord, Token, Token, Future) {
@@ -620,7 +620,7 @@ program compliant_token.aleo {
     // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private_to_public(
         public recipient: address,
-        public amount: u64,
+        public amount: u128,
         input_record: Token,
         sender_merkle_proofs: [MerkleProof; 2],
     ) -> (ComplianceRecord, Token, Future) {
@@ -652,7 +652,7 @@ program compliant_token.aleo {
     async function f_transfer_private_to_public(
         root: field,
         recipient: address,
-        amount: u64    ) {
+        amount: u128    ) {
         
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
@@ -670,7 +670,7 @@ program compliant_token.aleo {
         let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
 
-        let recipient_balance = balances.get_or_use(recipient, 0u64);
+        let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);
     }
 
@@ -704,7 +704,7 @@ program compliant_token.aleo {
 
     transition split(
         private token: Token,
-        private amount: u64
+        private amount: u128
     ) -> (Token, Token) {
         let new_token_1: Token = Token {
             owner: token.owner,
@@ -724,7 +724,7 @@ program compliant_token.aleo {
     // The sender's privacy is preserved by using a Ticket record.
     async transition transfer_private_with_ticket(
         recipient: address,
-        amount: u64,
+        amount: u128,
         input_record: Token,
         ticket: Ticket,
     ) -> (ComplianceRecord, Token, Token, Ticket, Future) {
