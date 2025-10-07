@@ -4,8 +4,7 @@ program compliant_token.aleo {
     @custom
     async constructor() {
         if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+            assert_eq(UPGRADE_ADDRESS, self.program_owner);
         }
     }
 
@@ -55,12 +54,15 @@ program compliant_token.aleo {
     mapping supply_roles: address => u8;
 
     // Only this address can deploy the program
-    const INITIAL_ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
 
-    // This address receives compliance records (can be updated by the admin with contract upgrade)
+    // Only this address can upgrade the program
+    const UPGRADE_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+
+    // This address receives compliance records (can be updated with the contract upgrade)
     const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
 
-    // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
+    // can only assign suply roles
     const ADMIN_INDEX: u8 = 1u8;
 
     // Maps a role ID to an address (e.g., 1 = admin).
@@ -140,8 +142,8 @@ program compliant_token.aleo {
         let already_initialized: bool = token_metadata.contains(TOKEN_METADATA_INDEX);
         assert_eq(already_initialized, false);
         
-        // Only the INITIAL_ADMIN can initialize the contract
-        assert_eq(caller, INITIAL_ADMIN);
+        // Only the INITIAL_CONFIGURATION_ADDRESS can initialize the contract
+        assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
         
         roles.set(ADMIN_INDEX, admin);
 
