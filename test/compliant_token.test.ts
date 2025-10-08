@@ -155,7 +155,7 @@ describe("test sealed_standalone_token program", () => {
     const rejectedTx = await standaloneTokenContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
-
+*/
 
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -213,7 +213,7 @@ describe("test sealed_standalone_token program", () => {
     }
 
   });
-/*
+
   test(`test update_freeze_list`, async () => {
     const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
@@ -227,8 +227,8 @@ describe("test sealed_standalone_token program", () => {
     expect(frozenAccountByIndex).toBe(frozenAccount);
     expect(lastIndex).toBe(1);
   });
-*/
-  test(`test update_admin_address`, async () => {
+
+  test(`test update_roles`, async () => {
     // Manager can assign role
     let newRole2Addresses = await computeRoles2Addresses(tokenContract, frozenAccount, MANAGER_ROLE)
     let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, newRole2Addresses);
@@ -305,7 +305,7 @@ describe("test sealed_standalone_token program", () => {
     role = await tokenContract.address_to_role(account);
     expect(role).toBe(NONE_ROLE);
   });
-/*
+
   let accountRecord: Token;
   let frozenAccountRecord: Token;
   test(`test mint_private`, async () => {
@@ -760,10 +760,15 @@ describe("test sealed_standalone_token program", () => {
     let approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await approveTx.wait();
 
-    let updateRoleTx = await tokenContractForAdmin.update_role(adminAddress, PAUSE_ADMIN_INDEX);
-    await updateRoleTx.wait();
-    let adminRole = await tokenContract.roles(PAUSE_ADMIN_INDEX);
-    expect(adminRole).toBe(adminAddress);
+    let newRole2Addresses = await computeRoles2Addresses(tokenContract, adminAddress, MANAGER_ROLE + PAUSE_ROLE)
+    let tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE + PAUSE_ROLE, newRole2Addresses);
+    await tx.wait();
+    let role = await tokenContract.address_to_role(adminAddress);
+    expect(role).toBe(MANAGER_ROLE + PAUSE_ROLE);
+    let roleArray = await tokenContract.role_to_addresses(MANAGER_ROLE);
+    expect(roleArray).contain(adminAddress);
+    roleArray = await tokenContract.role_to_addresses(PAUSE_ROLE);
+    expect(roleArray).contain(adminAddress);
 
     // pause the contract
     pause_status = await tokenContractForAdmin.pause(true);
@@ -846,5 +851,5 @@ describe("test sealed_standalone_token program", () => {
     publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await publicTx.wait();
   });
-*/
+
 });
