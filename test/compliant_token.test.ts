@@ -26,14 +26,14 @@ import { Account } from "@provablehq/sdk";
 import { stringToBigInt } from "../lib/Conversion";
 import { isProgramInitialized } from "../lib/Initalize";
 import { computeRoles2Addresses } from "../lib/Role";
-import { decryptToken } from "../artifacts/js/leo2js/compliant_token";
-import { Token } from "../artifacts/js/types/compliant_token";
-import { Ticket } from "../artifacts/js/types/compliant_token";
-import { decryptTicket } from "../artifacts/js/leo2js/compliant_token";
-import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_token";
+import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
+import { Token } from "../artifacts/js/types/compliant_token_template";
+import { Ticket } from "../artifacts/js/types/compliant_token_template";
+import { decryptTicket } from "../artifacts/js/leo2js/compliant_token_template";
+import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_token_template";
 
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { Compliant_tokenContract } from "../artifacts/js/compliant_token";
+import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 
 const mode = ExecutionMode.SnarkExecute;
@@ -66,39 +66,39 @@ const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
 const spenderPrivKey = contract.getPrivateKey(spender);
 const freezeListManagerPrivKey = contract.getPrivateKey(freezeListManager);
 
-const tokenContract = new Compliant_tokenContract({
+const tokenContract = new Compliant_token_templateContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const tokenContractForAdmin = new Compliant_tokenContract({
+const tokenContractForAdmin = new Compliant_token_templateContract({
   mode,
   privateKey: adminPrivKey,
 });
-const tokenContractForFreezeListManager = new Compliant_tokenContract({
+const tokenContractForFreezeListManager = new Compliant_token_templateContract({
   mode,
   privateKey: freezeListManagerPrivKey,
 });
-const tokenContractForAccount = new Compliant_tokenContract({
+const tokenContractForAccount = new Compliant_token_templateContract({
   mode,
   privateKey: accountPrivKey,
 });
-const tokenContractForMinter = new Compliant_tokenContract({
+const tokenContractForMinter = new Compliant_token_templateContract({
   mode,
   privateKey: minterPrivKey,
 });
-const tokenContractForBurner = new Compliant_tokenContract({
+const tokenContractForBurner = new Compliant_token_templateContract({
   mode,
   privateKey: burnerPrivKey,
 });
-const tokenContractForSupplyManager = new Compliant_tokenContract({
+const tokenContractForSupplyManager = new Compliant_token_templateContract({
   mode,
   privateKey: supplyManagerPrivKey,
 });
-const tokenContractForSpender = new Compliant_tokenContract({
+const tokenContractForSpender = new Compliant_token_templateContract({
   mode,
   privateKey: spenderPrivKey,
 });
-const tokenContractForFrozenAccount = new Compliant_tokenContract({
+const tokenContractForFrozenAccount = new Compliant_token_templateContract({
   mode,
   privateKey: frozenAccountPrivKey,
 });
@@ -122,9 +122,6 @@ let root: bigint;
 
 describe("test sealed_standalone_token program", () => {
   beforeAll(async () => {
-
-    console.log(contract.getAccounts());
-
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
