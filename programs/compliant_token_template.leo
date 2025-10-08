@@ -1,6 +1,6 @@
 import sealance_freezelist_registry.aleo;
 
-program compliant_token.aleo {
+program compliant_token_template.aleo {
     @custom
     async constructor() {
         if (self.edition > 0) {
@@ -670,10 +670,8 @@ program compliant_token.aleo {
         balances.set(recipient, recipient_balance + amount);
     }
 
-    // Transfers private tokens from the record owner to a recipient.
-    // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // The sender must not be frozen in the freeze list.
-    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
+    // Stop all token transfers.
+    // Can only be called by an address with the PAUSE_ROLE.
     async transition pause_transfers(pause_status: bool) -> Future {
         return f_pause_transfers(pause_status, self.caller);
     }
