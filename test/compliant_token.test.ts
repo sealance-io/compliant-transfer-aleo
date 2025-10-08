@@ -378,6 +378,45 @@ describe("test sealed_standalone_token program", () => {
 
   });
 
+  test(`test burn_private`, async () => {
+    // A user that is not burner, supply manager, or admin  cannot burn private assets
+    let rejectedTx = await tokenContractForAccount.burn_private(accountRecord, amount);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let mintTx = await tokenContractForAdmin.mint_private(adminAddress, amount);
+    let [encryptedAdminRecord] = await mintTx.wait();
+    let adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
+    expect(adminRecord.amount).toBe(amount);
+    expect(adminRecord.owner).toBe(adminAddress);
+    let burnTx = await tokenContractForAdmin.burn_private(adminRecord, amount);
+    [encryptedAdminRecord] = await burnTx.wait();
+    adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
+    expect(adminRecord.amount).toBe(0n);
+    expect(adminRecord.owner).toBe(adminAddress);
+
+    mintTx = await tokenContractForAdmin.mint_private(burner, amount);
+    let [encryptedBurnerRecord] = await mintTx.wait();
+    let burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
+    expect(burnerRecord.amount).toBe(amount);
+    expect(burnerRecord.owner).toBe(burner);
+    burnTx = await tokenContractForBurner.burn_private(burnerRecord, amount);
+    [encryptedBurnerRecord] = await burnTx.wait();
+    burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
+    expect(burnerRecord.amount).toBe(0n);
+    expect(burnerRecord.owner).toBe(burner);
+
+    mintTx = await tokenContractForAdmin.mint_private(supplyManager, amount);
+    let [encryptedSupplyManager] = await mintTx.wait();
+    let supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
+    expect(supplyManagerRecord.amount).toBe(amount);
+    expect(supplyManagerRecord.owner).toBe(supplyManager);
+    burnTx = await tokenContractForSupplyManager.burn_private(supplyManagerRecord, amount);
+    [encryptedSupplyManager] = await burnTx.wait();
+    supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
+    expect(supplyManagerRecord.amount).toBe(0n);
+    expect(supplyManagerRecord.owner).toBe(supplyManager);
+  });
+
   test(`test transfer_public`, async () => {
 
     const previousAccountPublicBalance = await tokenContract.balances(account);
