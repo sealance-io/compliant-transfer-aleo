@@ -26,7 +26,7 @@ program compliant_token.aleo {
         freeze_list_root: field,
     }
 
-    struct TokenMetadata {
+    struct TokenInfo {
         name: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         symbol: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         decimals: u8,
@@ -34,17 +34,17 @@ program compliant_token.aleo {
         max_supply: u128,
     }
 
-    struct Allowance {
+    struct TokenAllowance {
         account: address,
         spender: address,
     }
     
     const TOKEN_METADATA_INDEX: bool = true;
     // token specs
-    mapping token_metadata: bool => TokenMetadata;
+    mapping token_metadata: bool => TokenInfo;
 
     mapping balances: address => u128;
-    mapping allowances: field => u128; // hash(account, spender) => Allowance
+    mapping allowances: field => u128; // hash(account, spender) => TokenAllowance
 
     // Roles can be assigned using bitmasking to allow multiple roles per address
     const NONE_ROLE: u16 = 0u16;
@@ -141,7 +141,7 @@ program compliant_token.aleo {
         address_to_role.set(admin, MANAGER_ROLE);
         role_to_addresses.set(MANAGER_ROLE,[admin, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
 
-        let token: TokenMetadata = TokenMetadata {
+        let token: TokenInfo = TokenInfo {
             name: name,
             symbol: symbol,
             decimals: decimals,
@@ -212,7 +212,7 @@ program compliant_token.aleo {
         balances.set(recipient, new_balance);
 
         // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_metadata: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
@@ -262,7 +262,7 @@ program compliant_token.aleo {
         assert(new_supply <= token.max_supply);
 
         // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_metadata: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
@@ -300,7 +300,7 @@ program compliant_token.aleo {
 
         let token = token_metadata.get(TOKEN_METADATA_INDEX);
 
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_metadata: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
@@ -379,7 +379,7 @@ program compliant_token.aleo {
         public spender: address,
         public amount: u128
     ) -> Future {
-        let allowance: Allowance = Allowance {
+        let allowance: TokenAllowance = TokenAllowance {
             account: self.caller,
             spender: spender
         };
@@ -408,7 +408,7 @@ program compliant_token.aleo {
         public spender: address,
         public amount: u128
     ) -> Future {
-        let allowance: Allowance = Allowance {
+        let allowance: TokenAllowance = TokenAllowance {
             account: self.caller,
             spender: spender
         };
@@ -438,7 +438,7 @@ program compliant_token.aleo {
         public recipient: address,
         public amount: u128
     ) -> Future {
-        let allowance: Allowance = Allowance {
+        let allowance: TokenAllowance = TokenAllowance {
             account: owner,
             spender: self.caller,
         };
@@ -525,7 +525,7 @@ program compliant_token.aleo {
             amount: amount
         };
 
-        let allowance: Allowance = Allowance {
+        let allowance: TokenAllowance = TokenAllowance {
             account: owner,
             spender: self.caller,
         };
