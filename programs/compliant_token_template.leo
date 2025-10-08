@@ -310,6 +310,42 @@ program compliant_token_template.aleo {
         token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
     }
 
+    // Burns tokens from a private record (non-public asset).
+    // Can be called by the admin, a burner, or a supply manager.
+    // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
+    async transition burn_private(
+        input_record: Token,
+        public amount: u128
+    ) -> (Token, Future) {
+        let output_record: Token = Token {
+            owner: input_record.owner,
+            amount: input_record.amount - amount
+        };
+        return (output_record, finalize_burn_private(amount, self.caller));
+    }
+    async function finalize_burn_private(
+        amount: u128,
+        caller: address,
+    ) {
+        let role: u16 = address_to_role.get(caller);
+        assert(role & BURNER_ROLE == BURNER_ROLE);
+
+        let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
+        assert_eq(is_paused, false);
+
+        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+
+        // Update the token supply
+        let new_metadata: TokenInfo = TokenInfo {
+            name: token.name,
+            symbol: token.symbol,
+            decimals: token.decimals,
+            supply: token.supply - amount, // underflow will be caught by the VM
+            max_supply: token.max_supply,
+        };
+        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+    }
+
     // -------------------------
     // Called by token owners/DeFi contracts
     // -------------------------
