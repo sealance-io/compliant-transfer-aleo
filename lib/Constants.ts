@@ -78,8 +78,10 @@ export const EPOCH = 8640;
 export const NONE_ROLE = 0;
 export const MINTER_ROLE = 1;
 export const BURNER_ROLE = 2;
-export const PAUSE_ADMIN_INDEX = 4;
-
+export const PAUSE_ROLE = 4;
+export const MANAGER_ROLE = 8;
+export const maxRoles = 16;
+export const maxAddressesPerRole = 8;
 // merkle tree
 export const MAX_TREE_SIZE = 16;
 export const TREE_DEPTH_12 = 13;
