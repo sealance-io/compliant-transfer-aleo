@@ -46,12 +46,15 @@ program compliant_token.aleo {
     mapping balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => Allowance
 
-    // Supply management roles, using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u8 = 0u8;
-    const MINTER_ROLE: u8 = 1u8;
-    const BURNER_ROLE: u8 = 2u8;
-    const PAUSE_ADMIN_INDEX: u8 = 4u8;
-    mapping supply_roles: address => u8;
+    // Roles can be assigned using bitmasking to allow multiple roles per address
+    const NONE_ROLE: u16 = 0u16;
+    const MINTER_ROLE: u16 = 1u16;
+    const BURNER_ROLE: u16 = 2u16;
+    const PAUSE_ROLE: u16 = 4u16;   // can pause/unpause transfers
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    mapping address_to_role: address => u16;
+    // Maps a role ID to an address array (max 8 addresses per role)
+    mapping role_to_addresses: u16 => [address; 8];
 
     // Only this address can deploy the program
     const INITIAL_CONFIGURATION_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
@@ -61,12 +64,6 @@ program compliant_token.aleo {
 
     // This address receives compliance records (can be updated with the contract upgrade)
     const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
-
-    // can only assign suply roles
-    const ADMIN_INDEX: u8 = 1u8;
-
-    // Maps a role ID to an address (e.g., 1 = admin).
-    mapping roles: u8 => address;
 
     const PAUSE_STATUS_INDEX: bool = true;
     mapping pause: bool => bool;
@@ -79,6 +76,8 @@ program compliant_token.aleo {
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
+    const MAX_ROLES_NUM: u8 = 16u8;
+    const MAX_ADDRESSES_PER_ROLE: u8 = 8u8;
 
     // -------------------------
     // Called by token admins
@@ -86,27 +85,21 @@ program compliant_token.aleo {
 
 
     // Updates the address assigned to a given role.
-    // Can only be called by the current admin.
-    // If no admin is set yet, the caller is temporarily treated as admin.
-    async transition update_role(public new_address: address, role: u8) -> Future {
-        return f_update_role(new_address, self.caller, role);
+    // Can only be called by the current role manager.
+    // The input variable new_role_to_addresses is the completely updated mapping of roles to addresses.
+    async transition update_role(public new_address: address, role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) -> Future {
+        return f_update_role(new_address, self.caller, role, new_role_to_addresses);
     }
-    async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get_or_use(ADMIN_INDEX, caller);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_address);
-    }
+    async function f_update_role(new_address: address, caller: address, new_role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        address_to_role.set(new_address, new_role);
 
-    // Assigns a supply role (minter, burner, or supply manager) to the given address.
-    // Can only be called by the current admin.
-    async transition update_supply_role(public new_address: address, role: u8) -> Future {
-        return f_update_supply_role(new_address, self.caller, role);
-    }
-    async function f_update_supply_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-
-        supply_roles.set(new_address, role);
+        for i: u8 in 0u8..MAX_ROLES_NUM - 1u8 {
+            let role_index: u16 = 2u16.pow(i);
+            role_to_addresses.set(role_index, new_role_to_addresses[i]);
+        }
     }
 
     // Initializes the freeze list, token specifications, the admin and the investigator.
@@ -145,7 +138,8 @@ program compliant_token.aleo {
         // Only the INITIAL_CONFIGURATION_ADDRESS can initialize the contract
         assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
         
-        roles.set(ADMIN_INDEX, admin);
+        address_to_role.set(admin, MANAGER_ROLE);
+        role_to_addresses.set(MANAGER_ROLE,[admin, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
 
         let token: TokenMetadata = TokenMetadata {
             name: name,
@@ -201,7 +195,7 @@ program compliant_token.aleo {
         caller: address
     ) {
 
-        let role: u8 = supply_roles.get(caller);
+        let role: u16 = address_to_role.get(caller);
         assert(role & MINTER_ROLE == MINTER_ROLE);
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
@@ -255,7 +249,7 @@ program compliant_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let role: u8 = supply_roles.get(caller);
+        let role: u16 = address_to_role.get(caller);
         assert(role & MINTER_ROLE == MINTER_ROLE);
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
@@ -293,7 +287,7 @@ program compliant_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let role: u8 = supply_roles.get(caller);
+        let role: u16 = address_to_role.get(caller);
         assert(role & BURNER_ROLE == BURNER_ROLE);
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
@@ -685,8 +679,8 @@ program compliant_token.aleo {
     }
 
     async function f_pause_transfers(new_pause_status: bool, caller: address) {
-        let admin_address: address = roles.get(PAUSE_ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        let role: u16 = address_to_role.get(caller);
+        assert(role & PAUSE_ROLE == PAUSE_ROLE);
         
         pause.set(PAUSE_STATUS_INDEX, new_pause_status);
     }
