@@ -103,7 +103,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull aleo-devnet image
-        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0
+        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.2.0-v4.2.2
 
       # Start devnet since compiling will try to fetch 'credits.aleo'
       - name: Start aleo-devnet
@@ -113,7 +113,7 @@ jobs:
             -p 3030:3030 \
             --name aleo-devnet \
             --rm \
-            ghcr.io/sealance-io/aleo-devnet:v3.1.0-v4.1.0
+            ghcr.io/sealance-io/aleo-devnet:v3.2.0-v4.2.1
 
           echo "Container started with name: aleo-devnet"
 
