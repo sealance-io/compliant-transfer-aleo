@@ -777,7 +777,7 @@ describe("test sealed_standalone_token program", () => {
     // ensure the contract is unpaused
     let pause_status = await tokenContractForAdmin.pause(true);
     if (pause_status == true) {
-      let pauseTx = await tokenContractForAdmin.pause_transfers(false);
+      let pauseTx = await tokenContractForAdmin.set_pause_status(false);
       await pauseTx.wait();
     }
 
@@ -809,7 +809,7 @@ describe("test sealed_standalone_token program", () => {
     // pause the contract
     pause_status = await tokenContractForAdmin.pause(true);
     expect(pause_status).toBe(false);
-    let pauseTx = await tokenContractForAdmin.pause_transfers(true);
+    let pauseTx = await tokenContractForAdmin.set_pause_status(true);
     await pauseTx.wait();
     pause_status = await tokenContractForAdmin.pause(true);
     expect(pause_status).toBe(true);
@@ -878,7 +878,7 @@ describe("test sealed_standalone_token program", () => {
     await expect(privateWithTicketTx.wait()).rejects.toThrow();
 
     // unpause the contract
-    pauseTx = await tokenContractForAdmin.pause_transfers(false);
+    pauseTx = await tokenContractForAdmin.set_pause_status(false);
     await pauseTx.wait();
     pause_status = await tokenContractForAdmin.pause(true);
     expect(pause_status).toBe(false);
