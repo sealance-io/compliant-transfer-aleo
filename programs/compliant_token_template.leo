@@ -39,9 +39,9 @@ program compliant_token_template.aleo {
         spender: address,
     }
     
-    const TOKEN_METADATA_INDEX: bool = true;
+    const TOKEN_INFO_INDEX: bool = true;
     // token specs
-    mapping token_metadata: bool => TokenInfo;
+    mapping token_info: bool => TokenInfo;
 
     mapping balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => TokenAllowance
@@ -53,7 +53,8 @@ program compliant_token_template.aleo {
     const PAUSE_ROLE: u16 = 4u16;   // can pause/unpause transfers
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
-    // Maps a role ID to an address array (max 8 addresses per role)
+    // Maps a role ID to an address array (limited by MAX_ADDRESSES_PER_ROLE constant)
+    // This mapping is not used in the program logic, but can be queried off-chain to get all addresses assigned to a given role
     mapping role_to_addresses: u16 => [address; 8];
 
     // Only this address can deploy the program
@@ -132,7 +133,7 @@ program compliant_token_template.aleo {
         caller: address,
     ) {
         // Check if the token has already been initialized
-        let already_initialized: bool = token_metadata.contains(TOKEN_METADATA_INDEX);
+        let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
         assert_eq(already_initialized, false);
         
         // Only the INITIAL_CONFIGURATION_ADDRESS can initialize the contract
@@ -149,7 +150,7 @@ program compliant_token_template.aleo {
             max_supply: max_supply
         };
 
-        token_metadata.set(TOKEN_METADATA_INDEX, token);
+        token_info.set(TOKEN_INFO_INDEX, token);
 
         pause.set(PAUSE_STATUS_INDEX, false);
     }
@@ -201,7 +202,7 @@ program compliant_token_template.aleo {
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
         // Check that the token supply + amount <= max_supply
         let new_supply: u128 = token.supply + amount;
         assert(new_supply <= token.max_supply);
@@ -219,7 +220,7 @@ program compliant_token_template.aleo {
             supply: new_supply,
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_metadata);
     }
 
     // Mints new private tokens to the specified recipient.
@@ -255,7 +256,7 @@ program compliant_token_template.aleo {
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
         // Check that the token supply + amount <= max_supply
         let new_supply: u128 = token.supply + amount;
@@ -269,7 +270,7 @@ program compliant_token_template.aleo {
             supply: new_supply,
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_metadata);
     }
 
     // Burns public tokens from the specified owner’s balance.
@@ -298,7 +299,7 @@ program compliant_token_template.aleo {
         let new_balance = balance - amount;
         balances.set(owner, new_balance);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
         let new_metadata: TokenInfo = TokenInfo {
             name: token.name,
@@ -307,7 +308,7 @@ program compliant_token_template.aleo {
             supply: token.supply - amount, // underflow will be caught by the VM
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_metadata);
     }
 
     // Burns tokens from a private record (non-public asset).
@@ -333,7 +334,7 @@ program compliant_token_template.aleo {
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
         // Update the token supply
         let new_metadata: TokenInfo = TokenInfo {
@@ -343,7 +344,7 @@ program compliant_token_template.aleo {
             supply: token.supply - amount, // underflow will be caught by the VM
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_metadata);
     }
 
     // -------------------------
