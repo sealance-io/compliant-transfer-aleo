@@ -707,13 +707,13 @@ program compliant_token_template.aleo {
         balances.set(recipient, recipient_balance + amount);
     }
 
-    // Stop all token transfers.
+    // Stops or resumes all token transfers.
     // Can only be called by an address with the PAUSE_ROLE.
-    async transition pause_transfers(pause_status: bool) -> Future {
-        return f_pause_transfers(pause_status, self.caller);
+    async transition set_pause_status(pause_status: bool) -> Future {
+        return f_set_pause_status(pause_status, self.caller);
     }
 
-    async function f_pause_transfers(new_pause_status: bool, caller: address) {
+    async function f_set_pause_status(new_pause_status: bool, caller: address) {
         let role: u16 = address_to_role.get(caller);
         assert(role & PAUSE_ROLE == PAUSE_ROLE);
         
