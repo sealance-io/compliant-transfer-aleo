@@ -317,19 +317,22 @@ describe("test sealed_standalone_token program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let tx = await tokenContractForMinter.mint_private(frozenAccount, amount * 20n);
-    const [encryptedFrozenAccountRecord] = await tx.wait();
+    const [encryptedFrozenAccountRecord, complianceRecord] = await tx.wait();
     frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     expect(frozenAccountRecord.amount).toBe(amount * 20n);
     expect(frozenAccountRecord.owner).toBe(frozenAccount);
+
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    expect(decryptedComplianceRecord.amount).toBe(amount * 20n);
+    expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
+    expect(decryptedComplianceRecord.recipient).toBe(frozenAccount);
 
     tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n);
     const [encryptedAccountRecord] = await tx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
     expect(accountRecord.amount).toBe(amount * 20n);
     expect(accountRecord.owner).toBe(account);
-
-    tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n);
-    await tx.wait();
   });
 
   test(`test mint_public`, async () => {
@@ -379,34 +382,30 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test burn_private`, async () => {
-    // A user that is not burner, supply manager, or admin  cannot burn private assets
+    // A user that doesn't have a burner role cannot burn private assets
     let rejectedTx = await tokenContractForAccount.burn_private(accountRecord, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let mintTx = await tokenContractForAdmin.mint_private(adminAddress, amount);
-    let [encryptedAdminRecord] = await mintTx.wait();
-    let adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
+    let mintTx = await tokenContractForMinter.mint_private(burner, amount);
+    let [encryptedAdminRecord, complianceRecord] = await mintTx.wait();
+    let adminRecord = decryptToken(encryptedAdminRecord, burnerPrivKey);
     expect(adminRecord.amount).toBe(amount);
-    expect(adminRecord.owner).toBe(adminAddress);
-    let burnTx = await tokenContractForAdmin.burn_private(adminRecord, amount);
-    [encryptedAdminRecord] = await burnTx.wait();
-    adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
+    expect(adminRecord.owner).toBe(burner);
+    let burnTx = await tokenContractForBurner.burn_private(adminRecord, amount);
+    let [encryptedAdminRecordFromBurning, complianceRecordFromBurning] = await burnTx.wait();
+    adminRecord = decryptToken(encryptedAdminRecordFromBurning, burnerPrivKey);
     expect(adminRecord.amount).toBe(0n);
-    expect(adminRecord.owner).toBe(adminAddress);
+    expect(adminRecord.owner).toBe(burner);
 
-    mintTx = await tokenContractForAdmin.mint_private(burner, amount);
-    let [encryptedBurnerRecord] = await mintTx.wait();
-    let burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
-    expect(burnerRecord.amount).toBe(amount);
-    expect(burnerRecord.owner).toBe(burner);
-    burnTx = await tokenContractForBurner.burn_private(burnerRecord, amount);
-    [encryptedBurnerRecord] = await burnTx.wait();
-    burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
-    expect(burnerRecord.amount).toBe(0n);
-    expect(burnerRecord.owner).toBe(burner);
+    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecordFromBurning, investigatorPrivKey);
+    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    expect(decryptedComplianceRecord.amount).toBe(amount);
+    expect(decryptedComplianceRecord.sender).toBe(burner);
+    expect(decryptedComplianceRecord.recipient).toBe(ZERO_ADDRESS);
 
-    mintTx = await tokenContractForAdmin.mint_private(supplyManager, amount);
-    let [encryptedSupplyManager] = await mintTx.wait();
+    // check that MINTER_ROLE+BURNER_ROLE can burn private assets
+    mintTx = await tokenContractForMinter.mint_private(supplyManager, amount);
+    let [encryptedSupplyManager, _] = await mintTx.wait();
     let supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
     expect(supplyManagerRecord.amount).toBe(amount);
     expect(supplyManagerRecord.owner).toBe(supplyManager);

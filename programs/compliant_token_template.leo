@@ -317,12 +317,20 @@ program compliant_token_template.aleo {
     async transition burn_private(
         input_record: Token,
         public amount: u128
-    ) -> (Token, Future) {
+    ) -> (Token, ComplianceRecord, Future) {
         let output_record: Token = Token {
             owner: input_record.owner,
             amount: input_record.amount - amount
         };
-        return (output_record, finalize_burn_private(amount, self.caller));
+
+        let compliance_record: ComplianceRecord = ComplianceRecord {
+            owner: INVESTIGATOR_ADDRESS,
+            amount: amount,
+            sender: input_record.owner,
+            recipient: ZERO_ADDRESS,
+        };
+
+        return (output_record, compliance_record, finalize_burn_private(amount, self.caller));
     }
     async function finalize_burn_private(
         amount: u128,
