@@ -1,0 +1,17 @@
+{
+  "name": "policy-engine-examples",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "basic": "tsx basic-usage.ts",
+    "cached": "tsx cached-freeze-list.ts",
+    "verify-tx": "tsx verify-non-inclusion-transaction.ts"
+  },
+  "dependencies": {
+    "@sealance-io/policy-engine-aleo": "file:.."
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3"
+  }
+}
