@@ -80,6 +80,8 @@ export const MINTER_ROLE = 1;
 export const BURNER_ROLE = 2;
 export const PAUSE_ROLE = 4;
 export const MANAGER_ROLE = 8;
+export const FREEZELIST_MANAGER_ROLE = 16;
+
 export const maxRoles = 16;
 export const maxAddressesPerRole = 8;
 // merkle tree

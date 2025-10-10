@@ -5,25 +5,34 @@ program sealance_freezelist_registry.aleo {
     @custom
     async constructor() {
         if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+            assert_eq(UPGRADE_ADDRESS, self.program_owner);
         }
     }
     
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    const INITIAL_ADMIN: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+    // Only this address can deploy the program
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
 
-    // Admin: can assign roles, update the freeze list and upgrade the program
-    const ADMIN_INDEX: u8 = 1u8;
-    // Freeze list manager: can update the freeze list
-    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
+    // Only this address can upgrade the program
+    const UPGRADE_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+
+    // Roles can be assigned using bitmasking to allow multiple roles per address
+    const NONE_ROLE: u16 = 0u16;
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+    mapping address_to_role: address => u16;
+    // Maps a role ID to an address array (limited by MAX_ADDRESSES_PER_ROLE constant)
+    // This mapping is not used in the program logic, but can be queried off-chain to get all addresses assigned to a given role
+    mapping role_to_addresses: u16 => [address; 8];
+    const MAX_ROLES_NUM: u8 = 16u8;
+    const MAX_ADDRESSES_PER_ROLE: u8 = 8u8;
+
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     const FREEZE_LIST_LAST_INDEX: bool = true;
-
 
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
@@ -37,13 +46,6 @@ program sealance_freezelist_registry.aleo {
     mapping root_updated_height: bool => u32;
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
-    // Maps a role ID to an address (e.g., 1 = admin).
-    mapping roles: u8 => address;
-
-    struct MerkleProof {
-        siblings: [field; 16],
-        leaf_index: u32
-    }
 
     // Initializes the freeze list and the admin.
     // Can only be called once — ensures the contract has not already been initialized.
@@ -57,8 +59,9 @@ program sealance_freezelist_registry.aleo {
         let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(is_already_initialized, false);
 
-        assert_eq(caller, INITIAL_ADMIN);
-        roles.set(ADMIN_INDEX, admin);
+        assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
+        address_to_role.set(admin, MANAGER_ROLE);
+        role_to_addresses.set(MANAGER_ROLE, [admin, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
         freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
@@ -68,14 +71,21 @@ program sealance_freezelist_registry.aleo {
     }
 
     // Updates the address assigned to a given role.
-    // Can only be called by the admin.
-    async transition update_role(public new_admin_address: address, role: u8) -> Future {
-        return f_update_role(new_admin_address, self.caller, role);
+    // Can only be called by the current role manager.
+    // The input variable new_role_to_addresses is the completely updated mapping of roles to addresses.
+    async transition update_role(public new_address: address, role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) -> Future {
+        return f_update_role(new_address, self.caller, role, new_role_to_addresses);
     }
-    async function f_update_role(new_admin_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_admin_address);
+    async function f_update_role(new_address: address, caller: address, new_role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        address_to_role.set(new_address, new_role);
+
+        for i: u8 in 0u8..MAX_ROLES_NUM - 1u8 {
+            let role_index: u16 = 2u16.pow(i);
+            role_to_addresses.set(role_index, new_role_to_addresses[i]);
+        }
     }
 
     // Updates the number of blocks during which the previous root is still considered valid.
@@ -84,8 +94,8 @@ program sealance_freezelist_registry.aleo {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        let role: u16 = address_to_role.get(caller);
+        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
@@ -114,11 +124,8 @@ program sealance_freezelist_registry.aleo {
         return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root);
     }
     async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        if(admin_address != caller) {
-            let freeze_list_manager_address: address = roles.get(FREEZE_LIST_MANAGER_INDEX);
-            assert_eq(freeze_list_manager_address, caller);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
         let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(previous_root, old_root);

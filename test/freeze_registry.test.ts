@@ -8,18 +8,21 @@ import {
   BLOCK_HEIGHT_WINDOW_INDEX,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
-  FREEZE_LIST_MANAGER_INDEX,
+  FREEZELIST_MANAGER_ROLE,
+  MANAGER_ROLE,
   MAX_TREE_SIZE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
+  NONE_ROLE,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
+import { computeRoles2Addresses } from "../lib/Role";
 import { Account } from "@provablehq/sdk";
 import { isProgramInitialized } from "../lib/Initalize";
 
@@ -105,9 +108,9 @@ describe("test freeze_registry program", () => {
       const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
       const initializedRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
       const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const admin = await freezeRegistryContract.roles(ADMIN_INDEX);
+      const role = await freezeRegistryContract.address_to_role(adminAddress);
 
-      expect(admin).toBe(adminAddress);
+      expect(role).toBe(MANAGER_ROLE);
       expect(isAccountFrozen).toBe(false);
       expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
@@ -120,18 +123,23 @@ describe("test freeze_registry program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
-  test(`test update_admin_address`, async () => {
-    let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
+  test(`test update_manager_address`, async () => {
+    let newRole2Addresses = await computeRoles2Addresses(freezeRegistryContract, frozenAccount, MANAGER_ROLE)
+    let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, newRole2Addresses);
     await tx.wait();
-    let adminRole = await freezeRegistryContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(frozenAccount);
 
-    tx = await freezeRegistryContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
+    let role = await freezeRegistryContract.address_to_role(frozenAccount);
+    expect(role).toBe(MANAGER_ROLE);
+
+    newRole2Addresses = await computeRoles2Addresses(freezeRegistryContract, frozenAccount, NONE_ROLE)
+    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, NONE_ROLE, newRole2Addresses);
     await tx.wait();
-    adminRole = await freezeRegistryContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(adminAddress);
-
-    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
+    role = await freezeRegistryContract.address_to_role(NONE_ROLE);
+    expect(role).toBe(adminAddress);
+    
+    // Only the manager can update the roles
+    newRole2Addresses = await computeRoles2Addresses(freezeRegistryContract, frozenAccount, MANAGER_ROLE)
+    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE, newRole2Addresses);
     await expect(tx.wait()).rejects.toThrow();
   });
 
