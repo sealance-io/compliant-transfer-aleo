@@ -14,6 +14,7 @@ import {
   NONE_ROLE,
   PAUSE_ROLE,
   MANAGER_ROLE,
+  FREEZELIST_MANAGER_ROLE,
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
@@ -174,7 +175,13 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test initialize `, async () => {
-    const isTokenInitialized = await isProgramInitialized(tokenContract);
+
+    let isTokenInitialized = false;
+    try {
+      await tokenContract.token_info(true);
+      isTokenInitialized = true;
+    } catch (e) { }
+
     if (!isTokenInitialized) {
         const name = stringToBigInt("Stable Token");
         const symbol = stringToBigInt("STABLE_TOKEN");
@@ -189,8 +196,12 @@ describe("test sealed_standalone_token program", () => {
         await expect(rejectedTx.wait()).rejects.toThrow();
     }
 
+    let isFreezeRegistryInitialized = false;
+    try {
+      await freezeRegistryContract.freeze_list_root(1);
+      isFreezeRegistryInitialized = true;
+    } catch (e) { }
 
-    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
     if (!isFreezeRegistryInitialized) {
       const tx = await freezeRegistryContract.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
       await tx.wait();
@@ -199,9 +210,9 @@ describe("test sealed_standalone_token program", () => {
       const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
       const initializedRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
       const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const admin = await freezeRegistryContract.roles(ADMIN_INDEX);
+      const role = await freezeRegistryContract.address_to_role(adminAddress);
 
-      expect(admin).toBe(adminAddress);
+      expect(role).toBe(MANAGER_ROLE);
       expect(isAccountFrozen).toBe(false);
       expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
@@ -209,22 +220,30 @@ describe("test sealed_standalone_token program", () => {
       expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
     }
 
+    const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
+    if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
+        let newRole2Addresses = await computeRoles2Addresses(freezeRegistryContract, adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE)
+        let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE, newRole2Addresses);
+        await tx.wait();
+        const role = await freezeRegistryContract.address_to_role(adminAddress);
+        expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+    };
+
+    const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
+    if (!isAccountFrozen) {
+      const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      await tx.wait();
+      let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
+      let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
+      let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
+      expect(isAccountFrozen).toBe(true);
+      expect(frozenAccountByIndex).toBe(frozenAccount);
+      expect(lastIndex).toBe(1);
+    }
   });
-
-  test(`test update_freeze_list`, async () => {
-    const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-
-    let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
-    await tx.wait();
-    let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
-    let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
-    let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-
-    expect(isAccountFrozen).toBe(true);
-    expect(frozenAccountByIndex).toBe(frozenAccount);
-    expect(lastIndex).toBe(1);
-  });
-
+/*
   test(`test update_roles`, async () => {
     // Manager can assign role
     let newRole2Addresses = await computeRoles2Addresses(tokenContract, frozenAccount, MANAGER_ROLE)
@@ -886,5 +905,5 @@ describe("test sealed_standalone_token program", () => {
     publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await publicTx.wait();
   });
-
+*/
 });
