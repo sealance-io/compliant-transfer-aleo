@@ -8,7 +8,7 @@ import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_poli
 import { TREASURE_ADDRESS, fundedAmount, policies, defaultRate, ADMIN_INDEX } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { initializeTokenProgram, registerTokenProgram } from "../lib/Token";
+import { registerTokenProgram } from "../lib/Token";
 import { CreditsContract } from "../artifacts/js/credits";
 import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
 import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";

@@ -12,7 +12,7 @@ program sealance_freezelist_registry.aleo {
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
     // Only this address can deploy the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
     // Only this address can upgrade the program
     const UPGRADE_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
@@ -22,11 +22,6 @@ program sealance_freezelist_registry.aleo {
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     mapping address_to_role: address => u16;
-    // Maps a role ID to an address array (limited by MAX_ADDRESSES_PER_ROLE constant)
-    // This mapping is not used in the program logic, but can be queried off-chain to get all addresses assigned to a given role
-    mapping role_to_addresses: u16 => [address; 8];
-    const MAX_ROLES_NUM: u8 = 16u8;
-    const MAX_ADDRESSES_PER_ROLE: u8 = 8u8;
 
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
@@ -61,7 +56,6 @@ program sealance_freezelist_registry.aleo {
 
         assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
         address_to_role.set(admin, MANAGER_ROLE);
-        role_to_addresses.set(MANAGER_ROLE, [admin, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
         freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
@@ -72,20 +66,15 @@ program sealance_freezelist_registry.aleo {
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
-    // The input variable new_role_to_addresses is the completely updated mapping of roles to addresses.
-    async transition update_role(public new_address: address, role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) -> Future {
-        return f_update_role(new_address, self.caller, role, new_role_to_addresses);
+    async transition update_role(public new_address: address, role: u16) -> Future {
+        return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, new_role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) {
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
         let current_role: u16 = address_to_role.get(caller);
         assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
         
         address_to_role.set(new_address, new_role);
 
-        for i: u8 in 0u8..MAX_ROLES_NUM - 1u8 {
-            let role_index: u16 = 2u16.pow(i);
-            role_to_addresses.set(role_index, new_role_to_addresses[i]);
-        }
     }
 
     // Updates the number of blocks during which the previous root is still considered valid.

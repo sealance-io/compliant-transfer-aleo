@@ -53,9 +53,6 @@ program compliant_token_template.aleo {
     const PAUSE_ROLE: u16 = 4u16;   // can pause/unpause transfers
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
-    // Maps a role ID to an address array (limited by MAX_ADDRESSES_PER_ROLE constant)
-    // This mapping is not used in the program logic, but can be queried off-chain to get all addresses assigned to a given role
-    mapping role_to_addresses: u16 => [address; 8];
 
     // Only this address can deploy the program
     const INITIAL_CONFIGURATION_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
@@ -77,8 +74,6 @@ program compliant_token_template.aleo {
     // Defines the maximum depth of the Merkle tree used in freeze list proofs.
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
-    const MAX_ROLES_NUM: u8 = 16u8;
-    const MAX_ADDRESSES_PER_ROLE: u8 = 8u8;
 
     // -------------------------
     // Called by token admins
@@ -87,20 +82,15 @@ program compliant_token_template.aleo {
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
-    // The input variable new_role_to_addresses is the completely updated mapping of roles to addresses.
-    async transition update_role(public new_address: address, role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) -> Future {
-        return f_update_role(new_address, self.caller, role, new_role_to_addresses);
+    async transition update_role(public new_address: address, role: u16) -> Future {
+        return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, new_role: u16, new_role_to_addresses: [[address;MAX_ADDRESSES_PER_ROLE];MAX_ROLES_NUM]) {
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
         let current_role: u16 = address_to_role.get(caller);
         assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
         
         address_to_role.set(new_address, new_role);
 
-        for i: u8 in 0u8..MAX_ROLES_NUM - 1u8 {
-            let role_index: u16 = 2u16.pow(i);
-            role_to_addresses.set(role_index, new_role_to_addresses[i]);
-        }
     }
 
     // Initializes the freeze list, token specifications, the admin and the investigator.
@@ -140,7 +130,6 @@ program compliant_token_template.aleo {
         assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
         
         address_to_role.set(admin, MANAGER_ROLE);
-        role_to_addresses.set(MANAGER_ROLE,[admin, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
 
         let token: TokenInfo = TokenInfo {
             name: name,
