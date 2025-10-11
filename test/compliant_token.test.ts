@@ -3,7 +3,6 @@ import { ExecutionMode } from "@doko-js/core";
 import { BaseContract } from "../contract/base-contract";
 
 import {
-  ADMIN_INDEX,
   BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
   BURNER_ROLE,
@@ -25,8 +24,6 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import { Account } from "@provablehq/sdk";
 import { stringToBigInt } from "../lib/Conversion";
-import { isProgramInitialized } from "../lib/Initalize";
-import { computeRoles2Addresses } from "../lib/Role";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Token } from "../artifacts/js/types/compliant_token_template";
 import { Ticket } from "../artifacts/js/types/compliant_token_template";
@@ -65,7 +62,6 @@ const minterPrivKey = contract.getPrivateKey(minter);
 const burnerPrivKey = contract.getPrivateKey(burner);
 const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
 const spenderPrivKey = contract.getPrivateKey(spender);
-const freezeListManagerPrivKey = contract.getPrivateKey(freezeListManager);
 
 const tokenContract = new Compliant_token_templateContract({
   mode,
@@ -75,10 +71,7 @@ const tokenContractForAdmin = new Compliant_token_templateContract({
   mode,
   privateKey: adminPrivKey,
 });
-const tokenContractForFreezeListManager = new Compliant_token_templateContract({
-  mode,
-  privateKey: freezeListManagerPrivKey,
-});
+
 const tokenContractForAccount = new Compliant_token_templateContract({
   mode,
   privateKey: accountPrivKey,
@@ -162,7 +155,6 @@ describe("test sealed_standalone_token program", () => {
     const tree = buildTree(leaves);
     root = tree[tree.length - 1];
     const senderLeafIndices = getLeafIndices(tree, account);
-    const recipientLeafIndices = getLeafIndices(tree, recipient);
     const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
     senderMerkleProof = [
       getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
@@ -222,8 +214,7 @@ describe("test sealed_standalone_token program", () => {
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-        let newRole2Addresses = await computeRoles2Addresses(freezeRegistryContract, adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE)
-        let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE, newRole2Addresses);
+        let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
         await tx.wait();
         const role = await freezeRegistryContract.address_to_role(adminAddress);
         expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
@@ -243,80 +234,57 @@ describe("test sealed_standalone_token program", () => {
       expect(lastIndex).toBe(1);
     }
   });
-/*
+
   test(`test update_roles`, async () => {
     // Manager can assign role
-    let newRole2Addresses = await computeRoles2Addresses(tokenContract, frozenAccount, MANAGER_ROLE)
-    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, newRole2Addresses);
+    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
     await tx.wait();
     let role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
-    let roleArray = await tokenContract.role_to_addresses(MANAGER_ROLE);
-    expect(roleArray).toStrictEqual([adminAddress, frozenAccount, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
-    
+
     // Manager can remove role
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, frozenAccount, NONE_ROLE)
-    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE, newRole2Addresses);
+    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(NONE_ROLE);
-    roleArray = await tokenContract.role_to_addresses(MANAGER_ROLE);
-    expect(roleArray).toStrictEqual([adminAddress, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
-
+ 
     // Non manager cannot assign role
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, frozenAccount, MANAGER_ROLE)
-    let rejectedTx = await tokenContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE, newRole2Addresses);
+    let rejectedTx = await tokenContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update minter role
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, minter, MINTER_ROLE)
-    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE, newRole2Addresses);
+    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update burner role
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, burner, BURNER_ROLE)
-    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE, newRole2Addresses);
+    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
     
     // Non admin user cannot update supply manager role
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, burner, MINTER_ROLE + BURNER_ROLE)
-    rejectedTx = await tokenContractForAccount.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE, newRole2Addresses);
+    rejectedTx = await tokenContractForAccount.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update none role
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, account, NONE_ROLE)
-    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE, newRole2Addresses);
+    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager can assign minter, burner and supply manager roles
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, minter, MINTER_ROLE)
-    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE, newRole2Addresses);
+    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(minter);
     expect(role).toBe(MINTER_ROLE);
-    roleArray = await tokenContract.role_to_addresses(MINTER_ROLE);
-    expect(roleArray).contain(minter)
     
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, burner, BURNER_ROLE)
-    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE, newRole2Addresses);
+    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(burner);
     expect(role).toBe(BURNER_ROLE);
-    roleArray = await tokenContract.role_to_addresses(BURNER_ROLE);
-    expect(roleArray).contain(burner)
 
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, supplyManager, MINTER_ROLE + BURNER_ROLE)
-    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE, newRole2Addresses);
+    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
-    roleArray = await tokenContract.role_to_addresses(MINTER_ROLE);
-    expect(roleArray).contain(supplyManager);
-    roleArray = await tokenContract.role_to_addresses(BURNER_ROLE);
-    expect(roleArray).contain(supplyManager)
 
-    newRole2Addresses = await computeRoles2Addresses(tokenContract, account, NONE_ROLE)
-    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE, newRole2Addresses);
+    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(account);
     expect(role).toBe(NONE_ROLE);
@@ -814,15 +782,10 @@ describe("test sealed_standalone_token program", () => {
     let approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await approveTx.wait();
 
-    let newRole2Addresses = await computeRoles2Addresses(tokenContract, adminAddress, MANAGER_ROLE + PAUSE_ROLE)
-    let tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE + PAUSE_ROLE, newRole2Addresses);
+    let tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE + PAUSE_ROLE);
     await tx.wait();
     let role = await tokenContract.address_to_role(adminAddress);
     expect(role).toBe(MANAGER_ROLE + PAUSE_ROLE);
-    let roleArray = await tokenContract.role_to_addresses(MANAGER_ROLE);
-    expect(roleArray).contain(adminAddress);
-    roleArray = await tokenContract.role_to_addresses(PAUSE_ROLE);
-    expect(roleArray).contain(adminAddress);
 
     // pause the contract
     pause_status = await tokenContractForAdmin.pause(true);
@@ -905,5 +868,5 @@ describe("test sealed_standalone_token program", () => {
     publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await publicTx.wait();
   });
-*/
+
 });
