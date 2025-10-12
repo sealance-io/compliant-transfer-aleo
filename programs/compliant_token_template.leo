@@ -55,7 +55,7 @@ program compliant_token_template.aleo {
     mapping address_to_role: address => u16;
 
     // Only this address can deploy the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
     // Only this address can upgrade the program
     const UPGRADE_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;

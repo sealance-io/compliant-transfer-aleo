@@ -25,7 +25,7 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { initializeTokenProgram, registerTokenProgram } from "../lib/Token";
+import { registerTokenProgram } from "../lib/Token";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import { Account } from "@provablehq/sdk";

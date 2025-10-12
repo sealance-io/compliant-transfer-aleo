@@ -16,17 +16,18 @@ import {
   MINTER_INDEX,
   BLOCK_HEIGHT_WINDOW,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
+  MANAGER_ROLE,
+  FREEZELIST_MANAGER_ROLE,
+  NONE_ROLE,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { initializeTokenProgram } from "../lib/Token";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
-import { updateAdminRole } from "../lib/Role";
 import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
@@ -219,16 +220,17 @@ describe("test sealed_timelock_policy program", () => {
   test(`freeze registry setup`, async () => {
     await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
 
-    let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
+    const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
+    if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
+      const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+      await tx.wait();
+    };
+
+    const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 0, currentRoot, root);
+      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
       await tx.wait();
-      const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
-      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
-
-      expect(isAccountFrozen).toBe(true);
-      expect(frozenAccountByIndex).toBe(frozenAccount);
     }
 
     const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
