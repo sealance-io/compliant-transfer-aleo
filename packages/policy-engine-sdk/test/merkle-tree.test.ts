@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildTree, genLeaves, ZERO_ADDRESS } from "../src/merkle-tree.js";
+import { buildTree, generateLeaves, ZERO_ADDRESS } from "../src/merkle-tree.js";
 
 describe("merkle_tree lib, buildTree", () => {
   it("should build a valid tree with 2 leaves", async () => {
@@ -23,10 +23,10 @@ describe("merkle_tree lib, buildTree", () => {
   });
 });
 
-describe("merkle_tree lib, genLeaves", () => {
+describe("merkle_tree lib, generateLeaves", () => {
   it("should generate correct number of leaves from 1 leaf", () => {
     const leaves = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(2);
   });
 
@@ -35,7 +35,7 @@ describe("merkle_tree lib, genLeaves", () => {
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
       "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
     ];
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(2);
   });
 
@@ -45,25 +45,25 @@ describe("merkle_tree lib, genLeaves", () => {
       "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
       "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
     ];
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(4);
   });
 
   it("should generate correct number of leaves from 5 leaves", () => {
     const leaves = Array(5).fill("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(8);
   });
 
   it("should generate correct number of leaves from 9 leaves", () => {
     const leaves = Array(9).fill("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(16);
   });
 
   it("should pad with 0field when needed", () => {
     const leaves = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
 
     expect(result).toHaveLength(2);
     expect(result.filter(x => x === "0field").length).toBe(1);
@@ -74,7 +74,7 @@ describe("merkle_tree lib, genLeaves", () => {
       "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result.length).toBe(2);
     expect(result[0]).not.toBe(result[1]);
     expect(result[0]).toBe("1295133970529764960316948294624974168921228814652993007266766481909235735940field");
@@ -82,7 +82,7 @@ describe("merkle_tree lib, genLeaves", () => {
 
   it("should pad with 0field when needed", () => {
     const leaves = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(2);
     expect(result.filter(x => x === "0field").length).toBe(1);
   });
@@ -95,7 +95,7 @@ describe("merkle_tree lib, genLeaves", () => {
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
     const depth = 1;
-    const result = genLeaves(leaves);
+    const result = generateLeaves(leaves);
     expect(result).toHaveLength(2);
     expect(result[0]).toBe("0field");
     expect(result[1]).toBe("3501665755452795161867664882580888971213780722176652848275908626939553697821field");

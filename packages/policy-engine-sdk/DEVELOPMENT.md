@@ -95,7 +95,7 @@ Handles all network communication:
 
 #### Merkle Tree Utilities
 Low-level functions for tree operations:
-- `genLeaves()`: Converts addresses to sorted, padded field elements
+- `generateLeaves()`: Converts addresses to sorted, padded field elements
 - `buildTree()`: Constructs complete Merkle tree from leaves
 - `getLeafIndices()`: Finds adjacent leaf indices for non-inclusion proof
 - `getSiblingPath()`: Generates Merkle proof for a leaf
