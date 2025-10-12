@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { convertAddressToField, convertFieldToAddress, stringToBigInt } from "../src/conversion.js";
 
 describe("Aleo Address ↔ Field Conversion Tests", () => {
@@ -97,6 +97,21 @@ describe("Aleo Address ↔ Field Conversion Tests", () => {
         expect(() => convertFieldToAddress(field)).toThrow();
       });
     });
+
+    it("rejects non-string field input", () => {
+      // Test the typeof check for non-string inputs
+      // @ts-expect-error - Testing runtime type checking
+      expect(() => convertFieldToAddress(123)).toThrow("Field must be a string");
+
+      // @ts-expect-error - Testing runtime type checking
+      expect(() => convertFieldToAddress(null)).toThrow("Field must be a string");
+
+      // @ts-expect-error - Testing runtime type checking
+      expect(() => convertFieldToAddress(undefined)).toThrow("Field must be a string");
+
+      // @ts-expect-error - Testing runtime type checking
+      expect(() => convertFieldToAddress({ value: "123field" })).toThrow("Field must be a string");
+    });
   });
 
   describe("Format Validation", () => {
@@ -128,6 +143,24 @@ describe("Aleo Address ↔ Field Conversion Tests", () => {
 
       // Should get back the original value
       expect(roundTripField).toBe(maxField);
+    });
+
+    it("should handle field values at the 256-bit boundary (2^256)", () => {
+      // Test with 2^256, which exactly exceeds the 32-byte (256-bit) representation
+      // The conversion uses 32-byte encoding, so this value cannot be represented correctly
+      const field = (2n ** 256n).toString() + "field";
+      console.log(field);
+
+      // The address conversion should complete
+      const address = convertFieldToAddress(field);
+      expect(address).toMatch(/^aleo1[a-z0-9]{58}$/); // Should produce valid address format
+
+      const roundTripField = convertAddressToField(address).toString() + "field";
+
+      // Round-trip should NOT match original for 2^256
+      // Because 2^256 cannot be represented in 32 bytes, it wraps to 0
+      expect(roundTripField).not.toBe(field);
+      expect(roundTripField).toBe("0field"); // Should wrap to 0
     });
   });
 
@@ -173,6 +206,29 @@ describe("Aleo Address ↔ Field Conversion Tests", () => {
       // Test single character
       const singleChar = stringToBigInt("A");
       expect(singleChar).toBe(BigInt("A".charCodeAt(0)));
+    });
+  });
+
+  describe("Internal Error Handling", () => {
+    it("handles errors during bech32m encoding gracefully", async () => {
+      // This test covers the catch block in convertFieldToAddress
+      // We'll mock the bech32m module to throw an error during encoding
+
+      const { bech32m } = await import("@scure/base");
+      const originalEncode = bech32m.encode;
+
+      // Mock bech32m.encode to throw an error
+      bech32m.encode = vi.fn().mockImplementation(() => {
+        throw new Error("Encoding failed");
+      });
+
+      try {
+        // This should trigger the catch block
+        expect(() => convertFieldToAddress("123field")).toThrow("Invalid field value: Encoding failed");
+      } finally {
+        // Restore original implementation
+        bech32m.encode = originalEncode;
+      }
     });
   });
 });
