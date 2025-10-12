@@ -9,7 +9,14 @@ Before running the examples, ensure you have:
 1. **Node.js 20+** installed
 2. **Dependencies installed**:
    ```bash
+   cd ..
+   npm run build
+   cd examples
    npm install
+   ```
+   or simply from 'packages/policy-engine-sdk' execute:
+   ```bash
+   npm run build:examples
    ```
 3. **Aleo node running** (for transaction examples):
    - Local devnet: `http://localhost:3030`
