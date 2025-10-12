@@ -68,14 +68,14 @@ export class AleoAPIClient {
         try {
           const parsed = JSON.parse(data);
           // If successfully parsed, use the parsed value
-          data = typeof parsed === 'string' ? parsed : String(parsed);
+          data = typeof parsed === "string" ? parsed : String(parsed);
         } catch {
           // If JSON parsing fails, use the raw trimmed data
           // This handles cases where the API returns unquoted values
         }
 
         // Additional check for null values
-        if (data === 'null' || data === null) {
+        if (data === "null" || data === null) {
           return null;
         }
 

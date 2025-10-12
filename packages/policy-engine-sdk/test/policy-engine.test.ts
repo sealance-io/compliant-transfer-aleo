@@ -240,9 +240,12 @@ describe("PolicyEngine", () => {
     it("returns valid MerkleProof structure", async () => {
       const freezeList = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
 
-      const witness = await engine.genNonInclusionProof("aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc", {
-        freezeList,
-      });
+      const witness = await engine.genNonInclusionProof(
+        "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc",
+        {
+          freezeList,
+        },
+      );
 
       // Check proof structure
       witness.proofs.forEach(proof => {
