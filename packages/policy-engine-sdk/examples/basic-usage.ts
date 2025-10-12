@@ -39,7 +39,7 @@ async function main() {
     const addressToCheck = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px";
 
     // Generate witness (non-inclusion proof)
-    const witness = await engine.genNonInclusionProof(addressToCheck, {
+    const witness = await engine.generateNonInclusionProof(addressToCheck, {
       programId: "sealance_freezelist_registry.aleo",
       // Optional: pass cached freeze list to avoid refetching
       // freezeList: freezeListResult.addresses

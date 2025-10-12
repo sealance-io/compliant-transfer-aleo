@@ -51,7 +51,7 @@ console.log(`Found ${freezeList.addresses.length} frozen addresses`);
 console.log(`Current root: ${freezeList.currentRoot}`);
 
 // Generate non-inclusion proof for an address
-const witness = await engine.genNonInclusionProof("aleo1...", {
+const witness = await engine.generateNonInclusionProof("aleo1...", {
   programId: "sealance_freezelist_registry.aleo",
 });
 
@@ -97,12 +97,12 @@ const result = await engine.fetchFreezeListFromChain(
 // }
 ```
 
-##### `genNonInclusionProof(address: string, options?: TransferWitnessOptions): Promise<TransferWitness>`
+##### `generateNonInclusionProof(address: string, options?: TransferWitnessOptions): Promise<TransferWitness>`
 
 Generates a non-inclusion proof for private compliant transfers.
 
 ```typescript
-const witness = await engine.genNonInclusionProof("aleo1...", {
+const witness = await engine.generateNonInclusionProof("aleo1...", {
   programId: "sealance_freezelist_registry.aleo",
   freezeList: [...], // Optional: provide cached freeze list
 });
@@ -119,7 +119,7 @@ const witness = await engine.genNonInclusionProof("aleo1...", {
 
 ```typescript
 // In your application code
-const witness = await engine.genNonInclusionProof(senderAddress);
+const witness = await engine.generateNonInclusionProof(senderAddress);
 
 // Use in Aleo transaction
 const tx = await policyContract.transfer_private(
@@ -206,7 +206,7 @@ describe("Freeze List Tests", () => {
 
   test("verify non-inclusion", async () => {
     const address = "aleo1...";
-    const witness = await engine.genNonInclusionProof(address);
+    const witness = await engine.generateNonInclusionProof(address);
 
     // Use with contract
     const contract = new Sealance_freezelist_registryContract({...});
@@ -255,7 +255,7 @@ interface TransferWitness {
 3. **Error Handling**: Always wrap API calls in try-catch blocks:
    ```typescript
    try {
-     const witness = await engine.genNonInclusionProof(address);
+     const witness = await engine.generateNonInclusionProof(address);
    } catch (error) {
      console.error("Failed to generate witness:", error);
    }

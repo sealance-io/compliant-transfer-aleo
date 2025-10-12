@@ -181,7 +181,7 @@ describe("PolicyEngine", () => {
     });
   });
 
-  describe("genNonInclusionProof", () => {
+  describe("generateNonInclusionProof", () => {
     it("generates proof with provided freeze list", async () => {
       const freezeList = [
         "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
@@ -190,7 +190,7 @@ describe("PolicyEngine", () => {
 
       const testAddress = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 
-      const witness = await engine.genNonInclusionProof(testAddress, {
+      const witness = await engine.generateNonInclusionProof(testAddress, {
         freezeList,
       });
 
@@ -229,7 +229,7 @@ describe("PolicyEngine", () => {
 
       const testAddress = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
 
-      const witness = await engine.genNonInclusionProof(testAddress, {
+      const witness = await engine.generateNonInclusionProof(testAddress, {
         programId: "test.aleo",
       });
 
@@ -240,7 +240,7 @@ describe("PolicyEngine", () => {
     it("returns valid MerkleProof structure", async () => {
       const freezeList = ["aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"];
 
-      const witness = await engine.genNonInclusionProof(
+      const witness = await engine.generateNonInclusionProof(
         "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc",
         {
           freezeList,

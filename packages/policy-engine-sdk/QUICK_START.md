@@ -40,7 +40,7 @@ console.log(`Current root: ${result.currentRoot}`);
 ### 3. Generate Proof
 
 ```typescript
-const witness = await engine.genNonInclusionProof(
+const witness = await engine.generateNonInclusionProof(
   "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
   {
     programId: "sealance_freezelist_registry.aleo"
@@ -81,7 +81,7 @@ const freezeList = await engine.fetchFreezeListFromChain(programId);
 
 // Reuse for multiple addresses
 for (const address of addresses) {
-  const witness = await engine.genNonInclusionProof(address, {
+  const witness = await engine.generateNonInclusionProof(address, {
     freezeList: freezeList.addresses,
     programId
   });
@@ -137,7 +137,7 @@ const root = tree[tree.length - 1];
 ### PolicyEngine Methods
 
 - `fetchFreezeListFromChain(programId)`: Fetch addresses from chain
-- `genNonInclusionProof(address, options)`: Generate non-inclusion proof
+- `generateNonInclusionProof(address, options)`: Generate non-inclusion proof
 - `buildMerkleTree(addresses)`: Build tree from addresses
 - `getMerkleRoot(addresses)`: Get root from addresses
 - `getConfig()`: Get current configuration
@@ -166,7 +166,7 @@ Always wrap API calls in try-catch:
 
 ```typescript
 try {
-  const witness = await engine.genNonInclusionProof(address);
+  const witness = await engine.generateNonInclusionProof(address);
   // Use witness...
 } catch (error) {
   if (error.message.includes("Failed to fetch")) {

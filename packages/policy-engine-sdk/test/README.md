@@ -48,7 +48,7 @@ Tests for main PolicyEngine class:
 - `buildMerkleTree`: Tree building from addresses
 - `getMerkleRoot`: Root computation
 - `fetchFreezeListFromChain`: Blockchain data fetching
-- `genNonInclusionProof`: Complete proof generation
+- `generateNonInclusionProof`: Complete proof generation
 
 ## Coverage
 
