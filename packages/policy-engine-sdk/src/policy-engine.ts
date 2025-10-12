@@ -22,7 +22,7 @@ import { buildTree, genLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } fr
  * const freezeList = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
  *
  * // Generate non-inclusion proof for an address
- * const witness = await engine.genNonInclusionProof("aleo1...", {
+ * const witness = await engine.generateNonInclusionProof("aleo1...", {
  *   programId: "sealance_freezelist_registry.aleo"
  * });
  * ```
@@ -128,7 +128,7 @@ export class PolicyEngine {
    *
    * @example
    * ```typescript
-   * const witness = await engine.genNonInclusionProof("aleo1...", {
+   * const witness = await engine.generateNonInclusionProof("aleo1...", {
    *   programId: "sealance_freezelist_registry.aleo"
    * });
    *
@@ -143,7 +143,7 @@ export class PolicyEngine {
    * );
    * ```
    */
-  async genNonInclusionProof(address: string, options: TransferWitnessOptions = {}): Promise<TransferWitness> {
+  async generateNonInclusionProof(address: string, options: TransferWitnessOptions = {}): Promise<TransferWitness> {
     // Fetch freeze list if not provided
     let freezeList: string[];
     if (options.freezeList) {

@@ -35,7 +35,7 @@ async function main() {
   for (const address of addressesToCheck) {
     try {
       // Generate witness using cached freeze list
-      const witness = await engine.genNonInclusionProof(address, {
+      const witness = await engine.generateNonInclusionProof(address, {
         freezeList: freezeListResult.addresses, // Reuse cached data
         programId: "sealed_report_policy.aleo",
       });

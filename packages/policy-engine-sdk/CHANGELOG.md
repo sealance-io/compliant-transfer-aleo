@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Merkle tree utilities: `buildTree`, `genLeaves`, `getLeafIndices`, `getSiblingPath`
 - Address conversion utilities: `convertAddressToField`, `convertFieldToAddress`
 - `fetchFreezeListFromChain()` method to query on-chain freeze lists
-- `genNonInclusionProof()` method to generate non-inclusion proofs
+- `generateNonInclusionProof()` method to generate non-inclusion proofs
 - Full TypeScript support with declaration files
 - Comprehensive documentation and examples
 - ESM-only module targeting Node.js 20+ and modern browsers
