@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of @sealance-io/policy-engine-aleo SDK
 - `PolicyEngine` class for high-level operations
 - `AleoAPIClient` for blockchain data fetching with retry logic
-- Merkle tree utilities: `buildTree`, `genLeaves`, `getLeafIndices`, `getSiblingPath`
+- Merkle tree utilities: `buildTree`, `generateLeaves`, `getLeafIndices`, `getSiblingPath`
 - Address conversion utilities: `convertAddressToField`, `convertFieldToAddress`
 - `fetchFreezeListFromChain()` method to query on-chain freeze lists
 - `generateNonInclusionProof()` method to generate non-inclusion proofs

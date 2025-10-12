@@ -28,7 +28,7 @@ Tests for address ↔ field conversion utilities:
 
 ### `merkle-tree.test.ts`
 Tests for Merkle tree operations:
-- `genLeaves`: Leaf generation, sorting, padding
+- `generateLeaves`: Leaf generation, sorting, padding
 - `buildTree`: Tree construction, validation
 - `getLeafIndices`: Finding indices for non-inclusion proofs
 - `getSiblingPath`: Generating Merkle proofs

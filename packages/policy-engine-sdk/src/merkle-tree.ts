@@ -87,11 +87,11 @@ export function buildTree(leaves: string[]): bigint[] {
  *   "aleo1...",
  *   "aleo1..."
  * ];
- * const leaves = genLeaves(addresses, 15);
+ * const leaves = generateLeaves(addresses, 15);
  * const tree = buildTree(leaves);
  * ```
  */
-export function genLeaves(addresses: string[], maxTreeDepth: number = 15): string[] {
+export function generateLeaves(addresses: string[], maxTreeDepth: number = 15): string[] {
   const maxNumLeaves = Math.floor(2 ** (maxTreeDepth - 1));
 
   // Filter out zero addresses

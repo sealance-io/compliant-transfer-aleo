@@ -6,7 +6,7 @@ import type {
   MerkleProof,
 } from "./types.js";
 import { AleoAPIClient } from "./api-client.js";
-import { buildTree, genLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } from "./merkle-tree.js";
+import { buildTree, generateLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } from "./merkle-tree.js";
 
 /**
  * Main SDK class for generating Merkle proofs and interacting with Aleo compliance policies
@@ -154,7 +154,7 @@ export class PolicyEngine {
     }
 
     // Generate leaves and build tree
-    const leaves = genLeaves(freezeList, this.config.maxTreeDepth);
+    const leaves = generateLeaves(freezeList, this.config.maxTreeDepth);
     const tree = buildTree(leaves);
     const root = tree[tree.length - 1];
 
@@ -190,7 +190,7 @@ export class PolicyEngine {
    * @returns The complete Merkle tree as array of BigInts
    */
   buildMerkleTree(addresses: string[]): bigint[] {
-    const leaves = genLeaves(addresses, this.config.maxTreeDepth);
+    const leaves = generateLeaves(addresses, this.config.maxTreeDepth);
     return buildTree(leaves);
   }
 

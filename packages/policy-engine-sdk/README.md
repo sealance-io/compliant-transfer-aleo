@@ -172,13 +172,13 @@ console.log(address); // "aleo1..."
 ```typescript
 import {
   buildTree,
-  genLeaves,
+  generateLeaves,
   getLeafIndices,
   getSiblingPath
 } from "@sealance-io/policy-engine-aleo";
 
 // Generate leaves from addresses (sorted and padded)
-const leaves = genLeaves(["aleo1...", "aleo1..."], 15);
+const leaves = generateLeaves(["aleo1...", "aleo1..."], 15);
 
 // Build the tree
 const tree = buildTree(leaves);

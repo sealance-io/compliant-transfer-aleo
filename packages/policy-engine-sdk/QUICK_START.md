@@ -109,14 +109,14 @@ import {
   convertAddressToField,
   convertFieldToAddress,
   buildTree,
-  genLeaves
+  generateLeaves
 } from "@sealance-io/policy-engine-aleo";
 
 // Convert address to field
 const field = convertAddressToField("aleo1...");
 
 // Build custom tree
-const leaves = genLeaves(["aleo1...", "aleo1..."], 15);
+const leaves = generateLeaves(["aleo1...", "aleo1..."], 15);
 const tree = buildTree(leaves);
 const root = tree[tree.length - 1];
 ```
@@ -148,7 +148,7 @@ const root = tree[tree.length - 1];
 - `convertFieldToAddress(field)`: Field → Address
 - `stringToBigInt(str)`: ASCII → BigInt
 - `buildTree(leaves)`: Build Merkle tree
-- `genLeaves(addresses, depth)`: Generate sorted leaves
+- `generateLeaves(addresses, depth)`: Generate sorted leaves
 - `getLeafIndices(tree, address)`: Find leaf indices
 - `getSiblingPath(tree, index, depth)`: Generate proof
 
