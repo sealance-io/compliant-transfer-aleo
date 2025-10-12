@@ -273,7 +273,7 @@ describe("test sealed_threshold_policy program", () => {
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
       const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
       await tx.wait();
-    };
+    }
 
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
