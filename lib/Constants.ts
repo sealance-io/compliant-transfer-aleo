@@ -78,13 +78,13 @@ export const EPOCH = 8640;
 export const NONE_ROLE = 0;
 export const MINTER_ROLE = 1;
 export const BURNER_ROLE = 2;
+export const SUPPLY_MANAGER_ROLE = 3; // Only for the report token
 export const PAUSE_ROLE = 4;
 export const MANAGER_ROLE = 8;
 export const FREEZELIST_MANAGER_ROLE = 16;
 
 // merkle tree
 export const MAX_TREE_SIZE = 16;
-export const TREE_DEPTH_12 = 13;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;

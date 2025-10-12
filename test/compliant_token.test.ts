@@ -33,6 +33,7 @@ import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_token_
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
+import { isProgramInitialized } from "../lib/Initalize";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -131,23 +132,6 @@ describe("test sealed_standalone_token program", () => {
     await deployIfNotDeployed(tokenContract);
   });
 
-/*
-  test(`test update_investigator_address`, async () => {
-    let tx = await standaloneTokenContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
-    await tx.wait();
-    let investigatorRole = await standaloneTokenContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(frozenAccount);
-
-    tx = await standaloneTokenContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
-    await tx.wait();
-    investigatorRole = await standaloneTokenContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(investigatorAddress);
-
-    const rejectedTx = await standaloneTokenContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-  });
-*/
-
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(`generate merkle proofs`, async () => {
@@ -167,35 +151,24 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test initialize `, async () => {
-
-    let isTokenInitialized = false;
-    try {
-      await tokenContract.token_info(true);
-      isTokenInitialized = true;
-    } catch (e) { }
-
+    const isTokenInitialized = await isProgramInitialized(tokenContract);
     if (!isTokenInitialized) {
         const name = stringToBigInt("Stable Token");
         const symbol = stringToBigInt("STABLE_TOKEN");
         const decimals = 6;
         const maxSupply = 1000_000000000000n;
 
-        const tx = await tokenContract.initialize(name, symbol, decimals, maxSupply, adminAddress);
+        const tx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
         await tx.wait();
 
         // It is possible to call to initialize only one time
-        let rejectedTx = await tokenContract.initialize(name, symbol, decimals, maxSupply, adminAddress);
+        let rejectedTx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
         await expect(rejectedTx.wait()).rejects.toThrow();
     }
 
-    let isFreezeRegistryInitialized = false;
-    try {
-      await freezeRegistryContract.freeze_list_root(1);
-      isFreezeRegistryInitialized = true;
-    } catch (e) { }
-
+    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
     if (!isFreezeRegistryInitialized) {
-      const tx = await freezeRegistryContract.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
+      const tx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
       await tx.wait();
       const isAccountFrozen = await freezeRegistryContract.freeze_list(ZERO_ADDRESS);
       const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);

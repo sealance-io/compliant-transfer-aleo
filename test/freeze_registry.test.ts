@@ -87,13 +87,7 @@ describe("test freeze_registry program", () => {
   });
 
   test(`test initialize`, async () => {
-
-    let isFreezeRegistryInitialized = false;
-    try {
-      await freezeRegistryContract.freeze_list_root(1);
-      isFreezeRegistryInitialized = true;
-    } catch (e) { }
-
+    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
       let rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
