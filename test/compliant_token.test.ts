@@ -153,17 +153,17 @@ describe("test sealed_standalone_token program", () => {
   test(`test initialize `, async () => {
     const isTokenInitialized = await isProgramInitialized(tokenContract);
     if (!isTokenInitialized) {
-        const name = stringToBigInt("Stable Token");
-        const symbol = stringToBigInt("STABLE_TOKEN");
-        const decimals = 6;
-        const maxSupply = 1000_000000000000n;
+      const name = stringToBigInt("Stable Token");
+      const symbol = stringToBigInt("STABLE_TOKEN");
+      const decimals = 6;
+      const maxSupply = 1000_000000000000n;
 
-        const tx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
-        await tx.wait();
+      const tx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
+      await tx.wait();
 
-        // It is possible to call to initialize only one time
-        let rejectedTx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
-        await expect(rejectedTx.wait()).rejects.toThrow();
+      // It is possible to call to initialize only one time
+      let rejectedTx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
+      await expect(rejectedTx.wait()).rejects.toThrow();
     }
 
     const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
@@ -187,11 +187,11 @@ describe("test sealed_standalone_token program", () => {
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-        let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
-        await tx.wait();
-        const role = await freezeRegistryContract.address_to_role(adminAddress);
-        expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
-    };
+      let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+      await tx.wait();
+      const role = await freezeRegistryContract.address_to_role(adminAddress);
+      expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+    }
 
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
@@ -220,7 +220,7 @@ describe("test sealed_standalone_token program", () => {
     await tx.wait();
     role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(NONE_ROLE);
- 
+
     // Non manager cannot assign role
     let rejectedTx = await tokenContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -232,7 +232,7 @@ describe("test sealed_standalone_token program", () => {
     // Non admin user cannot update burner role
     rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
-    
+
     // Non admin user cannot update supply manager role
     rejectedTx = await tokenContractForAccount.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -246,7 +246,7 @@ describe("test sealed_standalone_token program", () => {
     await tx.wait();
     role = await tokenContract.address_to_role(minter);
     expect(role).toBe(MINTER_ROLE);
-    
+
     tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(burner);
@@ -335,10 +335,9 @@ describe("test sealed_standalone_token program", () => {
 
     tx = await tokenContractForSupplyManager.burn_public(account, amount);
     await tx.wait();
-    
+
     let balance = await tokenContract.balances(account);
     expect(balance).toBe(previousAccountPublicBalance - amount * 2n);
-
   });
 
   test(`test burn_private`, async () => {
@@ -377,7 +376,6 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test transfer_public`, async () => {
-
     const previousAccountPublicBalance = await tokenContract.balances(account);
     const previousRecipientPublicBalance = await tokenContract.balances(recipient, 0n);
 
@@ -388,7 +386,6 @@ describe("test sealed_standalone_token program", () => {
     // If the recipient is frozen account it's IMPOSSIBLE to send tokens
     rejectedTx = await tokenContractForAccount.transfer_public(frozenAccount, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
-
 
     let tx = await tokenContractForAccount.transfer_public(recipient, amount);
     await tx.wait();
@@ -462,11 +459,7 @@ describe("test sealed_standalone_token program", () => {
 
   test(`test transfer_from_public_to_private`, async () => {
     // If the sender didn't approve the spender the transaction will fail
-    let rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(
-      account,
-      recipient,
-      amount
-    );
+    let rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(account, recipient, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let approveTx = await tokenContractForAccount.approve_public(spender, amount);
@@ -475,11 +468,7 @@ describe("test sealed_standalone_token program", () => {
     await unapproveTx.wait();
 
     // If the sender approve and then unapprove the spender the transaction will fail
-    rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(
-      account,
-      recipient,
-      amount
-    );
+    rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(account, recipient, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // approve the spender
@@ -489,20 +478,12 @@ describe("test sealed_standalone_token program", () => {
     await approveTx.wait();
 
     // If the sender is frozen account it's impossible to send tokens
-    rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(
-      frozenAccount,
-      recipient,
-      amount
-    );
+    rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(frozenAccount, recipient, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const previousAccountPublicBalance = await tokenContract.balances(account);
 
-    const tx = await tokenContractForSpender.transfer_from_public_to_private(
-      account,
-      recipient,
-      amount
-    );
+    const tx = await tokenContractForSpender.transfer_from_public_to_private(account, recipient, amount);
     const [complianceRecord, encryptedRecipientRecord] = await tx.wait();
     const recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);
@@ -520,18 +501,12 @@ describe("test sealed_standalone_token program", () => {
 
   test(`test transfer_public_to_priv`, async () => {
     // If the sender is frozen account it's impossible to send tokens
-    let rejectedTx = await tokenContractForFrozenAccount.transfer_public_to_private(
-      recipient,
-      amount
-    );
+    let rejectedTx = await tokenContractForFrozenAccount.transfer_public_to_private(recipient, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const previousAccountPublicBalance = await tokenContract.balances(account);
 
-    const tx = await tokenContractForAccount.transfer_public_to_private(
-      recipient,
-      amount
-    );
+    const tx = await tokenContractForAccount.transfer_public_to_private(recipient, amount);
     const [complianceRecord, tokenRecord] = await tx.wait();
     const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
     expect(recipientRecord.owner).toBe(recipient);
@@ -550,20 +525,10 @@ describe("test sealed_standalone_token program", () => {
   test(`test transfer_private`, async () => {
     // If the sender is frozen account it's impossible to send tokens
     await expect(
-      tokenContractForFrozenAccount.transfer_private(
-        recipient,
-        amount,
-        accountRecord,
-        frozenAccountMerkleProof,
-      ),
+      tokenContractForFrozenAccount.transfer_private(recipient, amount, accountRecord, frozenAccountMerkleProof),
     ).rejects.toThrow();
 
-    const tx = await tokenContractForAccount.transfer_private(
-      recipient,
-      amount,
-      accountRecord,
-      senderMerkleProof,
-    );
+    const tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
     const [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord] = await tx.wait();
 
     const previousAmount = accountRecord.amount;
@@ -597,7 +562,8 @@ describe("test sealed_standalone_token program", () => {
       frozenAccount,
       amount,
       accountRecord,
-      senderMerkleProof    );
+      senderMerkleProof,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const previousRecipientPublicBalance = await tokenContract.balances(recipient, 0n);
@@ -651,7 +617,6 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test transfer with ticket`, async () => {
-
     let transferPrivateTx = await tokenContractForAccount.transfer_private_with_ticket(
       recipient,
       amount,
@@ -677,7 +642,6 @@ describe("test sealed_standalone_token program", () => {
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
 
-
     // Update the root to make the old ticket expired
     let updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
       frozenAccount,
@@ -698,7 +662,6 @@ describe("test sealed_standalone_token program", () => {
     );
     await expect(rejectedTransferPrivateTx.wait()).rejects.toThrow();
 
-
     // bring back the old root
     updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 1n, root);
     await updateFreezeListTx.wait();
@@ -709,7 +672,8 @@ describe("test sealed_standalone_token program", () => {
       recipient,
       amount,
       accountRecord,
-      ticket    );
+      ticket,
+    );
     [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
     ticket = await decryptTicket(encryptedCredRecord, accountPrivKey);
@@ -728,11 +692,9 @@ describe("test sealed_standalone_token program", () => {
     expect(decryptedComplianceRecord.amount).toBe(amount);
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
-
   });
 
   test(`test pausing the contract`, async () => {
-
     // ensure the contract is unpaused
     let pause_status = await tokenContractForAdmin.pause(true);
     if (pause_status == true) {
@@ -777,13 +739,13 @@ describe("test sealed_standalone_token program", () => {
 
     let burnTx = await tokenContractForBurner.burn_public(recipient, amount);
     await expect(burnTx.wait()).rejects.toThrow();
-    
+
     let publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await expect(publicTx.wait()).rejects.toThrow();
 
     let publicAsSignerTx = await tokenContractForAccount.transfer_public_as_signer(recipient, amount);
     await expect(publicAsSignerTx.wait()).rejects.toThrow();
-    
+
     approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await expect(approveTx.wait()).rejects.toThrow();
 
@@ -796,14 +758,11 @@ describe("test sealed_standalone_token program", () => {
     const fromPublicToPrivateTx = await tokenContractForSpender.transfer_from_public_to_private(
       account,
       recipient,
-      amount
+      amount,
     );
     await expect(fromPublicToPrivateTx.wait()).rejects.toThrow();
 
-    const publicToPrivate = await tokenContractForAccount.transfer_public_to_private(
-      recipient,
-      amount
-    );
+    const publicToPrivate = await tokenContractForAccount.transfer_public_to_private(recipient, amount);
     await expect(publicToPrivate.wait()).rejects.toThrow();
 
     const privateTx = await tokenContractForAccount.transfer_private(
@@ -821,7 +780,6 @@ describe("test sealed_standalone_token program", () => {
       senderMerkleProof,
     );
     await expect(privateToPublic.wait()).rejects.toThrow();
-
 
     let privateWithTicketTx = await tokenContractForAccount.transfer_private_with_ticket(
       recipient,
@@ -841,5 +799,4 @@ describe("test sealed_standalone_token program", () => {
     publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await publicTx.wait();
   });
-
 });
