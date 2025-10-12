@@ -13,18 +13,8 @@
 
 export { PolicyEngine } from "./policy-engine.js";
 export { AleoAPIClient } from "./api-client.js";
-export {
-  buildTree,
-  genLeaves,
-  getLeafIndices,
-  getSiblingPath,
-  ZERO_ADDRESS,
-} from "./merkle-tree.js";
-export {
-  convertAddressToField,
-  convertFieldToAddress,
-  stringToBigInt,
-} from "./conversion.js";
+export { buildTree, genLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } from "./merkle-tree.js";
+export { convertAddressToField, convertFieldToAddress, stringToBigInt } from "./conversion.js";
 export type {
   MerkleProof,
   PolicyEngineConfig,
