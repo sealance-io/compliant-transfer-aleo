@@ -108,8 +108,11 @@ export class PolicyEngine {
       console.debug("Could not fetch current root", error);
     }
 
+    // Filter out ZERO_ADDRESS (used for padding in Merkle tree)
+    const filteredAddresses = freezeList.filter(address => address !== ZERO_ADDRESS);
+
     return {
-      addresses: freezeList,
+      addresses: filteredAddresses,
       lastIndex,
       currentRoot,
     };
