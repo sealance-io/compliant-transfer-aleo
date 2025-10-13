@@ -11,7 +11,7 @@
 
 import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
 import { Account, ProgramManager, AleoKeyProvider, initThreadPool } from "@provablehq/sdk";
-import { AleoTransactionTracker } from "./aleo-transaction-tracker.js";
+import { trackTransactionStatus } from "./aleo-transaction-tracker.js";
 
 // ============================================================================
 // Configuration
@@ -30,7 +30,7 @@ const CONFIG = {
   privateKey: process.env.PRIVATE_KEY || "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
 
   // Address to verify (prove it's NOT in the freeze list)
-  addressToVerify: "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+  addressToVerify: "aleo1wdvqj55e7k3z307clpjsgj506mz8jwxwt8r3qsv4g7fs2a25mcgsvlqc42",
 
   // Transaction fees
   priorityFee: 0, // Priority fee in microcredits
@@ -81,7 +81,6 @@ async function main() {
     endpoint: CONFIG.endpoint,
     network: CONFIG.network,
     maxTreeDepth: 15,
-    leavesLength: 16384,
   });
 
   console.log(`[1/5] ✅ SDK initialized`);
@@ -173,19 +172,12 @@ async function main() {
       console.log(`      Waiting for transaction to be included in a block...`);
       console.log(`      (This may take several minutes)`);
 
-      const tracker = new AleoTransactionTracker(CONFIG.endpoint + "/testnet");
-
-      const status = await tracker.trackTransaction(txId, {
-        timeout: CONFIG.trackingTimeout,
-        initialInterval: 5000, // Check every 5 seconds initially
-        maxInterval: 30000, // Cap at 30 seconds
-        backoffMultiplier: 1.5,
-      });
+      const status = await trackTransactionStatus(txId, CONFIG.endpoint + `/${CONFIG.network}`);
 
       console.log(`\n[5/5] ✅ Transaction tracking complete!`);
       console.log(`\nFinal Status:`);
       console.log(`      Status: ${status.status.toUpperCase()}`);
-      console.log(`      Transaction ID: ${status.transactionId || txId}`);
+      console.log(`      Transaction ID: ${status.confirmedId || txId}`);
 
       if (status.blockHeight) {
         console.log(`      Block Height: ${status.blockHeight}`);
@@ -204,7 +196,7 @@ async function main() {
       // Exit with error if transaction was not accepted
       if (status.status !== "accepted") {
         console.error(`\n⚠️  Transaction was not accepted. Status: ${status.status}`);
-        if (status.status === "timeout") {
+        if (status.status === "pending") {
           console.error(`    The transaction may still be pending. Check the explorer for updates.`);
         } else if (status.status === "aborted") {
           console.error(`    Both execution and fee processing failed.`);
@@ -231,14 +223,6 @@ async function main() {
   } catch (error: any) {
     console.error(`\n[4/5] ❌ Transaction execution failed`);
     console.error(`      Error: ${error.message}`);
-
-    if (error.message.includes("fee")) {
-      console.error(`\n      Tip: Make sure the account has sufficient balance for fees.`);
-    } else if (error.message.includes("proof")) {
-      console.error(`\n      Tip: Check that the merkle proof format is correct.`);
-    } else if (error.message.includes("root")) {
-      console.error(`\n      Tip: The on-chain root may have changed. Try fetching a fresh freeze list.`);
-    }
 
     throw error;
   }
