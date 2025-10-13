@@ -14,6 +14,7 @@ import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_t
 import { initializeProgram } from "../lib/Initalize";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
 import { stringToBigInt } from "../lib/Conversion";
+import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -73,6 +74,14 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   mode,
   privateKey: adminPrivKey,
 });
+const compliantTokenContract = new Compliant_token_templateContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
+const compliantTokenContractForAdmin = new Compliant_token_templateContract({
+  mode,
+  privateKey: adminPrivKey,
+});
 
 (async () => {
   // deploy contracts
@@ -83,6 +92,7 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
   await deployIfNotDeployed(timelockContract);
   await deployIfNotDeployed(exchangeContract);
   await deployIfNotDeployed(reportTokenContract);
+  await deployIfNotDeployed(compliantTokenContract);
 
   // register token and assign a policy contract as external_authorization_party
   await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
@@ -105,6 +115,13 @@ const reportTokenContractForAdmin = new Sealed_report_tokenContract({
     adminAddress,
     BLOCK_HEIGHT_WINDOW,
     investigatorAddress,
+  ]);
+  await initializeProgram(compliantTokenContractForAdmin, [
+    stringToBigInt("Stable Token"),
+    stringToBigInt("STABLE_TOKEN"),
+    6,
+    1000_000000000000n,
+    adminAddress,
   ]);
 
   // assign exchange program to be a minter
