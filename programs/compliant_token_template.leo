@@ -219,7 +219,7 @@ program compliant_token_template.aleo {
     async transition mint_private(
         recipient: address,
         public amount: u128,
-        ) -> (Token, ComplianceRecord, Future) {
+        ) -> (ComplianceRecord, Token, Future) {
         let token: Token = Token {
             owner: recipient,
             amount: amount,
@@ -232,7 +232,7 @@ program compliant_token_template.aleo {
             recipient: recipient,
         };
         
-        return (token, compliance_record, finalize_mint_private(amount, self.caller));
+        return (compliance_record, token, finalize_mint_private(amount, self.caller));
     }
 
     async function finalize_mint_private(
@@ -306,7 +306,7 @@ program compliant_token_template.aleo {
     async transition burn_private(
         input_record: Token,
         public amount: u128
-    ) -> (Token, ComplianceRecord, Future) {
+    ) -> (ComplianceRecord, Token, Future) {
         let output_record: Token = Token {
             owner: input_record.owner,
             amount: input_record.amount - amount
@@ -319,7 +319,7 @@ program compliant_token_template.aleo {
             recipient: ZERO_ADDRESS,
         };
 
-        return (output_record, compliance_record, finalize_burn_private(amount, self.caller));
+        return (compliance_record, output_record, finalize_burn_private(amount, self.caller));
     }
     async function finalize_burn_private(
         amount: u128,
