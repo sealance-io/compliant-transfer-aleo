@@ -13,6 +13,7 @@ export class AleoAPIClient {
       maxTreeDepth: config.maxTreeDepth ?? 15,
       maxRetries: config.maxRetries ?? 5,
       retryDelay: config.retryDelay ?? 2000,
+      maxConcurrency: config.maxConcurrency ?? 10,
     };
   }
 

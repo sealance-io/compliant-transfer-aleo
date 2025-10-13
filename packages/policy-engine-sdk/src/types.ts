@@ -38,6 +38,13 @@ export interface PolicyEngineConfig {
    * @default 2000
    */
   retryDelay?: number;
+
+  /**
+   * Maximum number of concurrent HTTP requests when fetching freeze list
+   * Balances speed vs server load. Higher values = faster but more load.
+   * @default 10
+   */
+  maxConcurrency?: number;
 }
 
 /**
