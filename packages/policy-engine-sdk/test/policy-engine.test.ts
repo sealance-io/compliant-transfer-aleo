@@ -10,7 +10,6 @@ describe("PolicyEngine", () => {
       endpoint: "http://localhost:3030",
       network: "testnet",
       maxTreeDepth: 15,
-      leavesLength: 16384,
       maxRetries: 3,
       retryDelay: 100,
     });
@@ -24,7 +23,6 @@ describe("PolicyEngine", () => {
       expect(config.endpoint).toBe("http://localhost:3030");
       expect(config.network).toBe("testnet");
       expect(config.maxTreeDepth).toBe(15);
-      expect(config.leavesLength).toBe(16384);
     });
 
     it("applies default values", () => {
@@ -35,7 +33,6 @@ describe("PolicyEngine", () => {
 
       const config = defaultEngine.getConfig();
       expect(config.maxTreeDepth).toBe(15);
-      expect(config.leavesLength).toBe(16384);
       expect(config.maxRetries).toBe(5);
       expect(config.retryDelay).toBe(2000);
     });
@@ -102,29 +99,28 @@ describe("PolicyEngine", () => {
     it("fetches freeze list from chain", async () => {
       const mockFetch = vi
         .fn()
+        // First: fetch freeze_list_last_index
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"', // JSON-quoted
+          text: async () => '"1u32"', // lastIndex = 1
+        })
+        // Then: fetch addresses from index 0 to lastIndex (inclusive)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
         })
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          text: async () => '"aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g"', // JSON-quoted
+          text: async () => '"aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g"',
         })
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-        })
+        // Finally: fetch freeze_list_root
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          text: async () => '"1u32"', // JSON-quoted
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          text: async () => '"123456789field"', // JSON-quoted
+          text: async () => '"123456789field"',
         });
 
       global.fetch = mockFetch;
@@ -137,52 +133,102 @@ describe("PolicyEngine", () => {
       expect(result.currentRoot).toBe(123456789n);
     });
 
-    it("stops at first gap in freeze list", async () => {
+    it("throws error when freeze_list_last_index cannot be fetched", async () => {
       const mockFetch = vi
         .fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
-        })
-        .mockRejectedValueOnce(new Error("Network error"));
+        // Fetch freeze_list_last_index fails after retries (3 attempts)
+        .mockRejectedValueOnce(new Error("Not found"))
+        .mockRejectedValueOnce(new Error("Not found"))
+        .mockRejectedValueOnce(new Error("Not found"));
 
       global.fetch = mockFetch;
 
-      const result = await engine.fetchFreezeListFromChain("test.aleo");
-
-      expect(result.addresses.length).toBe(1);
+      await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
+        "Failed to fetch after 3 attempts: Not found",
+      );
     });
 
-    it("handles null response in freeze list", async () => {
+    it("throws error when freeze_list_last_index returns null", async () => {
       const mockFetch = vi
         .fn()
+        // Fetch freeze_list_last_index returns null
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => "null",
+        });
+
+      global.fetch = mockFetch;
+
+      await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
+        "Failed to fetch freeze_list_last_index for program test.aleo",
+      );
+    });
+
+    it("throws error when freeze_list_last_index returns invalid value", async () => {
+      const mockFetch = vi
+        .fn()
+        // Fetch freeze_list_last_index returns invalid value
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"invalid"',
+        });
+
+      global.fetch = mockFetch;
+
+      await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
+        "Invalid freeze_list_last_index value: invalid",
+      );
+    });
+
+    it("stops at gap in address list", async () => {
+      const mockFetch = vi
+        .fn()
+        // First: fetch freeze_list_last_index
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"2u32"', // lastIndex = 2
+        })
+        // Then: fetch addresses from index 0 to 2
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
           text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
         })
+        // Index 1 returns null (gap in the list)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          text: async () => "null", // API returns null
+          text: async () => "null",
         })
+        // Finally: fetch freeze_list_root
         .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
+          ok: true,
+          status: 200,
+          text: async () => '"123field"',
         });
 
       global.fetch = mockFetch;
 
       const result = await engine.fetchFreezeListFromChain("test.aleo");
 
-      // Should stop at null response
+      // Should stop at gap and only have 1 address
       expect(result.addresses.length).toBe(1);
+      expect(result.addresses[0]).toBe("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
     });
 
     it("filters out ZERO_ADDRESS from results", async () => {
       const mockFetch = vi
         .fn()
+        // First: fetch freeze_list_last_index
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"2u32"', // lastIndex = 2
+        })
+        // Then: fetch addresses from index 0 to 2
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -198,15 +244,7 @@ describe("PolicyEngine", () => {
           status: 200,
           text: async () => '"aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g"',
         })
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          text: async () => '"2u32"',
-        })
+        // Finally: fetch freeze_list_root
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -249,20 +287,24 @@ describe("PolicyEngine", () => {
       // Mock fetch for freeze list
       const mockFetch = vi
         .fn()
+        // First: fetch freeze_list_last_index
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"1u32"', // lastIndex = 1
+        })
+        // Then: fetch addresses from index 0 to 1
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
           text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
         })
         .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-        })
-        .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          text: async () => '"0u32"',
+          text: async () => '"aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g"',
         })
+        // Finally: fetch freeze_list_root
         .mockResolvedValueOnce({
           ok: true,
           status: 200,

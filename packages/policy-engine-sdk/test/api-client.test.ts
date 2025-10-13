@@ -33,7 +33,6 @@ describe("AleoAPIClient", () => {
 
       const config = defaultClient.getConfig();
       expect(config.maxTreeDepth).toBe(15);
-      expect(config.leavesLength).toBe(16384);
       expect(config.maxRetries).toBe(5);
       expect(config.retryDelay).toBe(2000);
     });

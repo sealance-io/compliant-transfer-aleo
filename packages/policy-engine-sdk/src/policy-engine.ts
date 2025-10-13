@@ -36,7 +36,6 @@ export class PolicyEngine {
       endpoint: config.endpoint,
       network: config.network,
       maxTreeDepth: config.maxTreeDepth ?? 15,
-      leavesLength: config.leavesLength ?? 2 ** 14,
       maxRetries: config.maxRetries ?? 5,
       retryDelay: config.retryDelay ?? 2000,
     };
@@ -60,11 +59,21 @@ export class PolicyEngine {
    * ```
    */
   async fetchFreezeListFromChain(programId: string): Promise<FreezeListResult> {
-    const freezeList: string[] = [];
-    const maxAttempts = this.config.leavesLength;
+    // Fetch the last index from the mapping - this is mandatory
+    let lastIndex = 0;
+    const lastIndexValue = await this.apiClient.fetchMapping(programId, "freeze_list_last_index", "true");
+    if (!lastIndexValue) {
+      throw new Error(`Failed to fetch freeze_list_last_index for program ${programId}`);
+    }
+    const parsed = parseInt(lastIndexValue.replace("u32", ""), 10);
+    if (isNaN(parsed)) {
+      throw new Error(`Invalid freeze_list_last_index value: ${lastIndexValue}`);
+    }
+    lastIndex = parsed;
 
-    // Fetch addresses until we hit a gap or reach the maximum
-    for (let i = 0; i < maxAttempts; i++) {
+    // Fetch addresses from index 0 to lastIndex (inclusive)
+    const freezeList: string[] = [];
+    for (let i = 0; i <= lastIndex; i++) {
       try {
         const frozenAccount = await this.apiClient.fetchMapping(programId, "freeze_list_index", `${i}u32`);
 
@@ -79,20 +88,6 @@ export class PolicyEngine {
         console.debug(`No entry at index ${i}`, error);
         break;
       }
-    }
-
-    // Try to fetch the last index from the mapping
-    let lastIndex = freezeList.length > 0 ? freezeList.length - 1 : 0;
-    try {
-      const lastIndexValue = await this.apiClient.fetchMapping(programId, "freeze_list_last_index", "true");
-      if (lastIndexValue) {
-        const parsed = parseInt(lastIndexValue.replace("u32", ""), 10);
-        if (!isNaN(parsed)) {
-          lastIndex = parsed;
-        }
-      }
-    } catch (error) {
-      console.debug("Could not fetch freeze_list_last_index", error);
     }
 
     // Try to fetch the current root
