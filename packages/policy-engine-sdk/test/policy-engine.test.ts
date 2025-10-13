@@ -255,6 +255,14 @@ describe("PolicyEngine", () => {
         expect(typeof proof.leaf_index).toBe("number");
       });
     });
+
+    it("throws error when neither freezeList nor programId is provided", async () => {
+      const testAddress = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
+
+      await expect(engine.generateNonInclusionProof(testAddress, {})).rejects.toThrow(
+        "Either freezeList or programId must be provided in options",
+      );
+    });
   });
 
   describe("getConfig", () => {

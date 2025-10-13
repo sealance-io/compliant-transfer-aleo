@@ -49,7 +49,7 @@ export class PolicyEngine {
    * This function queries the on-chain mapping to retrieve all frozen addresses.
    * It iterates through indices until it hits a gap or reaches the maximum.
    *
-   * @param programId - The program ID of the freeze list registry (default: "sealance_freezelist_registry.aleo")
+   * @param programId - The program ID of the freeze list registry (required)
    * @returns Object containing the freeze list addresses and metadata
    *
    * @example
@@ -59,7 +59,7 @@ export class PolicyEngine {
    * console.log(result.lastIndex); // 5
    * ```
    */
-  async fetchFreezeListFromChain(programId: string = "sealance_freezelist_registry.aleo"): Promise<FreezeListResult> {
+  async fetchFreezeListFromChain(programId: string): Promise<FreezeListResult> {
     const freezeList: string[] = [];
     const maxAttempts = this.config.leavesLength;
 
@@ -149,6 +149,9 @@ export class PolicyEngine {
     if (options.freezeList) {
       freezeList = options.freezeList;
     } else {
+      if (!options.programId) {
+        throw new Error("Either freezeList or programId must be provided in options");
+      }
       const result = await this.fetchFreezeListFromChain(options.programId);
       freezeList = result.addresses;
     }
