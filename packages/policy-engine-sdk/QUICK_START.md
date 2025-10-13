@@ -96,7 +96,6 @@ const engine = new PolicyEngine({
   endpoint: "https://api.explorer.provable.com/v1",
   network: "testnet",
   maxTreeDepth: 15,        // Merkle tree depth
-  leavesLength: 16384,     // 2^14 leaves
   maxRetries: 5,           // API retry attempts
   retryDelay: 2000         // Delay between retries (ms)
 });
@@ -128,7 +127,6 @@ const root = tree[tree.length - 1];
 | `endpoint` | `string` | Required | Aleo node endpoint |
 | `network` | `string` | Required | Network name (testnet/mainnet) |
 | `maxTreeDepth` | `number` | `15` | Max Merkle tree depth |
-| `leavesLength` | `number` | `16384` | Number of tree leaves |
 | `maxRetries` | `number` | `5` | API retry attempts |
 | `retryDelay` | `number` | `2000` | Retry delay (ms) |
 

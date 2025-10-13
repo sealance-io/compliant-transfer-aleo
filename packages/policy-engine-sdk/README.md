@@ -74,7 +74,6 @@ new PolicyEngine(config: PolicyEngineConfig)
 - `endpoint`: Aleo network endpoint (e.g., "http://localhost:3030")
 - `network`: Network name (e.g., "testnet", "mainnet")
 - `maxTreeDepth`: Maximum depth of Merkle tree (default: 15)
-- `leavesLength`: Number of leaves in tree (default: 16384)
 - `maxRetries`: Max API retry attempts (default: 5)
 - `retryDelay`: Delay between retries in ms (default: 2000)
 

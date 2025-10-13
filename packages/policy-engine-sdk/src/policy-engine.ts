@@ -59,9 +59,13 @@ export class PolicyEngine {
    * ```
    */
   async fetchFreezeListFromChain(programId: string): Promise<FreezeListResult> {
-    // Fetch the last index from the mapping - this is mandatory
-    let lastIndex = 0;
-    const lastIndexValue = await this.apiClient.fetchMapping(programId, "freeze_list_last_index", "true");
+    // Fetch last index and current root in parallel - both are mandatory
+    const [lastIndexValue, rootValue] = await Promise.all([
+      this.apiClient.fetchMapping(programId, "freeze_list_last_index", "true"),
+      this.apiClient.fetchMapping(programId, "freeze_list_root", "1u8"),
+    ]);
+
+    // Validate last index
     if (!lastIndexValue) {
       throw new Error(`Failed to fetch freeze_list_last_index for program ${programId}`);
     }
@@ -69,7 +73,14 @@ export class PolicyEngine {
     if (isNaN(parsed)) {
       throw new Error(`Invalid freeze_list_last_index value: ${lastIndexValue}`);
     }
-    lastIndex = parsed;
+    const lastIndex = parsed;
+
+    // Validate current root
+    if (!rootValue) {
+      throw new Error(`Failed to fetch freeze_list_root for program ${programId}`);
+    }
+    const cleanValue = rootValue.replace(/field$/i, "");
+    const currentRoot = BigInt(cleanValue);
 
     // Fetch addresses from index 0 to lastIndex (inclusive)
     const freezeList: string[] = [];
@@ -88,19 +99,6 @@ export class PolicyEngine {
         console.debug(`No entry at index ${i}`, error);
         break;
       }
-    }
-
-    // Try to fetch the current root
-    let currentRoot: bigint | undefined;
-    try {
-      const rootValue = await this.apiClient.fetchMapping(programId, "freeze_list_root", "1u8");
-      if (rootValue) {
-        // Remove "field" suffix if present
-        const cleanValue = rootValue.replace(/field$/i, "");
-        currentRoot = BigInt(cleanValue);
-      }
-    } catch (error) {
-      console.debug("Could not fetch current root", error);
     }
 
     // Filter out ZERO_ADDRESS (used for padding in Merkle tree)

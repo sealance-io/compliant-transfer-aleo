@@ -57,7 +57,7 @@ export interface FreezeListResult {
   /**
    * Current Merkle root of the freeze list
    */
-  currentRoot?: bigint;
+  currentRoot: bigint;
 }
 
 /**
