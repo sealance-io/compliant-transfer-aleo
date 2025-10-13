@@ -72,13 +72,13 @@ export interface FreezeListResult {
 export interface TransferWitnessOptions {
   /**
    * The freeze list addresses (if already fetched)
-   * If not provided, will fetch from chain
+   * If not provided, programId must be specified to fetch from chain
    */
   freezeList?: string[];
 
   /**
    * Program ID of the freeze list registry
-   * @default "sealance_freezelist_registry.aleo"
+   * Required when freezeList is not provided
    */
   programId?: string;
 }
