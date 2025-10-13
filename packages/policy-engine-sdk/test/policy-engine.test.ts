@@ -29,12 +29,11 @@ describe("PolicyEngine", () => {
     });
 
     it("applies default values", () => {
-      const defaultEngine = new PolicyEngine({
-        endpoint: "http://localhost:3030",
-        network: "testnet",
-      });
+      const defaultEngine = new PolicyEngine();
 
       const config = defaultEngine.getConfig();
+      expect(config.endpoint).toBe("https://api.explorer.provable.com/v1");
+      expect(config.network).toBe("mainnet");
       expect(config.maxTreeDepth).toBe(15);
       expect(config.maxRetries).toBe(5);
       expect(config.retryDelay).toBe(2000);
