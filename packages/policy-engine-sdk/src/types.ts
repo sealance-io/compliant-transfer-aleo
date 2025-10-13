@@ -7,6 +7,8 @@ export interface MerkleProof {
   leaf_index: number;
 }
 
+import type { Logger } from "./logger.js";
+
 /**
  * Configuration for the PolicyEngine SDK
  */
@@ -50,6 +52,28 @@ export interface PolicyEngineConfig {
    * @default 10
    */
   maxConcurrency?: number;
+
+  /**
+   * Custom logger for SDK operations
+   *
+   * @default defaultLogger (logs to console)
+   *
+   * @example
+   * ```typescript
+   * // Disable all logs (useful for production or testing)
+   * import { silentLogger } from "@sealance-io/policy-engine-aleo";
+   * const engine = new PolicyEngine({ ..., logger: silentLogger });
+   *
+   * // Custom logger integration
+   * const engine = new PolicyEngine({
+   *   ...,
+   *   logger: (level, message, context) => {
+   *     myAppLogger.log({ level, message, ...context });
+   *   }
+   * });
+   * ```
+   */
+  logger?: Logger;
 }
 
 /**

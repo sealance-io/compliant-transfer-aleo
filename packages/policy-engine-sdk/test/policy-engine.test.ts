@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PolicyEngine } from "../src/policy-engine.js";
 import { ZERO_ADDRESS } from "../src/merkle-tree.js";
+import { silentLogger } from "../src/logger.js";
 
 describe("PolicyEngine", () => {
   let engine: PolicyEngine;
@@ -13,6 +14,7 @@ describe("PolicyEngine", () => {
       maxRetries: 3,
       retryDelay: 100,
       maxConcurrency: 1, // Use serialized processing for predictable test mocking
+      logger: silentLogger, // Suppress log noise in tests
     });
 
     vi.restoreAllMocks();
@@ -346,6 +348,7 @@ describe("PolicyEngine", () => {
         maxRetries: 3,
         retryDelay: 100,
         maxConcurrency: 3, // Fetch 3 at a time
+        logger: silentLogger, // Suppress log noise in tests
       });
 
       const mockFetch = vi
