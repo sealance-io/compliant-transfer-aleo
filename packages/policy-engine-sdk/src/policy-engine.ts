@@ -7,6 +7,7 @@ import type {
 } from "./types.js";
 import { AleoAPIClient } from "./api-client.js";
 import { buildTree, generateLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } from "./merkle-tree.js";
+import { defaultLogger } from "./logger.js";
 
 /**
  * Main SDK class for generating Merkle proofs and interacting with Aleo compliance policies
@@ -39,6 +40,7 @@ export class PolicyEngine {
       maxRetries: config.maxRetries ?? 5,
       retryDelay: config.retryDelay ?? 2000,
       maxConcurrency: config.maxConcurrency ?? 10,
+      logger: config.logger ?? defaultLogger,
     };
     this.apiClient = new AleoAPIClient(this.config);
   }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AleoAPIClient } from "../src/api-client.js";
+import { silentLogger } from "../src/logger.js";
 
 describe("AleoAPIClient", () => {
   let client: AleoAPIClient;
@@ -8,8 +9,11 @@ describe("AleoAPIClient", () => {
     client = new AleoAPIClient({
       endpoint: "http://localhost:3030",
       network: "testnet",
+      maxTreeDepth: 15,
       maxRetries: 3,
       retryDelay: 100, // Short delay for tests
+      maxConcurrency: 10,
+      logger: silentLogger, // Suppress log noise in tests
     });
 
     // Clear all mocks
@@ -29,6 +33,11 @@ describe("AleoAPIClient", () => {
       const defaultClient = new AleoAPIClient({
         endpoint: "http://localhost:3030",
         network: "testnet",
+        maxTreeDepth: 15,
+        maxRetries: 5,
+        retryDelay: 2000,
+        maxConcurrency: 10,
+        logger: silentLogger,
       });
 
       const config = defaultClient.getConfig();
@@ -203,8 +212,11 @@ describe("AleoAPIClient", () => {
       const clientWithFewRetries = new AleoAPIClient({
         endpoint: "http://localhost:3030",
         network: "testnet",
+        maxTreeDepth: 15,
         maxRetries,
         retryDelay: 1000, // Long delay
+        maxConcurrency: 10,
+        logger: silentLogger,
       });
 
       const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
@@ -538,8 +550,11 @@ describe("AleoAPIClient", () => {
         const clientWithManyRetries = new AleoAPIClient({
           endpoint: "http://localhost:3030",
           network: "testnet",
+          maxTreeDepth: 15,
           maxRetries: 10,
           retryDelay: 100,
+          maxConcurrency: 10,
+          logger: silentLogger,
         });
 
         const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));

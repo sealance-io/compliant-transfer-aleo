@@ -1,20 +1,17 @@
 import type { PolicyEngineConfig } from "./types.js";
+import type { Logger } from "./logger.js";
+import { defaultLogger } from "./logger.js";
 
 /**
  * API client for interacting with Aleo node endpoints
  */
 export class AleoAPIClient {
   private config: Required<PolicyEngineConfig>;
+  private logger: Logger;
 
-  constructor(config: PolicyEngineConfig) {
-    this.config = {
-      endpoint: config.endpoint,
-      network: config.network,
-      maxTreeDepth: config.maxTreeDepth ?? 15,
-      maxRetries: config.maxRetries ?? 5,
-      retryDelay: config.retryDelay ?? 2000,
-      maxConcurrency: config.maxConcurrency ?? 10,
-    };
+  constructor(config: Required<PolicyEngineConfig>) {
+    this.config = config;
+    this.logger = config.logger ?? defaultLogger;
   }
 
   /**
@@ -60,7 +57,12 @@ export class AleoAPIClient {
           const retryAfter = this.parseRetryAfter(response);
           const delay = retryAfter ?? this.calculateBackoff(attempt);
 
-          console.debug(`Rate limited (429). Retrying after ${delay}ms...`);
+          this.logger("debug", "Rate limited, retrying with backoff", {
+            status: 429,
+            delayMs: delay,
+            attempt: attempt + 1,
+            maxRetries: this.config.maxRetries,
+          });
 
           if (attempt < this.config.maxRetries - 1) {
             await this.sleep(delay);
@@ -119,9 +121,12 @@ export class AleoAPIClient {
         // Retry on network errors and 5xx errors with exponential backoff
         if (attempt < this.config.maxRetries - 1) {
           const delay = this.calculateBackoff(attempt);
-          console.debug(
-            `Request failed (attempt ${attempt + 1}/${this.config.maxRetries}). Retrying after ${delay}ms...`,
-          );
+          this.logger("debug", "Request failed, retrying with exponential backoff", {
+            attempt: attempt + 1,
+            maxRetries: this.config.maxRetries,
+            delayMs: delay,
+            error: lastError.message,
+          });
           await this.sleep(delay);
         }
       }
