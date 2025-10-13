@@ -28,12 +28,6 @@ export interface PolicyEngineConfig {
   maxTreeDepth?: number;
 
   /**
-   * Number of leaves in the Merkle tree (power of 2)
-   * @default 16384 (2^14)
-   */
-  leavesLength?: number;
-
-  /**
    * Number of retry attempts for API calls
    * @default 5
    */

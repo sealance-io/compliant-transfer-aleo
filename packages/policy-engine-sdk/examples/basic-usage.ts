@@ -16,7 +16,6 @@ async function main() {
     endpoint: "http://localhost:3030",
     network: "testnet",
     maxTreeDepth: 15,
-    leavesLength: 16384,
   });
 
   console.log("=== Fetching Freeze List from Chain ===");
@@ -85,7 +84,6 @@ async function main() {
     console.log(`Endpoint: ${config.endpoint}`);
     console.log(`Network: ${config.network}`);
     console.log(`Max Tree Depth: ${config.maxTreeDepth}`);
-    console.log(`Leaves Length: ${config.leavesLength}`);
 
   } catch (error) {
     console.error("Error:", error);

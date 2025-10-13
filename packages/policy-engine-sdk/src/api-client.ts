@@ -11,7 +11,6 @@ export class AleoAPIClient {
       endpoint: config.endpoint,
       network: config.network,
       maxTreeDepth: config.maxTreeDepth ?? 15,
-      leavesLength: config.leavesLength ?? 2 ** 14, // 16384
       maxRetries: config.maxRetries ?? 5,
       retryDelay: config.retryDelay ?? 2000,
     };
