@@ -179,6 +179,50 @@ describe("PolicyEngine", () => {
       // Should stop at null response
       expect(result.addresses.length).toBe(1);
     });
+
+    it("filters out ZERO_ADDRESS from results", async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => `"${ZERO_ADDRESS}"`, // ZERO_ADDRESS in freeze list
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g"',
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"2u32"',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"123field"',
+        });
+
+      global.fetch = mockFetch;
+
+      const result = await engine.fetchFreezeListFromChain("test.aleo");
+
+      // Should only have 2 addresses (ZERO_ADDRESS filtered out)
+      expect(result.addresses.length).toBe(2);
+      expect(result.addresses).not.toContain(ZERO_ADDRESS);
+      expect(result.addresses[0]).toBe("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
+      expect(result.addresses[1]).toBe("aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g");
+    });
   });
 
   describe("generateNonInclusionProof", () => {
