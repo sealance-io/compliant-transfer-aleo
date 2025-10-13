@@ -22,7 +22,7 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, genLeaves } from "../lib/MerkleTree";
-import { Account } from "@provablehq/sdk";
+import { Account, AleoNetworkClient } from "@provablehq/sdk";
 import { stringToBigInt } from "../lib/Conversion";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Token } from "../artifacts/js/types/compliant_token_template";
@@ -34,6 +34,7 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { isProgramInitialized } from "../lib/Initalize";
+import { getLatestBlockHeight } from "../lib/Block";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -52,6 +53,7 @@ const [
   supplyManager,
   spender,
   freezeListManager,
+  pauser,
 ] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
@@ -63,6 +65,7 @@ const minterPrivKey = contract.getPrivateKey(minter);
 const burnerPrivKey = contract.getPrivateKey(burner);
 const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
 const spenderPrivKey = contract.getPrivateKey(spender);
+const pauserPrivateKey = contract.getPrivateKey(pauser);
 
 const tokenContract = new Compliant_token_templateContract({
   mode,
@@ -97,6 +100,10 @@ const tokenContractForFrozenAccount = new Compliant_token_templateContract({
   mode,
   privateKey: frozenAccountPrivKey,
 });
+const tokenContractForPauser = new Compliant_token_templateContract({
+  mode,
+  privateKey: pauserPrivateKey,
+});
 
 const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
@@ -126,6 +133,7 @@ describe("test sealed_standalone_token program", () => {
     await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
     await fundWithCredits(deployerPrivKey, burner, fundedAmount);
     await fundWithCredits(deployerPrivKey, spender, fundedAmount);
+    await fundWithCredits(deployerPrivKey, pauser, fundedAmount);
 
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
@@ -160,6 +168,16 @@ describe("test sealed_standalone_token program", () => {
 
       const tx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
       await tx.wait();
+      const tokenInfo = await tokenContract.token_info(true);
+      expect(tokenInfo.supply).toBe(0n);
+      expect(tokenInfo.decimals).toBe(decimals);
+      expect(tokenInfo.max_supply).toBe(maxSupply);
+      expect(tokenInfo.name).toBe(name);
+      expect(tokenInfo.symbol).toBe(symbol);
+      const role = await tokenContract.address_to_role(adminAddress);
+      expect(role).toBe(MANAGER_ROLE);
+      const pauseStatus = await tokenContract.pause(true);
+      expect(pauseStatus).toBe(false);
 
       // It is possible to call to initialize only one time
       let rejectedTx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
@@ -241,7 +259,11 @@ describe("test sealed_standalone_token program", () => {
     rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    // Manager can assign minter, burner and supply manager roles
+    // Non admin user cannot update pause role
+    rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // Manager can assign minter, burner, manager, pauser and supply manager roles
     tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE);
     await tx.wait();
     role = await tokenContract.address_to_role(minter);
@@ -261,11 +283,28 @@ describe("test sealed_standalone_token program", () => {
     await tx.wait();
     role = await tokenContract.address_to_role(account);
     expect(role).toBe(NONE_ROLE);
+
+    tx = await tokenContractForAdmin.update_role(pauser, PAUSE_ROLE);
+    await tx.wait();
+    role = await tokenContract.address_to_role(pauser);
+    expect(role).toBe(PAUSE_ROLE);
+
+    tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE);
+    await tx.wait();
+    role = await tokenContract.address_to_role(adminAddress);
+    expect(role).toBe(MANAGER_ROLE);
   });
 
   let accountRecord: Token;
   let frozenAccountRecord: Token;
+  let privateAccountBalance = 0n;
+  let startBlock = 0;
   test(`test mint_private`, async () => {
+    startBlock = await getLatestBlockHeight();
+
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
     // a regular user cannot mint private assets
     let rejectedTx = await tokenContractForAccount.mint_private(account, amount * 20n);
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -277,25 +316,36 @@ describe("test sealed_standalone_token program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let tx = await tokenContractForMinter.mint_private(frozenAccount, amount * 20n);
-    const [encryptedFrozenAccountRecord, complianceRecord] = await tx.wait();
+    const [, encryptedFrozenAccountRecord] = await tx.wait();
     frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     expect(frozenAccountRecord.amount).toBe(amount * 20n);
     expect(frozenAccountRecord.owner).toBe(frozenAccount);
+
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount * 20n);
+
+    tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n);
+    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
+    expect(accountRecord.amount).toBe(amount * 20n);
+    expect(accountRecord.owner).toBe(account);
+
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount * 40n);
 
     const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
     expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
     expect(decryptedComplianceRecord.amount).toBe(amount * 20n);
     expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
-    expect(decryptedComplianceRecord.recipient).toBe(frozenAccount);
+    expect(decryptedComplianceRecord.recipient).toBe(account);
 
-    tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n);
-    const [encryptedAccountRecord] = await tx.wait();
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-    expect(accountRecord.amount).toBe(amount * 20n);
-    expect(accountRecord.owner).toBe(account);
+    privateAccountBalance += amount * 20n;
   });
 
   test(`test mint_public`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
     // a regular user cannot mint public assets
     let rejectedTx = await tokenContractForAccount.mint_public(account, amount * 20n);
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -310,14 +360,21 @@ describe("test sealed_standalone_token program", () => {
     await tx.wait();
     let balance = await tokenContract.balances(frozenAccount);
     expect(balance).toBe(amount * 20n);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount * 20n);
 
     tx = await tokenContractForSupplyManager.mint_public(account, amount * 20n);
     await tx.wait();
     balance = await tokenContract.balances(account);
     expect(balance).toBe(amount * 20n);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount * 40n);
   });
 
   test(`test burn_public`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
     // A regular user cannot burn public assets
     let rejectedTx = await tokenContractForAccount.burn_public(account, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
@@ -332,29 +389,41 @@ describe("test sealed_standalone_token program", () => {
     const previousAccountPublicBalance = await tokenContract.balances(account);
     let tx = await tokenContractForBurner.burn_public(account, amount);
     await tx.wait();
+    tokenInfo = await tokenContract.token_info(true);
+    expect(supply - tokenInfo.supply).toBe(amount);
 
     tx = await tokenContractForSupplyManager.burn_public(account, amount);
     await tx.wait();
+    tokenInfo = await tokenContract.token_info(true);
+    expect(supply - tokenInfo.supply).toBe(amount * 2n);
 
     let balance = await tokenContract.balances(account);
     expect(balance).toBe(previousAccountPublicBalance - amount * 2n);
   });
 
   test(`test burn_private`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
     // A user that doesn't have a burner role cannot burn private assets
     let rejectedTx = await tokenContractForAccount.burn_private(accountRecord, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let mintTx = await tokenContractForMinter.mint_private(burner, amount);
-    let [encryptedAdminRecord, complianceRecord] = await mintTx.wait();
+    let [, encryptedAdminRecord] = await mintTx.wait();
     let adminRecord = decryptToken(encryptedAdminRecord, burnerPrivKey);
     expect(adminRecord.amount).toBe(amount);
     expect(adminRecord.owner).toBe(burner);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount);
+
     let burnTx = await tokenContractForBurner.burn_private(adminRecord, amount);
-    let [encryptedAdminRecordFromBurning, complianceRecordFromBurning] = await burnTx.wait();
+    let [complianceRecordFromBurning, encryptedAdminRecordFromBurning] = await burnTx.wait();
     adminRecord = decryptToken(encryptedAdminRecordFromBurning, burnerPrivKey);
     expect(adminRecord.amount).toBe(0n);
     expect(adminRecord.owner).toBe(burner);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(supply).toBe(tokenInfo.supply);
 
     const decryptedComplianceRecord = decryptComplianceRecord(complianceRecordFromBurning, investigatorPrivKey);
     expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
@@ -364,15 +433,20 @@ describe("test sealed_standalone_token program", () => {
 
     // check that MINTER_ROLE+BURNER_ROLE can burn private assets
     mintTx = await tokenContractForMinter.mint_private(supplyManager, amount);
-    let [encryptedSupplyManager, _] = await mintTx.wait();
+    let [, encryptedSupplyManager] = await mintTx.wait();
     let supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
     expect(supplyManagerRecord.amount).toBe(amount);
     expect(supplyManagerRecord.owner).toBe(supplyManager);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount);
+
     burnTx = await tokenContractForSupplyManager.burn_private(supplyManagerRecord, amount);
-    [encryptedSupplyManager] = await burnTx.wait();
+    [, encryptedSupplyManager] = await burnTx.wait();
     supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
     expect(supplyManagerRecord.amount).toBe(0n);
     expect(supplyManagerRecord.owner).toBe(supplyManager);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(supply).toBe(tokenInfo.supply);
   });
 
   test(`test transfer_public`, async () => {
@@ -529,6 +603,7 @@ describe("test sealed_standalone_token program", () => {
     ).rejects.toThrow();
 
     const tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
+    privateAccountBalance -= amount;
     const [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord] = await tx.wait();
 
     const previousAmount = accountRecord.amount;
@@ -574,6 +649,7 @@ describe("test sealed_standalone_token program", () => {
       accountRecord,
       senderMerkleProof,
     );
+    privateAccountBalance -= amount;
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
 
     const previousAmount = accountRecord.amount;
@@ -623,6 +699,7 @@ describe("test sealed_standalone_token program", () => {
       accountRecord,
       ticket,
     );
+    privateAccountBalance -= amount;
     let [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
     ticket = await decryptTicket(encryptedCredRecord, accountPrivKey);
@@ -674,6 +751,7 @@ describe("test sealed_standalone_token program", () => {
       accountRecord,
       ticket,
     );
+    privateAccountBalance -= amount;
     [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
     ticket = await decryptTicket(encryptedCredRecord, accountPrivKey);
@@ -695,61 +773,39 @@ describe("test sealed_standalone_token program", () => {
   });
 
   test(`test pausing the contract`, async () => {
-    // ensure the contract is unpaused
-    let pause_status = await tokenContractForAdmin.pause(true);
-    if (pause_status == true) {
-      let pauseTx = await tokenContractForAdmin.set_pause_status(false);
-      await pauseTx.wait();
-    }
-
-    // initial minting to ensure the account has enough balance
-    let mintPrivateTx = await tokenContractForMinter.mint_private(account, amount * 20n);
-    const [encryptedAccountRecord] = await mintPrivateTx.wait();
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-
-    const getTicketTx = await tokenContractForAccount.get_ticket(senderMerkleProof);
-    const [encryptedTicket] = await getTicketTx.wait();
-    let ticket = await decryptTicket(encryptedTicket, accountPrivKey);
-
-    let mintTx = await tokenContractForSupplyManager.mint_public(account, amount * 20n);
-    await mintTx.wait();
+    // Only the pauser can pause the program
+    const rejectedTx = await tokenContractForAdmin.set_pause_status(true);
+    await expect(rejectedTx.wait()).rejects.toThrow();
 
     let approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await approveTx.wait();
 
-    let tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE + PAUSE_ROLE);
-    await tx.wait();
-    let role = await tokenContract.address_to_role(adminAddress);
-    expect(role).toBe(MANAGER_ROLE + PAUSE_ROLE);
-
     // pause the contract
-    pause_status = await tokenContractForAdmin.pause(true);
-    expect(pause_status).toBe(false);
-    let pauseTx = await tokenContractForAdmin.set_pause_status(true);
+    let pauseTx = await tokenContractForPauser.set_pause_status(true);
     await pauseTx.wait();
-    pause_status = await tokenContractForAdmin.pause(true);
-    expect(pause_status).toBe(true);
+    let pauseStatus = await tokenContract.pause(true);
+    expect(pauseStatus).toBe(true);
 
     // verify that all the functionalities are paused
-    mintTx = await tokenContractForMinter.mint_public(recipient, amount);
+    const mintTx = await tokenContractForMinter.mint_public(recipient, amount);
     await expect(mintTx.wait()).rejects.toThrow();
 
-    mintPrivateTx = await tokenContractForMinter.mint_private(recipient, amount);
+    const mintPrivateTx = await tokenContractForMinter.mint_private(recipient, amount);
     await expect(mintPrivateTx.wait()).rejects.toThrow();
 
-    let burnTx = await tokenContractForBurner.burn_public(recipient, amount);
+    const burnTx = await tokenContractForBurner.burn_public(recipient, amount);
     await expect(burnTx.wait()).rejects.toThrow();
 
     let publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await expect(publicTx.wait()).rejects.toThrow();
 
-    let publicAsSignerTx = await tokenContractForAccount.transfer_public_as_signer(recipient, amount);
+    const publicAsSignerTx = await tokenContractForAccount.transfer_public_as_signer(recipient, amount);
     await expect(publicAsSignerTx.wait()).rejects.toThrow();
 
     approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await expect(approveTx.wait()).rejects.toThrow();
 
-    let unapproveTx = await tokenContractForAccount.unapprove_public(spender, amount);
+    const unapproveTx = await tokenContractForAccount.unapprove_public(spender, amount);
     await expect(unapproveTx.wait()).rejects.toThrow();
 
     const fromPublicTx = await tokenContractForSpender.transfer_from_public(account, recipient, amount);
@@ -790,13 +846,66 @@ describe("test sealed_standalone_token program", () => {
     await expect(privateWithTicketTx.wait()).rejects.toThrow();
 
     // unpause the contract
-    pauseTx = await tokenContractForAdmin.set_pause_status(false);
+    pauseTx = await tokenContractForPauser.set_pause_status(false);
     await pauseTx.wait();
-    pause_status = await tokenContractForAdmin.pause(true);
-    expect(pause_status).toBe(false);
+    pauseStatus = await tokenContract.pause(true);
+    expect(pauseStatus).toBe(false);
 
     //verify that the functionalities are back (one is enough)
     publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await publicTx.wait();
+  });
+
+  test(`calculate private balance`, async () => {
+    const networkClient = new AleoNetworkClient(contract.config.network.endpoint);
+    const latestBlockHeight = await getLatestBlockHeight();
+    let calculatedAccountBalance = 0n;
+    let calculatedBurnerBalance = 0n;
+    while (latestBlockHeight > startBlock) {
+      const endBlock = Math.min(startBlock + 50, latestBlockHeight);
+      const blockRange = await networkClient.getBlockRange(startBlock, endBlock);
+      startBlock += 50;
+      for (const block of blockRange) {
+        if (!block.transactions || block.transactions.length === 0) {
+          // Skip empty blocks
+          continue;
+        }
+        for (const tx of block.transactions) {
+          if (!tx.transaction?.execution?.transitions) continue;
+          for (const transition of tx.transaction?.execution?.transitions ?? []) {
+            if (
+              transition.program === "compliant_token_template.aleo" &&
+              transition.outputs &&
+              transition.outputs[0].type === "record"
+            ) {
+              try {
+                const complianceRecord = transition.outputs[0].value;
+                const { recipient, sender, amount } = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+                if (
+                  sender === account &&
+                  !["transfer_from_public_to_private", "transfer_public_to_private"].includes(transition.function)
+                ) {
+                  calculatedAccountBalance -= amount;
+                }
+                if (recipient === account && transition.function !== "transfer_private_to_public") {
+                  calculatedAccountBalance += amount;
+                }
+                if (
+                  sender === burner &&
+                  !["transfer_from_public_to_private", "transfer_public_to_private"].includes(transition.function)
+                ) {
+                  calculatedBurnerBalance -= amount;
+                }
+                if (recipient === burner && transition.function !== "transfer_private_to_public") {
+                  calculatedBurnerBalance += amount;
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+    }
+    expect(calculatedAccountBalance).toBe(privateAccountBalance);
+    expect(calculatedBurnerBalance).toBe(0n);
   });
 });
