@@ -104,7 +104,9 @@ describe("merkle_tree lib, generateLeaves", () => {
   it("should throw error when exceeding max tree capacity", () => {
     const maxDepth = 15;
     const maxLeaves = 2 ** (maxDepth - 1);
-    const tooManyAddresses = Array(maxLeaves + 1).fill("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
+    const tooManyAddresses = Array(maxLeaves + 1).fill(
+      "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
+    );
 
     expect(() => generateLeaves(tooManyAddresses, maxDepth)).toThrow("Leaves limit exceeded");
   });

@@ -118,7 +118,9 @@ export class AleoAPIClient {
         // Retry on network errors and 5xx errors with exponential backoff
         if (attempt < this.config.maxRetries - 1) {
           const delay = this.calculateBackoff(attempt);
-          console.debug(`Request failed (attempt ${attempt + 1}/${this.config.maxRetries}). Retrying after ${delay}ms...`);
+          console.debug(
+            `Request failed (attempt ${attempt + 1}/${this.config.maxRetries}). Retrying after ${delay}ms...`,
+          );
           await this.sleep(delay);
         }
       }
