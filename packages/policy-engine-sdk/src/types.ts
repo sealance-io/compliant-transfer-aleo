@@ -41,7 +41,12 @@ export interface PolicyEngineConfig {
 
   /**
    * Maximum number of concurrent HTTP requests when fetching freeze list
-   * Balances speed vs server load. Higher values = faster but more load.
+   *
+   * Trade-offs:
+   * - Higher values (10-20): Faster fetching, more server load
+   * - Lower values (1-5): Slower but safer, easier debugging
+   * - Set to 1: Serialized processing, simplest behavior
+   *
    * @default 10
    */
   maxConcurrency?: number;
