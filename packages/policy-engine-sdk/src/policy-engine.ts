@@ -38,6 +38,7 @@ export class PolicyEngine {
       maxTreeDepth: config.maxTreeDepth ?? 15,
       maxRetries: config.maxRetries ?? 5,
       retryDelay: config.retryDelay ?? 2000,
+      maxConcurrency: config.maxConcurrency ?? 10,
     };
     this.apiClient = new AleoAPIClient(this.config);
   }
@@ -82,21 +83,9 @@ export class PolicyEngine {
     const cleanValue = rootValue.replace(/field$/i, "");
     const currentRoot = BigInt(cleanValue);
 
-    // Fetch addresses from index 0 to lastIndex (inclusive)
+    // Fetch addresses from index 0 to lastIndex (inclusive) with controlled parallelization
     // We expect no gaps - if any entry is missing or fails to fetch, the entire operation fails
-    const freezeList: string[] = [];
-    for (let i = 0; i <= lastIndex; i++) {
-      const frozenAccount = await this.apiClient.fetchMapping(programId, "freeze_list_index", `${i}u32`);
-
-      if (!frozenAccount) {
-        throw new Error(
-          `Gap detected in freeze list at index ${i} for program ${programId}. ` +
-            `Expected continuous entries from 0 to ${lastIndex}.`,
-        );
-      }
-
-      freezeList[i] = frozenAccount;
-    }
+    const freezeList = await this.fetchAddressesInBatches(programId, lastIndex);
 
     // Filter out ZERO_ADDRESS (used for padding in Merkle tree)
     const filteredAddresses = freezeList.filter(address => address !== ZERO_ADDRESS);
@@ -106,6 +95,58 @@ export class PolicyEngine {
       lastIndex,
       currentRoot,
     };
+  }
+
+  /**
+   * Fetches addresses from freeze list mapping in parallel batches
+   *
+   * Uses controlled concurrency to balance speed and server load.
+   * Implements batching strategy where we process `maxConcurrency` requests
+   * at a time to avoid overwhelming the server.
+   *
+   * @param programId - The program ID
+   * @param lastIndex - Last index to fetch (inclusive, starting from 0)
+   * @returns Array of addresses indexed from 0 to lastIndex
+   * @throws Error if any address is missing (gap) or fails to fetch
+   *
+   * @private
+   */
+  private async fetchAddressesInBatches(programId: string, lastIndex: number): Promise<string[]> {
+    const totalCount = lastIndex + 1; // Indices are 0-based
+    const concurrency = this.config.maxConcurrency;
+    const results: string[] = new Array(totalCount);
+
+    // Process indices in batches of size `maxConcurrency`
+    for (let batchStart = 0; batchStart < totalCount; batchStart += concurrency) {
+      const batchEnd = Math.min(batchStart + concurrency, totalCount);
+
+      // Create promises for all indices in current batch
+      const batchPromises: Promise<{ index: number; address: string | null }>[] = [];
+
+      for (let i = batchStart; i < batchEnd; i++) {
+        const index = i;
+        const promise = this.apiClient
+          .fetchMapping(programId, "freeze_list_index", `${index}u32`)
+          .then(address => ({ index, address }));
+        batchPromises.push(promise);
+      }
+
+      // Wait for all requests in current batch to complete
+      const batchResults = await Promise.all(batchPromises);
+
+      // Validate results and populate the results array
+      for (const { index, address } of batchResults) {
+        if (!address) {
+          throw new Error(
+            `Gap detected in freeze list at index ${index} for program ${programId}. ` +
+              `Expected continuous entries from 0 to ${lastIndex}.`,
+          );
+        }
+        results[index] = address;
+      }
+    }
+
+    return results;
   }
 
   /**

@@ -12,6 +12,7 @@ describe("PolicyEngine", () => {
       maxTreeDepth: 15,
       maxRetries: 3,
       retryDelay: 100,
+      maxConcurrency: 1, // Use serialized processing for predictable test mocking
     });
 
     vi.restoreAllMocks();
@@ -35,6 +36,7 @@ describe("PolicyEngine", () => {
       expect(config.maxTreeDepth).toBe(15);
       expect(config.maxRetries).toBe(5);
       expect(config.retryDelay).toBe(2000);
+      expect(config.maxConcurrency).toBe(10);
     });
   });
 
@@ -238,7 +240,8 @@ describe("PolicyEngine", () => {
           status: 200,
           text: async () => '"123field"', // currentRoot
         })
-        // Then: fetch addresses from index 0 to 2
+        // Then: fetch addresses from index 0 to 2 (serialized with maxConcurrency=1)
+        // Index 0 succeeds
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -253,7 +256,7 @@ describe("PolicyEngine", () => {
 
       global.fetch = mockFetch;
 
-      // Should throw error when gap is detected
+      // Should throw error when gap is detected at index 1
       await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
         /Gap detected in freeze list at index 1 for program test\.aleo/,
       );
@@ -273,18 +276,19 @@ describe("PolicyEngine", () => {
           status: 200,
           text: async () => '"123field"', // currentRoot
         })
-        // Then: fetch addresses from index 0 to 2
+        // Then: fetch addresses from index 0 to 2 (serialized with maxConcurrency=1)
+        // Index 0 succeeds
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
           text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
         })
-        // Index 1 fails with network error
+        // Index 1 fails with network error (will trigger retries)
         .mockRejectedValue(new Error("Network error"));
 
       global.fetch = mockFetch;
 
-      // Should throw error when network error occurs
+      // Should throw error when network error occurs at index 1
       await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
         /Failed to fetch after 3 attempts: Network error/,
       );
@@ -304,7 +308,7 @@ describe("PolicyEngine", () => {
           status: 200,
           text: async () => '"123field"', // currentRoot
         })
-        // Then: fetch addresses from index 0 to 2
+        // Then: fetch addresses from index 0 to 2 (serialized)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -331,6 +335,72 @@ describe("PolicyEngine", () => {
       expect(result.addresses[0]).toBe("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
       expect(result.addresses[1]).toBe("aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g");
       expect(result.currentRoot).toBe(123n);
+    });
+
+    it("fetches addresses in parallel with maxConcurrency > 1", async () => {
+      // Create engine with higher concurrency for this specific test
+      const parallelEngine = new PolicyEngine({
+        endpoint: "http://localhost:3030",
+        network: "testnet",
+        maxTreeDepth: 15,
+        maxRetries: 3,
+        retryDelay: 100,
+        maxConcurrency: 3, // Fetch 3 at a time
+      });
+
+      const mockFetch = vi
+        .fn()
+        // First: fetch freeze_list_last_index and freeze_list_root in parallel
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"4u32"', // lastIndex = 4 (5 total addresses)
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"123field"', // currentRoot
+        })
+        // Then: fetch addresses from index 0 to 4
+        // Batch 1: indices 0, 1, 2 (parallel, order doesn't matter in mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1vdtmskehryujt4347hn5990fl9a9v9psezp7eqfmd7a66mjaeugq0m5w0g"',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t"',
+        })
+        // Batch 2: indices 3, 4 (parallel)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1ashyu96tjwe63u0gtnnv8z5lhapdu4l5pjsl2kha7fv7hvz2eqxs5dz0rg"',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1ht2a9q0gsd38j0se4t9lsfulxgqrens2vgzgry3pkvs93xrrzu8s892zn7"',
+        });
+
+      global.fetch = mockFetch;
+
+      const result = await parallelEngine.fetchFreezeListFromChain("test.aleo");
+
+      // Should have 5 addresses
+      expect(result.addresses.length).toBe(5);
+      expect(result.lastIndex).toBe(4);
+      expect(result.currentRoot).toBe(123n);
+
+      // Verify all fetches were made (2 metadata + 5 addresses = 7 total)
+      expect(mockFetch).toHaveBeenCalledTimes(7);
     });
   });
 
