@@ -36,11 +36,20 @@ npm login --scope=@sealance-io --registry=https://npm.pkg.github.com
 ```typescript
 import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
 
-// Initialize the SDK
-const engine = new PolicyEngine({
-  endpoint: "http://localhost:3030",
-  network: "testnet",
-});
+// Initialize the SDK (defaults to mainnet)
+const engine = new PolicyEngine();
+
+// Or for public testnet:
+// const engine = new PolicyEngine({
+//   endpoint: "https://api.explorer.provable.com/v1",
+//   network: "testnet",
+// });
+
+// Or for local devnet:
+// const engine = new PolicyEngine({
+//   endpoint: "http://localhost:3030",
+//   network: "testnet",
+// });
 
 // Fetch the freeze list from chain
 const freezeList = await engine.fetchFreezeListFromChain(
@@ -67,15 +76,17 @@ Main class for SDK operations.
 #### Constructor
 
 ```typescript
-new PolicyEngine(config: PolicyEngineConfig)
+new PolicyEngine(config?: PolicyEngineConfig)
 ```
 
-**Config Options:**
-- `endpoint`: Aleo network endpoint (e.g., "http://localhost:3030")
-- `network`: Network name (e.g., "testnet", "mainnet")
-- `maxTreeDepth`: Maximum depth of Merkle tree (default: 15)
-- `maxRetries`: Max API retry attempts (default: 5)
-- `retryDelay`: Delay between retries in ms (default: 2000)
+**Config Options (all optional):**
+- `endpoint`: Aleo network endpoint (default: `"https://api.explorer.provable.com/v1"`)
+- `network`: Network name (default: `"mainnet"`)
+- `maxTreeDepth`: Maximum depth of Merkle tree (default: `15`)
+- `maxRetries`: Max API retry attempts (default: `5`)
+- `retryDelay`: Delay between retries in ms (default: `2000`)
+- `maxConcurrency`: Max concurrent HTTP requests (default: `10`)
+- `logger`: Custom logger function (default: `defaultLogger`)
 
 #### Methods
 

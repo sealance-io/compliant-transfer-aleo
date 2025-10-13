@@ -14,14 +14,20 @@ import type { Logger } from "./logger.js";
  */
 export interface PolicyEngineConfig {
   /**
-   * Aleo network endpoint (e.g., "http://localhost:3030" or "https://api.explorer.provable.com/v1")
+   * Aleo network endpoint
+   * @default "https://api.explorer.provable.com/v1"
+   * @example "http://localhost:3030" - Local devnet
+   * @example "https://api.explorer.provable.com/v1" - Public mainnet/testnet
    */
-  endpoint: string;
+  endpoint?: string;
 
   /**
-   * Network name (e.g., "testnet", "mainnet")
+   * Network name
+   * @default "mainnet"
+   * @example "testnet" - Public testnet (use with endpoint: "https://api.explorer.provable.com/v1")
+   * @example "mainnet" - Public mainnet (use with endpoint: "https://api.explorer.provable.com/v1")
    */
-  network: string;
+  network?: string;
 
   /**
    * Maximum depth of the Merkle tree (must match MAX_TREE_DEPTH in merkle_tree.leo)

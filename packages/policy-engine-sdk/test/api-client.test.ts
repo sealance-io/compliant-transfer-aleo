@@ -25,25 +25,10 @@ describe("AleoAPIClient", () => {
       const config = client.getConfig();
       expect(config.endpoint).toBe("http://localhost:3030");
       expect(config.network).toBe("testnet");
+      expect(config.maxTreeDepth).toBe(15);
       expect(config.maxRetries).toBe(3);
       expect(config.retryDelay).toBe(100);
-    });
-
-    it("applies default values for optional config", () => {
-      const defaultClient = new AleoAPIClient({
-        endpoint: "http://localhost:3030",
-        network: "testnet",
-        maxTreeDepth: 15,
-        maxRetries: 5,
-        retryDelay: 2000,
-        maxConcurrency: 10,
-        logger: silentLogger,
-      });
-
-      const config = defaultClient.getConfig();
-      expect(config.maxTreeDepth).toBe(15);
-      expect(config.maxRetries).toBe(5);
-      expect(config.retryDelay).toBe(2000);
+      expect(config.maxConcurrency).toBe(10);
     });
   });
 

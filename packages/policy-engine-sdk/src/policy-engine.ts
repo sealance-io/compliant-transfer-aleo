@@ -14,6 +14,16 @@ import { defaultLogger } from "./logger.js";
  *
  * @example
  * ```typescript
+ * // Default: uses mainnet
+ * const engine = new PolicyEngine();
+ *
+ * // Public testnet:
+ * const engine = new PolicyEngine({
+ *   endpoint: "https://api.explorer.provable.com/v1",
+ *   network: "testnet"
+ * });
+ *
+ * // Local devnet:
  * const engine = new PolicyEngine({
  *   endpoint: "http://localhost:3030",
  *   network: "testnet"
@@ -32,10 +42,10 @@ export class PolicyEngine {
   private apiClient: AleoAPIClient;
   private config: Required<PolicyEngineConfig>;
 
-  constructor(config: PolicyEngineConfig) {
+  constructor(config: PolicyEngineConfig = {}) {
     this.config = {
-      endpoint: config.endpoint,
-      network: config.network,
+      endpoint: config.endpoint ?? "https://api.explorer.provable.com/v1",
+      network: config.network ?? "mainnet",
       maxTreeDepth: config.maxTreeDepth ?? 15,
       maxRetries: config.maxRetries ?? 5,
       retryDelay: config.retryDelay ?? 2000,
@@ -56,6 +66,11 @@ export class PolicyEngine {
    *
    * @example
    * ```typescript
+   * // Using local devnet
+   * const engine = new PolicyEngine({
+   *   endpoint: "http://localhost:3030",
+   *   network: "testnet"
+   * });
    * const result = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
    * console.log(result.addresses); // ["aleo1...", "aleo1..."]
    * console.log(result.lastIndex); // 5
@@ -164,6 +179,11 @@ export class PolicyEngine {
    *
    * @example
    * ```typescript
+   * // Using local devnet
+   * const engine = new PolicyEngine({
+   *   endpoint: "http://localhost:3030",
+   *   network: "testnet"
+   * });
    * const witness = await engine.generateNonInclusionProof("aleo1...", {
    *   programId: "sealance_freezelist_registry.aleo"
    * });

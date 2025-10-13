@@ -20,10 +20,20 @@ echo "@sealance-io:registry=https://npm.pkg.github.com" >> .npmrc
 ```typescript
 import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
 
-const engine = new PolicyEngine({
-  endpoint: "http://localhost:3030",
-  network: "testnet"
-});
+// For production (mainnet - uses defaults)
+const engine = new PolicyEngine();
+
+// For public testnet
+// const engine = new PolicyEngine({
+//   endpoint: "https://api.explorer.provable.com/v1",
+//   network: "testnet"
+// });
+
+// For local devnet
+// const engine = new PolicyEngine({
+//   endpoint: "http://localhost:3030",
+//   network: "testnet"
+// });
 ```
 
 ### 2. Fetch Freeze List
@@ -92,12 +102,14 @@ for (const address of addresses) {
 ### Pattern 2: Custom Configuration
 
 ```typescript
+// Public testnet with custom settings
 const engine = new PolicyEngine({
   endpoint: "https://api.explorer.provable.com/v1",
   network: "testnet",
   maxTreeDepth: 15,        // Merkle tree depth
   maxRetries: 5,           // API retry attempts
-  retryDelay: 2000         // Delay between retries (ms)
+  retryDelay: 2000,        // Delay between retries (ms)
+  maxConcurrency: 10       // Parallel HTTP requests
 });
 ```
 
@@ -124,11 +136,13 @@ const root = tree[tree.length - 1];
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `endpoint` | `string` | Required | Aleo node endpoint |
-| `network` | `string` | Required | Network name (testnet/mainnet) |
+| `endpoint` | `string` | `"https://api.explorer.provable.com/v1"` | Aleo node endpoint |
+| `network` | `string` | `"mainnet"` | Network name (testnet/mainnet) |
 | `maxTreeDepth` | `number` | `15` | Max Merkle tree depth |
 | `maxRetries` | `number` | `5` | API retry attempts |
 | `retryDelay` | `number` | `2000` | Retry delay (ms) |
+| `maxConcurrency` | `number` | `10` | Max concurrent HTTP requests |
+| `logger` | `Logger` | `defaultLogger` | Custom logger function |
 
 ## API Quick Reference
 
