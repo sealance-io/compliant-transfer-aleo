@@ -224,7 +224,7 @@ describe("PolicyEngine", () => {
       );
     });
 
-    it("stops at gap in address list", async () => {
+    it("throws error on gap in address list", async () => {
       const mockFetch = vi
         .fn()
         // First: fetch freeze_list_last_index and freeze_list_root in parallel
@@ -253,12 +253,41 @@ describe("PolicyEngine", () => {
 
       global.fetch = mockFetch;
 
-      const result = await engine.fetchFreezeListFromChain("test.aleo");
+      // Should throw error when gap is detected
+      await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
+        /Gap detected in freeze list at index 1 for program test\.aleo/,
+      );
+    });
 
-      // Should stop at gap and only have 1 address
-      expect(result.addresses.length).toBe(1);
-      expect(result.addresses[0]).toBe("aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px");
-      expect(result.currentRoot).toBe(123n);
+    it("throws error on network failure when fetching address", async () => {
+      const mockFetch = vi
+        .fn()
+        // First: fetch freeze_list_last_index and freeze_list_root in parallel
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"2u32"', // lastIndex = 2
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"123field"', // currentRoot
+        })
+        // Then: fetch addresses from index 0 to 2
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => '"aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px"',
+        })
+        // Index 1 fails with network error
+        .mockRejectedValue(new Error("Network error"));
+
+      global.fetch = mockFetch;
+
+      // Should throw error when network error occurs
+      await expect(engine.fetchFreezeListFromChain("test.aleo")).rejects.toThrow(
+        /Failed to fetch after 3 attempts: Network error/,
+      );
     });
 
     it("filters out ZERO_ADDRESS from results", async () => {

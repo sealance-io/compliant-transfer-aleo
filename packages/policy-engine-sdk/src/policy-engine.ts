@@ -83,22 +83,19 @@ export class PolicyEngine {
     const currentRoot = BigInt(cleanValue);
 
     // Fetch addresses from index 0 to lastIndex (inclusive)
+    // We expect no gaps - if any entry is missing or fails to fetch, the entire operation fails
     const freezeList: string[] = [];
     for (let i = 0; i <= lastIndex; i++) {
-      try {
-        const frozenAccount = await this.apiClient.fetchMapping(programId, "freeze_list_index", `${i}u32`);
+      const frozenAccount = await this.apiClient.fetchMapping(programId, "freeze_list_index", `${i}u32`);
 
-        if (!frozenAccount) {
-          // No more entries in the mapping
-          break;
-        }
-
-        freezeList[i] = frozenAccount;
-      } catch (error) {
-        // Break on error - the mapping might have gaps
-        console.debug(`No entry at index ${i}`, error);
-        break;
+      if (!frozenAccount) {
+        throw new Error(
+          `Gap detected in freeze list at index ${i} for program ${programId}. ` +
+            `Expected continuous entries from 0 to ${lastIndex}.`,
+        );
       }
+
+      freezeList[i] = frozenAccount;
     }
 
     // Filter out ZERO_ADDRESS (used for padding in Merkle tree)
