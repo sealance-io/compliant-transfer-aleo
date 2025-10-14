@@ -94,7 +94,6 @@ describe("merkle_tree lib, generateLeaves", () => {
       ZERO_ADDRESS,
       "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
     ];
-    const depth = 1;
     const result = generateLeaves(leaves);
     expect(result).toHaveLength(2);
     expect(result[0]).toBe("0field");

@@ -1,6 +1,6 @@
+import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { Token_registryContract } from "../artifacts/js/token_registry";
 import { IPolicy, ZERO_ADDRESS, mode } from "./Constants";
-import { stringToBigInt } from "./Conversion";
 
 export async function registerTokenProgram(
   deployerPrivKey: any,

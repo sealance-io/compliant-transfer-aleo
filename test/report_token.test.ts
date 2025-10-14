@@ -12,7 +12,7 @@ import {
   FREEZE_LIST_LAST_INDEX,
   FREEZE_LIST_MANAGER_INDEX,
   INVESTIGATOR_INDEX,
-  MAX_TREE_SIZE,
+  MAX_TREE_DEPTH,
   MINTER_ROLE,
   NONE_ROLE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
@@ -24,10 +24,9 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { buildTree, genLeaves } from "../lib/MerkleTree";
+import { buildTree, generateLeaves, stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { Account } from "@provablehq/sdk";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
-import { stringToBigInt } from "../lib/Conversion";
 import { decryptToken } from "../artifacts/js/leo2js/sealed_report_token";
 import { Token } from "../artifacts/js/types/sealed_report_token";
 
@@ -125,23 +124,23 @@ describe("test sealed_report_token program", () => {
   let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
   let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([frozenAccount]);
+    const leaves = generateLeaves([frozenAccount]);
     const tree = buildTree(leaves);
     root = tree[tree.length - 1];
     const senderLeafIndices = getLeafIndices(tree, account);
     const recipientLeafIndices = getLeafIndices(tree, recipient);
     const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
     senderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
     ];
     recipientMerkleProof = [
-      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_DEPTH),
     ];
     frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH),
     ];
   });
 
@@ -842,19 +841,19 @@ describe("test sealed_report_token program", () => {
   });
 
   test(`test old root support`, async () => {
-    const leaves = genLeaves([]);
+    const leaves = generateLeaves([]);
     const tree = buildTree(leaves);
     expect(tree[tree.length - 1]).toBe(emptyRoot);
 
     const senderLeafIndices = getLeafIndices(tree, account);
     const recipientLeafIndices = getLeafIndices(tree, recipient);
     const emptyTreeSenderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
     ];
     const emptyTreeRecipientMerkleProof = [
-      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_DEPTH),
     ];
     // The transaction failed because the root is mismatch
     let rejectedTx = await reportTokenContractForAccount.transfer_private(

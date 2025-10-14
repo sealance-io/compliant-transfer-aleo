@@ -9,7 +9,7 @@ import {
   FREEZE_LIST_LAST_INDEX,
   FREEZELIST_MANAGER_ROLE,
   MANAGER_ROLE,
-  MAX_TREE_SIZE,
+  MAX_TREE_DEPTH,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
   emptyRoot,
@@ -20,7 +20,7 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
-import { buildTree, genLeaves } from "../lib/MerkleTree";
+import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
 import { Account } from "@provablehq/sdk";
 import { isProgramInitialized } from "../lib/Initalize";
 
@@ -71,18 +71,18 @@ describe("test freeze_registry program", () => {
   let adminMerkleProof: { siblings: any[]; leaf_index: any }[];
   let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([frozenAccount]);
+    const leaves = generateLeaves([frozenAccount]);
     const tree = buildTree(leaves);
     root = tree[tree.length - 1];
     const adminLeadIndices = getLeafIndices(tree, adminAddress);
     const frozenAccountLeadIndices = getLeafIndices(tree, frozenAccount);
     adminMerkleProof = [
-      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_DEPTH),
     ];
     frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeadIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, frozenAccountLeadIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, frozenAccountLeadIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, frozenAccountLeadIndices[1], MAX_TREE_DEPTH),
     ];
   });
 
@@ -266,14 +266,14 @@ describe("test freeze_registry program", () => {
       freezeRegistryContract.verify_non_inclusion_priv(frozenAccount, frozenAccountMerkleProof),
     ).rejects.toThrow();
 
-    const leaves = genLeaves([]);
+    const leaves = generateLeaves([]);
     const tree = buildTree(leaves);
     expect(tree[tree.length - 1]).toBe(emptyRoot);
 
     const adminLeadIndices = getLeafIndices(tree, adminAddress);
     const emptyTreeAdminMerkleProof = [
-      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_DEPTH),
     ];
     // The transaction failed because the root is mismatch
     let rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, emptyTreeAdminMerkleProof);

@@ -7,8 +7,7 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 
 import {
-  MAX_TREE_SIZE,
-  ZERO_ADDRESS,
+  MAX_TREE_DEPTH,
   SEALED_TIMELOCK_POLICY_ADDRESS,
   fundedAmount,
   policies,
@@ -25,7 +24,7 @@ import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
-import { buildTree, genLeaves } from "../lib/MerkleTree";
+import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
 import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
@@ -193,23 +192,23 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([frozenAccount]);
+    const leaves = generateLeaves([frozenAccount]);
     const tree = buildTree(leaves);
     root = tree[tree.length - 1];
     const senderLeafIndices = getLeafIndices(tree, account);
     const recipientLeafIndices = getLeafIndices(tree, recipient);
     const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
     senderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
     ];
     recipientMerkleProof = [
-      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_DEPTH),
     ];
     frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH),
     ];
   });
 

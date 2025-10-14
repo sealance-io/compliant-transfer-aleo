@@ -13,7 +13,7 @@ import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 import { initializeProgram } from "../lib/Initalize";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
-import { stringToBigInt } from "../lib/Conversion";
+import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 
 const mode = ExecutionMode.SnarkExecute;
