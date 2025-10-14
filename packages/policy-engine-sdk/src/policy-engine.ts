@@ -56,6 +56,43 @@ export class PolicyEngine {
   }
 
   /**
+   * Fetches only the current Merkle root from the blockchain
+   *
+   * This is a lightweight operation that only queries the freeze_list_root mapping
+   * without fetching the entire freeze list. Use this method to validate cached
+   * freeze lists by comparing roots.
+   *
+   * @param programId - The program ID of the freeze list registry (required)
+   * @returns The current Merkle root as BigInt
+   *
+   * @example
+   * ```typescript
+   * // Validate cache by comparing roots
+   * const engine = new PolicyEngine({
+   *   endpoint: "http://localhost:3030",
+   *   network: "testnet"
+   * });
+   *
+   * const currentRoot = await engine.fetchCurrentRoot("sealance_freezelist_registry.aleo");
+   * if (cache.root !== currentRoot) {
+   *   // Root changed - re-fetch freeze list
+   *   const freezeList = await engine.fetchFreezeListFromChain(programId);
+   *   cache = { addresses: freezeList.addresses, root: currentRoot };
+   * }
+   * ```
+   */
+  async fetchCurrentRoot(programId: string): Promise<bigint> {
+    const rootValue = await this.apiClient.fetchMapping(programId, "freeze_list_root", "1u8");
+
+    if (!rootValue) {
+      throw new Error(`Failed to fetch freeze_list_root for program ${programId}`);
+    }
+
+    const cleanValue = rootValue.replace(/field$/i, "");
+    return BigInt(cleanValue);
+  }
+
+  /**
    * Fetches the freeze list from the blockchain
    *
    * This function queries the on-chain mapping to retrieve all frozen addresses.
@@ -78,9 +115,9 @@ export class PolicyEngine {
    */
   async fetchFreezeListFromChain(programId: string): Promise<FreezeListResult> {
     // Fetch last index and current root in parallel - both are mandatory
-    const [lastIndexValue, rootValue] = await Promise.all([
+    const [lastIndexValue, currentRoot] = await Promise.all([
       this.apiClient.fetchMapping(programId, "freeze_list_last_index", "true"),
-      this.apiClient.fetchMapping(programId, "freeze_list_root", "1u8"),
+      this.fetchCurrentRoot(programId),
     ]);
 
     // Validate last index
@@ -92,13 +129,6 @@ export class PolicyEngine {
       throw new Error(`Invalid freeze_list_last_index value: ${lastIndexValue}`);
     }
     const lastIndex = parsed;
-
-    // Validate current root
-    if (!rootValue) {
-      throw new Error(`Failed to fetch freeze_list_root for program ${programId}`);
-    }
-    const cleanValue = rootValue.replace(/field$/i, "");
-    const currentRoot = BigInt(cleanValue);
 
     // Fetch addresses from index 0 to lastIndex (inclusive) with controlled parallelization
     // We expect no gaps - if any entry is missing or fails to fetch, the entire operation fails

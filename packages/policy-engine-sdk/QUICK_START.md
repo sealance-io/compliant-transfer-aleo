@@ -81,23 +81,46 @@ await tx.wait();
 
 ## Common Patterns
 
-### Pattern 1: Cache Freeze List
+### Pattern 1: Cache Freeze List with Root Validation (RECOMMENDED)
 
-When generating multiple proofs, fetch once and reuse:
+When generating multiple proofs, use `fetchCurrentRoot` to validate your cache with a single lightweight API call:
 
 ```typescript
-// Fetch once
-const freezeList = await engine.fetchFreezeListFromChain(programId);
+// Cache structure
+interface FreezeListCache {
+  addresses: string[];
+  root: bigint;
+  lastFetched: Date;
+}
 
-// Reuse for multiple addresses
+let cache: FreezeListCache | null = null;
+
+// For each address
 for (const address of addresses) {
+  // Fetch ONLY the root (1 API call, no tree building)
+  const currentRoot = await engine.fetchCurrentRoot(programId);
+
+  // Compare cached root with on-chain root
+  if (!cache || cache.root !== currentRoot) {
+    // Root changed - re-fetch freeze list
+    const freezeListResult = await engine.fetchFreezeListFromChain(programId);
+    cache = {
+      addresses: freezeListResult.addresses,
+      root: currentRoot,
+      lastFetched: new Date(),
+    };
+  }
+
+  // Use validated cache
   const witness = await engine.generateNonInclusionProof(address, {
-    freezeList: freezeList.addresses,
+    freezeList: cache.addresses,
     programId
   });
   // Use witness...
 }
 ```
+
+See `examples/cached-freeze-list.ts` for a complete implementation.
 
 ### Pattern 2: Custom Configuration
 
@@ -148,6 +171,7 @@ const root = tree[tree.length - 1];
 
 ### PolicyEngine Methods
 
+- `fetchCurrentRoot(programId)`: Fetch only the root (lightweight, 1 API call)
 - `fetchFreezeListFromChain(programId)`: Fetch addresses from chain
 - `generateNonInclusionProof(address, options)`: Generate non-inclusion proof
 - `buildMerkleTree(addresses)`: Build tree from addresses

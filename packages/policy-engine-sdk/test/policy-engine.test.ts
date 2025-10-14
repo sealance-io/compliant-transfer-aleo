@@ -98,6 +98,75 @@ describe("PolicyEngine", () => {
     });
   });
 
+  describe("fetchCurrentRoot", () => {
+    it("fetches only the root from chain", async () => {
+      const mockFetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => '"123456789field"',
+      });
+
+      global.fetch = mockFetch;
+
+      const root = await engine.fetchCurrentRoot("test.aleo");
+
+      expect(root).toBe(123456789n);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("strips field suffix correctly", async () => {
+      const mockFetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => '"999field"',
+      });
+
+      global.fetch = mockFetch;
+
+      const root = await engine.fetchCurrentRoot("test.aleo");
+
+      expect(root).toBe(999n);
+    });
+
+    it("handles uppercase FIELD suffix", async () => {
+      const mockFetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => '"777FIELD"',
+      });
+
+      global.fetch = mockFetch;
+
+      const root = await engine.fetchCurrentRoot("test.aleo");
+
+      expect(root).toBe(777n);
+    });
+
+    it("throws error when root cannot be fetched", async () => {
+      const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
+
+      global.fetch = mockFetch;
+
+      await expect(engine.fetchCurrentRoot("test.aleo")).rejects.toThrow(
+        "Failed to fetch after 3 attempts: Network error",
+      );
+    });
+
+    it("throws error when root returns null", async () => {
+      const mockFetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => "null",
+      });
+
+      global.fetch = mockFetch;
+
+      await expect(engine.fetchCurrentRoot("test.aleo")).rejects.toThrow(
+        "Failed to fetch freeze_list_root for program test.aleo",
+      );
+    });
+  });
+
   describe("fetchFreezeListFromChain", () => {
     it("fetches freeze list from chain", async () => {
       const mockFetch = vi
