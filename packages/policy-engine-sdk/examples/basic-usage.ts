@@ -6,31 +6,45 @@
  * 2. Fetching freeze list from chain
  * 3. Generating non-inclusion proofs
  * 4. Using utility functions
+ *
+ * NOTE: This example works with any Aleo program that implements the freeze list API:
+ * - mapping freeze_list_index: u32 => address
+ * - mapping freeze_list_last_index: bool => u32
+ * - mapping freeze_list_root: u8 => field
+ *
+ * Examples of compatible programs:
+ * - sealance_freezelist_registry.aleo (reference implementation)
+ * - sealed_report_policy.aleo
+ * - custom_compliance_policy.aleo (your own program)
  */
 
-import { PolicyEngine, convertAddressToField, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
+import { PolicyEngine, convertAddressToField } from "@sealance-io/policy-engine-aleo";
+
+// Configuration - customize for your use case
+const EXAMPLE_CONFIG = {
+  endpoint: "http://localhost:3030", // or "https://api.explorer.provable.com/v1" for public aleo networks
+  network: "testnet", // or "mainnet"
+  programId: "sealance_freezelist_registry.aleo", // Change to your deployed program
+};
 
 async function main() {
   // Initialize the SDK with your Aleo node endpoint
   const engine = new PolicyEngine({
-    endpoint: "http://localhost:3030",
-    network: "testnet",
+    endpoint: EXAMPLE_CONFIG.endpoint,
+    network: EXAMPLE_CONFIG.network,
     maxTreeDepth: 15,
   });
 
   console.log("=== Fetching Freeze List from Chain ===");
+  console.log(`Program: ${EXAMPLE_CONFIG.programId}`);
 
   try {
     // Fetch the current freeze list from the blockchain
-    const freezeListResult = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
+    const freezeListResult = await engine.fetchFreezeListFromChain(EXAMPLE_CONFIG.programId);
 
     console.log(`Found ${freezeListResult.addresses.length} frozen addresses`);
     console.log(`Last index: ${freezeListResult.lastIndex}`);
     console.log(`Current root: ${freezeListResult.currentRoot}`);
-
-    // Filter out zero addresses
-    const activeAddresses = freezeListResult.addresses.filter(addr => addr !== ZERO_ADDRESS);
-    console.log(`Active frozen addresses: ${activeAddresses.length}`);
 
     console.log("\n=== Generating Non-Inclusion Proof ===");
 
@@ -39,7 +53,7 @@ async function main() {
 
     // Generate witness (non-inclusion proof)
     const witness = await engine.generateNonInclusionProof(addressToCheck, {
-      programId: "sealance_freezelist_registry.aleo",
+      programId: EXAMPLE_CONFIG.programId,
       // Optional: pass cached freeze list to avoid refetching
       // freezeList: freezeListResult.addresses
     });
@@ -50,19 +64,6 @@ async function main() {
     console.log(`Proof 1 - siblings length: ${witness.proofs[0].siblings.length}`);
     console.log(`Proof 2 - leaf index: ${witness.proofs[1].leaf_index}`);
     console.log(`Proof 2 - siblings length: ${witness.proofs[1].siblings.length}`);
-
-    console.log("\n=== Using Proofs in Leo Program ===");
-    console.log("// In your Leo program or TypeScript code:");
-    console.log(`
-    const tx = await policyContract.transfer_private(
-      recipientAddress,
-      amount,
-      inputRecord,
-      ${JSON.stringify({ siblings: witness.proofs[0].siblings.map(s => s.toString()), leaf_index: witness.proofs[0].leaf_index })},
-      ${JSON.stringify({ siblings: witness.proofs[1].siblings.map(s => s.toString()), leaf_index: witness.proofs[1].leaf_index })},
-      investigatorAddress
-    );
-    `);
 
     console.log("\n=== Utility Functions ===");
 

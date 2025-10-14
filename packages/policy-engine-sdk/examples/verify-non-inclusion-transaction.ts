@@ -7,6 +7,20 @@
  * 3. Broadcasting the transaction to the Aleo network
  *
  * This does NOT use doko-js, only the lightweight @provablehq/sdk for transaction management.
+ *
+ * NOTE: This example works with any Aleo program that:
+ * 1. Implements the freeze list API mappings:
+ *    - mapping freeze_list_index: u32 => address
+ *    - mapping freeze_list_last_index: bool => u32
+ *    - mapping freeze_list_root: u8 => field
+ * 2. Has a verify_non_inclusion_priv transition with signature:
+ *    transition verify_non_inclusion_priv(account: address, merkle_proof: [MerkleProof; 2])
+ *
+ * Compatible programs:
+ * - sealance_freezelist_registry.aleo (reference implementation)
+ * - sealed_report_policy.aleo
+ * - sealed_threshold_report_policy.aleo
+ * - custom_compliance_policy.aleo (your own program)
  */
 
 import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
@@ -17,12 +31,13 @@ import { trackTransactionStatus } from "./aleo-transaction-tracker.js";
 // Configuration
 // ============================================================================
 
-const CONFIG = {
+const EXAMPLE_CONFIG = {
   // Aleo network endpoint
-  endpoint: "http://localhost:3030",
-  network: "testnet",
+  endpoint: "http://localhost:3030", // or "https://api.explorer.provable.com/v1" for public aleo networks
+  network: "testnet", // or "mainnet"
 
-  // Program ID for the freeze list registry
+  // Program ID - must be deployed on the target network
+  // Change to your deployed program (e.g., "custom_compliance_policy.aleo")
   programId: "sealance_freezelist_registry.aleo",
 
   // Private key for the account that will submit the transaction
@@ -71,6 +86,7 @@ async function main() {
   console.log("Verify Non-Inclusion Transaction Example");
   console.log("=".repeat(80));
 
+  // Leverages multi-threading for intensive cryptographic operations via "@provablehq/sdk"
   await initThreadPool();
 
   // ------------------------------------------------------------------------
@@ -78,22 +94,22 @@ async function main() {
   // ------------------------------------------------------------------------
   console.log("\n[1/5] Initializing Policy Engine SDK...");
   const engine = new PolicyEngine({
-    endpoint: CONFIG.endpoint,
-    network: CONFIG.network,
+    endpoint: EXAMPLE_CONFIG.endpoint,
+    network: EXAMPLE_CONFIG.network,
     maxTreeDepth: 15,
   });
 
   console.log(`[1/5] ✅ SDK initialized`);
-  console.log(`      Endpoint: ${CONFIG.endpoint}`);
-  console.log(`      Network: ${CONFIG.network}`);
+  console.log(`      Endpoint: ${EXAMPLE_CONFIG.endpoint}`);
+  console.log(`      Network: ${EXAMPLE_CONFIG.network}`);
 
   // ------------------------------------------------------------------------
   // Step 2: Fetch Freeze List and Generate Proof
   // ------------------------------------------------------------------------
   console.log(`\n[2/5] Fetching freeze list from chain...`);
-  console.log(`      Program: ${CONFIG.programId}`);
+  console.log(`      Program: ${EXAMPLE_CONFIG.programId}`);
 
-  const freezeListResult = await engine.fetchFreezeListFromChain(CONFIG.programId);
+  const freezeListResult = await engine.fetchFreezeListFromChain(EXAMPLE_CONFIG.programId);
 
   console.log(`[2/5] ✅ Freeze list fetched`);
   console.log(`      Total addresses: ${freezeListResult.addresses.length}`);
@@ -101,11 +117,11 @@ async function main() {
   console.log(`      Current root: ${freezeListResult.currentRoot || "N/A"}`);
 
   console.log(`\n[2/5] Generating non-inclusion proof...`);
-  console.log(`      Address to verify: ${CONFIG.addressToVerify}`);
+  console.log(`      Address to verify: ${EXAMPLE_CONFIG.addressToVerify}`);
 
-  const witness = await engine.generateNonInclusionProof(CONFIG.addressToVerify, {
+  const witness = await engine.generateNonInclusionProof(EXAMPLE_CONFIG.addressToVerify, {
     freezeList: freezeListResult.addresses,
-    programId: CONFIG.programId,
+    programId: EXAMPLE_CONFIG.programId,
   });
 
   console.log(`[2/5] ✅ Non-inclusion proof generated`);
@@ -119,22 +135,22 @@ async function main() {
   console.log(`\n[3/5] Setting up Aleo account and ProgramManager...`);
 
   // Create account from private key
-  const account = new Account({ privateKey: CONFIG.privateKey });
+  const account = new Account({ privateKey: EXAMPLE_CONFIG.privateKey });
   const accountAddress = account.address().to_string();
 
   console.log(`[3/5] ✅ Account loaded`);
   console.log(`      Address: ${accountAddress}`);
 
-  // Initialize key provider for proving/verifying keys
+  // Initialize key provider for proving/verifying keys and enable in-memory caching
   const keyProvider = new AleoKeyProvider();
   keyProvider.useCache(true);
 
   // Create ProgramManager
-  const programManager = new ProgramManager(CONFIG.endpoint, keyProvider, undefined);
+  const programManager = new ProgramManager(EXAMPLE_CONFIG.endpoint, keyProvider, undefined);
   programManager.setAccount(account);
 
   console.log(`[3/5] ✅ ProgramManager initialized`);
-  console.log(`      Host: ${CONFIG.endpoint}`);
+  console.log(`      Host: ${EXAMPLE_CONFIG.endpoint}`);
 
   // ------------------------------------------------------------------------
   // Step 4: Build and Execute Transaction
@@ -145,18 +161,18 @@ async function main() {
   const merkleProofArray = formatMerkleProofArray(witness.proofs[0], witness.proofs[1]);
 
   console.log(`[4/5] Transaction inputs:`);
-  console.log(`      - account: ${CONFIG.addressToVerify}`);
+  console.log(`      - account: ${EXAMPLE_CONFIG.addressToVerify}`);
   console.log(`      - merkle_proof: [MerkleProof; 2] (${witness.proofs[0].siblings.length * 2} fields)`);
 
   try {
     // Execute the transition
     const txId = await programManager.execute({
-      programName: CONFIG.programId,
+      programName: EXAMPLE_CONFIG.programId,
       functionName: "verify_non_inclusion_priv",
-      priorityFee: CONFIG.priorityFee,
+      priorityFee: EXAMPLE_CONFIG.priorityFee,
       privateFee: false,
       inputs: [
-        CONFIG.addressToVerify,
+        EXAMPLE_CONFIG.addressToVerify,
         merkleProofArray,
       ],
     });
@@ -167,12 +183,12 @@ async function main() {
     // ------------------------------------------------------------------------
     // Step 5: Track Transaction Confirmation
     // ------------------------------------------------------------------------
-    if (CONFIG.trackTransaction) {
+    if (EXAMPLE_CONFIG.trackTransaction) {
       console.log(`\n[5/5] Tracking transaction confirmation...`);
       console.log(`      Waiting for transaction to be included in a block...`);
       console.log(`      (This may take several minutes)`);
 
-      const status = await trackTransactionStatus(txId, CONFIG.endpoint + `/${CONFIG.network}`);
+      const status = await trackTransactionStatus(txId, EXAMPLE_CONFIG.endpoint + `/${EXAMPLE_CONFIG.network}`);
 
       console.log(`\n[5/5] ✅ Transaction tracking complete!`);
       console.log(`\nFinal Status:`);
@@ -212,7 +228,7 @@ async function main() {
       console.log(`\n[5/5] ✅ Transaction broadcast complete!`);
       console.log(`\nTransaction Details:`);
       console.log(`      ID: ${txId}`);
-      console.log(`      Explorer: ${getExplorerUrl(CONFIG.endpoint, CONFIG.network, txId) ?? 'unavaialbe'}`);
+      console.log(`      Explorer: ${getExplorerUrl(EXAMPLE_CONFIG.endpoint, EXAMPLE_CONFIG.network, txId) ?? 'unavaialbe'}`);
       console.log(`\nNote: Transaction tracking is disabled.`);
       console.log(`      Check the status manually using the explorer link above if available.`);
 
