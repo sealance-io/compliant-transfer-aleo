@@ -90,6 +90,25 @@ new PolicyEngine(config?: PolicyEngineConfig)
 
 #### Methods
 
+##### `fetchCurrentRoot(programId: string): Promise<bigint>`
+
+Fetches only the current Merkle root from the blockchain. This is a lightweight operation that makes a single API call without fetching the entire freeze list or building the Merkle tree. Use this method to validate cached freeze lists by comparing roots.
+
+```typescript
+const currentRoot = await engine.fetchCurrentRoot(
+  "sealance_freezelist_registry.aleo"
+);
+
+// Returns: 123456789n
+
+// Use for cache validation
+if (cache.root !== currentRoot) {
+  // Root changed - re-fetch freeze list
+  const freezeList = await engine.fetchFreezeListFromChain(programId);
+  cache = { addresses: freezeList.addresses, root: currentRoot };
+}
+```
+
 ##### `fetchFreezeListFromChain(programId?: string): Promise<FreezeListResult>`
 
 Fetches the freeze list from the blockchain by querying the `freeze_list_index` mapping.
@@ -260,7 +279,48 @@ interface TransferWitness {
 
 1. **Reuse PolicyEngine instances**: Creating a new instance is lightweight, but reusing avoids redundant configuration.
 
-2. **Cache freeze lists**: If making multiple proof generations, fetch the freeze list once and pass it via `options.freezeList`.
+2. **Cache freeze lists with root validation** (RECOMMENDED): When generating multiple proofs, use `fetchCurrentRoot` to validate your cache with a single lightweight API call:
+
+   ```typescript
+   // Cache structure
+   interface FreezeListCache {
+     addresses: string[];
+     root: bigint;
+     lastFetched: Date;
+   }
+
+   let cache: FreezeListCache | null = null;
+
+   // Before each proof generation:
+   // Fetch ONLY the root (1 API call, no tree building)
+   const currentRoot = await engine.fetchCurrentRoot(programId);
+
+   // Compare cached root with on-chain root
+   if (!cache || cache.root !== currentRoot) {
+     // Root changed - re-fetch freeze list
+     const freezeListResult = await engine.fetchFreezeListFromChain(programId);
+     cache = {
+       addresses: freezeListResult.addresses,
+       root: currentRoot,
+       lastFetched: new Date(),
+     };
+   }
+
+   // Use validated cache
+   const witness = await engine.generateNonInclusionProof(address, {
+     freezeList: cache.addresses,
+     programId,
+   });
+   ```
+
+   **Why this pattern?**
+   - Fetches ONLY the root (1 API call) to validate cache
+   - Fetches full freeze list only when root changes
+   - Avoids expensive tree building when cache is valid
+   - Guarantees correctness while minimizing API calls
+   - Ideal for applications generating many proofs
+
+   See `examples/cached-freeze-list.ts` for a complete implementation.
 
 3. **Error Handling**: Always wrap API calls in try-catch blocks:
    ```typescript
