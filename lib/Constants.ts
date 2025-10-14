@@ -1,8 +1,8 @@
 import { ExecutionMode } from "@doko-js/core";
-import { stringToBigInt } from "./Conversion";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
+import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 
 // addresses
 export const SEALED_REPORT_POLICY_ADDRESS = "aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2";
@@ -84,7 +84,7 @@ export const MANAGER_ROLE = 8;
 export const FREEZELIST_MANAGER_ROLE = 16;
 
 // merkle tree
-export const MAX_TREE_SIZE = 16;
+export const MAX_TREE_DEPTH = 16;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;

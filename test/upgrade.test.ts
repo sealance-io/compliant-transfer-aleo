@@ -8,7 +8,7 @@ import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_f
 import { getProgramEdition, upgradeProgram } from "../lib/Upgrade";
 import { initializeProgram } from "../lib/Initalize";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
-import { stringToBigInt } from "../lib/Conversion";
+import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
