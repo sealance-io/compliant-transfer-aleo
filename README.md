@@ -12,6 +12,10 @@ This project is developed and tested with the following tooling:
 
 ## Repository Structure
 
+This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) to manage the monorepo structure.
+
+- **/packages/policy-engine-sdk**: TypeScript SDK for generating Merkle proofs and interacting with Aleo compliance policy programs (published as `@sealance-io/policy-engine-aleo`)
+
 - **/programs**: Aleo token programs implementing various compliance policies
 
   - `sealed_report_policy.leo`
@@ -47,12 +51,14 @@ This project is developed and tested with the following tooling:
 
 ## Getting Started
 
-1. **Install Dependencies**  
+1. **Install Dependencies**
    Navigate to the repository root and run:
 
    ```bash
    npm ci
    ```
+
+   This will install dependencies for both the root workspace and the SDK workspace using npm's workspace feature.
 
 2. **Install doko-js CLI**
    [Jump to Installation Guide](docs/doko-installation-guide.md)
@@ -61,6 +67,22 @@ This project is developed and tested with the following tooling:
    ```bash
    dokojs compile
    ```
+
+### Workspace Commands
+
+The repository uses npm workspaces. Common workspace operations:
+
+```bash
+# Run SDK-specific commands
+npm run build --workspace=@sealance-io/policy-engine-aleo
+npm run test --workspace=@sealance-io/policy-engine-aleo
+
+# Install a dependency to the SDK workspace
+npm install --workspace=@sealance-io/policy-engine-aleo <package-name>
+
+# Run commands in all workspaces
+npm run format --workspaces
+```
 
 ## Testing
 

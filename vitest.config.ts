@@ -1,8 +1,13 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "url";
+import { resolve, dirname } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
-    include: ["**/*.{test,spec}.{js,ts,jsx,tsx}"],
+    include: ["test/**/*.{test,spec}.{js,ts,jsx,tsx}"],
+    exclude: ["**/node_modules/**", "**/dist/**", "packages/**"],
     globals: true,
     environment: "node", // Default environment
     typecheck: {
@@ -40,5 +45,8 @@ export default defineConfig({
   resolve: {
     // Similar to Jest's moduleNameMapper for .js extensions
     extensions: [".js", ".ts", ".jsx", ".tsx", ".json"],
+    alias: {
+      "@sealance-io/policy-engine-aleo": resolve(__dirname, "packages/policy-engine-sdk/src/index.ts"),
+    },
   },
 });

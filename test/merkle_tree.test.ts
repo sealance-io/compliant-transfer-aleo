@@ -3,7 +3,12 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { MAX_TREE_DEPTH, ZERO_ADDRESS } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { buildTree, convertAddressToField, convertFieldToAddress, generateLeaves } from "@sealance-io/policy-engine-aleo";
+import {
+  buildTree,
+  convertAddressToField,
+  convertFieldToAddress,
+  generateLeaves,
+} from "@sealance-io/policy-engine-aleo";
 import { Account } from "@provablehq/sdk";
 import { generateAddressesParallel } from "./utils/Accounts";
 
@@ -78,7 +83,7 @@ describe("merkle_tree program tests", () => {
 
   test(`large tree edge cases test, depth 12`, async () => {
     const depth = 12;
-    const size = Math.floor(2 ** (depth - 1))
+    const size = Math.floor(2 ** (depth - 1));
     const addresses = await generateAddressesParallel(size);
 
     const sortedAddresses = addresses

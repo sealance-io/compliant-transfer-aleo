@@ -7,6 +7,9 @@
   "private": "true",
   "main": "index.js",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "directories": {
     "test": "test"
   },
@@ -28,7 +31,7 @@
     "@doko-js/wasm": "1.0.0",
     "@provablehq/sdk": "0.9.7",
     "@scure/base": "1.2.5",
-    "@sealance-io/policy-engine-aleo": "file:./packages/policy-engine-sdk",
+    "@sealance-io/policy-engine-aleo": "workspace:*",
     "@types/node": "22.15.19",
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
