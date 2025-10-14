@@ -109,7 +109,7 @@ if (cache.root !== currentRoot) {
 }
 ```
 
-##### `fetchFreezeListFromChain(programId?: string): Promise<FreezeListResult>`
+##### `fetchFreezeListFromChain(programId: string): Promise<FreezeListResult>`
 
 Fetches the freeze list from the blockchain by querying the `freeze_list_index` mapping.
 
@@ -177,6 +177,16 @@ Computes the Merkle root from a list of addresses.
 const root = engine.getMerkleRoot(["aleo1...", "aleo1..."]);
 ```
 
+##### `getConfig(): Required<PolicyEngineConfig>`
+
+Gets the current PolicyEngine configuration.
+
+```typescript
+const config = engine.getConfig();
+console.log(config.endpoint); // "https://api.explorer.provable.com/v1"
+console.log(config.network);  // "mainnet"
+```
+
 ### Utility Functions
 
 #### Address Conversion
@@ -184,7 +194,8 @@ const root = engine.getMerkleRoot(["aleo1...", "aleo1..."]);
 ```typescript
 import {
   convertAddressToField,
-  convertFieldToAddress
+  convertFieldToAddress,
+  stringToBigInt
 } from "@sealance-io/policy-engine-aleo";
 
 // Convert address to field element
@@ -194,6 +205,10 @@ console.log(field); // 123456789n
 // Convert field element back to address
 const address = convertFieldToAddress("123456789field");
 console.log(address); // "aleo1..."
+
+// Convert ASCII string to BigInt (for token names, symbols, etc.)
+const nameField = stringToBigInt("MyToken");
+console.log(nameField); // 39473518878318894n
 ```
 
 #### Merkle Tree Operations
@@ -219,35 +234,6 @@ const [leftIdx, rightIdx] = getLeafIndices(tree, "aleo1...");
 const proof = getSiblingPath(tree, leftIdx, 16);
 ```
 
-## Usage with Tests
-
-The SDK can be used in your test suites alongside the main repository's testing infrastructure:
-
-```typescript
-import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
-import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
-
-describe("Freeze List Tests", () => {
-  const engine = new PolicyEngine({
-    endpoint: "http://localhost:3030",
-    network: "testnet",
-  });
-
-  test("verify non-inclusion", async () => {
-    const address = "aleo1...";
-    const witness = await engine.generateNonInclusionProof(address);
-
-    // Use with contract
-    const contract = new Sealance_freezelist_registryContract({...});
-    const tx = await contract.verify_non_inclusion_priv(
-      address,
-      witness.proofs
-    );
-    await tx.wait();
-  });
-});
-```
-
 ## Type Definitions
 
 ### MerkleProof
@@ -267,6 +253,25 @@ interface TransferWitness {
   root: bigint;
   freezeList: string[];
 }
+```
+
+### Logger
+
+```typescript
+type LogLevel = "debug" | "info" | "warn" | "error";
+type Logger = (level: LogLevel, message: string, ...args: unknown[]) => void;
+
+// Built-in loggers
+import { defaultLogger, silentLogger } from "@sealance-io/policy-engine-aleo";
+
+// Use silent logger to suppress all logs
+const engine = new PolicyEngine({ logger: silentLogger });
+
+// Use custom logger
+const customLogger: Logger = (level, message, ...args) => {
+  console.log(`[${level.toUpperCase()}] ${message}`, ...args);
+};
+const engine2 = new PolicyEngine({ logger: customLogger });
 ```
 
 ## Constants

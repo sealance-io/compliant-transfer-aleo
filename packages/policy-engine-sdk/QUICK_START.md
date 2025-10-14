@@ -161,7 +161,6 @@ const root = tree[tree.length - 1];
 |--------|------|---------|-------------|
 | `endpoint` | `string` | `"https://api.explorer.provable.com/v1"` | Aleo node endpoint |
 | `network` | `string` | `"mainnet"` | Network name (testnet/mainnet) |
-| `maxTreeDepth` | `number` | `15` | Max Merkle tree depth |
 | `maxRetries` | `number` | `5` | API retry attempts |
 | `retryDelay` | `number` | `2000` | Retry delay (ms) |
 | `maxConcurrency` | `number` | `10` | Max concurrent HTTP requests |
@@ -182,7 +181,7 @@ const root = tree[tree.length - 1];
 
 - `convertAddressToField(address)`: Address → Field
 - `convertFieldToAddress(field)`: Field → Address
-- `stringToBigInt(str)`: ASCII → BigInt
+- `stringToBigInt(str)`: Convert ASCII string to BigInt (for token names/symbols)
 - `buildTree(leaves)`: Build Merkle tree
 - `generateLeaves(addresses, depth)`: Generate sorted leaves
 - `getLeafIndices(tree, address)`: Find leaf indices
