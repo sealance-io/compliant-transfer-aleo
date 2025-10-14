@@ -2,17 +2,23 @@
 
 Unit tests for `@sealance-io/policy-engine-aleo` SDK.
 
+These are fast unit tests that mock external dependencies (no blockchain interaction). For integration tests using actual Aleo blockchain, see the main repository tests in `../../test/`.
+
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (from SDK directory)
 npm test
 
-# Run tests in watch mode
+# Run tests in watch mode (auto-runs on file changes)
 npm run test:watch
 
 # Run tests with coverage report
 npm run test:coverage
+
+# From repository root (using workspace)
+npm run test --workspace=@sealance-io/policy-engine-aleo
+npm run test:coverage --workspace=@sealance-io/policy-engine-aleo
 ```
 
 ## Test Structure
@@ -47,8 +53,11 @@ Tests for main PolicyEngine class:
 - Configuration and initialization
 - `buildMerkleTree`: Tree building from addresses
 - `getMerkleRoot`: Root computation
+- `getConfig`: Configuration retrieval
+- `fetchCurrentRoot`: Lightweight root fetching
 - `fetchFreezeListFromChain`: Blockchain data fetching
 - `generateNonInclusionProof`: Complete proof generation
+- Integration scenarios with caching
 
 ## Coverage
 
@@ -65,11 +74,13 @@ Coverage reports are generated in `coverage/` directory:
 
 ## Test Configuration
 
-See `vitest.config.ts` for configuration:
-- Timeout: 30 seconds per test
+See `../vitest.config.ts` in SDK root for configuration:
+- Test timeout: 30 seconds per test
+- Hook timeout: 10 seconds
 - Coverage provider: V8
+- Coverage thresholds: 80% (lines, functions, branches, statements)
 - Environment: Node.js
-- Globals: Enabled (describe, it, expect)
+- Globals: Enabled (describe, it, expect, vi, beforeEach, afterEach)
 
 ## Mocking
 
@@ -129,10 +140,3 @@ Tests can be integrated into CI/CD pipelines:
     files: ./coverage/lcov.info
 ```
 
-## Future Tests
-
-Planned additions:
-- Integration tests with real devnet
-- Performance benchmarks
-- Fuzz testing for address/field conversions
-- Property-based testing for Merkle trees
