@@ -191,8 +191,6 @@ async function main() {
         console.log(`      Error: ${status.error}`);
       }
 
-      console.log(`\n      Explorer: https://explorer.aleo.org/transaction/${txId}`);
-
       // Exit with error if transaction was not accepted
       if (status.status !== "accepted") {
         console.error(`\n⚠️  Transaction was not accepted. Status: ${status.status}`);
@@ -214,9 +212,9 @@ async function main() {
       console.log(`\n[5/5] ✅ Transaction broadcast complete!`);
       console.log(`\nTransaction Details:`);
       console.log(`      ID: ${txId}`);
-      console.log(`      Explorer: https://explorer.aleo.org/transaction/${txId}`);
+      console.log(`      Explorer: ${getExplorerUrl(CONFIG.endpoint, CONFIG.network, txId) ?? 'unavaialbe'}`);
       console.log(`\nNote: Transaction tracking is disabled.`);
-      console.log(`      Check the status manually using the explorer link above.`);
+      console.log(`      Check the status manually using the explorer link above if available.`);
 
       return { txId };
     }
@@ -226,6 +224,24 @@ async function main() {
 
     throw error;
   }
+}
+
+/**
+ * Generates explorer URL for a transaction if endpoint is provable.com
+ * @param endpoint - API endpoint URL
+ * @param network - Network name (mainnet or testnet)
+ * @param txId - Transaction ID
+ * @returns Explorer URL or undefined if not a provable.com endpoint
+ */
+export function getExplorerUrl(endpoint: string, network: string, txId: string): string | undefined {
+  // Only generate explorer links for provable.com endpoints
+  if (!endpoint.includes('provable.com')) {
+    return undefined;
+  }
+
+  // Determine subdomain based on network
+  const subdomain = network === 'testnet' ? 'testnet.explorer' : 'explorer';
+  return `https://${subdomain}.provable.com/transaction/${txId}`;
 }
 
 // ============================================================================

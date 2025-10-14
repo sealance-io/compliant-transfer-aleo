@@ -7,6 +7,40 @@ interface TransactionStatus {
   error?: string;
 }
 
+/**
+ * Fetches the block height for a given transaction ID
+ * Handles JSON-quoted responses from the API
+ */
+async function fetchBlockHeight(baseUrl: string, txId: string): Promise<number | undefined> {
+  try {
+    // Fetch block hash
+    const blockHashResponse = await fetch(`${baseUrl}/find/blockHash/${txId}`);
+    if (!blockHashResponse.ok) {
+      return undefined;
+    }
+
+    const blockHashText = await blockHashResponse.text();
+    // Handle JSON-quoted strings (API returns "hash" instead of hash)
+    const blockHash = blockHashText.trim().replace(/^"|"$/g, '');
+
+    if (!blockHash || blockHash === 'null') {
+      return undefined;
+    }
+
+    // Fetch block by hash
+    const blockResponse = await fetch(`${baseUrl}/block/${blockHash}`);
+    if (!blockResponse.ok) {
+      return undefined;
+    }
+
+    const block = await blockResponse.json();
+    return block?.header?.metadata?.height;
+  } catch (error) {
+    console.warn('Could not retrieve block height:', error);
+    return undefined;
+  }
+}
+
 export async function trackTransactionStatus(
   txId: string,
   endpoint: string,
@@ -14,12 +48,14 @@ export async function trackTransactionStatus(
     maxAttempts?: number;
     pollInterval?: number;
     timeout?: number;
+    network?: string;
   } = {}
 ): Promise<TransactionStatus> {
   const {
     maxAttempts = 60,
     pollInterval = 5000,
-    timeout = 300000
+    timeout = 300000,
+    network = 'mainnet'
   } = options;
 
   const baseUrl = endpoint;
@@ -48,7 +84,6 @@ export async function trackTransactionStatus(
       }
 
       const transactionResonse = await response.json();
-      console.dir(transactionResonse);
 
       // Check if transaction was rejected by inspecting type
       if (transactionResonse?.transaction.type === 'fee') {
@@ -70,17 +105,7 @@ export async function trackTransactionStatus(
         }
 
         // Get block height
-        let blockHeight: number | undefined;
-        try {
-          const blockHash = await fetch(`${baseUrl}/find/blockHash/${txId}`)
-            .then(r => r.text());
-          console.log(`blockHash: ${blockHash}`)
-          const block = await fetch(`${baseUrl}/block/height/${blockHash}`)
-            .then(r => r.json());
-          blockHeight = block?.header?.metadata?.height;
-        } catch (error) {
-          console.warn('Could not retrieve block height:', error);
-        }
+        const blockHeight = await fetchBlockHeight(baseUrl, txId);
 
         return {
           status: 'rejected',
@@ -92,22 +117,13 @@ export async function trackTransactionStatus(
         };
       } else if (transactionResonse.transaction.type === 'execute' || transactionResonse.transaction.type === 'deploy') {
         // Transaction was accepted
-        let blockHeight: number | undefined;
-        try {
-          const blockHash = await fetch(`${baseUrl}/find/blockHash/${txId}`)
-            .then(r => r.text());
-          const block = await fetch(`${baseUrl}/block/${blockHash}`)
-            .then(r => r.json());
-          blockHeight = block?.header?.metadata?.height;
-        } catch (error) {
-          console.warn('Could not retrieve block height:', error);
-        }
+        const blockHeight = await fetchBlockHeight(baseUrl, txId);
 
         return {
           status: 'accepted',
           type: transactionResonse.type,
           confirmedId: txId,
-          blockHeight
+          blockHeight,
         };
       }
     } catch (error) {
