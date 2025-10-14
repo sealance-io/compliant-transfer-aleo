@@ -11,9 +11,27 @@
  * - Reduces API calls significantly
  * - Ensures proofs are always generated against current freeze list
  * - Improves performance while maintaining correctness
+ *
+ * NOTE: This example works with any Aleo program that implements the freeze list API:
+ * - mapping freeze_list_index: u32 => address
+ * - mapping freeze_list_last_index: bool => u32
+ * - mapping freeze_list_root: u8 => field
+ *
+ * Examples of compatible programs:
+ * - sealance_freezelist_registry.aleo (reference implementation)
+ * - sealed_report_policy.aleo
+ * - sealed_threshold_report_policy.aleo
+ * - custom_compliance_policy.aleo (your own program)
  */
 
 import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
+
+// Configuration - customize for your use case
+const EXAMPLE_CONFIG = {
+  endpoint: "http://localhost:3030", // or "https://api.explorer.provable.com/v1" for public aleo networks
+  network: "testnet", // or "mainnet"
+  programId: "sealance_freezelist_registry.aleo", // Change to your deployed program
+};
 
 // In-memory cache (in production, consider using Redis, database, etc.)
 interface FreezeListCache {
@@ -26,11 +44,11 @@ let cache: FreezeListCache | null = null;
 
 async function main() {
   const engine = new PolicyEngine({
-    endpoint: "http://localhost:3030",
-    network: "testnet",
+    endpoint: EXAMPLE_CONFIG.endpoint,
+    network: EXAMPLE_CONFIG.network,
   });
 
-  const programId = "sealed_report_policy.aleo";
+  const programId = EXAMPLE_CONFIG.programId;
 
   console.log("=== Initial Fetch ===");
 

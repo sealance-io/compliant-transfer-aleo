@@ -280,6 +280,44 @@ const engine2 = new PolicyEngine({ logger: customLogger });
 - Default `maxTreeDepth`: `15`
 - Default `leavesLength`: `16384` (2^14)
 
+## Program Compatibility
+
+The SDK is designed to work with any Aleo program that implements the freeze list API. Your program must include these mappings:
+
+```leo
+mapping freeze_list_index: u32 => address;
+mapping freeze_list_last_index: bool => u32;
+mapping freeze_list_root: u8 => field;
+```
+
+**Compatible programs in this repository:**
+- `sealance_freezelist_registry.aleo` - Standalone freeze list registry (reference implementation)
+- `sealed_report_policy.aleo` - Token with transaction reporting
+- `sealed_threshold_report_policy.aleo` - Token with threshold-based reporting
+- `sealed_timelock_policy.aleo` - Token with time-locked transfers
+
+**Using multiple programs:**
+
+```typescript
+const engine = new PolicyEngine({
+  endpoint: "http://localhost:3030",
+  network: "testnet",
+});
+
+// Fetch from different programs
+const registry = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
+const policy = await engine.fetchFreezeListFromChain("custom_compliance_policy.aleo");
+
+// Generate proofs for specific program
+const witness1 = await engine.generateNonInclusionProof(address, {
+  programId: "sealance_freezelist_registry.aleo",
+});
+
+const witness2 = await engine.generateNonInclusionProof(address, {
+  programId: "custom_compliance_policy.aleo",
+});
+```
+
 ## Best Practices
 
 1. **Reuse PolicyEngine instances**: Creating a new instance is lightweight, but reusing avoids redundant configuration.
