@@ -4,7 +4,7 @@
  * This example demonstrates:
  * 1. Initializing the PolicyEngine
  * 2. Fetching freeze list from chain
- * 3. Generating non-inclusion proofs
+ * 3. Generating non-inclusion proof
  * 4. Using utility functions
  *
  * NOTE: This example works with any Aleo program that implements the freeze list API:
@@ -52,7 +52,7 @@ async function main() {
     const addressToCheck = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px";
 
     // Generate witness (non-inclusion proof)
-    const witness = await engine.generateNonInclusionProof(addressToCheck, {
+    const witness = await engine.generateFreezeListNonInclusionProof(addressToCheck, {
       programId: EXAMPLE_CONFIG.programId,
       // Optional: pass cached freeze list to avoid refetching
       // freezeList: freezeListResult.addresses

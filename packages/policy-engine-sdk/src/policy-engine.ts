@@ -1,8 +1,8 @@
 import type {
   PolicyEngineConfig,
   FreezeListResult,
-  TransferWitnessOptions,
-  TransferWitness,
+  NonInclusionProofOptions,
+  NonInclusionWitness,
   MerkleProof,
 } from "./types.js";
 import { AleoAPIClient } from "./api-client.js";
@@ -34,7 +34,7 @@ import { defaultLogger } from "./logger.js";
  * const freezeList = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
  *
  * // Generate non-inclusion proof for an address
- * const witness = await engine.generateNonInclusionProof("aleo1...", {
+ * const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
  *   programId: "sealance_freezelist_registry.aleo"
  * });
  * ```
@@ -215,7 +215,7 @@ export class PolicyEngine {
    *   endpoint: "http://localhost:3030",
    *   network: "testnet"
    * });
-   * const witness = await engine.generateNonInclusionProof("aleo1...", {
+   * const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
    *   programId: "sealance_freezelist_registry.aleo"
    * });
    *
@@ -230,7 +230,10 @@ export class PolicyEngine {
    * );
    * ```
    */
-  async generateNonInclusionProof(address: string, options: TransferWitnessOptions = {}): Promise<TransferWitness> {
+  async generateFreezeListNonInclusionProof(
+    address: string,
+    options: NonInclusionProofOptions = {},
+  ): Promise<NonInclusionWitness> {
     // Fetch freeze list if not provided
     let freezeList: string[];
     if (options.freezeList) {

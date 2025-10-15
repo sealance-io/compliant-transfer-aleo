@@ -126,7 +126,7 @@ async function main() {
   console.log(`\n[2/5] Generating non-inclusion proof...`);
   console.log(`      Address to verify: ${EXAMPLE_CONFIG.addressToVerify}`);
 
-  const witness = await engine.generateNonInclusionProof(EXAMPLE_CONFIG.addressToVerify, {
+  const witness = await engine.generateFreezeListNonInclusionProof(EXAMPLE_CONFIG.addressToVerify, {
     freezeList: freezeListResult.addresses,
     programId: EXAMPLE_CONFIG.programId,
   });

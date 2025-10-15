@@ -21,7 +21,7 @@ export type {
   MerkleProof,
   PolicyEngineConfig,
   FreezeListResult,
-  TransferWitnessOptions,
-  TransferWitness,
+  NonInclusionProofOptions,
+  NonInclusionWitness,
 } from "./types.js";
 export type { Logger, LogLevel } from "./logger.js";

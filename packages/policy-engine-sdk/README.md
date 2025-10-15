@@ -60,7 +60,7 @@ console.log(`Found ${freezeList.addresses.length} frozen addresses`);
 console.log(`Current root: ${freezeList.currentRoot}`);
 
 // Generate non-inclusion proof for an address
-const witness = await engine.generateNonInclusionProof("aleo1...", {
+const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
   programId: "sealance_freezelist_registry.aleo",
 });
 
@@ -126,12 +126,12 @@ const result = await engine.fetchFreezeListFromChain(
 // }
 ```
 
-##### `generateNonInclusionProof(address: string, options?: TransferWitnessOptions): Promise<TransferWitness>`
+##### `generateFreezeListNonInclusionProof(address: string, options?: NonInclusionProofOptions): Promise<NonInclusionWitness>`
 
 Generates a non-inclusion proof for private compliant transfers.
 
 ```typescript
-const witness = await engine.generateNonInclusionProof("aleo1...", {
+const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
   programId: "sealance_freezelist_registry.aleo",
   freezeList: [...], // Optional: provide cached freeze list
 });
@@ -148,7 +148,7 @@ const witness = await engine.generateNonInclusionProof("aleo1...", {
 
 ```typescript
 // In your application code
-const witness = await engine.generateNonInclusionProof(senderAddress);
+const witness = await engine.generateFreezeListNonInclusionProof(senderAddress);
 
 // Use in Aleo transaction
 const tx = await policyContract.transfer_private(
@@ -245,10 +245,10 @@ interface MerkleProof {
 }
 ```
 
-### TransferWitness
+### NonInclusionWitness
 
 ```typescript
-interface TransferWitness {
+interface NonInclusionWitness {
   proofs: [MerkleProof, MerkleProof];
   root: bigint;
   freezeList: string[];
@@ -309,11 +309,11 @@ const registry = await engine.fetchFreezeListFromChain("sealance_freezelist_regi
 const policy = await engine.fetchFreezeListFromChain("custom_compliance_policy.aleo");
 
 // Generate proofs for specific program
-const witness1 = await engine.generateNonInclusionProof(address, {
+const witness1 = await engine.generateFreezeListNonInclusionProof(address, {
   programId: "sealance_freezelist_registry.aleo",
 });
 
-const witness2 = await engine.generateNonInclusionProof(address, {
+const witness2 = await engine.generateFreezeListNonInclusionProof(address, {
   programId: "custom_compliance_policy.aleo",
 });
 ```
@@ -350,7 +350,7 @@ const witness2 = await engine.generateNonInclusionProof(address, {
    }
 
    // Use validated cache
-   const witness = await engine.generateNonInclusionProof(address, {
+   const witness = await engine.generateFreezeListNonInclusionProof(address, {
      freezeList: cache.addresses,
      programId,
    });
@@ -368,7 +368,7 @@ const witness2 = await engine.generateNonInclusionProof(address, {
 3. **Error Handling**: Always wrap API calls in try-catch blocks:
    ```typescript
    try {
-     const witness = await engine.generateNonInclusionProof(address);
+     const witness = await engine.generateFreezeListNonInclusionProof(address);
    } catch (error) {
      console.error("Failed to generate witness:", error);
    }

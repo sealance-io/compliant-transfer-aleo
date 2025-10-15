@@ -83,7 +83,7 @@ The `prepublishOnly` script automatically builds the package before publishing.
 #### PolicyEngine
 Main class that orchestrates all operations:
 - Fetching freeze lists from blockchain
-- Generating transfer witnesses (non-inclusion proofs)
+- Generating non-inclusion proof
 - Building Merkle trees
 - Computing Merkle roots
 

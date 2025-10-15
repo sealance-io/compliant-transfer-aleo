@@ -2,7 +2,7 @@
  * Example: Using cached freeze list with root validation
  *
  * This demonstrates best practices for caching freeze lists:
- * 1. Fetch the freeze list and cache it in memory
+ * 1. Fetch the freeze list and cache it in memory (as well as Merkle Tree root from on-chain)
  * 2. Before generating proofs, check if the on-chain root has changed
  * 3. Only re-fetch if the root has been invalidated
  * 4. Reuse cached data for multiple witness generations
@@ -100,7 +100,7 @@ async function main() {
       }
 
       // Step 4: Generate witness using cached freeze list
-      const witness = await engine.generateNonInclusionProof(address, {
+      const witness = await engine.generateFreezeListNonInclusionProof(address, {
         freezeList: cache.addresses, // Use validated cache
         programId,
       });
