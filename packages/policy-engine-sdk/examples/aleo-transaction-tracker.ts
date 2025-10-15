@@ -8,13 +8,41 @@ interface TransactionStatus {
 }
 
 /**
+ * Default timeout for individual fetch requests (30 seconds)
+ */
+const DEFAULT_FETCH_TIMEOUT = 30000;
+
+/**
+ * Wrapper for fetch with timeout support
+ * @param url - URL to fetch
+ * @param timeout - Timeout in milliseconds (default: 30 seconds)
+ * @returns Promise that resolves to Response or rejects on timeout
+ */
+async function fetchWithTimeout(url: string, timeout: number = DEFAULT_FETCH_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeout}ms: ${url}`);
+    }
+    throw error;
+  }
+}
+
+/**
  * Fetches the block height for a given transaction ID
  * Handles JSON-quoted responses from the API
  */
-async function fetchBlockHeight(baseUrl: string, txId: string): Promise<number | undefined> {
+async function fetchBlockHeight(baseUrl: string, txId: string, fetchTimeout: number = DEFAULT_FETCH_TIMEOUT): Promise<number | undefined> {
   try {
-    // Fetch block hash
-    const blockHashResponse = await fetch(`${baseUrl}/find/blockHash/${txId}`);
+    // Fetch block hash with timeout
+    const blockHashResponse = await fetchWithTimeout(`${baseUrl}/find/blockHash/${txId}`, fetchTimeout);
     if (!blockHashResponse.ok) {
       return undefined;
     }
@@ -27,8 +55,8 @@ async function fetchBlockHeight(baseUrl: string, txId: string): Promise<number |
       return undefined;
     }
 
-    // Fetch block by hash
-    const blockResponse = await fetch(`${baseUrl}/block/${blockHash}`);
+    // Fetch block by hash with timeout
+    const blockResponse = await fetchWithTimeout(`${baseUrl}/block/${blockHash}`, fetchTimeout);
     if (!blockResponse.ok) {
       return undefined;
     }
@@ -48,6 +76,7 @@ export async function trackTransactionStatus(
     maxAttempts?: number;
     pollInterval?: number;
     timeout?: number;
+    fetchTimeout?: number;
     network?: string;
   } = {}
 ): Promise<TransactionStatus> {
@@ -55,8 +84,7 @@ export async function trackTransactionStatus(
     maxAttempts = 60,
     pollInterval = 5000,
     timeout = 300000,
-    network = 'mainnet'
-  } = options;
+    fetchTimeout = DEFAULT_FETCH_TIMEOUT  } = options;
 
   const baseUrl = endpoint;
   const startTime = Date.now();
@@ -65,18 +93,23 @@ export async function trackTransactionStatus(
   while (attempts < maxAttempts) {
     attempts++;
 
-    if (Date.now() - startTime > timeout) {
-      throw new Error(`Transaction polling timeout after ${timeout}ms`);
+    // Check timeout before attempting fetch
+    const elapsedTime = Date.now() - startTime;
+    if (elapsedTime > timeout) {
+      throw new Error(
+        `Transaction polling timeout after ${Math.floor(elapsedTime / 1000)}s ` +
+        `(limit: ${Math.floor(timeout / 1000)}s, attempts: ${attempts}/${maxAttempts})`
+      );
     }
 
     try {
-      // Try to get confirmed transaction
-      const response = await fetch(`${baseUrl}/transaction/confirmed/${txId}`);
-      
+      // Try to get confirmed transaction with timeout
+      const response = await fetchWithTimeout(`${baseUrl}/transaction/confirmed/${txId}`, fetchTimeout);
+
       if (!response.ok) {
         if (response.status === 404) {
           // Transaction not yet confirmed, continue polling
-          console.log(`Attempt ${attempts}: Transaction not yet confirmed`);
+          console.log(`Attempt ${attempts}/${maxAttempts}: Transaction not yet confirmed (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`);
           await new Promise(resolve => setTimeout(resolve, pollInterval));
           continue;
         }
@@ -84,18 +117,20 @@ export async function trackTransactionStatus(
       }
 
       const transactionResonse = await response.json();
+      const txType = transactionResonse?.transaction?.type ?? transactionResonse?.type;
 
       // Check if transaction was rejected by inspecting type
-      if (transactionResonse?.transaction.type === 'fee') {
+      if (txType === 'fee') {
         // This is a rejected transaction
         // Get the original unconfirmed transaction ID
         let unconfirmedId: string | undefined;
-        
+
         try {
-          const unconfirmedResponse = await fetch(
-            `${baseUrl}/transaction/unconfirmed/${txId}`
+          const unconfirmedResponse = await fetchWithTimeout(
+            `${baseUrl}/transaction/unconfirmed/${txId}`,
+            fetchTimeout
           );
-          
+
           if (unconfirmedResponse.ok) {
             const unconfirmedData = await unconfirmedResponse.json();
             unconfirmedId = unconfirmedData.transaction?.id;
@@ -105,7 +140,7 @@ export async function trackTransactionStatus(
         }
 
         // Get block height
-        const blockHeight = await fetchBlockHeight(baseUrl, txId);
+        const blockHeight = await fetchBlockHeight(baseUrl, txId, fetchTimeout);
 
         return {
           status: 'rejected',
@@ -115,33 +150,45 @@ export async function trackTransactionStatus(
           blockHeight,
           error: 'Transaction execution failed but fee was consumed'
         };
-      } else if (transactionResonse.transaction.type === 'execute' || transactionResonse.transaction.type === 'deploy') {
+      } else if (txType === 'execute' || txType === 'deploy') {
         // Transaction was accepted
-        const blockHeight = await fetchBlockHeight(baseUrl, txId);
+        const blockHeight = await fetchBlockHeight(baseUrl, txId, fetchTimeout);
 
         return {
           status: 'accepted',
-          type: transactionResonse.type,
+          type: txType,
           confirmedId: txId,
           blockHeight,
         };
       }
-    } catch (error) {
-      if (attempts >= maxAttempts) {
-        throw error;
-      }
-      // Continue polling on error
-    }
+    } catch (error: any) {
+      // Log the error for debugging
+      const errorMessage = error?.message || String(error);
+      console.warn(`Attempt ${attempts}/${maxAttempts}: Fetch error - ${errorMessage}`);
 
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+      if (attempts >= maxAttempts) {
+        throw new Error(`Failed after ${maxAttempts} attempts. Last error: ${errorMessage}`);
+      }
+
+      // If this is a timeout error, it's likely the endpoint is unresponsive
+      if (errorMessage.includes('timeout')) {
+        console.warn(`      Endpoint may be unresponsive. Will retry in ${pollInterval / 1000}s...`);
+      }
+
+      // Continue polling on error, but respect overall timeout
+      const timeUntilTimeout = timeout - (Date.now() - startTime);
+      const waitTime = Math.min(pollInterval, timeUntilTimeout);
+
+      if (waitTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
   }
 
-  // Check if transaction was aborted
-  // Note: This requires knowing a block range to check
-  return {
-    status: 'pending',
-    type: 'execute',
-    confirmedId: txId,
-    error: 'Transaction status could not be determined'
-  };
+  // Exhausted max attempts without confirmation
+  const elapsedTime = Date.now() - startTime;
+  throw new Error(
+    `Transaction status could not be determined after ${attempts} attempts ` +
+    `(${Math.floor(elapsedTime / 1000)}s elapsed). Transaction may still be pending.`
+  );
 }
