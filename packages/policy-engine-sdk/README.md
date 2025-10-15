@@ -155,9 +155,7 @@ const tx = await policyContract.transfer_private(
   recipient,
   amount,
   inputRecord,
-  witness.proofs[0], // sender proof
-  witness.proofs[1], // recipient proof
-  investigatorAddress
+  witness.proofs
 );
 ```
 
@@ -394,7 +392,8 @@ npm run clean
 
 ## License
 
-Apache-2.0
+This repository is licensed under the Apache License, Version 2.0.  
+See the [LICENSE](./LICENSE) file for details.
 
 ## Support
 

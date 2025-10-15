@@ -8,11 +8,6 @@ Get up and running with `@sealance-io/policy-engine-aleo` in 5 minutes.
 npm install @sealance-io/policy-engine-aleo
 ```
 
-Configure `.npmrc` for GitHub registry:
-```bash
-echo "@sealance-io:registry=https://npm.pkg.github.com" >> .npmrc
-```
-
 ## Basic Usage
 
 ### 1. Initialize the SDK
@@ -39,12 +34,12 @@ const engine = new PolicyEngine();
 ### 2. Fetch Freeze List
 
 ```typescript
-const result = await engine.fetchFreezeListFromChain(
+const freezeList = await engine.fetchFreezeListFromChain(
   "sealance_freezelist_registry.aleo"
 );
 
-console.log(`Found ${result.addresses.length} frozen addresses`);
-console.log(`Current root: ${result.currentRoot}`);
+console.log(`Found ${freezeList.addresses.length} frozen addresses`);
+console.log(`Current root: ${freezeList.currentRoot}`);
 ```
 
 ### 3. Generate Proof
@@ -53,7 +48,7 @@ console.log(`Current root: ${result.currentRoot}`);
 const witness = await engine.generateFreezeListNonInclusionProof(
   "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
   {
-    programId: "sealance_freezelist_registry.aleo"
+    freezeList: freezeList.addresses
   }
 );
 
@@ -220,13 +215,3 @@ try {
 - Check [examples/](./examples/) for complete examples
 - Review [DEVELOPMENT.md](./DEVELOPMENT.md) for contributing
 - See [CHANGELOG.md](./CHANGELOG.md) for version history
-
-## Support
-
-For issues and questions:
-- GitHub Issues: https://github.com/sealance-io/compliant-transfer-aleo/issues
-- Documentation: https://github.com/sealance-io/compliant-transfer-aleo
-
-## License
-
-Apache-2.0 © 2024 Sealance Team
