@@ -6,7 +6,8 @@ import type {
   MerkleProof,
 } from "./types.js";
 import { AleoAPIClient } from "./api-client.js";
-import { buildTree, generateLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } from "./merkle-tree.js";
+import { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "./merkle-tree.js";
+import { ZERO_ADDRESS } from "./constants.js";
 import { defaultLogger } from "./logger.js";
 
 /**
