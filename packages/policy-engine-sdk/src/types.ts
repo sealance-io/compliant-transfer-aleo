@@ -92,20 +92,20 @@ export interface FreezeListResult {
   addresses: string[];
 
   /**
-   * Last index in the freeze list
+   * Last populated index in the on-chain freeze list
    */
   lastIndex: number;
 
   /**
-   * Current Merkle root of the freeze list
+   * Current on-chain Merkle root of the freeze list
    */
   currentRoot: bigint;
 }
 
 /**
- * Options for generating transfer witness
+ * Options for generating non-inclusion proof
  */
-export interface TransferWitnessOptions {
+export interface NonInclusionProofOptions {
   /**
    * The freeze list addresses (if already fetched)
    * If not provided, programId must be specified to fetch from chain
@@ -120,9 +120,9 @@ export interface TransferWitnessOptions {
 }
 
 /**
- * Result of generating transfer witness
+ * Result of generating non-inclusion proof
  */
-export interface TransferWitness {
+export interface NonInclusionWitness {
   /**
    * Array of two Merkle proofs for non-inclusion verification
    */

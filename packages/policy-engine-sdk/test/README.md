@@ -56,7 +56,7 @@ Tests for main PolicyEngine class:
 - `getConfig`: Configuration retrieval
 - `fetchCurrentRoot`: Lightweight root fetching
 - `fetchFreezeListFromChain`: Blockchain data fetching
-- `generateNonInclusionProof`: Complete proof generation
+- `generateFreezeListNonInclusionProof`: Complete proof generation
 - Integration scenarios with caching
 
 ## Coverage

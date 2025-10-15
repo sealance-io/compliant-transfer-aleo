@@ -50,7 +50,7 @@ console.log(`Current root: ${result.currentRoot}`);
 ### 3. Generate Proof
 
 ```typescript
-const witness = await engine.generateNonInclusionProof(
+const witness = await engine.generateFreezeListNonInclusionProof(
   "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px",
   {
     programId: "sealance_freezelist_registry.aleo"
@@ -112,7 +112,7 @@ for (const address of addresses) {
   }
 
   // Use validated cache
-  const witness = await engine.generateNonInclusionProof(address, {
+  const witness = await engine.generateFreezeListNonInclusionProof(address, {
     freezeList: cache.addresses,
     programId
   });
@@ -172,7 +172,7 @@ const root = tree[tree.length - 1];
 
 - `fetchCurrentRoot(programId)`: Fetch only the root (lightweight, 1 API call)
 - `fetchFreezeListFromChain(programId)`: Fetch addresses from chain
-- `generateNonInclusionProof(address, options)`: Generate non-inclusion proof
+- `generateFreezeListNonInclusionProof(address, options)`: Generate non-inclusion proof
 - `buildMerkleTree(addresses)`: Build tree from addresses
 - `getMerkleRoot(addresses)`: Get root from addresses
 - `getConfig()`: Get current configuration
@@ -192,8 +192,8 @@ const root = tree[tree.length - 1];
 - `MerkleProof`: Proof structure
 - `PolicyEngineConfig`: SDK configuration
 - `FreezeListResult`: Fetch result
-- `TransferWitnessOptions`: Witness options
-- `TransferWitness`: Witness result
+- `NonInclusionProofOptions`: Witness options
+- `NonInclusionWitness`: Witness result
 
 ## Error Handling
 
@@ -201,7 +201,7 @@ Always wrap API calls in try-catch:
 
 ```typescript
 try {
-  const witness = await engine.generateNonInclusionProof(address);
+  const witness = await engine.generateFreezeListNonInclusionProof(address);
   // Use witness...
 } catch (error) {
   if (error.message.includes("Failed to fetch")) {
