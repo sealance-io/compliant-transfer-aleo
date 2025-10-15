@@ -51,8 +51,15 @@ const EXAMPLE_CONFIG = {
   priorityFee: 0, // Priority fee in microcredits
 
   // Transaction tracking configuration
+  // NOTE: Adjust timeouts based on your network conditions:
+  // - For fast/reliable networks: shorter timeouts are fine
+  // - For slow/unreliable networks: increase timeouts to avoid false failures
+  // - Production: consider 5-10 minutes for trackingTimeout
   trackTransaction: true, // Set to false to skip waiting for confirmation
-  trackingTimeout: 300000, // 5 minutes (in milliseconds)
+  trackingTimeout: 120000, // Overall timeout: 2 minutes (reasonable for testing, increase for production)
+  fetchTimeout: 30000, // Per-request timeout: 30 seconds (prevents hanging on unresponsive endpoints)
+  maxTrackingAttempts: 60, // Maximum polling attempts before giving up
+  pollInterval: 5000, // Delay between polls: 5 seconds
 };
 
 // ============================================================================
@@ -188,7 +195,12 @@ async function main() {
       console.log(`      Waiting for transaction to be included in a block...`);
       console.log(`      (This may take several minutes)`);
 
-      const status = await trackTransactionStatus(txId, EXAMPLE_CONFIG.endpoint + `/${EXAMPLE_CONFIG.network}`);
+      const status = await trackTransactionStatus(txId, EXAMPLE_CONFIG.endpoint + `/${EXAMPLE_CONFIG.network}`, {
+        timeout: EXAMPLE_CONFIG.trackingTimeout,
+        fetchTimeout: EXAMPLE_CONFIG.fetchTimeout,
+        maxAttempts: EXAMPLE_CONFIG.maxTrackingAttempts,
+        pollInterval: EXAMPLE_CONFIG.pollInterval,
+      });
 
       console.log(`\n[5/5] ✅ Transaction tracking complete!`);
       console.log(`\nFinal Status:`);
