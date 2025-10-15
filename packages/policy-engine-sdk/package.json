@@ -19,8 +19,7 @@
     "LICENSE"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "@sealance-io:registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
@@ -32,7 +31,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build",
-    "build:examples": "npm run build && cd examples && npm install"
+    "build:examples": "npm run build && cd examples && npm install",
+    "publish:github": "npm publish --registry=https://npm.pkg.github.com",
+    "publish:npm": "npm publish --registry=https://registry.npmjs.org"
   },
   "keywords": [
     "aleo",
