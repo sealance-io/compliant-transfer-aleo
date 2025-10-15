@@ -8,7 +8,6 @@ import {
   BURNER_ROLE,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
-  MAX_TREE_SIZE,
   MINTER_ROLE,
   NONE_ROLE,
   PAUSE_ROLE,
@@ -17,13 +16,12 @@ import {
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
+  MAX_TREE_DEPTH,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { buildTree, genLeaves } from "../lib/MerkleTree";
 import { Account, AleoNetworkClient } from "@provablehq/sdk";
-import { stringToBigInt } from "../lib/Conversion";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Token } from "../artifacts/js/types/compliant_token_template";
 import { Credentials } from "../artifacts/js/types/compliant_token_template";
@@ -35,6 +33,7 @@ import { Compliant_token_templateContract } from "../artifacts/js/compliant_toke
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { isProgramInitialized } from "../lib/Initalize";
 import { getLatestBlockHeight } from "../lib/Block";
+import { buildTree, generateLeaves, stringToBigInt } from "@sealance-io/policy-engine-aleo";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -143,18 +142,18 @@ describe("test sealed_standalone_token program", () => {
   let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
   let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
   test(`generate merkle proofs`, async () => {
-    const leaves = genLeaves([frozenAccount]);
+    const leaves = generateLeaves([frozenAccount]);
     const tree = buildTree(leaves);
     root = tree[tree.length - 1];
     const senderLeafIndices = getLeafIndices(tree, account);
     const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
     senderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
     ];
     frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH),
     ];
   });
 
@@ -673,12 +672,12 @@ describe("test sealed_standalone_token program", () => {
     await expect(tokenContractForFrozenAccount.get_credentials(frozenAccountMerkleProof)).rejects.toThrow();
 
     const randomAddress = new Account().address().to_string();
-    const leaves = genLeaves([randomAddress]);
+    const leaves = generateLeaves([randomAddress]);
     const tree = buildTree(leaves);
     const senderLeafIndices = getLeafIndices(tree, account);
     const IncorrectSenderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_SIZE),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_SIZE),
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
     ];
 
     // If the root doesn't match the on-chain root the transaction will be rejected
