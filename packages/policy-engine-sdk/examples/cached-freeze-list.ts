@@ -102,7 +102,6 @@ async function main() {
       // Step 4: Generate witness using cached freeze list
       const witness = await engine.generateFreezeListNonInclusionProof(address, {
         freezeList: cache.addresses, // Use validated cache
-        programId,
       });
 
       console.log(`  Root: ${witness.root}`);
