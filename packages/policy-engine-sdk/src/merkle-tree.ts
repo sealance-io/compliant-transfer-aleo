@@ -1,10 +1,6 @@
 import { Field, Plaintext, Poseidon4 } from "@provablehq/sdk";
 import { convertAddressToField } from "./conversion.js";
-
-/**
- * Zero address constant used for padding Merkle trees
- */
-export const ZERO_ADDRESS = "aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc";
+import { ZERO_ADDRESS } from "./constants.js";
 
 // Create a single hasher instance for reuse (init is heavy!)
 // TODO: Should we call 'free()' to dispose underlying WASM?

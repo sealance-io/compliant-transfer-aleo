@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PolicyEngine } from "../src/policy-engine.js";
-import { ZERO_ADDRESS } from "../src/merkle-tree.js";
+import { ZERO_ADDRESS } from "../src/constants.js";
 import { silentLogger } from "../src/logger.js";
 
 describe("PolicyEngine", () => {

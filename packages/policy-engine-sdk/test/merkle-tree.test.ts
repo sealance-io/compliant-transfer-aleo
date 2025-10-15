@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildTree, generateLeaves, getLeafIndices, getSiblingPath, ZERO_ADDRESS } from "../src/merkle-tree.js";
+import { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "../src/merkle-tree.js";
+import { ZERO_ADDRESS } from "../src/constants.js";
 
 describe("merkle_tree lib, buildTree", () => {
   it("should build a valid tree with 2 leaves", async () => {
