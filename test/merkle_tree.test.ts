@@ -500,14 +500,22 @@ describe("merkle_tree program tests", () => {
         }
       }
     }
-    const merkleProof1 = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_SIZE);
-    const merkleProof2 = getSiblingPath(tree.slice(size), rightLeafIndex, MAX_TREE_SIZE);
 
-    const tx = await contract.verify_non_inclusion(frozenAddress, [merkleProof1, merkleProof2]);
-    const [root] = await tx.wait();
+    if (leftLeafIndex === rightLeafIndex) {
+      // When the merkle proofs are the same, `verify_non_inclusion` will succeed, but the computed root will differ from the original tree root.
+      const merkleProof = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_SIZE);
+      const tx = await contract.verify_non_inclusion(frozenAddress, [merkleProof, merkleProof]);
+      const [root] = await tx.wait();
 
-    expect(addresses.includes(frozenAddress));
-    // If the second preimage attack is successfull the test should fail here
-    expect(root).not.toBe(tree[tree.length - 1]);
+      expect(addresses.includes(frozenAddress));
+      // If a second preimage attack succeeds, the computed root would incorrectly match the original root
+      expect(root).not.toBe(tree[tree.length - 1]);
+    } else {
+      // When the merkle proofs correspond to different leaves, `verify_non_inclusion` should reject the proofs.
+      const merkleProof1 = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_SIZE);
+      const merkleProof2 = getSiblingPath(tree.slice(size), rightLeafIndex, MAX_TREE_SIZE);
+      // If a second preimage attack were possible here, this call would unexpectedly succeed.
+      await expect(contract.verify_non_inclusion("frozenAddress", [merkleProof1, merkleProof2])).rejects.toThrow();
+    }
   });
 });
