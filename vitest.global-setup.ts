@@ -29,7 +29,7 @@ let devnetContainer: StartedTestContainer | undefined;
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
 const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/aleo-devnet:v3.2.0-v4.2.2";
 const DEVNET_VERBOSITY = process.env.DEVNET_VERBOSITY || "1";
-const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "9";
+const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "10";
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "180000", 10); // 3 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 
