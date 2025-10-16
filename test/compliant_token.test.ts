@@ -26,8 +26,8 @@ import { Account, AleoNetworkClient } from "@provablehq/sdk";
 import { stringToBigInt } from "../lib/Conversion";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Token } from "../artifacts/js/types/compliant_token_template";
-import { Ticket } from "../artifacts/js/types/compliant_token_template";
-import { decryptTicket } from "../artifacts/js/leo2js/compliant_token_template";
+import { Credentials } from "../artifacts/js/types/compliant_token_template";
+import { decryptCredentials } from "../artifacts/js/leo2js/compliant_token_template";
 import { decryptComplianceRecord } from "../artifacts/js/leo2js/compliant_token_template";
 
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
@@ -667,10 +667,10 @@ describe("test sealed_standalone_token program", () => {
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
 
-  let ticket: Ticket;
+  let ticket: Credentials;
   test(`test get_ticket`, async () => {
     // It's impossible to get the credentials record with an invalid merkle proof
-    await expect(tokenContractForFrozenAccount.get_ticket(frozenAccountMerkleProof)).rejects.toThrow();
+    await expect(tokenContractForFrozenAccount.get_credentials(frozenAccountMerkleProof)).rejects.toThrow();
 
     const randomAddress = new Account().address().to_string();
     const leaves = genLeaves([randomAddress]);
@@ -682,18 +682,18 @@ describe("test sealed_standalone_token program", () => {
     ];
 
     // If the root doesn't match the on-chain root the transaction will be rejected
-    const rejectedTx = await tokenContractForAccount.get_ticket(IncorrectSenderMerkleProof);
+    const rejectedTx = await tokenContractForAccount.get_credentials(IncorrectSenderMerkleProof);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await tokenContractForAccount.get_ticket(senderMerkleProof);
+    const tx = await tokenContractForAccount.get_credentials(senderMerkleProof);
     const [encryptedTicket] = await tx.wait();
-    ticket = await decryptTicket(encryptedTicket, accountPrivKey);
+    ticket = await decryptCredentials(encryptedTicket, accountPrivKey);
     expect(ticket.owner).toBe(account);
     expect(ticket.freeze_list_root).toBe(root);
   });
 
   test(`test transfer with ticket`, async () => {
-    let transferPrivateTx = await tokenContractForAccount.transfer_private_with_ticket(
+    let transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
       recipient,
       amount,
       accountRecord,
@@ -702,7 +702,7 @@ describe("test sealed_standalone_token program", () => {
     privateAccountBalance -= amount;
     let [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
-    ticket = await decryptTicket(encryptedCredRecord, accountPrivKey);
+    ticket = await decryptCredentials(encryptedCredRecord, accountPrivKey);
     expect(ticket.owner).toBe(account);
     expect(ticket.freeze_list_root).toBe(root);
     let previousAmount = accountRecord.amount;
@@ -731,7 +731,7 @@ describe("test sealed_standalone_token program", () => {
     let updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(1);
     await updateBlockHeightWindowTx.wait();
 
-    let rejectedTransferPrivateTx = await tokenContractForAccount.transfer_private_with_ticket(
+    let rejectedTransferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
       recipient,
       amount,
       accountRecord,
@@ -745,7 +745,7 @@ describe("test sealed_standalone_token program", () => {
     updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(BLOCK_HEIGHT_WINDOW);
     await updateBlockHeightWindowTx.wait();
 
-    transferPrivateTx = await tokenContractForAccount.transfer_private_with_ticket(
+    transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
       recipient,
       amount,
       accountRecord,
@@ -754,7 +754,7 @@ describe("test sealed_standalone_token program", () => {
     privateAccountBalance -= amount;
     [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
-    ticket = await decryptTicket(encryptedCredRecord, accountPrivKey);
+    ticket = await decryptCredentials(encryptedCredRecord, accountPrivKey);
     expect(ticket.owner).toBe(account);
     expect(ticket.freeze_list_root).toBe(root);
     previousAmount = accountRecord.amount;
@@ -837,7 +837,7 @@ describe("test sealed_standalone_token program", () => {
     );
     await expect(privateToPublic.wait()).rejects.toThrow();
 
-    let privateWithTicketTx = await tokenContractForAccount.transfer_private_with_ticket(
+    let privateWithTicketTx = await tokenContractForAccount.transfer_private_with_creds(
       recipient,
       amount,
       accountRecord,

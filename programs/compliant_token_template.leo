@@ -21,7 +21,7 @@ program compliant_token_template.aleo {
         recipient: address
     }
 
-    record Ticket {
+    record Credentials {
         owner: address,
         freeze_list_root: field,
     }
@@ -144,20 +144,20 @@ program compliant_token_template.aleo {
         pause.set(PAUSE_STATUS_INDEX, false);
     }
 
-    // Generates a Ticket record for the signer.
+    // Generates a Credential record for the signer.
     // Allows future private transfers without needing to re-prove non-inclusion in the freeze list.
     // The signer's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
-    async transition get_ticket(sender_merkle_proofs: [MerkleProof;2]) -> (Ticket, Future) {
+    async transition get_credentials(sender_merkle_proofs: [MerkleProof;2]) -> (Credentials, Future) {
         let root: field = verify_non_inclusion(self.signer, sender_merkle_proofs);
 
-        let ticket_record: Ticket = Ticket {
+        let credentials_record: Credentials = Credentials {
             owner: self.signer,
             freeze_list_root: root,
         };
 
-        return (ticket_record, f_get_ticket(root));
+        return (credentials_record, f_get_credentials(root));
     }
-    async function f_get_ticket(root: field) {
+    async function f_get_credentials(root: field) {
         let current_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         let window: u32 = sealance_freezelist_registry.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
 
@@ -645,7 +645,7 @@ program compliant_token_template.aleo {
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // A Ticket record is emitted for the sender
+    // A Credentials record is emitted for the sender
     // Both sender and recipient must not be frozen in the freeze list.
     // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private_to_public(
@@ -749,13 +749,13 @@ program compliant_token_template.aleo {
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // The sender must not be frozen in the freeze list.
-    // The sender's privacy is preserved by using a Ticket record.
-    async transition transfer_private_with_ticket(
+    // The sender's privacy is preserved by using a Credentials record.
+    async transition transfer_private_with_creds(
         recipient: address,
         amount: u128,
         input_record: Token,
-        ticket: Ticket,
-    ) -> (ComplianceRecord, Token, Token, Ticket, Future) {
+        credentials: Credentials,
+    ) -> (ComplianceRecord, Token, Token, Credentials, Future) {
         let updated_record: Token = Token {
             owner: input_record.owner,
             amount: input_record.amount - amount
@@ -773,15 +773,15 @@ program compliant_token_template.aleo {
             recipient: recipient,
         };
 
-        let ticket_record: Ticket = Ticket {
-            owner: ticket.owner,
-            freeze_list_root: ticket.freeze_list_root,
+        let credentials_record: Credentials = Credentials {
+            owner: credentials.owner,
+            freeze_list_root: credentials.freeze_list_root,
         };
 
-        return (compliance_record, updated_record, transfer_record, ticket_record, f_transfer_private_ticket(ticket.freeze_list_root));
+        return (compliance_record, updated_record, transfer_record, credentials_record, f_transfer_private_credentials(credentials.freeze_list_root));
     }
 
-    async function f_transfer_private_ticket(root: field) {
+    async function f_transfer_private_credentials(root: field) {
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
