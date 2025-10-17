@@ -43,11 +43,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4.4.0
         with:
-          cache: "npm"
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
+        run: |
+          npm ci --no-audit --no-fund
+          npm rebuild --optional
 
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
