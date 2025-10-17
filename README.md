@@ -52,13 +52,18 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 ## Getting Started
 
 1. **Install Dependencies**
-   Navigate to the repository root and run:
+
+   **IMPORTANT**: Always install from the repository root. The repository uses npm workspaces with a single root `package-lock.json` that manages all dependencies.
 
    ```bash
+   # Navigate to repository root
+   cd compliant-transfer-aleo
+
+   # Install all dependencies (root + SDK workspace)
    npm ci
    ```
 
-   This will install dependencies for both the root workspace and the SDK workspace using npm's workspace feature.
+   **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.
 
 2. **Install doko-js CLI**
    [Jump to Installation Guide](docs/doko-installation-guide.md)

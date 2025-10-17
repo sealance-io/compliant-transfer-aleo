@@ -47,7 +47,7 @@ jobs:
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo

@@ -4,3 +4,5 @@ coverage/
 *.log
 .DS_Store
 .vitest
+package-lock.json
+.npmrc
