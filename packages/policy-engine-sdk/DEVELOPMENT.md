@@ -22,15 +22,27 @@ packages/policy-engine-sdk/
 
 ### Initial Setup
 
+**IMPORTANT**: This package is part of an npm workspace. Always install dependencies from the repository root:
+
 ```bash
-cd packages/policy-engine-sdk
-npm install
+# From repository root (RECOMMENDED)
+cd /path/to/compliant-transfer-aleo
+npm ci
+
+# This installs dependencies for both root and all workspace packages
+# The root package-lock.json manages all dependencies
 ```
+
+**Note**: Do not run `npm install` directly in the SDK directory. The workspace structure requires installation from the root to ensure consistent dependency resolution across all packages.
 
 ### Building
 
 ```bash
-# Clean and build
+# From repository root (RECOMMENDED)
+npm run build --workspace=@sealance-io/policy-engine-aleo
+
+# Or from SDK directory (alternative)
+cd packages/policy-engine-sdk
 npm run build
 
 # Clean only
@@ -61,20 +73,43 @@ Uses Prettier with the following settings:
 
 ### Publishing
 
-```bash
-# Build and publish to GitHub npm registry
-npm publish
-```
+The SDK can be published to both GitHub npm registry and public npm registry.
 
 **Prerequisites:**
-1. Authenticate with GitHub npm registry:
-   ```bash
-   npm login --scope=@sealance-io --registry=https://npm.pkg.github.com
-   ```
 
-2. Ensure you have write access to the `sealance-io` organization
+1. **For GitHub npm registry:**
+   - Create a GitHub Personal Access Token with `write:packages` permission
+   - Add to `~/.npmrc`:
+     ```
+     //npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+     ```
+
+2. **For npm registry:**
+   - Create an npm Access Token (Automation or Publish type)
+   - Add to `~/.npmrc`:
+     ```
+     //registry.npmjs.org/:_authToken=YOUR_NPM_TOKEN
+     ```
+
+**Publishing Commands:**
+
+```bash
+# From SDK directory
+cd packages/policy-engine-sdk
+
+# Publish to GitHub npm registry
+npm run publish:github
+
+# Publish to public npm registry
+npm run publish:npm
+
+# If you need to provide OTP for npm (with 2FA)
+npm run publish:npm:otp=123456
+```
 
 The `prepublishOnly` script automatically builds the package before publishing.
+
+**Note**: When publishing to both registries, ensure your authentication tokens are properly configured in `~/.npmrc` as shown in the prerequisites.
 
 ## Architecture
 
