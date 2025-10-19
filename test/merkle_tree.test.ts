@@ -515,7 +515,7 @@ describe("merkle_tree program tests", () => {
       const merkleProof1 = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_SIZE);
       const merkleProof2 = getSiblingPath(tree.slice(size), rightLeafIndex, MAX_TREE_SIZE);
       // If a second preimage attack were possible here, this call would unexpectedly succeed.
-      await expect(contract.verify_non_inclusion("frozenAddress", [merkleProof1, merkleProof2])).rejects.toThrow();
+      await expect(contract.verify_non_inclusion(frozenAddress, [merkleProof1, merkleProof2])).rejects.toThrow();
     }
   });
 });
