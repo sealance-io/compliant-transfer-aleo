@@ -667,8 +667,8 @@ describe("test sealed_standalone_token program", () => {
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
 
-  let ticket: Credentials;
-  test(`test get_ticket`, async () => {
+  let credentials: Credentials;
+  test(`test get_credentials`, async () => {
     // It's impossible to get the credentials record with an invalid merkle proof
     await expect(tokenContractForFrozenAccount.get_credentials(frozenAccountMerkleProof)).rejects.toThrow();
 
@@ -687,24 +687,24 @@ describe("test sealed_standalone_token program", () => {
 
     const tx = await tokenContractForAccount.get_credentials(senderMerkleProof);
     const [encryptedTicket] = await tx.wait();
-    ticket = await decryptCredentials(encryptedTicket, accountPrivKey);
-    expect(ticket.owner).toBe(account);
-    expect(ticket.freeze_list_root).toBe(root);
+    credentials = await decryptCredentials(encryptedTicket, accountPrivKey);
+    expect(credentials.owner).toBe(account);
+    expect(credentials.freeze_list_root).toBe(root);
   });
 
-  test(`test transfer with ticket`, async () => {
+  test(`test transfer with credentials`, async () => {
     let transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
       recipient,
       amount,
       accountRecord,
-      ticket,
+      credentials,
     );
     privateAccountBalance -= amount;
     let [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
-    ticket = await decryptCredentials(encryptedCredRecord, accountPrivKey);
-    expect(ticket.owner).toBe(account);
-    expect(ticket.freeze_list_root).toBe(root);
+    credentials = await decryptCredentials(encryptedCredRecord, accountPrivKey);
+    expect(credentials.owner).toBe(account);
+    expect(credentials.freeze_list_root).toBe(root);
     let previousAmount = accountRecord.amount;
     accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
     let recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
@@ -719,7 +719,7 @@ describe("test sealed_standalone_token program", () => {
     expect(decryptedComplianceRecord.sender).toBe(account);
     expect(decryptedComplianceRecord.recipient).toBe(recipient);
 
-    // Update the root to make the old ticket expired
+    // Update the root to make the old credentials expired
     let updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
       frozenAccount,
       false,
@@ -735,7 +735,7 @@ describe("test sealed_standalone_token program", () => {
       recipient,
       amount,
       accountRecord,
-      ticket,
+      credentials,
     );
     await expect(rejectedTransferPrivateTx.wait()).rejects.toThrow();
 
@@ -749,14 +749,14 @@ describe("test sealed_standalone_token program", () => {
       recipient,
       amount,
       accountRecord,
-      ticket,
+      credentials,
     );
     privateAccountBalance -= amount;
     [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
       await transferPrivateTx.wait();
-    ticket = await decryptCredentials(encryptedCredRecord, accountPrivKey);
-    expect(ticket.owner).toBe(account);
-    expect(ticket.freeze_list_root).toBe(root);
+    credentials = await decryptCredentials(encryptedCredRecord, accountPrivKey);
+    expect(credentials.owner).toBe(account);
+    expect(credentials.freeze_list_root).toBe(root);
     previousAmount = accountRecord.amount;
     accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
     recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
@@ -841,7 +841,7 @@ describe("test sealed_standalone_token program", () => {
       recipient,
       amount,
       accountRecord,
-      ticket,
+      credentials,
     );
     await expect(privateWithTicketTx.wait()).rejects.toThrow();
 
