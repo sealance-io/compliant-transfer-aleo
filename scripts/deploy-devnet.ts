@@ -5,7 +5,7 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from "../contract/base-contract";
-import { BLOCK_HEIGHT_WINDOW, fundedAmount, policies } from "../lib/Constants";
+import { BLOCK_HEIGHT_WINDOW, FREEZELIST_MANAGER_ROLE, fundedAmount, MANAGER_ROLE, policies } from "../lib/Constants";
 import { registerTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
 import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
@@ -137,6 +137,9 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
   await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
   await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
+
+  const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+  await tx.wait();
 
   process.exit(0);
 })();
