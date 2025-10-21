@@ -54,7 +54,7 @@ program compliant_token_template.aleo {
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
 
-    // Only this address can deploy the program
+    // Only this address can initialize the program
     const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
     // Only this address can upgrade the program
