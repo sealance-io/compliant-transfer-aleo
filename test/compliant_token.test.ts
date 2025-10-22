@@ -262,6 +262,10 @@ describe("test sealed_standalone_token program", () => {
     rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
+    // Manager cannot unassign himself from being a manager
+    rejectedTx = await tokenContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
     // Manager can assign minter, burner, manager, pauser and supply manager roles
     tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE);
     await tx.wait();
