@@ -67,7 +67,7 @@ jobs:
       actions: "read"
     timeout-minutes: 180
     container:
-      image: ghcr.io/sealance-io/leo-lang-ci:v3.2.0
+      image: ghcr.io/sealance-io/leo-lang-ci:v3.2.0-node24-trixie
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
@@ -84,6 +84,7 @@ jobs:
         with:
           doko-repo: "sealance-io/doko-js"
           doko-branch: "fixes_to_dokojs"
+          node-version: 24
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
