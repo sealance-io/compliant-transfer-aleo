@@ -107,11 +107,11 @@ check_dependencies() {
     fi
     
     if ! command_exists node; then
-        missing_deps+=("Node.js version 22")
+        missing_deps+=("Node.js version 24")
     else
         NODE_VERSION=$(node --version | cut -c 2- | cut -d. -f1)
-        if [ "$NODE_VERSION" -lt 22 ]; then
-            echo "Warning: Node.js version $NODE_VERSION is lower than the recommended version 22."
+        if [ "$NODE_VERSION" -lt 24 ]; then
+            echo "Warning: Node.js version $NODE_VERSION is lower than the recommended version 24."
         fi
     fi
     
@@ -137,8 +137,8 @@ setup_node() {
             echo "Found .nvmrc, using specified Node.js version..."
             nvm use || nvm install
         else
-            echo "Using Node.js version 22..."
-            nvm use 22 || nvm install 22
+            echo "Using Node.js version 24..."
+            nvm use 24 || nvm install 24
         fi
     fi
 }
