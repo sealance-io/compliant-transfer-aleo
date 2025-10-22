@@ -126,7 +126,7 @@ jobs:
 
           # Configuration with defaults
           TESTNET_ENDPOINT="${TESTNET_ENDPOINT:-http://host.docker.internal:3030}"
-          TIMEOUT="${DEVNET_CHECK_TIMEOUT:-180000}"  # in milliseconds
+          TIMEOUT="${DEVNET_CHECK_TIMEOUT:-270000}"  # in milliseconds
           INTERVAL="${DEVNET_CHECK_INTERVAL:-5000}"   # in milliseconds
 
           # Parse TESTNET_ENDPOINT to extract host and port
