@@ -170,7 +170,7 @@ program compliant_token_template.aleo {
     }
 
     // Mints new public tokens to the specified recipient’s balance.
-    // Can be called by the admin, a minter, or a supply manager.
+    // Can be called only by a minter.
     // Ensures that the new total supply does not exceed the maximum supply.
     // Updates the recipient’s balance and the total token supply in the token metadata.
     async transition mint_public(
@@ -213,7 +213,7 @@ program compliant_token_template.aleo {
     }
 
     // Mints new private tokens to the specified recipient.
-    // Can be called by the admin, a minter, or a supply manager.
+    // Can be called only by a minter.
     // Ensures that the new total supply does not exceed the maximum supply.
     // Updates the total token supply in the token metadata.
     async transition mint_private(
@@ -263,7 +263,7 @@ program compliant_token_template.aleo {
     }
 
     // Burns public tokens from the specified owner’s balance.
-    // Can be called by the admin, a burner, or a supply manager.
+    // Can be called only by a burner.
     // Decreases the owner’s balance and reduces the total token supply in the token metadata.
     async transition burn_public(
         public owner: address,
@@ -301,7 +301,7 @@ program compliant_token_template.aleo {
     }
 
     // Burns tokens from a private record (non-public asset).
-    // Can be called by the admin, a burner, or a supply manager.
+    // Can be called only by a burner.
     // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
     async transition burn_private(
         input_record: Token,
@@ -468,17 +468,17 @@ program compliant_token_template.aleo {
     // Decreases the spender’s allowance by the transferred amount.
     // Both sender and recipient must not be frozen in the freeze list.
     async transition transfer_from_public(
-        public owner: address,
+        public sender: address,
         public recipient: address,
         public amount: u128
     ) -> Future {
         let allowance: TokenAllowance = TokenAllowance {
-            account: owner,
+            account: sender,
             spender: self.caller,
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
-        return finalize_transfer_from_public(owner, recipient, amount, allowance_key);
+        return finalize_transfer_from_public(sender, recipient, amount, allowance_key);
     }
 
     async function finalize_transfer_from_public(
@@ -549,7 +549,7 @@ program compliant_token_template.aleo {
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
     // The sender must not be frozen in the freeze list.
     async transition transfer_from_public_to_private(
-        public owner: address,
+        public sender: address,
         recipient: address,
         public amount: u128,
     ) -> (ComplianceRecord, Token, Future) {
@@ -560,7 +560,7 @@ program compliant_token_template.aleo {
         };
 
         let allowance: TokenAllowance = TokenAllowance {
-            account: owner,
+            account: sender,
             spender: self.caller,
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -568,11 +568,11 @@ program compliant_token_template.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR_ADDRESS,
             amount: amount,
-            sender: owner,
+            sender: sender,
             recipient: recipient,
         };
 
-        return (compliance_record, token, f_transfer_from_public_to_priv(owner, amount, allowance_key));
+        return (compliance_record, token, f_transfer_from_public_to_priv(sender, amount, allowance_key));
     }
 
     async function f_transfer_from_public_to_priv(
@@ -645,7 +645,7 @@ program compliant_token_template.aleo {
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
-    // A Credentials record is emitted for the sender
+    // A Compliant record is emitted for the sender
     // Both sender and recipient must not be frozen in the freeze list.
     // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     async transition transfer_private_to_public(
