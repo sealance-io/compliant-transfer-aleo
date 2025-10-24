@@ -122,13 +122,17 @@ describe("test freeze_registry program", () => {
   });
 
   test(`test update_manager_address`, async () => {
+    // Manager cannot unassign himself from being a manager
+    let rejectedTx = await freezeRegistryContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
     let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
     await tx.wait();
 
     let role = await freezeRegistryContract.address_to_role(frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
-    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, NONE_ROLE);
+    tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, NONE_ROLE);
     await tx.wait();
     role = await freezeRegistryContract.address_to_role(frozenAccount);
     expect(role).toBe(NONE_ROLE);

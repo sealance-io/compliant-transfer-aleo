@@ -82,15 +82,19 @@ program compliant_token_template.aleo {
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
+    // Ensures the caller retains manager privileges, preventing a state with no active managers.
     async transition update_role(public new_address: address, role: u16) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
     async function f_update_role(new_address: address, caller: address, new_role: u16) {
         let current_role: u16 = address_to_role.get(caller);
         assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
         
         address_to_role.set(new_address, new_role);
-
     }
 
     // Initializes the freeze list, token specifications, the admin and the investigator.
