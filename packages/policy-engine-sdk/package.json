@@ -45,7 +45,7 @@
   ],
   "dependencies": {
     "@provablehq/sdk": "^0.9.7",
-    "@scure/base": "^1.2.5"
+    "@scure/base": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "24.9.1",
