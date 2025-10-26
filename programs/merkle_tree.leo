@@ -59,7 +59,9 @@ program merkle_tree.aleo {
 
         // Ensure the roots from the merkle proofs are the same
         assert_eq(root1, root2);
-        
+        // Ensure the depth of the merkle proofs is the same
+        assert_eq(depth1, depth2);
+
         let addr_field: field = addr as field;
         if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) {
             // Ensure that if the address is the most left leaf, it is less than the first sibling
