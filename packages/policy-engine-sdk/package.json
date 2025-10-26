@@ -44,7 +44,7 @@
     "privacy"
   ],
   "dependencies": {
-    "@provablehq/sdk": "^0.9.7",
+    "@provablehq/sdk": "^0.9.9",
     "@scure/base": "^2.0.0"
   },
   "devDependencies": {
