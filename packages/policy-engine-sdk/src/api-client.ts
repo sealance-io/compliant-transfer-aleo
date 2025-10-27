@@ -1,6 +1,7 @@
 import type { PolicyEngineConfig } from "./types.js";
 import type { Logger } from "./logger.js";
 import { defaultLogger } from "./logger.js";
+import { calculateBackoff, parseRetryAfter, sleep } from "./fetch-utils.js";
 
 /**
  * API client for interacting with Aleo node endpoints
@@ -54,8 +55,8 @@ export class AleoAPIClient {
 
         // Handle rate limiting (429) - always retry with backoff
         if (response.status === 429) {
-          const retryAfter = this.parseRetryAfter(response);
-          const delay = retryAfter ?? this.calculateBackoff(attempt);
+          const retryAfter = parseRetryAfter(response);
+          const delay = retryAfter ?? calculateBackoff(attempt, this.config.retryDelay);
 
           this.logger("debug", "Rate limited, retrying with backoff", {
             status: 429,
@@ -65,7 +66,7 @@ export class AleoAPIClient {
           });
 
           if (attempt < this.config.maxRetries - 1) {
-            await this.sleep(delay);
+            await sleep(delay);
             continue;
           }
 
@@ -120,80 +121,19 @@ export class AleoAPIClient {
 
         // Retry on network errors and 5xx errors with exponential backoff
         if (attempt < this.config.maxRetries - 1) {
-          const delay = this.calculateBackoff(attempt);
+          const delay = calculateBackoff(attempt, this.config.retryDelay);
           this.logger("debug", "Request failed, retrying with exponential backoff", {
             attempt: attempt + 1,
             maxRetries: this.config.maxRetries,
             delayMs: delay,
             error: lastError.message,
           });
-          await this.sleep(delay);
+          await sleep(delay);
         }
       }
     }
 
     throw new Error(`Failed to fetch after ${this.config.maxRetries} attempts: ${lastError?.message}`);
-  }
-
-  /**
-   * Calculates exponential backoff with jitter
-   *
-   * Formula: min(baseDelay * 2^attempt, maxDelay) + jitter
-   * Jitter is random value between 0 and 25% of the delay
-   *
-   * @param attempt - Current attempt number (0-indexed)
-   * @returns Delay in milliseconds
-   */
-  private calculateBackoff(attempt: number): number {
-    const baseDelay = this.config.retryDelay;
-    const maxDelay = baseDelay * 10; // Cap at 10x base delay
-
-    // Exponential backoff: 2^attempt * baseDelay
-    const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-
-    // Add jitter (0-25% of delay) to avoid thundering herd
-    const jitter = exponentialDelay * 0.25 * Math.random();
-
-    return Math.floor(exponentialDelay + jitter);
-  }
-
-  /**
-   * Parses Retry-After header from response
-   *
-   * Supports both formats:
-   * - Retry-After: 120 (delay in seconds)
-   * - Retry-After: Wed, 21 Oct 2015 07:28:00 GMT (HTTP date)
-   *
-   * @param response - Fetch response object
-   * @returns Delay in milliseconds, or null if header not present/invalid
-   */
-  private parseRetryAfter(response: Response): number | null {
-    const retryAfter = response.headers.get("Retry-After");
-    if (!retryAfter) {
-      return null;
-    }
-
-    // Try parsing as seconds (numeric format)
-    const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds)) {
-      return seconds * 1000; // Convert to milliseconds
-    }
-
-    // Try parsing as HTTP date
-    const date = new Date(retryAfter);
-    if (!isNaN(date.getTime())) {
-      const delay = date.getTime() - Date.now();
-      return Math.max(0, delay); // Ensure non-negative
-    }
-
-    return null;
-  }
-
-  /**
-   * Helper to sleep for a given duration
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

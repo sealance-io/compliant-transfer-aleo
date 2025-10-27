@@ -23,9 +23,8 @@
  * - custom_compliance_policy.aleo (your own program)
  */
 
-import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
+import { PolicyEngine, trackTransactionStatus } from "@sealance-io/policy-engine-aleo";
 import { Account, ProgramManager, AleoKeyProvider, initThreadPool } from "@provablehq/sdk";
-import { trackTransactionStatus } from "./aleo-transaction-tracker.js";
 
 // ============================================================================
 // Configuration

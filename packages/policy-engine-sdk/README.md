@@ -232,6 +232,37 @@ const [leftIdx, rightIdx] = getLeafIndices(tree, "aleo1...");
 const proof = getSiblingPath(tree, leftIdx, 16);
 ```
 
+#### Transaction Tracking
+
+```typescript
+import { trackTransactionStatus } from "@sealance-io/policy-engine-aleo";
+
+// Track transaction with default settings (5 minute timeout)
+const status = await trackTransactionStatus(
+  txId,
+  "http://localhost:3030/testnet"
+);
+
+// Track with custom options
+const status = await trackTransactionStatus(
+  txId,
+  "https://api.explorer.provable.com/v1/testnet",
+  {
+    timeout: 600000,        // Overall timeout: 10 minutes
+    pollInterval: 10000,    // Check every 10 seconds
+    fetchTimeout: 30000,    // 30 second timeout per request
+    maxAttempts: 60         // Max 60 polling attempts
+  }
+);
+
+// Check status
+if (status.status === "accepted") {
+  console.log(`Transaction confirmed in block ${status.blockHeight}`);
+} else if (status.status === "rejected") {
+  console.error(`Transaction failed: ${status.error}`);
+}
+```
+
 ## Type Definitions
 
 ### MerkleProof
@@ -250,6 +281,37 @@ interface NonInclusionWitness {
   proofs: [MerkleProof, MerkleProof];
   root: bigint;
   freezeList: string[];
+}
+```
+
+### TransactionStatus
+
+```typescript
+interface TransactionStatus {
+  status: 'accepted' | 'rejected' | 'aborted' | 'pending';
+  type: 'execute' | 'deploy' | 'fee';
+  confirmedId: string;
+  unconfirmedId?: string;
+  blockHeight?: number;
+  error?: string;
+}
+```
+
+**Status meanings:**
+- `accepted`: Transaction was successfully executed and included in a block
+- `rejected`: Transaction failed but fee was consumed (type will be 'fee')
+- `aborted`: Both execution and fee processing failed
+- `pending`: Transaction is waiting to be included in a block
+
+### TransactionTrackingOptions
+
+```typescript
+interface TransactionTrackingOptions {
+  maxAttempts?: number;     // Max polling attempts (default: 60)
+  pollInterval?: number;    // Delay between polls in ms (default: 5000)
+  timeout?: number;         // Overall timeout in ms (default: 300000 - 5 minutes)
+  fetchTimeout?: number;    // Per-request timeout in ms (default: 30000)
+  network?: string;         // Network name for logging (optional)
 }
 ```
 
