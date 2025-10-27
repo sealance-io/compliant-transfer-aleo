@@ -138,3 +138,112 @@ export interface NonInclusionWitness {
    */
   freezeList: string[];
 }
+
+/**
+ * Transaction type on the Aleo blockchain
+ */
+export type TransactionType = "execute" | "deploy" | "fee";
+
+/**
+ * Transaction status on the Aleo blockchain
+ */
+export type TransactionStatusType = "accepted" | "rejected" | "aborted" | "pending";
+
+/**
+ * Status of an Aleo transaction
+ */
+export interface TransactionStatus {
+  /**
+   * Current status of the transaction
+   * - 'accepted': Transaction was successfully executed and included in a block
+   * - 'rejected': Transaction failed but fee was consumed (type will be 'fee')
+   * - 'aborted': Both execution and fee processing failed
+   * - 'pending': Transaction is waiting to be included in a block
+   */
+  status: TransactionStatusType;
+
+  /**
+   * Type of transaction
+   * - 'execute': Function execution transaction
+   * - 'deploy': Program deployment transaction
+   * - 'fee': Fee-only transaction (indicates rejection)
+   */
+  type: TransactionType;
+
+  /**
+   * Confirmed transaction ID (the ID that appears on-chain)
+   */
+  confirmedId: string;
+
+  /**
+   * Original unconfirmed transaction ID (if different from confirmedId)
+   * This is typically set when a transaction is rejected
+   */
+  unconfirmedId?: string;
+
+  /**
+   * Block height where the transaction was included
+   */
+  blockHeight?: number;
+
+  /**
+   * Error message if the transaction failed
+   */
+  error?: string;
+}
+
+/**
+ * Configuration options for tracking transaction status
+ */
+export interface TransactionTrackingOptions {
+  /**
+   * Maximum number of polling attempts before giving up
+   * @default 60
+   */
+  maxAttempts?: number;
+
+  /**
+   * Delay between polling attempts in milliseconds
+   * @default 5000 (5 seconds)
+   */
+  pollInterval?: number;
+
+  /**
+   * Overall timeout for the entire tracking operation in milliseconds
+   * @default 300000 (5 minutes)
+   */
+  timeout?: number;
+
+  /**
+   * Timeout for individual fetch requests in milliseconds
+   * @default 30000 (30 seconds)
+   */
+  fetchTimeout?: number;
+
+  /**
+   * Network name (optional, for logging purposes)
+   * @example "testnet", "mainnet"
+   */
+  network?: string;
+
+  /**
+   * Custom logger for transaction tracking operations
+   * @default defaultLogger (logs to console)
+   *
+   * @example
+   * ```typescript
+   * import { trackTransactionStatus, silentLogger } from "@sealance-io/policy-engine-aleo";
+   *
+   * // Disable logging
+   * await trackTransactionStatus(txId, endpoint, { logger: silentLogger });
+   *
+   * // Custom logger
+   * await trackTransactionStatus(txId, endpoint, {
+   *   logger: (level, message, context) => {
+   *     myLogger.log({ level, message, ...context });
+   *   }
+   * });
+   * ```
+   */
+  logger?: import("./logger.js").Logger;
+}

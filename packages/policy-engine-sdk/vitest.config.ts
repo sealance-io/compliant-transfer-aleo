@@ -15,13 +15,16 @@ export default defineConfig({
         "test/**",
         "*.config.ts",
         "*.config.js",
+        "src/types.ts", // Type definitions only, no runtime code
       ],
       include: ["src/**/*.ts"],
       all: true,
-      lines: 80,
-      functions: 80,
-      branches: 80,
-      statements: 80,
+      thresholds: {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
     },
     testTimeout: 30000, // 30 seconds for unit tests
     hookTimeout: 10000,
