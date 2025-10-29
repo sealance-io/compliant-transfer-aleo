@@ -1,6 +1,6 @@
 {
   "name": "@sealance-io/policy-engine-aleo",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SDK for generating Merkle proofs and interacting with Aleo compliance policy programs",
   "author": "Sealance Team",
   "license": "Apache-2.0",

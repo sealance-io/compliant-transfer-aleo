@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-10-29
+
+### Changed
+
+#### Dependency Updates
+
+- **`@scure/base`**: Updated from `^1.2.5` to `^2.0.0`
+  - Major version upgrade with potential breaking changes in base encoding utilities
+  - Improved performance and API refinements
+- **`@provablehq/sdk`**: Updated from `^0.9.7` to `^0.9.9`
+  - Patch updates with bug fixes and improvements to Aleo SDK functionality
+
 ## [0.1.1] - 2025-10-29
 
 ### Added
@@ -207,5 +219,6 @@ Initial release of the Policy Engine SDK for Aleo blockchain compliance operatio
 - TypeScript 5.8+ with strict mode enabled
 - Vitest 3.1+ for testing with coverage reporting
 
+[0.1.2]: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo/v/0.1.2
 [0.1.1]: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo/v/0.1.1
 [0.1.0]: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo/v/0.1.0
