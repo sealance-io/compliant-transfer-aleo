@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-10-29
+
+### Added
+
+#### Transaction Tracking
+
+- **`trackTransactionStatus()`**: New exported function for tracking Aleo transaction status with polling
+  - Monitors transaction confirmation until accepted, rejected, or timeout
+  - Configurable polling interval, timeout, and max attempts
+  - Handles accepted transactions (execute/deploy), rejected transactions (fee-only), and pending states
+  - Returns transaction status with type, confirmed/unconfirmed IDs, block height, and error messages
+  - Implements best practices: exponential backoff, rate limiting (429), Retry-After header support
+  - Integrated structured logging with Logger interface
+- **Transaction Types**: New TypeScript types for transaction tracking
+  - `TransactionStatus`: Complete transaction status with type and metadata
+  - `TransactionStatusType`: Status enum (accepted | rejected | aborted | pending)
+  - `TransactionType`: Transaction type (execute | deploy | fee)
+  - `TransactionTrackingOptions`: Configuration options for tracking behavior
+
+#### HTTP Utilities
+
+- **`fetch-utils.ts`**: New shared utilities module for HTTP operations with retry logic
+  - `calculateBackoff()`: Exponential backoff calculation with jitter to prevent thundering herd
+  - `parseRetryAfter()`: RFC 7231 compliant Retry-After header parsing (seconds and HTTP-date formats)
+  - `sleep()`: Promise-based delay utility for async operations
+  - All utilities exported for external use
+
+### Changed
+
+#### API Client Improvements
+
+- **Refactored AleoAPIClient**: Eliminated code duplication by using shared fetch utilities
+  - Now uses `calculateBackoff()`, `parseRetryAfter()`, and `sleep()` from fetch-utils
+  - Removed ~50 lines of duplicate retry logic
+  - Maintains same functionality with improved maintainability
+
+#### Transaction Tracker Improvements
+
+- **Enhanced Best Practices**: Transaction tracker now implements production-ready HTTP patterns
+  - Rate limiting (429) detection and retry with exponential backoff
+  - Retry-After header parsing and respect (both seconds and HTTP-date formats)
+  - Smart error handling (only retry transient errors: 5xx, 429, network errors)
+  - Non-retryable client errors (4xx except 404, 429) fail immediately
+  - Exponential backoff with jitter for all retry scenarios
+
+#### Documentation
+
+- **Updated README**: Added comprehensive "Transaction Tracking" section
+  - Usage examples with default and custom configurations
+  - Type definitions for all transaction tracking types
+  - Status handling patterns and best practices
+
+### Testing
+
+- **Transaction Tracker Tests**: 19 comprehensive tests covering all scenarios
+  - Successful transactions (execute and deploy types)
+  - Rejected transactions (fee-only transactions)
+  - Polling behavior (404 → success transitions)
+  - Rate limiting (429) with exponential backoff and Retry-After headers
+  - Error handling (client errors, server errors, network failures)
+  - Timeout handling (overall timeout and per-request timeout)
+  - Block height fetching and validation
+  - Logger integration and structured logging
+- **Fetch Utils Tests**: 19 comprehensive tests achieving 100% coverage
+  - Exponential backoff calculation with jitter validation
+  - Max delay cap enforcement
+  - Custom base delay support
+  - Retry-After header parsing (seconds, HTTP-date, invalid values)
+  - Non-negative delay enforcement for past dates
+  - Sleep utility with fake timers
+  - Coverage: 100% statements, 100% branches, 100% functions, 100% lines
+- **Coverage Improvements**: Excluded type-only files from coverage reporting
+  - Added `src/types.ts` to coverage exclusion list
+  - Overall SDK coverage maintained above 94%
+
+### Removed
+
+- **Moved from Examples**: Transaction tracker moved from examples into SDK core
+  - Deleted `examples/aleo-transaction-tracker.ts` (now part of SDK)
+  - Updated `examples/verify-non-inclusion-transaction.ts` to import from SDK
+
 ## [0.1.0] - 2025-10-16
 
 Initial release of the Policy Engine SDK for Aleo blockchain compliance operations.
@@ -126,4 +207,5 @@ Initial release of the Policy Engine SDK for Aleo blockchain compliance operatio
 - TypeScript 5.8+ with strict mode enabled
 - Vitest 3.1+ for testing with coverage reporting
 
+[0.1.1]: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo/v/0.1.1
 [0.1.0]: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo/v/0.1.0
