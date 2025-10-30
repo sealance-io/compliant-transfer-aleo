@@ -82,12 +82,13 @@ describe("test upgradeability", () => {
 
     // Only the admin can upgrade
     let reportTokenEditionBefore = await getProgramEdition("sealed_report_token");
-    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
+    isUpgradeSuccessful = await upgradeProgram("sealed_report_token", adminPrivKey);
     let reportTokenEditionAfter = await getProgramEdition("sealed_report_token");
     expect(isUpgradeSuccessful).toBe(true);
     expect(reportTokenEditionBefore + 1).toBe(reportTokenEditionAfter);
+
     reportTokenEditionBefore = await getProgramEdition("sealed_report_token");
-    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", deployerPrivKey);
+    isUpgradeSuccessful = await upgradeProgram("sealed_report_token", deployerPrivKey);
     reportTokenEditionAfter = await getProgramEdition("sealed_report_token");
     expect(isUpgradeSuccessful).toBe(false);
     expect(reportTokenEditionBefore).toBe(reportTokenEditionAfter);
