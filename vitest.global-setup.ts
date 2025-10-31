@@ -30,7 +30,7 @@ const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, tru
 const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0";
 const DEVNET_VERBOSITY = process.env.DEVNET_VERBOSITY || "1";
 const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "11";
-const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "180000", 10); // 3 minutes default
+const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "300000", 10); // 5 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 
 async function waitForConsensusVersion(
