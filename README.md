@@ -6,7 +6,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v3.3.0
+- [Leo](https://github.com/ProvableHQ/leo) CLI v3.3.1
 
 - [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
 
@@ -95,7 +95,7 @@ This project uses automated testing with infrastructure components that simulate
 
 ### Default Testing Approach
 
-Tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using [leo devnet](https://github.com/ProvableHQ/leo/releases/tag/v3.3.0). This approach requires no manual setup and provides a consistent testing environment across different machines.
+Tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using [leo devnet](https://github.com/ProvableHQ/leo/releases/tag/v3.3.1). This approach requires no manual setup and provides a consistent testing environment across different machines.
 
 #### Running Tests
 
@@ -139,8 +139,8 @@ You can disable testcontainers and use your own manually-started infrastructure:
 USE_TEST_CONTAINERS=0 npm test
 ```
 
-1. `docker pull ghcr.io/sealance-io/aleo-devnet:v3.3.0-v4.3.0`
-2. Run in background: `docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.0-v4.3.0` or run in foreground in a dedicated terminal tab : `docker run -it -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.0-v4.3.0`
+1. `docker pull ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
+2. Run in background: `docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0` or run in foreground in a dedicated terminal tab : `docker run -it -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
 3. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
 4. Kill any running containers like:
    `docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
