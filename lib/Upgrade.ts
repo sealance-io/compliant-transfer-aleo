@@ -9,10 +9,10 @@ export async function upgradeProgram(programName: string, privateKey: string) {
   const endpoint = networkConfig.networks[networkName].endpoint;
   const isDevnet = endpoint.includes("localhost") || endpoint.includes("host.docker.internal");
   console.log(
-    `cd artifacts/leo/${programName} && leo upgrade --broadcast ${isDevnet ? "--devnet" : ""} --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName}`,
+    `cd artifacts/leo/${programName} && leo upgrade --broadcast ${isDevnet ? "--devnet" : ""} --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName} --blocks-to-check 30 --max-wait 15`,
   );
   const { stdout } = await execAsync(
-    `cd artifacts/leo/${programName} && leo upgrade --broadcast ${isDevnet ? "--devnet" : ""} --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName}`,
+    `cd artifacts/leo/${programName} && leo upgrade --broadcast ${isDevnet ? "--devnet" : ""} --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName} --blocks-to-check 30 --max-wait 15`,
   );
   if (stdout.includes("Upgrade confirmed!")) {
     return true;
