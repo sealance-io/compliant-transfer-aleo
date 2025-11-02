@@ -35,6 +35,10 @@ on:
         description: "Run Compliant Token template tests"
         type: boolean
         default: true
+      run_upgrade:
+        description: "Run Upgrade tests"
+        type: boolean
+        default: true
   pull_request:
     branches:
       - main
@@ -99,6 +103,11 @@ jobs:
       run_compliant_token_template: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_compliant_token_template || 
+          github.event_name == 'pull_request' && false
+        }}
+      run_upgrade: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_upgrade || 
           github.event_name == 'pull_request' && false
         }}
     steps:
@@ -182,4 +191,14 @@ jobs:
       job_name: "Compliant Token template tests"
       test_command: "npm run test:select ./test/compliant_token.test.ts"
       watched_paths: "programs/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  upgrade-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_upgrade == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Upgrade tests"
+      test_command: "npm run test:select ./test/upgrade.test.ts"
+      watched_paths: "programs/sealance_freezelist_registry.leo,programs/merkle_tree.leo,programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
