@@ -68,47 +68,47 @@ jobs:
       run_merkle_tree: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_report_policy: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_report_policy || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_freeze_registry: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_freeze_registry || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_timelock_policy: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_timelock_policy || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_threshold_policy: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_threshold_policy || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_exchange: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_exchange || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_sealed_report_token: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_sealed_report_token || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_compliant_token_template: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_compliant_token_template || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
       run_upgrade: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_upgrade || 
-          github.event_name == 'pull_request' && false
+          github.event_name == 'pull_request'
         }}
     steps:
       - run: echo "Determining which jobs to run"
