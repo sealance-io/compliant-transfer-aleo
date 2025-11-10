@@ -1,10 +1,14 @@
 import sealance_freezelist_registry.aleo;
+import multisig.aleo;
 
 program compliant_token_template.aleo {
     @custom
     async constructor() {
         if (self.edition > 0) {
-            assert_eq(UPGRADE_ADDRESS, self.program_owner);
+            if(UPGRADE_ADDRESS != self.program_owner) {
+                let approved_checksum = approved_upgrades.get(self.edition);
+                assert_eq(approved_checksum, self.checksum);
+            }
         }
     }
 
@@ -75,10 +79,104 @@ program compliant_token_template.aleo {
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
 
+    const WALLET_ID: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2; // should update later
+
+    const MULTISIG_OP_UPGRADE: u8 = 1u8;
+    const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
+    const MULTISIG_OP_SET_PAUSE_STATUS: u8 = 3u8;
+
+    struct CompliantTokenMultisigOp {
+        op: u8,
+
+        // Only used for MULTISIG_OP_SET_PAUSE_STATUS
+        pause_status: bool,
+
+        // Only used for MULTISIG_OP_UPDATE_ROLE
+        user: address,
+        role: u16,
+
+        // Only used for MULTISIG_OP_UPGRADE
+        edition: u16,
+        checksum: [u8; 32]
+    }
+
+    // Stores pending multisig requests, Keyed by hash(WalletSigningOpId) to uniquely identify each operation
+    mapping pending_requests: field => FreezeRegistryMultisigOp; // hash(WalletSigningOpId) => FreezeRegistryMultisigOp;
+    // Stores checksums of approved upgrades by edition, upgrades are allowed if the provided checksum matches the stored value for that edition.
+    mapping approved_upgrades: u16 => [u8; 32]; // edition => checksum;
+
+    // -------------------------
+    // Called by multisig signer
+    // -------------------------
+
+    // Initializes a new multisig operation.
+    // Can only be called by a wallet signer.
+    // Registers the operation with the external multisig wallet using its signing_op_id.
+    // Stores the associated CompliantTokenMultisigOp under the hashed wallet operation ID.
+    // Fails if an operation with the same ID already exists.
+    async transition init_multisig_op(signing_op_id: field, multisig_op: CompliantTokenMultisigOp) -> (field, Future) {
+        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(WALLET_ID, signing_op_id);
+        return (wallet_signing_op_id_hash, fin_init_multisig_op(
+            wallet_signing_op_id_hash,
+            multisig_op,
+            init_signing_op_fut
+        ));
+    }
+    async function fin_init_multisig_op(
+        wallet_signing_op_id_hash: field,
+        multisig_op: CompliantTokenMultisigOp,
+        init_signing_op_fut: Future,
+    ) {
+        assert(!pending_requests.contains(wallet_signing_op_id_hash));
+        pending_requests.set(wallet_signing_op_id_hash, multisig_op);
+        init_signing_op_fut.await();
+    }
+
+    // Executes a previously initialized multisig operation after enough required signatures are collected.
+    // Verifies that signing is complete and the operation details match the original request.
+    // Supports the following operations:
+    // - Approve upgrade: adds a checksum to the approved_upgrades mapping for a given edition. 
+    // This does not perform the upgrade itself — it only enables a future upgrade to proceed if the edition and checksum match.
+    // - Role updates
+    // - Pause status changes
+    // Removes the operation from pending_requests to prevent replay.
+    async transition exec_multisig_op(signing_op_id: field, multisig_op: CompliantTokenMultisigOp) -> Future {
+        let signing_complete_fut = multisig.aleo/assert_signing_completed(WALLET_ID, signing_op_id);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(WALLET_ID, signing_op_id);
+
+        return fin_exec_multisig_op(wallet_signing_op_id_hash, multisig_op, signing_complete_fut);
+    }
+    async function fin_exec_multisig_op(
+        wallet_signing_op_id_hash: field,
+        multisig_op: CompliantTokenMultisigOp,
+        signing_complete_fut: Future,
+    ) {
+        // Signing must be completed.
+        signing_complete_fut.await();
+
+        // Details must match!
+        let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+        assert_eq(pending_request, multisig_op);
+
+        // Execute request
+        if (multisig_op.op == MULTISIG_OP_UPGRADE) {
+            approved_upgrades.set(multisig_op.edition, multisig_op.checksum);
+        }
+        else if (multisig_op.op == MULTISIG_OP_UPDATE_ROLE) {
+            address_to_role.set(multisig_op.user, multisig_op.role);
+        } else if (multisig_op.op == MULTISIG_OP_SET_PAUSE_STATUS) {
+            pause.set(PAUSE_STATUS_INDEX, multisig_op.pause_status);
+        } else {
+            assert(false);
+        }
+
+        // Removing is crucial, otherwise the operation can be executed twice.
+        pending_requests.remove(wallet_signing_op_id_hash);
+    }
+
     // -------------------------
     // Called by token admins
     // -------------------------
-
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
