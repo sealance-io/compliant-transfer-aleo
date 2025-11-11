@@ -12,7 +12,6 @@ program sealed_report_policy.aleo {
     
     const TOKEN_ID: field = 475390673649194485158084951104358477375241536345field; // SEALED_REPORT ascii encoded
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const PROGRAM_ADDRESS: address = aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2;
     // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
@@ -290,10 +289,6 @@ program sealed_report_policy.aleo {
             true
         );
 
-        let program_owner: TokenOwner = TokenOwner {
-            account: PROGRAM_ADDRESS,
-            token_id: TOKEN_ID
-        };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: investigator_address,
