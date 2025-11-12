@@ -1,11 +1,13 @@
 
 import merkle_tree.aleo;
+import multisig.aleo;
 
 program sealance_freezelist_registry.aleo {
     @custom
     async constructor() {
-        if (self.edition > 0) {
-            assert_eq(UPGRADE_ADDRESS, self.program_owner);
+        if(UPGRADE_ADDRESS != self.program_owner) {
+            let approved_checksum = approved_upgrades.get(self.edition);
+            assert_eq(approved_checksum, self.checksum);
         }
     }
     
@@ -41,6 +43,136 @@ program sealance_freezelist_registry.aleo {
     mapping root_updated_height: bool => u32;
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
+
+    const WALLET_ID: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
+
+    const MULTISIG_OP_UPGRADE: u8 = 1u8;
+    const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
+    const MULTISIG_OP_UPDATE_FREEZE_LIST: u8 = 3u8;
+
+    struct FreezeRegistryMultisigOp {
+        op: u8,
+
+        // Used for MULTISIG_OP_UPDATE_FREEZE_LIST and MULTISIG_OP_UPDATE_ROLE
+        user: address,
+
+        // Only used for MULTISIG_OP_UPDATE_FREEZE_LIST
+        is_frozen: bool, 
+        frozen_index: u32, 
+        previous_root: field,
+        new_root: field,
+
+        // Only used for MULTISIG_OP_UPDATE_ROLE
+        role: u16,
+
+        // Only used for MULTISIG_OP_UPGRADE
+        edition: u16,
+        checksum: [u8; 32]
+    }
+    // Stores pending multisig requests, Keyed by hash(WalletSigningOpId) to uniquely identify each operation
+    mapping pending_requests: field => FreezeRegistryMultisigOp; // hash(WalletSigningOpId) => FreezeRegistryMultisigOp;
+    // Stores checksums of approved upgrades by edition, upgrades are allowed if the provided checksum matches the stored value for that edition.
+    mapping approved_upgrades: u16 => [u8; 32]; // edition => checksum;
+
+    // -------------------------
+    // Called by multisig signer
+    // -------------------------
+
+    // Initializes a new multisig operation.
+    // Can only be called by a wallet signer.
+    // Registers the operation with the external multisig wallet using its signing_op_id.
+    // Stores the associated FreezeRegistryMultisigOp under the hashed wallet operation ID.
+    // Fails if an operation with the same ID already exists.
+    async transition init_multisig_op(signing_op_id: field, multisig_op: FreezeRegistryMultisigOp) -> (field, Future) {
+        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(WALLET_ID, signing_op_id);
+        return (wallet_signing_op_id_hash, fin_init_multisig_op(
+            wallet_signing_op_id_hash,
+            multisig_op,
+            init_signing_op_fut
+        ));
+    }
+    async function fin_init_multisig_op(
+        wallet_signing_op_id_hash: field,
+        multisig_op: FreezeRegistryMultisigOp,
+        init_signing_op_fut: Future,
+    ) {
+        assert(!pending_requests.contains(wallet_signing_op_id_hash));
+        pending_requests.set(wallet_signing_op_id_hash, multisig_op);
+        init_signing_op_fut.await();
+    }
+
+    // Executes a previously initialized multisig operation after enough required signatures are collected.
+    // Verifies that signing is complete and the operation details match the original request.
+    // Supports the following operations:
+    // - Approve upgrade: adds a checksum to the approved_upgrades mapping for a given edition. 
+    // This does not perform the upgrade itself — it only enables a future upgrade to proceed if the edition and checksum match.
+    // - Role updates
+    // - Update the freeze list
+    // Removes the operation from pending_requests to prevent replay.
+    async transition exec_multisig_op(signing_op_id: field, multisig_op: FreezeRegistryMultisigOp) -> Future {
+        let signing_complete_fut = multisig.aleo/assert_signing_completed(WALLET_ID, signing_op_id);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(WALLET_ID, signing_op_id);
+
+        return fin_exec_multisig_op(wallet_signing_op_id_hash, multisig_op, signing_complete_fut);
+    }
+    async function fin_exec_multisig_op(
+        wallet_signing_op_id_hash: field,
+        multisig_op: FreezeRegistryMultisigOp,
+        signing_complete_fut: Future,
+    ) {
+        // Signing must be completed.
+        signing_complete_fut.await();
+
+        // Details must match!
+        let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+        assert_eq(pending_request, multisig_op);
+
+        // Execute request
+        if (multisig_op.op == MULTISIG_OP_UPGRADE) {
+            approved_upgrades.set(multisig_op.edition, multisig_op.checksum);
+        }
+        else if (multisig_op.op == MULTISIG_OP_UPDATE_ROLE) {
+            address_to_role.set(multisig_op.user, multisig_op.role);
+        } else if (multisig_op.op == MULTISIG_OP_UPDATE_FREEZE_LIST) {
+            let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(multisig_op.previous_root, old_root);
+            freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
+            freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, multisig_op.new_root);
+
+            // Verify we don't unfreeze an unfrozen account or freeze a frozen account
+            let stored_is_frozen = freeze_list.get_or_use(multisig_op.user, false);
+            assert_neq(multisig_op.is_frozen, stored_is_frozen);
+            freeze_list.set(multisig_op.user, multisig_op.is_frozen);
+
+            let current_address_at_index: address = freeze_list_index.get_or_use(multisig_op.frozen_index, ZERO_ADDRESS);
+            if (multisig_op.is_frozen) {
+                // Verify that the frozen_index is empty.
+                assert_eq(current_address_at_index, ZERO_ADDRESS);
+                
+                // Verify that the frozen index equal or smaller than the last index plus 1
+                let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
+                assert(last_index + 1u32 >= multisig_op.frozen_index);
+            
+                // Update the freeze_list_last_index
+                if (last_index < multisig_op.frozen_index) {
+                    freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, multisig_op.frozen_index);
+                }
+
+                freeze_list_index.set(multisig_op.frozen_index, multisig_op.user);
+            } else {
+                // Verify that we update the correct frozen_index
+                assert_eq(current_address_at_index, multisig_op.user);
+                freeze_list_index.set(multisig_op.frozen_index, ZERO_ADDRESS);
+            }
+
+            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+        } else {
+            assert(false);
+        }
+
+        // Removing is crucial, otherwise the operation can be executed twice.
+        pending_requests.remove(wallet_signing_op_id_hash);
+    }
 
     // Initializes the freeze list and the admin.
     // Can only be called once — ensures the contract has not already been initialized.
