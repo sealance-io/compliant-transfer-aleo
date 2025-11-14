@@ -141,8 +141,9 @@ USE_TEST_CONTAINERS=0 npm test
 
 1. `docker pull docker pull ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
 2. To run in foreground in a dedicated terminal tab : `docker run -it --entrypoint /usr/local/bin/leo -e PRIVATE_KEY="APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH" -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.3.1-devnode devnode start --listener-addr 0.0.0.0:3030`
-3. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
-4. Kill any running containers like:
+3. `leo devnode advance -d --private-key APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH 20`
+4. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
+5. Kill any running containers like:
    `docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
    `docker ps -a -q | xargs -n 1 -P 8 -I {} docker rm {}`
 
