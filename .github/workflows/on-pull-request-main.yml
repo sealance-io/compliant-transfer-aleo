@@ -2,43 +2,6 @@ name: Aleo Program Tests
 
 on:
   workflow_dispatch:
-    inputs:
-      run_merkle_tree:
-        description: "Run Merkle Tree tests"
-        type: boolean
-        default: true
-      run_report_policy:
-        description: "Run Sealed Report Policy tests"
-        type: boolean
-        default: true
-      run_freeze_registry:
-        description: "Run Freeze Registry tests"
-        type: boolean
-        default: true
-      run_timelock_policy:
-        description: "Run Timelock Policy tests"
-        type: boolean
-        default: true
-      run_threshold_policy:
-        description: "Run Threshold Policy tests"
-        type: boolean
-        default: true
-      run_exchange:
-        description: "Run Exchange tests"
-        type: boolean
-        default: true
-      run_sealed_report_token:
-        description: "Run Sealed Report Token tests"
-        type: boolean
-        default: true
-      run_compliant_token_template:
-        description: "Run Compliant Token template tests"
-        type: boolean
-        default: true
-      run_upgrade:
-        description: "Run Upgrade tests"
-        type: boolean
-        default: true
   pull_request:
     branches:
       - main
@@ -62,143 +25,67 @@ jobs:
         run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
       - name: Run prettier
         run: npm run format
-  check-trigger:
+
+  test:
     runs-on: ubuntu-latest
-    outputs:
-      run_merkle_tree: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
-          github.event_name == 'pull_request'
-        }}
-      run_report_policy: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_report_policy || 
-          github.event_name == 'pull_request'
-        }}
-      run_freeze_registry: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_freeze_registry || 
-          github.event_name == 'pull_request'
-        }}
-      run_timelock_policy: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_timelock_policy || 
-          github.event_name == 'pull_request'
-        }}
-      run_threshold_policy: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_threshold_policy || 
-          github.event_name == 'pull_request'
-        }}
-      run_exchange: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_exchange || 
-          github.event_name == 'pull_request'
-        }}
-      run_sealed_report_token: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_sealed_report_token || 
-          github.event_name == 'pull_request'
-        }}
-      run_compliant_token_template: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_compliant_token_template || 
-          github.event_name == 'pull_request'
-        }}
-      run_upgrade: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_upgrade || 
-          github.event_name == 'pull_request'
-        }}
+    env:
+      DEVNET_CHECK_TIMEOUT: 720000 # 12 minutes in ms
+      DEVNET_CHECK_INTERVAL: 5000 # 5 seconds in ms
+      TESTNET_ENDPOINT: "http://host.docker.internal:3030"
+    permissions:
+      contents: "read"
+      packages: "read"
+      actions: "read"
+    timeout-minutes: 60
+    container:
+      image: ghcr.io/sealance-io/leo-lang-ci:v3.3.1-devnode
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
+      options: --cpus 2 --add-host=host.docker.internal:host-gateway
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    defaults:
+      run:
+        shell: bash
     steps:
-      - run: echo "Determining which jobs to run"
+      - uses: actions/checkout@v4
+      - name: Setup doko-js-cli
+        uses: sealance-io/setup-doko-js-action@v0.1.4
+        with:
+          doko-repo: "sealance-io/doko-js"
+          doko-branch: "fixes_to_dokojs"
+          node-version: 24
+          rust-version: "stable"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: "./package-lock.json"
 
-  merkle-tree-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_merkle_tree == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Merkle Tree Test"
-      test_command: "npm run test:select ./test/merkle_tree.test.ts"
-      watched_paths: "programs/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+      - run: cp .env.example .env
 
-  report-policy-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_report_policy == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Report Policy Test"
-      test_command: "npm run test:select ./test/report_policy.test.ts"
-      watched_paths: "programs/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
 
-  freeze-registry-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_freeze_registry == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Freeze Registry Test"
-      test_command: "npm run test:select ./test/freeze_registry.test.ts"
-      watched_paths: "programs/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  timelock-policy-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_timelock_policy == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Timelock Policy Test"
-      test_command: "npm run test:select ./test/timelock.test.ts"
-      watched_paths: "programs/sealed_timelock_policy.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+      - name: Pull aleo-devnet image
+        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0
 
-  threshold-policy-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_threshold_policy == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Threshold Policy Test"
-      test_command: "npm run test:select ./test/threshold.test.ts"
-      watched_paths: "programs/sealed_threshold_report_policy.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+      - name: Compile leo
+        run: npm run compile
 
-  exchange-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_exchange == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Exchange Test"
-      test_command: "npm run test:select ./test/exchange.test.ts"
-      watched_paths: "programs/exchange.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
-
-  sealed-report-token-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_sealed_report_token == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Sealed Report Token Test"
-      test_command: "npm run test:select ./test/report_token.test.ts"
-      watched_paths: "programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
-
-  compliant-token-template-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_compliant_token_template == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Compliant Token template tests"
-      test_command: "npm run test:select ./test/compliant_token.test.ts"
-      watched_paths: "programs/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
-
-  upgrade-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_upgrade == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Upgrade tests"
-      test_command: "npm run test:select ./test/upgrade.test.ts"
-      watched_paths: "programs/sealance_freezelist_registry.leo,programs/merkle_tree.leo,programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+      - name: Run test (bypass test-containers)
+        run: npm run test
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: true
+          USE_TEST_CONTAINERS: 1
+          VITEST_HOOK_TIMING: true
+          VITEST_TEST_MARKERS: true
