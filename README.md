@@ -95,7 +95,7 @@ This project uses automated testing with infrastructure components that simulate
 
 ### Default Testing Approach
 
-Tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using [leo devnet](https://github.com/ProvableHQ/leo/releases/tag/v3.3.1). This approach requires no manual setup and provides a consistent testing environment across different machines.
+Tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using 'leo devnode'. This approach requires installing a compatible leo CLI. Since 'devnode' feature is not yet supported in published, it is required to build leo CLI from sources at 'feat/leo-devnode' [branch](https://github.com/ProvableHQ/leo/tree/feat/leo-devnode)
 
 #### Running Tests
 
@@ -130,7 +130,7 @@ Both Docker and Podman are supported as container runtimes. For troubleshooting 
 
 ### Alternative Testing Methods
 
-#### Option 1: Running Tests Without Containers
+#### Running Tests Without Containers
 
 You can disable testcontainers and use your own manually-started infrastructure:
 
@@ -139,8 +139,8 @@ You can disable testcontainers and use your own manually-started infrastructure:
 USE_TEST_CONTAINERS=0 npm test
 ```
 
-1. `docker pull ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
-2. Run in background: `docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0` or run in foreground in a dedicated terminal tab : `docker run -it -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
+1. `docker pull docker pull ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
+2. To run in foreground in a dedicated terminal tab : `docker run -it --entrypoint /usr/local/bin/leo -e PRIVATE_KEY="APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH" -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.3.1-devnode devnode start --listener-addr 0.0.0.0:3030`
 3. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
 4. Kill any running containers like:
    `docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
@@ -148,25 +148,6 @@ USE_TEST_CONTAINERS=0 npm test
 
 When disabling containers, you'll need to run devnet manually outside the test environment.
 For instructions, refer to the [aleo-containers repository](https://github.com/sealance-io/aleo-containers).
-
-#### Option 2: Using Aleo's Full Devnet (Not Recommended)
-
-A slower and more cumbersome option is to use Aleo's `devnet.sh` script:
-
-1. **Run devnet**
-
-   ```bash
-   ./devnet.sh
-   ```
-
-   (Following instructions from [snarkOS](https://github.com/ProvableHQ/snarkOS/blob/staging/devnet.sh))
-
-2. **Run tests**
-   ```bash
-   npm test
-   ```
-
-This approach is not recommended for regular development as it's significantly slower and requires more system resources than the containerized devnet approach.
 
 ### Troubleshooting
 
