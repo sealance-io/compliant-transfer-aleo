@@ -27,11 +27,31 @@ function parseBooleanEnv(value: string | undefined, defaultValue = true): boolea
 let devnetContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0";
+const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/leo-lang:v3.3.1-devnode";
 const DEVNET_VERBOSITY = process.env.DEVNET_VERBOSITY || "1";
-const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "11";
+const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "12";
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "300000", 10); // 5 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
+
+async function advanceBlocks(numBlocks: number, privKey: string): Promise<void> {
+  const networkName = networkConfig.defaultNetwork;
+  const endpoint = networkConfig.networks[networkName].endpoint;
+  const apiUrl = `${endpoint}/testnet/block/create`;
+
+  // Call the REST API to advance the ledger by N block.
+  const payload = {
+    private_key: privKey,
+    num_blocks: numBlocks,
+  };
+
+  await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}
 
 async function waitForConsensusVersion(
   targetVersion: string,
@@ -125,18 +145,18 @@ export async function setup() {
     devnetContainer = await new GenericContainer(ALEO_DEVNET_IMAGE)
       .withEntrypoint(["/usr/local/bin/leo"])
       .withCommand([
-        "devnet",
-        "--snarkos",
-        "./snarkos",
-        "--yes",
-        "--clear-storage",
+        "devnode",
+        "start",
+        "--listener-addr",
+        "0.0.0.0:3030",
+        "--private-key",
+        "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
         "--verbosity",
         DEVNET_VERBOSITY,
-        "--storage",
-        "/data",
-        "--num-clients",
-        "1",
       ])
+      .withEnvironment({
+        PRIVATE_KEY: "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
+      })
       .withExposedPorts({
         container: 3030,
         host: 3030,
@@ -148,6 +168,7 @@ export async function setup() {
     console.log(`Container started with mapped port: ${mappedPort}`);
   }
 
+  await advanceBlocks(20, "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH");
   await waitForConsensusVersion(MIN_CONSENSUS_VERSION);
 }
 

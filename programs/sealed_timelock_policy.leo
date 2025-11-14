@@ -18,7 +18,6 @@ program sealed_timelock_policy.aleo {
     const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
 
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const PROGRAM_ADDRESS: address = aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq;
     const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
     const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
@@ -61,7 +60,7 @@ program sealed_timelock_policy.aleo {
     // Can be called only by the INITIAL_ADMIN
     // Registers the token and assigns this program as both the token admin and the external authorization party
     async transition initialize(public admin: address) -> Future {
-        // Set admin and external_authorization_party to be PROGRAM_ADDRESS
+        // Set admin and external_authorization_party to be self.address
         let token_registry_call: Future = token_registry.aleo/register_token(
             TOKEN_ID,
             NAME,
@@ -69,7 +68,7 @@ program sealed_timelock_policy.aleo {
             DECIMALS,
             TOTAL_SUPPLY,
             true,
-            PROGRAM_ADDRESS // external_authorization_party
+            self.address // external_authorization_party
         );
         return f_initialize(token_registry_call, admin, self.caller);
     }
@@ -337,11 +336,6 @@ program sealed_timelock_policy.aleo {
             amount,
             true
         );
-
-        let program_owner: TokenOwner = TokenOwner {
-            account: PROGRAM_ADDRESS,
-            token_id: TOKEN_ID
-        };
 
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
