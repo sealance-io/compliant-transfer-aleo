@@ -76,7 +76,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull leo-devnode image
-        run: docker pull hcr.io/sealance-io/leo-lang:v3.3.1-devnode
+        run: docker pull ghcr.io/sealance-io/leo-lang:v3.3.1-devnode
 
       - name: Compile leo
         run: npm run compile
