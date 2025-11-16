@@ -192,9 +192,8 @@ updates:
       time: "09:00"
       timezone: "Etc/UTC"
 
-    # Note: Cooldown feature is not supported for github-actions ecosystem
-    # Update frequency is controlled by the weekly schedule above
-    # SHA pinning provides stability and security
+    cooldown:
+      default-days: 21 # Since sem-ver granular config not supported - sets a catch-all conservative 21 days wait
 
     # Dependabot automatically:
     # 1. Detects SHA-pinned actions (format: actions/checkout@abc123...def # v4.1.1)
