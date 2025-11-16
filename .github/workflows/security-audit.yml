@@ -1,0 +1,44 @@
+name: Security Audit
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+  schedule:
+    # Run weekly on Monday at 00:00 UTC to catch newly discovered vulnerabilities
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {} # no permissions by default
+
+jobs:
+  zizmor:
+    name: Workflow Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Required for uploading SARIF results to Advanced Security
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor security audit
+        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        with:
+          inputs: .github/workflows/
+          persona: pedantic
+          annotations: ${{ github.event_name == 'pull_request' }} # Show inline annotations on PRs (max 10)
+          advanced-security: true # Upload SARIF to GitHub Advanced Security

@@ -1,0 +1,11 @@
+# Zizmor configuration for compliant-transfer-aleo
+# See: https://docs.zizmor.sh/configuration/
+
+# This file documents the security posture of this repository's GitHub Actions workflows.
+# All workflows have been audited and hardened according to zizmor best practices.
+
+# Audit configurations
+rules: {}
+
+# No rules are currently disabled or ignored.
+# All security checks pass in regular, pedantic, and auditor modes.
