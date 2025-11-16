@@ -14,6 +14,7 @@
     "test": "test"
   },
   "scripts": {
+    "preinstall": "npm run lint:lockfile",
     "postinstall": "patch-package",
     "deploy:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-devnet.ts",
     "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-testnet.ts",
@@ -22,6 +23,7 @@
     "compile": "rimraf artifacts && cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' dokojs compile",
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
+    "lint:lockfile": "lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https",
     "test": "vitest run",
     "test:select": "npm run test --"
   },
@@ -34,6 +36,7 @@
     "@types/node": "24.9.1",
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
+    "lockfile-lint": "4.14.1",
     "patch-package": "8.0.1",
     "prettier": "3.5.3",
     "rimraf": "6.0.1",
