@@ -192,15 +192,9 @@ updates:
       time: "09:00"
       timezone: "Etc/UTC"
 
-    # Cooldown policy for GitHub Actions (shorter than npm due to lower risk)
-    # Security updates bypass cooldown automatically
-    # SHA pinning provides additional stability layer
-    cooldown:
-      semver-major-days: 30 # 1 month for major version changes (breaking changes)
-      semver-minor-days: 14 # 2 weeks for minor versions (new features)
-      semver-patch-days: 7 # 1 week for patches (aligns with npm, conservative approach)
-      include:
-        - "*" # Apply cooldown to all Actions
+    # Note: Cooldown feature is not supported for github-actions ecosystem
+    # Update frequency is controlled by the weekly schedule above
+    # SHA pinning provides stability and security
 
     # Dependabot automatically:
     # 1. Detects SHA-pinned actions (format: actions/checkout@abc123...def # v4.1.1)
