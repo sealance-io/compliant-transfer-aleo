@@ -10,25 +10,38 @@ on:
       - "!packages/policy-engine-sdk/examples/**"
 
 concurrency:
-  group: ci-sdk-tests-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions: {} # no permissions by default
 
 jobs:
   format:
     name: Format Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.3.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+        run: npm ci --no-audit --ignore-scripts
+        # Note: --prefer-offline not needed; set in .npmrc
+
+      - name: Validate lockfile
+        run: npm run lint:lockfile
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
 
       - name: Run prettier
         run: npm run format --workspace=@sealance-io/policy-engine-aleo
@@ -36,18 +49,29 @@ jobs:
   test:
     name: SDK Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.3.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
+        run: npm ci --no-audit --ignore-scripts
+        # Note: --prefer-offline not needed; set in .npmrc
+
+      - name: Validate lockfile
+        run: npm run lint:lockfile
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
 
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
