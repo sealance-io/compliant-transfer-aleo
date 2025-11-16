@@ -28,10 +28,12 @@ let devnetContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
 const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/leo-lang:v3.3.1-devnode";
-const DEVNET_VERBOSITY = process.env.DEVNET_VERBOSITY || "1";
-const MIN_CONSENSUS_VERSION = process.env.MIN_CONSENSUS_VERSION || "12";
+const DEVNODE_VERBOSITY = process.env.DEVNODE_VERBOSITY || "1";
+const MIN_CONSENSUS_VERSION = parseInt(process.env.MIN_CONSENSUS_VERSION || "12", 10);
+const FIRST_BLOCK = parseInt(process.env.FIRST_BLOCK || "20", 10);
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "300000", 10); // 5 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
+const DEVNODE_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
 
 async function advanceBlocks(numBlocks: number, privKey: string): Promise<void> {
   const networkName = networkConfig.defaultNetwork;
@@ -51,10 +53,12 @@ async function advanceBlocks(numBlocks: number, privKey: string): Promise<void> 
     },
     body: JSON.stringify(payload),
   });
+
+  console.log(`Advanced ${numBlocks} blocks`);
 }
 
 async function waitForConsensusVersion(
-  targetVersion: string,
+  targetVersion: number,
   timeout: number = CONSENSUS_CHECK_TIMEOUT,
   interval: number = CONSENSUS_CHECK_INTERVAL,
 ): Promise<void> {
@@ -97,17 +101,16 @@ async function waitForConsensusVersion(
 
         console.log(`Current consensus version: ${currentVersion}, Target: ${targetVersion}`);
 
-        // Convert to numbers for comparison to handle >= properly
+        // Convert to number for comparison to handle >= properly
         const currentVersionNum = parseInt(currentVersion, 10);
-        const targetVersionNum = parseInt(targetVersion, 10);
 
-        if (!isNaN(currentVersionNum) && !isNaN(targetVersionNum) && currentVersionNum >= targetVersionNum) {
+        if (!isNaN(currentVersionNum) && !isNaN(targetVersion) && currentVersionNum >= targetVersion) {
           console.log(`✅ Consensus version ${currentVersion} meets or exceeds target ${targetVersion}`);
           return;
         }
 
         // If we got a response but version not ready, wait before retrying
-        if (!isNaN(currentVersionNum) && !isNaN(targetVersionNum)) {
+        if (!isNaN(currentVersionNum) && !isNaN(targetVersion)) {
           console.log(`Consensus version not ready. Current: ${currentVersion}, Minimum required: ${targetVersion}`);
         } else {
           console.log(`Invalid version format. Current: ${currentVersion}, Target: ${targetVersion}`);
@@ -150,12 +153,12 @@ export async function setup() {
         "--listener-addr",
         "0.0.0.0:3030",
         "--private-key",
-        "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
+        DEVNODE_PRIVATE_KEY,
         "--verbosity",
-        DEVNET_VERBOSITY,
+        DEVNODE_VERBOSITY,
       ])
       .withEnvironment({
-        PRIVATE_KEY: "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
+        PRIVATE_KEY: DEVNODE_PRIVATE_KEY,
       })
       .withExposedPorts({
         container: 3030,
@@ -168,7 +171,7 @@ export async function setup() {
     console.log(`Container started with mapped port: ${mappedPort}`);
   }
 
-  await advanceBlocks(20, "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH");
+  await advanceBlocks(FIRST_BLOCK, DEVNODE_PRIVATE_KEY);
   await waitForConsensusVersion(MIN_CONSENSUS_VERSION);
 }
 
