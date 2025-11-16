@@ -38,11 +38,11 @@ updates:
     # 21-day cooldown policy (2024 feature) - applies to all dependencies
     # Security updates bypass cooldown automatically
     cooldown:
-      semver-major-days: 90  # Maximum allowed (effectively blocks major updates with ignore rule below)
-      semver-minor-days: 21  # Required 21-day waiting period for minor versions
-      semver-patch-days: 7   # Conservative 1-week validation for patches
+      semver-major-days: 90 # Maximum allowed (effectively blocks major updates with ignore rule below)
+      semver-minor-days: 21 # Required 21-day waiting period for minor versions
+      semver-patch-days: 7 # Conservative 1-week validation for patches
       include:
-        - "*"  # Apply cooldown to all dependencies
+        - "*" # Apply cooldown to all dependencies
 
     # Group related updates into single PRs for efficiency
     groups:
@@ -166,19 +166,19 @@ updates:
       - "npm"
       - "automated"
 
-# ============================================================================
-# GITHUB ACTIONS ECOSYSTEM
-# ============================================================================
-# Configuration implements:
-# - Full commit SHA pinning for immutability (security best practice)
-# - Automatic SHA updates with version comment maintenance
-# - Weekly update schedule with grouping
-# - Security-hardened against tag hijacking attacks
-#
-# Note: This project already uses SHA-pinned actions with version comments
-# (e.g., actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0)
-# Dependabot will automatically maintain both SHA and version comments
-# ============================================================================
+  # ============================================================================
+  # GITHUB ACTIONS ECOSYSTEM
+  # ============================================================================
+  # Configuration implements:
+  # - Full commit SHA pinning for immutability (security best practice)
+  # - Automatic SHA updates with version comment maintenance
+  # - Weekly update schedule with grouping
+  # - Security-hardened against tag hijacking attacks
+  #
+  # Note: This project already uses SHA-pinned actions with version comments
+  # (e.g., actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0)
+  # Dependabot will automatically maintain both SHA and version comments
+  # ============================================================================
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -196,11 +196,11 @@ updates:
     # Security updates bypass cooldown automatically
     # SHA pinning provides additional stability layer
     cooldown:
-      semver-major-days: 30  # 1 month for major version changes (breaking changes)
-      semver-minor-days: 14  # 2 weeks for minor versions (new features)
-      semver-patch-days: 7   # 1 week for patches (aligns with npm, conservative approach)
+      semver-major-days: 30 # 1 month for major version changes (breaking changes)
+      semver-minor-days: 14 # 2 weeks for minor versions (new features)
+      semver-patch-days: 7 # 1 week for patches (aligns with npm, conservative approach)
       include:
-        - "*"  # Apply cooldown to all Actions
+        - "*" # Apply cooldown to all Actions
 
     # Dependabot automatically:
     # 1. Detects SHA-pinned actions (format: actions/checkout@abc123...def # v4.1.1)
