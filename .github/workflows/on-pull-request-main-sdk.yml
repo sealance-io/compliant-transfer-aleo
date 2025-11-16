@@ -35,7 +35,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --ignore-scripts
-        # Note: --prefer-offline not needed; set in .npmrc
 
       - name: Validate lockfile
         run: npm run lint:lockfile
@@ -65,7 +64,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --ignore-scripts
-        # Note: --prefer-offline not needed; set in .npmrc
 
       - name: Validate lockfile
         run: npm run lint:lockfile
