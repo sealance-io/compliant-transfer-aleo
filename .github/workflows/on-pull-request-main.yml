@@ -9,24 +9,41 @@ on:
       - "**/*.md"
 
 concurrency:
-  group: ci-tests-${{ github.ref }}-1
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions: {} # no permissions by default
 
 jobs:
   linter:
+    name: Linter
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4.3.0
-      - uses: actions/setup-node@v4.4.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
+
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
+        run: npm ci --no-audit --ignore-scripts
+        # Note: --prefer-offline not needed; set in .npmrc
+
+      - name: Validate lockfile
+        run: npm run lint:lockfile
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
       - name: Run prettier
         run: npm run format
 
   test:
+    name: Test
     runs-on: ubuntu-latest
     env:
       DEVNET_CHECK_TIMEOUT: 30000 # 30 seconds in ms
@@ -34,11 +51,11 @@ jobs:
       TESTNET_ENDPOINT: "http://host.docker.internal:3030"
     permissions:
       contents: "read"
-      packages: "read"
-      actions: "read"
+      packages: "read" # Required to pull container images from GHCR
+      actions: "read" # Required for GitHub Actions runtime
     timeout-minutes: 60
     container:
-      image: ghcr.io/sealance-io/leo-lang-ci:v3.3.1-devnode
+      image: ghcr.io/sealance-io/leo-lang-ci:v3.3.1-devnode@sha256:3f55b1a8d69978e94595b56536a02bae37befbe392dfee0735c494544fb8243c
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
@@ -49,15 +66,17 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: Setup doko-js-cli
-        uses: sealance-io/setup-doko-js-action@v0.1.4
+        uses: sealance-io/setup-doko-js-action@7af6acdaec3648e36b8db3408a42bfc4a733ff5a # v0.1.4
         with:
           doko-repo: "sealance-io/doko-js"
           doko-branch: "fixes_to_dokojs"
           node-version: 24
           rust-version: "stable"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
@@ -66,20 +85,27 @@ jobs:
       - run: cp .env.example .env
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
+        run: npm ci --no-audit --ignore-scripts
+        # Note: --prefer-offline not needed; set in .npmrc
+
+      - name: Validate lockfile
+        run: npm run lint:lockfile
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
+      - name: Run postinstall
+        run: npm run postinstall
+
+      - name: Compile leo
+        run: npm run compile
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull leo-devnode image
-        run: docker pull ghcr.io/sealance-io/leo-lang:v3.3.1-devnode
-
-      - name: Compile leo
-        run: npm run compile
 
       - name: Run test (bypass test-containers)
         run: npm run test
