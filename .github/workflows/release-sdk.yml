@@ -6,12 +6,17 @@ on:
       - main
     paths:
       - 'packages/policy-engine-sdk/**'
+      - "!packages/policy-engine-sdk/**/*.md"
+      - "!packages/policy-engine-sdk/test/**"
+      - "!packages/policy-engine-sdk/examples/**"
       - '.changeset/**'
 
 # Prevent concurrent releases
 concurrency:
-  group: release-sdk
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+
+permissions: {} # no permissions by default
 
 jobs:
   release:
@@ -27,14 +32,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           # Note: fetch-depth: 0 is NOT needed - changesets auto-deepens shallow clones as necessary
           # Using default shallow clone (fetch-depth: 1) for better security and performance
           persist-credentials: false  # Prevent credential leakage in artifacts
 
+      # Configures for 'registry.npmjs.org' with OIDC for trusted publishing
       - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: '.nvmrc'
           # cache: 'npm'  # Disabled to prevent cache poisoning attacks in release workflow
@@ -42,12 +48,15 @@ jobs:
 
       # OIDC requires npm >= 11.5.1
       # Node.js 24 ships with npm 11.x (already OIDC-compatible)
-      # This step is optional but kept for safety to ensure latest npm
-      # - name: Upgrade npm for OIDC support (optional with Node.js 24)
-      #   run: npm install -g npm@latest
+      # This step is optional but kept for safety to ensure latest npm with cooldown policy
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest --before="$(date -v -14d)"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --prefer-online --ignore-scripts
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
 
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
@@ -58,33 +67,37 @@ jobs:
         with:
           # Commands
           version: npx changeset version
-          publish: npx changeset publish
+          publish: npx changeset publish # publish to npmjs
           commit: 'chore: version packages'
           title: 'chore: version packages'
+          createGithubReleases: false # we create gh release manually after publishing to github packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Only runs when packages are published (not on Version PR creation)
+      # Reconfigures for 'npm.pkg.github.com' with NODE_AUTH_TOKEN auth
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        if: steps.changesets.outputs.published == 'true' # Only runs when packages are published (not on Version PR creation)
+        with:
+          node-version-file: '.nvmrc'
+          # cache: 'npm'  # Disabled to prevent cache poisoning attacks in release workflow
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '${{ github.repository_owner }}'
+      
       - name: Publish to GitHub Packages
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.published == 'true' # Only runs when packages are published (not on Version PR creation)
         working-directory: packages/policy-engine-sdk
-        run: |
-          # Configure for GitHub Packages
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > .npmrc
-          echo "@sealance-io:registry=https://npm.pkg.github.com" >> .npmrc
-
-          # Publish (already built and tested)
-          npm publish --registry=https://npm.pkg.github.com
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Create GitHub Release with changelog
       - name: Create GitHub Release
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.published == 'true' # Only runs when packages are published (not on Version PR creation)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
           CHANGELOG: ${{ steps.changesets.outputs.changelog }}
+        # Uses the built-in gh CLI
         run: |
           TAG="policy-engine-sdk-v${VERSION}"
           gh release create "$TAG" \
