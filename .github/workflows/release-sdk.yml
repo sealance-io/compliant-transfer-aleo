@@ -1,0 +1,92 @@
+name: Release SDK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/policy-engine-sdk/**'
+      - '.changeset/**'
+
+# Prevent concurrent releases
+concurrency:
+  group: release-sdk
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release SDK
+    runs-on: ubuntu-latest
+    environment:
+      name: npm-publish
+    permissions:
+      contents: write        # Create releases and tags
+      pull-requests: write   # Create/update Version Packages PR
+      id-token: write        # OIDC token for npm trusted publishing
+      packages: write        # Publish to GitHub Packages
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          # Note: fetch-depth: 0 is NOT needed - changesets auto-deepens shallow clones as necessary
+          # Using default shallow clone (fetch-depth: 1) for better security and performance
+          persist-credentials: false  # Prevent credential leakage in artifacts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
+        with:
+          node-version-file: '.nvmrc'
+          # cache: 'npm'  # Disabled to prevent cache poisoning attacks in release workflow
+          registry-url: 'https://registry.npmjs.org'
+
+      # OIDC requires npm >= 11.5.1
+      # Node.js 24 ships with npm 11.x (already OIDC-compatible)
+      # This step is optional but kept for safety to ensure latest npm
+      # - name: Upgrade npm for OIDC support (optional with Node.js 24)
+      #   run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build SDK
+        run: npm run build --workspace=@sealance-io/policy-engine-aleo
+
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba  # v1.5.3
+        with:
+          # Commands
+          version: npx changeset version
+          publish: npx changeset publish
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Only runs when packages are published (not on Version PR creation)
+      - name: Publish to GitHub Packages
+        if: steps.changesets.outputs.published == 'true'
+        working-directory: packages/policy-engine-sdk
+        run: |
+          # Configure for GitHub Packages
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > .npmrc
+          echo "@sealance-io:registry=https://npm.pkg.github.com" >> .npmrc
+
+          # Publish (already built and tested)
+          npm publish --registry=https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create GitHub Release with changelog
+      - name: Create GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+          CHANGELOG: ${{ steps.changesets.outputs.changelog }}
+        run: |
+          TAG="policy-engine-sdk-v${VERSION}"
+          gh release create "$TAG" \
+            --title "SDK v${VERSION}" \
+            --notes "${CHANGELOG}"
