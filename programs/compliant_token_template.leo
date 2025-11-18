@@ -79,29 +79,39 @@ program compliant_token_template.aleo {
     // Trees deeper than this value are not supported.
     const MAX_TREE_DEPTH: u32 = 15u32;
 
-    const WALLET_ID: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2; // should update later
-
     const MULTISIG_OP_UPGRADE: u8 = 1u8;
     const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
     const MULTISIG_OP_SET_PAUSE_STATUS: u8 = 3u8;
+    const MULTISIG_OP_MINT_PUBLIC: u8 = 4u8;
+    const MULTISIG_OP_BURN_PUBLIC: u8 = 5u8;
 
     struct CompliantTokenMultisigOp {
         op: u8,
 
+        // Only used for MULTISIG_OP_UPDATE_ROLE, MULTISIG_OP_MINT_PUBLIC and MULTISIG_OP_BURN_PUBLIC
+        user: address,
+
+        // Only used for MULTISIG_OP_MINT_PUBLIC and MULTISIG_OP_BURN_PUBLIC
+        amount: u128,
+
+        // Only used for MULTISIG_OP_UPDATE_ROLE
+        role: u16,
+
         // Only used for MULTISIG_OP_SET_PAUSE_STATUS
         pause_status: bool,
 
-        // Only used for MULTISIG_OP_UPDATE_ROLE
-        user: address,
-        role: u16,
-
         // Only used for MULTISIG_OP_UPGRADE
         edition: u16,
-        checksum: [u8; 32]
+        checksum: [u8; 32],
+    }
+
+    struct CompliantTokenMultisigSaltedOp {
+        multisig_op: CompliantTokenMultisigOp,
+        salt: scalar
     }
 
     // Stores pending multisig requests, Keyed by hash(WalletSigningOpId) to uniquely identify each operation
-    mapping pending_requests: field => CompliantTokenMultisigOp; // hash(WalletSigningOpId) => CompliantTokenMultisigOp;
+    mapping pending_requests: field => CompliantTokenMultisigSaltedOp; // hash(WalletSigningOpId) => CompliantTokenMultisigOp;
     // Stores checksums of approved upgrades by edition, upgrades are allowed if the provided checksum matches the stored value for that edition.
     mapping approved_upgrades: u16 => [u8; 32]; // edition => checksum;
 
@@ -114,64 +124,52 @@ program compliant_token_template.aleo {
     // Registers the operation with the external multisig wallet using its signing_op_id.
     // Stores the associated CompliantTokenMultisigOp under the hashed wallet operation ID.
     // Fails if an operation with the same ID already exists.
-    async transition init_multisig_op(signing_op_id: field, multisig_op: CompliantTokenMultisigOp) -> (field, Future) {
-        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(WALLET_ID, signing_op_id);
+    async transition init_multisig_op(public salted_multisig_op: CompliantTokenMultisigSaltedOp) -> (field, Future) {
+        let signing_op_id = BHP256::commit_to_field(salted_multisig_op.multisig_op, salted_multisig_op.salt);
+        let wallet_id = BHP256::commit_to_address(self.address, salted_multisig_op.multisig_op.op as scalar);
+        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(wallet_id, signing_op_id);
         return (wallet_signing_op_id_hash, fin_init_multisig_op(
             wallet_signing_op_id_hash,
-            multisig_op,
+            salted_multisig_op,
             init_signing_op_fut
         ));
     }
     async function fin_init_multisig_op(
         wallet_signing_op_id_hash: field,
-        multisig_op: CompliantTokenMultisigOp,
+        salted_multisig_op: CompliantTokenMultisigSaltedOp,
         init_signing_op_fut: Future,
     ) {
         assert(!pending_requests.contains(wallet_signing_op_id_hash));
-        pending_requests.set(wallet_signing_op_id_hash, multisig_op);
+        pending_requests.set(wallet_signing_op_id_hash, salted_multisig_op);
         init_signing_op_fut.await();
     }
 
-    // Executes a previously initialized multisig operation after enough required signatures are collected.
-    // Verifies that signing is complete and the operation details match the original request.
-    // Supports the following operations:
-    // - Approve upgrade: adds a checksum to the approved_upgrades mapping for a given edition. 
-    // This does not perform the upgrade itself — it only enables a future upgrade to proceed if the edition and checksum match.
-    // - Role updates
-    // - Pause status changes
-    // Removes the operation from pending_requests to prevent replay.
-    async transition exec_multisig_op(signing_op_id: field, multisig_op: CompliantTokenMultisigOp) -> Future {
-        let signing_complete_fut = multisig.aleo/assert_signing_completed(WALLET_ID, signing_op_id);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(WALLET_ID, signing_op_id);
+    // Can be called only if enough signers sign on this request
+    // Enables a future upgrade to proceed if the edition and checksum match.
+    async transition approve_upgrade(public edition: u16, public checksum: [u8; 32], public salt: scalar) -> Future {
+        let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+            op: MULTISIG_OP_UPGRADE,
+            pause_status: false,
+            user: ZERO_ADDRESS,
+            role: 0u16,
+            edition: edition,
+            checksum: checksum,
+            amount: 0u128,
+        };
+        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let wallet_id = BHP256::commit_to_address(self.address, multisig_op.op as scalar);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        return fin_exec_multisig_op(wallet_signing_op_id_hash, multisig_op, signing_complete_fut);
+        return f_approve_upgrade(wallet_signing_op_id_hash, multisig_op, salt);
     }
-    async function fin_exec_multisig_op(
-        wallet_signing_op_id_hash: field,
-        multisig_op: CompliantTokenMultisigOp,
-        signing_complete_fut: Future,
-    ) {
-        // Signing must be completed.
-        signing_complete_fut.await();
-
-        // Details must match!
+    async function f_approve_upgrade(wallet_signing_op_id_hash: field, multisig_op: CompliantTokenMultisigOp, salt: scalar) {
+        let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+        assert(signing_complete);
         let pending_request = pending_requests.get(wallet_signing_op_id_hash);
-        assert_eq(pending_request, multisig_op);
-
-        // Execute request
-        if (multisig_op.op == MULTISIG_OP_UPGRADE) {
-            approved_upgrades.set(multisig_op.edition, multisig_op.checksum);
-        }
-        else if (multisig_op.op == MULTISIG_OP_UPDATE_ROLE) {
-            address_to_role.set(multisig_op.user, multisig_op.role);
-        } else if (multisig_op.op == MULTISIG_OP_SET_PAUSE_STATUS) {
-            pause.set(PAUSE_STATUS_INDEX, multisig_op.pause_status);
-        } else {
-            assert(false);
-        }
-
-        // Removing is crucial, otherwise the operation can be executed twice.
-        pending_requests.remove(wallet_signing_op_id_hash);
+        assert_eq(pending_request.multisig_op, multisig_op);
+        assert_eq(pending_request.salt, salt);
+        
+        approved_upgrades.set(multisig_op.edition, multisig_op.checksum);    
     }
 
     // -------------------------
@@ -179,17 +177,32 @@ program compliant_token_template.aleo {
     // -------------------------
 
     // Updates the address assigned to a given role.
-    // Can only be called by the current role manager.
+    // Can only be called by the current role manager, or if enough signers sign on this request.
     // Ensures the caller retains manager privileges, preventing a state with no active managers.
-    async transition update_role(public new_address: address, role: u16) -> Future {
-        return f_update_role(new_address, self.caller, role);
-    }
-    async function f_update_role(new_address: address, caller: address, new_role: u16) {
-        let current_role: u16 = address_to_role.get(caller);
-        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+    async transition update_role(public new_address: address, public role: u16, public salt: scalar) -> Future {
+        let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+            op: MULTISIG_OP_UPDATE_ROLE,
+            pause_status: false,
+            user: new_address,
+            role: role,
+            edition: 0u16,
+            checksum: [0u8; 32],
+            amount: 0u128
+        };
+        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let wallet_id = BHP256::commit_to_address(self.address, multisig_op.op as scalar);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        if (caller == new_address) { 
-            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        return f_update_role(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, salt);
+    }
+    async function f_update_role(new_address: address, caller: address, new_role: u16, wallet_signing_op_id_hash: field, multisig_op: CompliantTokenMultisigOp, salt: scalar) {
+        let current_role: u16 = address_to_role.get(caller);
+        if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
+            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
+            let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+            assert_eq(pending_request.multisig_op, multisig_op);
+            assert_eq(pending_request.salt, salt);
         }
         
         address_to_role.set(new_address, new_role);
@@ -200,14 +213,28 @@ program compliant_token_template.aleo {
     // Sets the token metadata (name, symbol, decimals, max supply).
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
+    // Create multisig wallets for each multisig operation
     async transition initialize(
         public name: u128,
         public symbol: u128,
         public decimals: u8,
         public max_supply: u128,
         public admin: address,
+        public signers: [[address; 4]; 5],
+        public threshold: [u8; 5],
     ) -> Future {
+        let upgrade_wallet_creation = multisig_impl.aleo/create_wallet(BHP256::commit_to_address(self.address, MULTISIG_OP_UPGRADE as scalar), threshold[0], signers[0]);
+        let update_role_wallet_creation = multisig_impl.aleo/create_wallet(BHP256::commit_to_address(self.address, MULTISIG_OP_UPDATE_ROLE as scalar), threshold[1], signers[1]);
+        let pause_wallet_creation = multisig_impl.aleo/create_wallet(BHP256::commit_to_address(self.address, MULTISIG_OP_SET_PAUSE_STATUS as scalar), threshold[2], signers[2]);
+        let mint_wallet_creation = multisig_impl.aleo/create_wallet(BHP256::commit_to_address(self.address, MULTISIG_OP_MINT_PUBLIC as scalar), threshold[3], signers[3]);
+        let burn_wallet_creation = multisig_impl.aleo/create_wallet(BHP256::commit_to_address(self.address, MULTISIG_OP_BURN_PUBLIC as scalar), threshold[4], signers[4]);
+
         return finalize_initialize(
+            upgrade_wallet_creation,
+            update_role_wallet_creation,
+            pause_wallet_creation,
+            mint_wallet_creation,
+            burn_wallet_creation,
             name,
             symbol,
             decimals,
@@ -217,6 +244,11 @@ program compliant_token_template.aleo {
         );
     }
     async function finalize_initialize(
+        upgrade_wallet_creation: Future,
+        update_role_wallet_creation: Future,
+        pause_wallet_creation: Future,
+        mint_wallet_creation: Future,
+        burn_wallet_creation: Future,
         name: u128,
         symbol: u128,
         decimals: u8,
@@ -224,6 +256,12 @@ program compliant_token_template.aleo {
         admin: address, 
         caller: address,
     ) {
+        upgrade_wallet_creation.await();
+        update_role_wallet_creation.await();
+        pause_wallet_creation.await();
+        mint_wallet_creation.await();
+        burn_wallet_creation.await();
+
         // Check if the token has already been initialized
         let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
         assert_eq(already_initialized, false);
@@ -272,23 +310,44 @@ program compliant_token_template.aleo {
     }
 
     // Mints new public tokens to the specified recipient’s balance.
-    // Can be called only by a minter.
+    // Can be called only by a minter, or if enough signers sign on this request.
     // Ensures that the new total supply does not exceed the maximum supply.
     // Updates the recipient’s balance and the total token supply in the token metadata.
     async transition mint_public(
         public recipient: address,
         public amount: u128,
+        public salt: scalar
     ) -> Future {
-        return finalize_mint_public(recipient, amount, self.caller);
+        let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+            op: MULTISIG_OP_MINT_PUBLIC,
+            pause_status: false,
+            user: recipient,
+            role: 0u16,
+            edition: 0u16,
+            checksum: [0u8; 32],
+            amount: amount
+        };
+        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let wallet_id = BHP256::commit_to_address(self.address, multisig_op.op as scalar);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
+        return finalize_mint_public(recipient, amount, self.caller, wallet_signing_op_id_hash, multisig_op, salt);
     }
     async function finalize_mint_public(
         recipient: address,
         amount: u128,
-        caller: address
+        caller: address,
+        wallet_signing_op_id_hash: field,
+        multisig_op: CompliantTokenMultisigOp,
+        salt: scalar, 
     ) {
-
         let role: u16 = address_to_role.get(caller);
-        assert(role & MINTER_ROLE == MINTER_ROLE);
+        if (!(role & MINTER_ROLE == MINTER_ROLE)) {
+            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
+            let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+            assert_eq(pending_request.multisig_op, multisig_op);
+            assert_eq(pending_request.salt, salt);
+        }
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
@@ -365,22 +424,44 @@ program compliant_token_template.aleo {
     }
 
     // Burns public tokens from the specified owner’s balance.
-    // Can be called only by a burner.
+    // Can be called only by a burner, or if enough signers sign on this request.
     // Decreases the owner’s balance and reduces the total token supply in the token metadata.
     async transition burn_public(
         public owner: address,
-        public amount: u128
+        public amount: u128,
+        public salt: scalar
     ) -> Future {
-        return finalize_burn_public(owner, amount, self.caller);
+        let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+            op: MULTISIG_OP_BURN_PUBLIC,
+            pause_status: false,
+            user: owner,
+            role: 0u16,
+            edition: 0u16,
+            checksum: [0u8; 32],
+            amount: amount
+        };
+        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let wallet_id = BHP256::commit_to_address(self.address, multisig_op.op as scalar);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
+        return finalize_burn_public(owner, amount, self.caller, wallet_signing_op_id_hash, multisig_op, salt);
     }
 
     async function finalize_burn_public(
         owner: address,
         amount: u128,
         caller: address,
+        wallet_signing_op_id_hash: field,
+        multisig_op: CompliantTokenMultisigOp,
+        salt: scalar
     ) {
         let role: u16 = address_to_role.get(caller);
-        assert(role & BURNER_ROLE == BURNER_ROLE);
+        if (!(role & BURNER_ROLE == BURNER_ROLE)) {
+            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
+            let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+            assert_eq(pending_request.multisig_op, multisig_op);
+            assert_eq(pending_request.salt, salt);
+        }
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
         assert_eq(is_paused, false);
@@ -807,14 +888,38 @@ program compliant_token_template.aleo {
     }
 
     // Stops or resumes all token transfers.
-    // Can only be called by an address with the PAUSE_ROLE.
-    async transition set_pause_status(pause_status: bool) -> Future {
-        return f_set_pause_status(pause_status, self.caller);
+    // Can only be called by an address with the PAUSE_ROLE, or if enough signers sign on this request.
+    async transition set_pause_status(public pause_status: bool, public salt: scalar) -> Future {
+        let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+            op: MULTISIG_OP_SET_PAUSE_STATUS,
+            pause_status: pause_status,
+            user: ZERO_ADDRESS,
+            role: 0u16,
+            edition: 0u16,
+            checksum: [0u8; 32],
+            amount: 0u128
+        };
+        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let wallet_id = BHP256::commit_to_address(self.address, multisig_op.op as scalar);
+        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
+        return f_set_pause_status(pause_status, self.caller, wallet_signing_op_id_hash, multisig_op, salt);
     }
 
-    async function f_set_pause_status(new_pause_status: bool, caller: address) {
+    async function f_set_pause_status(
+        new_pause_status: bool,
+        caller: address,
+        wallet_signing_op_id_hash: field,
+        multisig_op: CompliantTokenMultisigOp,
+        salt: scalar
+    ) {
         let role: u16 = address_to_role.get(caller);
-        assert(role & PAUSE_ROLE == PAUSE_ROLE);
+        if (!(role & PAUSE_ROLE == PAUSE_ROLE)) {
+            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
+            let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+            assert_eq(pending_request.multisig_op, multisig_op);
+            assert_eq(pending_request.salt, salt);
+        }
         
         pause.set(PAUSE_STATUS_INDEX, new_pause_status);
     }
