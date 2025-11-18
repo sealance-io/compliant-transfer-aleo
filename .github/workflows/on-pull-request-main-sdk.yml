@@ -8,6 +8,7 @@ on:
       - "packages/policy-engine-sdk/**"
       - "!packages/policy-engine-sdk/**/*.md"
       - "!packages/policy-engine-sdk/examples/**"
+      - '.changeset/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
