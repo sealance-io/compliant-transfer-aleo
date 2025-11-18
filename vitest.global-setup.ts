@@ -35,14 +35,14 @@ const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || 
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 const DEVNODE_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
 
-async function advanceBlocks(numBlocks: number, privKey: string): Promise<void> {
+async function advanceBlocks(numBlocks: number): Promise<void> {
   const networkName = networkConfig.defaultNetwork;
   const endpoint = networkConfig.networks[networkName].endpoint;
   const apiUrl = `${endpoint}/testnet/block/create`;
 
   // Call the REST API to advance the ledger by N block.
   const payload = {
-    private_key: privKey,
+    private_key: DEVNODE_PRIVATE_KEY,
     num_blocks: numBlocks,
   };
 
@@ -171,7 +171,7 @@ export async function setup() {
     console.log(`Container started with mapped port: ${mappedPort}`);
   }
 
-  await advanceBlocks(FIRST_BLOCK, DEVNODE_PRIVATE_KEY);
+  await advanceBlocks(FIRST_BLOCK);
   await waitForConsensusVersion(MIN_CONSENSUS_VERSION);
 }
 
