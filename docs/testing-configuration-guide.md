@@ -6,10 +6,10 @@ This guide explains how to configure the testing environment for the compliant-t
 
 The project supports two distinct testing modes optimized for different use cases:
 
-| Mode | Use Case | Speed | Realism | Command |
-|------|----------|-------|---------|---------|
-| **Devnode** | Local development, rapid iteration | ⚡ Fast | Basic | Default |
-| **Devnet** | Pre-deployment validation, CI | 🐌 Slow | High | `DEVNET=true` |
+| Mode        | Use Case                           | Speed   | Realism | Command       |
+| ----------- | ---------------------------------- | ------- | ------- | ------------- |
+| **Devnode** | Local development, rapid iteration | ⚡ Fast | Basic   | Default       |
+| **Devnet**  | Pre-deployment validation, CI      | 🐌 Slow | High    | `DEVNET=true` |
 
 ## Quick Start
 
@@ -48,6 +48,7 @@ SKIP_DEPLOY_CERTIFICATE=true
 ```
 
 **What it does:**
+
 - Runs a single devnode (not full network)
 - Skips ZK proof generation (much faster transactions)
 - Skips deployment certificate generation
@@ -69,6 +70,7 @@ CONSENSUS_VERSION=12
 ```
 
 **What it does:**
+
 - Runs full devnet with multiple validators
 - Performs complete consensus simulation
 - Generates real ZK proofs
@@ -91,6 +93,7 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 ```
 
 **What it does:**
+
 - Same as Mode 2 but with explicit control over consensus version at each block height
 - Useful for testing behavior across consensus version upgrades
 
@@ -100,47 +103,49 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 
 ### Core Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DEVNET` | `false` | Enable full devnet mode (vs. single devnode) |
-| `CONSENSUS_VERSION` | `12` | Target consensus version to wait for |
-| `SKIP_PROVING` | `false` | Skip ZK proof generation (devnode only) |
+| Variable                  | Default | Description                                           |
+| ------------------------- | ------- | ----------------------------------------------------- |
+| `DEVNET`                  | `false` | Enable full devnet mode (vs. single devnode)          |
+| `CONSENSUS_VERSION`       | `12`    | Target consensus version to wait for                  |
+| `SKIP_PROVING`            | `false` | Skip ZK proof generation (devnode only)               |
 | `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deployment certificate generation (devnode only) |
 
 ### Container Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_TEST_CONTAINERS` | `true` | Use Testcontainers for automated devnet setup |
-| `ALEO_TEST_IMAGE` | See below | Docker image for devnet/devnode |
+| Variable              | Default   | Description                                   |
+| --------------------- | --------- | --------------------------------------------- |
+| `USE_TEST_CONTAINERS` | `true`    | Use Testcontainers for automated devnet setup |
+| `ALEO_TEST_IMAGE`     | See below | Docker image for devnet/devnode               |
 
 **Default Images:**
+
 - Devnode: `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
 - Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
 
 ### Network Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ALEO_PRIVATE_KEY` | Required* | Private key for devnode operations (*only required for devnode mode) |
-| `FIRST_BLOCK` | `20` | Initial block advancement (devnode only) |
-| `CONSENSUS_HEIGHT` | - | Custom consensus height configuration (devnet only) |
+| Variable           | Default    | Description                                                           |
+| ------------------ | ---------- | --------------------------------------------------------------------- |
+| `ALEO_PRIVATE_KEY` | Required\* | Private key for devnode operations (\*only required for devnode mode) |
+| `FIRST_BLOCK`      | `20`       | Initial block advancement (devnode only)                              |
+| `CONSENSUS_HEIGHT` | -          | Custom consensus height configuration (devnet only)                   |
 
 ### Consensus Monitoring
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CONSENSUS_CHECK_TIMEOUT` | `300000` | Max wait time for consensus (ms) |
-| `CONSENSUS_CHECK_INTERVAL` | `5000` | Check interval for consensus (ms) |
-| `CONSENSUS_VERSION_HEIGHTS` | - | Custom consensus version per block height |
+| Variable                    | Default  | Description                               |
+| --------------------------- | -------- | ----------------------------------------- |
+| `CONSENSUS_CHECK_TIMEOUT`   | `300000` | Max wait time for consensus (ms)          |
+| `CONSENSUS_CHECK_INTERVAL`  | `5000`   | Check interval for consensus (ms)         |
+| `CONSENSUS_VERSION_HEIGHTS` | -        | Custom consensus version per block height |
 
 ### Logging
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ALEO_VERBOSITY` | `1` | Log verbosity: 0 (quiet) to 4 (debug) |
+| Variable         | Default | Description                           |
+| ---------------- | ------- | ------------------------------------- |
+| `ALEO_VERBOSITY` | `1`     | Log verbosity: 0 (quiet) to 4 (debug) |
 
 Examples:
+
 ```bash
 SKIP_PROVING=true
 SKIP_PROVING=yes
@@ -183,7 +188,7 @@ env:
   DEVNET: true
   CONSENSUS_VERSION: 12
   ALEO_VERBOSITY: 2
-  CONSENSUS_CHECK_TIMEOUT: 600000  # 10 minutes for slower CI
+  CONSENSUS_CHECK_TIMEOUT: 600000 # 10 minutes for slower CI
 ```
 
 ## Manual Devnet Setup (Without Testcontainers)
@@ -211,6 +216,7 @@ npm test
 **Symptom:** "Timeout waiting for consensus version >= 12"
 
 **Solutions:**
+
 1. Increase timeout: `CONSENSUS_CHECK_TIMEOUT=600000 npm test`
 2. Check Docker logs: `docker logs <container-id>`
 3. Verify `ALEO_PRIVATE_KEY` is set correctly
@@ -221,6 +227,7 @@ npm test
 **Symptom:** "Error: unauthorized: authentication required"
 
 **Solution:**
+
 ```bash
 docker login ghcr.io
 # Use GitHub personal access token with read:packages scope
@@ -231,6 +238,7 @@ docker login ghcr.io
 **Symptom:** Each test takes several minutes
 
 **Solution:** Switch to fast development mode:
+
 ```bash
 # Edit .env
 SKIP_PROVING=true
@@ -243,6 +251,7 @@ SKIP_DEPLOY_CERTIFICATE=true
 **Symptom:** "Cannot start container: port 3030 already in use"
 
 **Solutions:**
+
 1. Stop existing devnet: `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`
 2. Find and kill process: `lsof -ti:3030 | xargs kill`
 
@@ -253,6 +262,7 @@ SKIP_DEPLOY_CERTIFICATE=true
 The testing infrastructure uses Testcontainers to automatically provision and manage containerized Aleo networks:
 
 **Devnode Mode:**
+
 1. Starts single Leo devnode container
 2. Advances 20 blocks immediately
 3. Waits for consensus version 12
@@ -260,6 +270,7 @@ The testing infrastructure uses Testcontainers to automatically provision and ma
 5. Tears down container
 
 **Devnet Mode:**
+
 1. Starts full devnet with validator network
 2. Waits for network consensus
 3. Waits for consensus version 12
@@ -269,6 +280,7 @@ The testing infrastructure uses Testcontainers to automatically provision and ma
 ### Why Sequential Testing?
 
 Tests run **sequentially** (no parallelism) because:
+
 - All tests share the same devnet instance
 - Blockchain state is cumulative
 - Parallel execution would cause race conditions
