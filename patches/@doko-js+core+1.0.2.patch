@@ -1,5 +1,5 @@
 diff --git a/node_modules/@doko-js/core/dist/index.js b/node_modules/@doko-js/core/dist/index.js
-index 4d3b119..ed31d58 100644
+index 4d3b119..5d0959f 100644
 --- a/node_modules/@doko-js/core/dist/index.js
 +++ b/node_modules/@doko-js/core/dist/index.js
 @@ -1311,7 +1311,7 @@ const checkDeployment = async endpoint => {
@@ -11,13 +11,12 @@ index 4d3b119..ed31d58 100644
              DokoJSLogger.info("Deployment not found");
              return false;
          }
-@@ -1359,10 +1359,11 @@ async function deployAleo(aleoCode, config, aleoFilesDir) {
+@@ -1359,10 +1359,10 @@ async function deployAleo(aleoCode, config, aleoFilesDir) {
      DokoJSLogger.log(`Deploying program ${config.appName}`);
      const projectDir = await makeProjectForDeploy(`${config.appName}.aleo`, aleoCode, aleoFilesDir);
      const priorityFee = config.priorityFee || 0;
 -    const cmd = leoDeployCommand(projectDir, config.privateKey, nodeEndPoint, config.networkName, priorityFee, true);
-+    const isDevnet = nodeEndPoint.includes("localhost") || nodeEndPoint.includes("host.docker.internal");
-+    const cmd = leoDeployCommand(projectDir, config.privateKey, nodeEndPoint, config.networkName, priorityFee, isDevnet);
++    const cmd = leoDeployCommand(projectDir, config.privateKey, nodeEndPoint, config.networkName, priorityFee);
      DokoJSLogger.debug(cmd);
      const {stdout} = await execute(cmd);
 -    const result = transactionHashToTransactionResponseObject(stdout.split("Deployment")[2].split(" ")[1], "deploy");
@@ -25,7 +24,7 @@ index 4d3b119..ed31d58 100644
      return new SnarkDeployResponse(result?.id || "", config);
  }
  
-@@ -1391,15 +1392,53 @@ const snarkDeploy = async ({config}) => {
+@@ -1391,15 +1391,53 @@ const snarkDeploy = async ({config}) => {
              programName: config.appName
          });
      }
@@ -65,8 +64,8 @@ index 4d3b119..ed31d58 100644
 +        );    
 +    }
 +
-+    const isDevnet = nodeEndPoint.includes("localhost") || nodeEndPoint.includes("host.docker.internal");
-+    const cmd = leoDeployCommand(config.contractPath, config.privateKey, nodeEndPoint, config.networkName, priorityFee, isDevnet);
++    const skipDeploymentCert =  parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE. false);
++    const cmd = leoDeployCommand(config.contractPath, config.privateKey, nodeEndPoint, config.networkName, priorityFee, skipDeploymentCert);
      DokoJSLogger.debug(cmd);
 +
      const {stdout} = await execute(cmd);
@@ -77,32 +76,45 @@ index 4d3b119..ed31d58 100644
  };
  
 -const leoDeployCommand = (path, privateKey, endpoint, network = "testnet", priorityFee = 0, noBuild = false) => `cd ${path} && leo deploy --home ${ALEO_REGISTRY_DIR} --priority-fee ${priorityFee}  --private-key ${privateKey} --endpoint ${endpoint} --network ${network} --yes ${noBuild ? "--no-build" : ""}`;
-+const leoDeployCommand = (path, privateKey, endpoint, network = "testnet", priorityFee = 0, devnet = true) => `cd ${path} && leo deploy --priority-fees ${priorityFee}  --private-key "${privateKey}" --endpoint ${endpoint} --network ${network} --yes --print --broadcast ${devnet ? "--devnet " : ""}`;
++const leoDeployCommand = (path, privateKey, endpoint, network = "testnet", priorityFee = 0, skipDeploymentCert = false) => `cd ${path} && leo deploy --priority-fees ${priorityFee}  --private-key "${privateKey}" --endpoint ${endpoint} --network ${network} ${skipDeploymentCert ? '--skip-deploy-certificate' : ''} --yes --print --broadcast`;
 +
  
  const transactionHashToTransactionResponseObject = (transactionHash, type) => {
      const transaction = {
-@@ -1582,7 +1621,9 @@ class SnarkExecuteContext {
+@@ -1582,7 +1620,8 @@ class SnarkExecuteContext {
          const transitionArgs = formatArgs(args);
          const cdCmd = this.params.isImportedAleo ? "" : `cd ${this.params.contractPath} && `;
          const programName = this.params.appName + ".aleo";
 -        const cmd = `${cdCmd}leo execute --program ${programName} ${transitionName} ${transitionArgs} --network ${this.params.networkName} --private-key ${this.params.privateKey} --endpoint ${nodeEndPoint} --broadcast --yes`;
-+        const isDevnet = nodeEndPoint.includes("localhost") || nodeEndPoint.includes("host.docker.internal");
-+        const idTestEnv = isTestEnvironment();
-+        const cmd = `${cdCmd}leo execute ${programName}/${transitionName} ${transitionArgs} --network ${this.params.networkName} ${isDevnet ? "--devnet --no-local" : ""} ${idTestEnv ? "--skip-proving" : "" } --private-key ${this.params.privateKey} --endpoint ${nodeEndPoint} --print --broadcast --yes`;
++        const skipProvingFlag =  parseBooleanEnv(process.env.SKIP_PROVING) ? '--skip-proving' : '';
++        const cmd = `${cdCmd}leo execute ${programName}/${transitionName} ${transitionArgs} --network ${this.params.networkName} --private-key ${this.params.privateKey} --endpoint ${nodeEndPoint} ${skipProvingFlag} --print --broadcast --yes`;
          DokoJSLogger.debug(cmd);
          const {stdout} = await execute(cmd);
          const {transaction} = this.parser.parse(stdout);
-@@ -1594,6 +1635,14 @@ class SnarkExecuteContext {
+@@ -1594,6 +1633,28 @@ class SnarkExecuteContext {
      }
  }
  
-+function isTestEnvironment() {
-+  return !!(
-+    process.env.VITEST === 'true' ||
-+    process.env.VITEST_WORKER_ID !== undefined ||
-+    process.env.NODE_ENV === 'test'
-+  );
++function parseBooleanEnv(value, defaultValue = false) {
++  if (value === undefined || value === "") {
++    return defaultValue;
++  }
++
++  const stringValue = String(value).toLowerCase().trim();
++
++  // Values that should be interpreted as true
++  if (["true", "t", "yes", "y", "1", "on", "enabled"].includes(stringValue)) {
++    return true;
++  }
++
++  // Values that should be interpreted as false
++  if (["false", "f", "no", "n", "0", "off", "disabled"].includes(stringValue)) {
++    return false;
++  }
++
++  // For any other unexpected values, log a warning and use the default
++  console.warn(`Warning: Unexpected boolean environment value "${value}" - using default (${defaultValue})`);
++  return defaultValue;
 +}
 +
  function CreateExecutionContext(config) {
