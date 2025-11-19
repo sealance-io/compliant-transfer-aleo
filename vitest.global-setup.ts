@@ -27,13 +27,17 @@ function parseBooleanEnv(value: string | undefined, defaultValue = true): boolea
 let devnetContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const ALEO_DEVNET_IMAGE = process.env.ALEO_DEVNET_IMAGE || "ghcr.io/sealance-io/leo-lang:v3.3.1-devnode";
-const DEVNODE_VERBOSITY = process.env.DEVNODE_VERBOSITY || "1";
-const MIN_CONSENSUS_VERSION = parseInt(process.env.MIN_CONSENSUS_VERSION || "12", 10);
+const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, false);
+const DEFAULT_ALEO_IMAGE = IS_DEVNET
+  ? "ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0"
+  : "ghcr.io/sealance-io/leo-lang:v3.3.1-devnode";
+const ALEO_TEST_IMAGE = process.env.ALEO_TEST_IMAGE || DEFAULT_ALEO_IMAGE;
+const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "1";
+const TARGET_CONSENSUS_VERSION = parseInt(process.env.CONSENSUS_VERSION || "12", 10);
 const FIRST_BLOCK = parseInt(process.env.FIRST_BLOCK || "20", 10);
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "300000", 10); // 5 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
-const DEVNODE_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
+const ALEO_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
 
 async function advanceBlocks(numBlocks: number): Promise<void> {
   const networkName = networkConfig.defaultNetwork;
@@ -42,7 +46,7 @@ async function advanceBlocks(numBlocks: number): Promise<void> {
 
   // Call the REST API to advance the ledger by N block.
   const payload = {
-    private_key: DEVNODE_PRIVATE_KEY,
+    private_key: ALEO_PRIVATE_KEY,
     num_blocks: numBlocks,
   };
 
@@ -55,6 +59,73 @@ async function advanceBlocks(numBlocks: number): Promise<void> {
   });
 
   console.log(`Advanced ${numBlocks} blocks`);
+}
+
+function validateConfiguration(): void {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Check for required variables
+  if (!ALEO_PRIVATE_KEY) {
+    errors.push("ALEO_PRIVATE_KEY is required but not set");
+  }
+
+  // Check for conflicting configurations
+  if (IS_DEVNET && (process.env.SKIP_PROVING || process.env.SKIP_DEPLOY_CERTIFICATE)) {
+    warnings.push(
+      "SKIP_PROVING and SKIP_DEPLOY_CERTIFICATE are ignored in DEVNET mode (only applicable to devnode)",
+    );
+  }
+
+  // Check for suspicious values
+  if (CONSENSUS_CHECK_TIMEOUT < 60000) {
+    warnings.push(
+      `CONSENSUS_CHECK_TIMEOUT is very low (${CONSENSUS_CHECK_TIMEOUT}ms). Consider at least 60000ms (1 minute)`,
+    );
+  }
+
+  if (ALEO_VERBOSITY && !["0", "1", "2", "3", "4"].includes(ALEO_VERBOSITY)) {
+    warnings.push(`ALEO_VERBOSITY should be 0-4, got: ${ALEO_VERBOSITY}`);
+  }
+
+  // Display configuration summary
+  console.log("\n=== Test Configuration ===");
+  console.log(`Mode: ${IS_DEVNET ? "Devnet (Full Network)" : "Devnode (Single Node)"}`);
+  console.log(`Image: ${ALEO_TEST_IMAGE}`);
+  console.log(`Verbosity: ${ALEO_VERBOSITY}`);
+  console.log(`Target Consensus: ${TARGET_CONSENSUS_VERSION}`);
+  console.log(`Use Testcontainers: ${USE_TEST_CONTAINERS}`);
+
+  if (!IS_DEVNET) {
+    const skipProving = parseBooleanEnv(process.env.SKIP_PROVING, false);
+    const skipCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE, false);
+    console.log(`Skip Proving: ${skipProving}`);
+    console.log(`Skip Deploy Certificate: ${skipCert}`);
+  }
+  console.log("========================\n");
+
+  // Display warnings
+  if (warnings.length > 0) {
+    console.warn("⚠️  Configuration Warnings:");
+    warnings.forEach(warning => console.warn(`  - ${warning}`));
+    console.warn("");
+  }
+
+  // Fail on errors
+  if (errors.length > 0) {
+    console.error("❌ Configuration Errors:");
+    errors.forEach(error => console.error(`  - ${error}`));
+    console.error("\nSee docs/testing-configuration-guide.md for configuration help");
+    throw new Error("Invalid test configuration. Fix the errors above and try again.");
+  }
+
+  // Helpful hint for slow tests
+  if (IS_DEVNET) {
+    console.log(
+      "💡 Tip: Using full DEVNET mode. Tests will be slow but realistic. " +
+        "For faster development, use devnode mode (remove DEVNET=true from .env)\n",
+    );
+  }
 }
 
 async function waitForConsensusVersion(
@@ -143,22 +214,38 @@ async function waitForConsensusVersion(
 export async function setup() {
   console.log("=== Starting global test setup for Vitest ===");
 
+  // Validate configuration before starting
+  validateConfiguration();
+
+  let command = [];
+  if (IS_DEVNET) {
+    command = [
+      "devnet",
+      "--snarkos",
+      "./snarkos",
+      "--yes",
+      "--clear-storage",
+      "--storage",
+      "/data",
+      "--num-clients",
+      "1",
+    ];
+  } else {
+    command = ["devnode", "start", "--listener-addr", "0.0.0.0:3030"];
+  }
+
   let mappedPort: number = 3030;
   if (USE_TEST_CONTAINERS) {
-    devnetContainer = await new GenericContainer(ALEO_DEVNET_IMAGE)
+    devnetContainer = await new GenericContainer(ALEO_TEST_IMAGE)
       .withEntrypoint(["/usr/local/bin/leo"])
       .withCommand([
-        "devnode",
-        "start",
-        "--listener-addr",
-        "0.0.0.0:3030",
-        "--private-key",
-        DEVNODE_PRIVATE_KEY,
+        ...command,
         "--verbosity",
-        DEVNODE_VERBOSITY,
+        ALEO_VERBOSITY,
       ])
       .withEnvironment({
-        PRIVATE_KEY: DEVNODE_PRIVATE_KEY,
+        PRIVATE_KEY: ALEO_PRIVATE_KEY,
+        CONSENSUS_HEIGHT: process.env.CONSENSUS_HEIGHT
       })
       .withExposedPorts({
         container: 3030,
@@ -171,8 +258,10 @@ export async function setup() {
     console.log(`Container started with mapped port: ${mappedPort}`);
   }
 
-  await advanceBlocks(FIRST_BLOCK);
-  await waitForConsensusVersion(MIN_CONSENSUS_VERSION);
+  if (!IS_DEVNET) {
+    await advanceBlocks(FIRST_BLOCK);
+  }
+  await waitForConsensusVersion(TARGET_CONSENSUS_VERSION);
 }
 
 // Teardown function - executed after all tests
