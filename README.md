@@ -91,99 +91,71 @@ npm run format --workspaces
 
 ## Testing
 
-This project uses automated testing with infrastructure components that simulate a local Aleo blockchain environment.
+**For comprehensive testing documentation, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md)**
 
-### Default Testing Approach
+### Quick Start
 
-Tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using 'leo devnode'. This approach requires installing a compatible leo CLI. Since 'devnode' feature is not yet supported in published, it is required to build leo CLI from sources at 'feat/leo-devnode' [branch](https://github.com/ProvableHQ/leo/tree/feat/leo-devnode)
-
-#### Running Tests
+Tests use [Testcontainers](https://node.testcontainers.org/) to automatically provision an Aleo blockchain environment. By default, tests run in **fast development mode** using devnode with proof skipping.
 
 ```bash
-# Run all tests
+# Run all tests (fast mode - default)
 npm test
 
-# Run specific tests
+# Run specific test
 npm run test:select ./test/merkle_tree.test.ts
+
+# Run with verbose logging
+ALEO_VERBOSITY=4 npm test
 ```
 
-#### Customizing Devnet Behaviour
+### Testing Modes
 
-You can customize the leo devnet container with environment variables:
+The project supports two testing modes optimized for different use cases:
+
+| Mode | Command | Speed | Use Case |
+|------|---------|-------|----------|
+| **Devnode** (default) | `npm test` | Fast (minutes) | Local development, rapid iteration |
+| **Devnet** | `DEVNET=true npm test` | Slow (30-60min) | Pre-deployment validation, CI |
+
+**Fast mode** skips ZK proof generation for quick feedback. **Full mode** runs complete consensus simulation with real proofs.
+
+See [.env.testing](.env.testing) for configuration templates.
+
+### Key Configuration Options
 
 ```bash
-# Use a custom leo devnet image
-ALEO_DEVNET_IMAGE=custom/aleo-devnet:latest npm test
+# Fast development mode (default in .env.testing)
+SKIP_PROVING=true
+SKIP_DEPLOY_CERTIFICATE=true
 
-# Set verbosity level (0-4, default is 1, 4 is most verbose)
-DEVNET_VERBOSITY=4 npm test
+# Full devnet mode
+DEVNET=true
+
+# Manual devnet setup (no containers)
+USE_TEST_CONTAINERS=0
+
+# Custom Docker image
+ALEO_TEST_IMAGE=custom/image:latest
 ```
 
-**Note:** The devnet container does not persist blockchain state by default, and the same chain is reused across all tests.
-
-#### Container Runtime Support
-
-Both Docker and Podman are supported as container runtimes. For troubleshooting container-related issues, refer to:
-
-- [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
-- [Configuration Options](https://node.testcontainers.org/configuration/)
-
-### Alternative Testing Methods
-
-#### Running Tests Without Containers
-
-You can disable testcontainers and use your own manually-started infrastructure:
-
-```bash
-# Disable testcontainers
-USE_TEST_CONTAINERS=0 npm test
-```
-
-1. `docker pull docker pull ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
-2. To run in foreground in a dedicated terminal tab : `docker run -it --entrypoint /usr/local/bin/leo -e PRIVATE_KEY="APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH" -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.3.1-devnode devnode start --listener-addr 0.0.0.0:3030`
-3. `leo devnode advance -d --private-key APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH 20`
-4. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
-5. Kill any running containers like:
-   `docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
-   `docker ps -a -q | xargs -n 1 -P 8 -I {} docker rm {}`
-
-When disabling containers, you'll need to run devnet manually outside the test environment.
-For instructions, refer to the [aleo-containers repository](https://github.com/sealance-io/aleo-containers).
+**Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
 ### Troubleshooting
 
-If you encounter issues with the containerized tests:
+**Tests timeout waiting for consensus:**
+```bash
+CONSENSUS_CHECK_TIMEOUT=600000 npm test
+```
 
-1. Ensure Docker/Podman is running and properly configured
-2. For macOS and/or podman make sure to refer to [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
-3. Check container runtime logs for errors
-4. Try increasing Testcontainers verbosity using `DEBUG=testcontainers*` (refer to [Testcontainers configuration](https://node.testcontainers.org/configuration/))
-5. If on Linux, ensure your user has permissions to access the container runtime
-6. On macOS, ensure Docker Desktop or podman-machine is running with sufficient resources allocated
-7. Try increasing devnet node's verbosity with `DEVNET_VERBOSITY=4`
+**Container authentication issues:**
+```bash
+docker login ghcr.io
+```
 
-#### Container Registry Authentication
+**Tests too slow:**
+Use fast mode by removing `DEVNET=true` from `.env`
 
-If you're using an image from a container registry that requires authentication (such as GitHub Container Registry - ghcr.io) and experience authentication issues:
-
-1. Run `docker login` or `podman login` in the same terminal session you'll use to run tests
-2. Explicitly pull the target devnet image before running tests:
-
-   ```bash
-   # For Docker
-   docker pull ghcr.io/sealance-io/aleo-devnet:latest
-
-   # For Podman
-   podman pull ghcr.io/sealance-io/aleo-devnet:latest
-   ```
-
-This can help resolve authentication timeouts or permission issues that might occur when Testcontainers attempts to pull images automatically.
-
-For container-specific issues, refer to the [Testcontainers documentation](https://node.testcontainers.org/).
-
-### CI Test Workflows
-
-- **Manual Triggering Only**: Tests are computationally intensive and can take significant time to complete. To conserve CI resources, automatic triggers on pull requests have been disabled. All test runs must be manually initiated.
+For detailed troubleshooting, configuration reference, and manual setup instructions, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md).
 
 ## Contributing
 
