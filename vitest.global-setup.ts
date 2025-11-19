@@ -65,9 +65,9 @@ function validateConfiguration(): void {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Check for required variables
-  if (!ALEO_PRIVATE_KEY) {
-    errors.push("ALEO_PRIVATE_KEY is required but not set");
+  // Check for required variables based on mode
+  if (!IS_DEVNET && !ALEO_PRIVATE_KEY) {
+    errors.push("ALEO_PRIVATE_KEY is required for devnode mode (used for block advancement)");
   }
 
   // Check for conflicting configurations
@@ -86,6 +86,12 @@ function validateConfiguration(): void {
 
   if (ALEO_VERBOSITY && !["0", "1", "2", "3", "4"].includes(ALEO_VERBOSITY)) {
     warnings.push(`ALEO_VERBOSITY should be 0-4, got: ${ALEO_VERBOSITY}`);
+  }
+
+  if (process.env.CONSENSUS_HEIGHT && !IS_DEVNET) {
+    warnings.push(
+      "CONSENSUS_HEIGHT is set but only applies to devnet mode. This setting will be ignored in devnode mode.",
+    );
   }
 
   // Display configuration summary
@@ -236,17 +242,29 @@ export async function setup() {
 
   let mappedPort: number = 3030;
   if (USE_TEST_CONTAINERS) {
-    devnetContainer = await new GenericContainer(ALEO_TEST_IMAGE)
+    // Build environment object with only defined values
+    const containerEnv: Record<string, string> = {};
+    if (ALEO_PRIVATE_KEY) {
+      containerEnv.PRIVATE_KEY = ALEO_PRIVATE_KEY;
+    }
+    if (process.env.CONSENSUS_HEIGHT) {
+      containerEnv.CONSENSUS_HEIGHT = process.env.CONSENSUS_HEIGHT;
+    }
+
+    let container = new GenericContainer(ALEO_TEST_IMAGE)
       .withEntrypoint(["/usr/local/bin/leo"])
       .withCommand([
         ...command,
         "--verbosity",
         ALEO_VERBOSITY,
-      ])
-      .withEnvironment({
-        PRIVATE_KEY: ALEO_PRIVATE_KEY,
-        CONSENSUS_HEIGHT: process.env.CONSENSUS_HEIGHT
-      })
+      ]);
+
+    // Only add environment if we have any variables to set
+    if (Object.keys(containerEnv).length > 0) {
+      container = container.withEnvironment(containerEnv);
+    }
+
+    devnetContainer = await container
       .withExposedPorts({
         container: 3030,
         host: 3030,
