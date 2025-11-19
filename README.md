@@ -112,10 +112,10 @@ ALEO_VERBOSITY=4 npm test
 
 The project supports two testing modes optimized for different use cases:
 
-| Mode | Command | Speed | Use Case |
-|------|---------|-------|----------|
-| **Devnode** (default) | `npm test` | Fast (minutes) | Local development, rapid iteration |
-| **Devnet** | `DEVNET=true npm test` | Slow (30-60min) | Pre-deployment validation, CI |
+| Mode                  | Command                | Speed           | Use Case                           |
+| --------------------- | ---------------------- | --------------- | ---------------------------------- |
+| **Devnode** (default) | `npm test`             | Fast (minutes)  | Local development, rapid iteration |
+| **Devnet**            | `DEVNET=true npm test` | Slow (30-60min) | Pre-deployment validation, CI      |
 
 **Fast mode** skips ZK proof generation for quick feedback. **Full mode** runs complete consensus simulation with real proofs.
 
@@ -143,11 +143,13 @@ ALEO_TEST_IMAGE=custom/image:latest
 ### Troubleshooting
 
 **Tests timeout waiting for consensus:**
+
 ```bash
 CONSENSUS_CHECK_TIMEOUT=600000 npm test
 ```
 
 **Container authentication issues:**
+
 ```bash
 docker login ghcr.io
 ```
