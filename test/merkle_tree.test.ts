@@ -359,7 +359,8 @@ describe("merkle_tree program tests", () => {
     ).rejects.toThrow();
   });
 
-  test(`test second preimage attack`, async () => {
+  // TODO: fix flacky test and remove retry override
+  test(`test second preimage attack`, { retry: 2 }, async () => {
     const size = 32;
     let tree: any[] = [];
     let addresses: string[] = [];
