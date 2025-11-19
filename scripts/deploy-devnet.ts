@@ -5,10 +5,10 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from "../contract/base-contract";
-import { BLOCK_HEIGHT_WINDOW, fundedAmount, policies } from "../lib/Constants";
+import { BLOCK_HEIGHT_WINDOW, FREEZELIST_MANAGER_ROLE, fundedAmount, policies } from "../lib/Constants";
 import { registerTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
-import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
+import { setTokenRegistryRole, updateMinterRole, updateRole } from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
@@ -20,7 +20,8 @@ import { Compliant_token_templateContract } from "../artifacts/js/compliant_toke
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
-const [deployerAddress, adminAddress, investigatorAddress] = contract.getAccounts();
+const [deployerAddress, adminAddress, investigatorAddress, , , , , , , , freezeListManagerAddress] =
+  contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
@@ -91,6 +92,7 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
 
 (async () => {
   await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
+  await fundWithCredits(deployerPrivKey, freezeListManagerAddress, fundedAmount);
 
   // deploy contracts
   await deployIfNotDeployed(tokenRegistryContract);
@@ -137,6 +139,8 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
   await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
   await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
+
+  await updateRole(freezeRegistryContractForAdmin, freezeListManagerAddress, FREEZELIST_MANAGER_ROLE);
 
   process.exit(0);
 })();
