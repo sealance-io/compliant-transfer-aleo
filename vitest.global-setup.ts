@@ -72,9 +72,7 @@ function validateConfiguration(): void {
 
   // Check for conflicting configurations
   if (IS_DEVNET && (process.env.SKIP_PROVING || process.env.SKIP_DEPLOY_CERTIFICATE)) {
-    warnings.push(
-      "SKIP_PROVING and SKIP_DEPLOY_CERTIFICATE are ignored in DEVNET mode (only applicable to devnode)",
-    );
+    warnings.push("SKIP_PROVING and SKIP_DEPLOY_CERTIFICATE are ignored in DEVNET mode (only applicable to devnode)");
   }
 
   // Check for suspicious values
@@ -253,11 +251,7 @@ export async function setup() {
 
     let container = new GenericContainer(ALEO_TEST_IMAGE)
       .withEntrypoint(["/usr/local/bin/leo"])
-      .withCommand([
-        ...command,
-        "--verbosity",
-        ALEO_VERBOSITY,
-      ]);
+      .withCommand([...command, "--verbosity", ALEO_VERBOSITY]);
 
     // Only add environment if we have any variables to set
     if (Object.keys(containerEnv).length > 0) {
