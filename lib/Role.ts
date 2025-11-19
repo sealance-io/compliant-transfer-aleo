@@ -33,3 +33,8 @@ export async function updateMinterRole(contract: any, address: string) {
     await tx.wait();
   }
 }
+
+export async function updateRole(contract: any, address: string, role: number) {
+  const tx = await contract.update_role(address, role);
+  await tx.wait();
+}
