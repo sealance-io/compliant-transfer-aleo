@@ -8,7 +8,7 @@ import { BaseContract } from "../contract/base-contract";
 import { BLOCK_HEIGHT_WINDOW, FREEZELIST_MANAGER_ROLE, fundedAmount, policies } from "../lib/Constants";
 import { registerTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
-import { setTokenRegistryRole, updateMinterRole, updateRole } from "../lib/Role";
+import { setTokenRegistryRole, updateAddressToRole, updateFreezeListManagerRole, updateMinterRole } from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
@@ -140,7 +140,10 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
   await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
 
-  await updateRole(freezeRegistryContractForAdmin, freezeListManagerAddress, FREEZELIST_MANAGER_ROLE);
+  // Update the freeze list manager
+  await updateFreezeListManagerRole(reportPolicyContractForAdmin, freezeListManagerAddress);
+  await updateFreezeListManagerRole(reportTokenContractForAdmin, freezeListManagerAddress);
+  await updateAddressToRole(freezeRegistryContractForAdmin, freezeListManagerAddress, FREEZELIST_MANAGER_ROLE);
 
   process.exit(0);
 })();
