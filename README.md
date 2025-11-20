@@ -207,6 +207,10 @@ For container-specific issues, refer to the [Testcontainers documentation](https
 
 Contributions are welcome. Please create pull requests with detailed descriptions and adhere to the repository's coding guidelines.
 
+## Audits
+
+1. [Sealance Compliance Technology for Aleo](./audits/veridise_09:2025.pdf) by [Veridise](https://veridise.com/) conducted at 09/2025. 
+
 ## License
 
 This repository is licensed under the Apache License, Version 2.0.  
