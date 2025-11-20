@@ -1,5 +1,12 @@
 import { Token_registryContract } from "../artifacts/js/token_registry";
-import { ADMIN_INDEX, INVESTIGATOR_INDEX, MINTER_INDEX, ZERO_ADDRESS, mode } from "./Constants";
+import {
+  ADMIN_INDEX,
+  FREEZE_LIST_MANAGER_INDEX,
+  INVESTIGATOR_INDEX,
+  MINTER_INDEX,
+  ZERO_ADDRESS,
+  mode,
+} from "./Constants";
 
 export async function setTokenRegistryRole(privateKey: string, tokenId: bigint, address: string, role: number) {
   const tokenRegistryContract = new Token_registryContract({
@@ -34,7 +41,15 @@ export async function updateMinterRole(contract: any, address: string) {
   }
 }
 
-export async function updateRole(contract: any, address: string, role: number) {
+export async function updateFreezeListManagerRole(contract: any, address: string) {
+  const freezeListManagerRole = await contract.roles(FREEZE_LIST_MANAGER_INDEX, ZERO_ADDRESS);
+  if (freezeListManagerRole !== address) {
+    const tx = await contract.update_role(address, FREEZE_LIST_MANAGER_INDEX);
+    await tx.wait();
+  }
+}
+
+export async function updateAddressToRole(contract: any, address: string, role: number) {
   const tx = await contract.update_role(address, role);
   await tx.wait();
 }
