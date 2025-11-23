@@ -94,7 +94,7 @@ program sealance_freezelist_registry.aleo {
     // Stores the associated FreezeRegistryMultisigOp under the hashed wallet operation ID.
     // Fails if an operation with the same ID already exists.
     async transition init_multisig_op(wallet_id: address, salted_multisig_op: FreezeRegistryMultisigSaltedOp) -> (field, Future) {
-        let signing_op_id = BHP256::commit_to_field(salted_multisig_op.multisig_op, salted_multisig_op.salt);
+        let signing_op_id = BHP256::hash_to_field(salted_multisig_op);
         let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(wallet_id, signing_op_id);
         return (wallet_signing_op_id_hash, fin_init_multisig_op(
             wallet_signing_op_id_hash,
@@ -115,22 +115,25 @@ program sealance_freezelist_registry.aleo {
     // Can be called only if enough signers sign on this request
     // Enables a future upgrade to proceed if the edition and checksum match.
     async transition approve_upgrade(public edition: u16, public checksum: [u8; 32], public salt: scalar, public wallet_id: address) -> Future {
-        let multisig_op: FreezeRegistryMultisigOp = FreezeRegistryMultisigOp {
-            op: MULTISIG_OP_UPGRADE,
-            user: ZERO_ADDRESS,
-            is_frozen: false, 
-            frozen_index: 0u32, 
-            previous_root: 0field,
-            new_root: 0field,
-            role: 0u16,
-            edition: edition,
-            checksum: checksum,
-            blocks: 0u32
+        let salted_multisig_op: FreezeRegistryMultisigSaltedOp = FreezeRegistryMultisigSaltedOp {
+            multisig_op: FreezeRegistryMultisigOp {            
+                op: MULTISIG_OP_UPGRADE,
+                user: ZERO_ADDRESS,
+                is_frozen: false, 
+                frozen_index: 0u32, 
+                previous_root: 0field,
+                new_root: 0field,
+                role: 0u16,
+                edition: edition,
+                checksum: checksum,
+                blocks: 0u32
+            },
+            salt: salt
         };
-        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let signing_op_id = BHP256::hash_to_field(salted_multisig_op);
         let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        return f_approve_upgrade(wallet_signing_op_id_hash, multisig_op, salt, wallet_id);
+        return f_approve_upgrade(wallet_signing_op_id_hash, salted_multisig_op.multisig_op, salted_multisig_op.salt, wallet_id);
     }
     async function f_approve_upgrade(wallet_signing_op_id_hash: field, multisig_op: FreezeRegistryMultisigOp, salt: scalar, wallet_id: address) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
@@ -177,22 +180,25 @@ program sealance_freezelist_registry.aleo {
     // Updates the wallet_id assigned to a given role.
     // Can only be called by the current role manager, or if enough signers sign on this request.
     async transition update_wallet_id(public new_address: address, public role: u16, public salt: scalar, public wallet_id: address) -> Future {
-        let multisig_op: FreezeRegistryMultisigOp = FreezeRegistryMultisigOp {
-            op: MULTISIG_OP_UPDATE_WALLET_ID,
-            user: ZERO_ADDRESS,
-            is_frozen: false, 
-            frozen_index: 0u32, 
-            previous_root: 0field,
-            new_root: 0field,
-            role: 0u16,
-            edition: 0u16,
-            checksum: [0u8; 32],
-            blocks: 0u32
+        let salted_multisig_op: FreezeRegistryMultisigSaltedOp = FreezeRegistryMultisigSaltedOp {
+            multisig_op: FreezeRegistryMultisigOp {      
+                op: MULTISIG_OP_UPDATE_WALLET_ID,
+                user: ZERO_ADDRESS,
+                is_frozen: false, 
+                frozen_index: 0u32, 
+                previous_root: 0field,
+                new_root: 0field,
+                role: 0u16,
+                edition: 0u16,
+                checksum: [0u8; 32],
+                blocks: 0u32
+            }, 
+            salt: salt
         };
-        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let signing_op_id = BHP256::hash_to_field(salted_multisig_op);
         let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        return f_update_wallet_id(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, salt, wallet_id);
+        return f_update_wallet_id(new_address, self.caller, role, wallet_signing_op_id_hash, salted_multisig_op.multisig_op, salted_multisig_op.salt, wallet_id);
     }
     async function f_update_wallet_id(new_address: address, caller: address, new_role: u16, wallet_signing_op_id_hash: field, multisig_op: FreezeRegistryMultisigOp, salt: scalar, wallet_id: address) {
         let current_role: u16 = address_to_role.get(caller);
@@ -213,22 +219,25 @@ program sealance_freezelist_registry.aleo {
     // Can only be called by the current role manager, or if enough signers sign on this request.
     // Ensures the caller retains manager privileges, preventing a state with no active managers.
     async transition update_role(public new_address: address, public role: u16, public salt: scalar, public wallet_id: address) -> Future {
-        let multisig_op: FreezeRegistryMultisigOp = FreezeRegistryMultisigOp {
-            op: MULTISIG_OP_UPDATE_ROLE,
-            user: new_address,
-            is_frozen: false, 
-            frozen_index: 0u32, 
-            previous_root: 0field,
-            new_root: 0field,
-            role: role,
-            edition: 0u16,
-            checksum: [0u8; 32],
-            blocks: 0u32
+        let salted_multisig_op: FreezeRegistryMultisigSaltedOp = FreezeRegistryMultisigSaltedOp {
+            multisig_op: FreezeRegistryMultisigOp {             
+                op: MULTISIG_OP_UPDATE_ROLE,
+                user: new_address,
+                is_frozen: false, 
+                frozen_index: 0u32, 
+                previous_root: 0field,
+                new_root: 0field,
+                role: role,
+                edition: 0u16,
+                checksum: [0u8; 32],
+                blocks: 0u32
+            },
+            salt: salt
         };
-        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let signing_op_id = BHP256::hash_to_field(salted_multisig_op);
         let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        return f_update_role(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, salt, wallet_id);
+        return f_update_role(new_address, self.caller, role, wallet_signing_op_id_hash, salted_multisig_op.multisig_op, salted_multisig_op.salt, wallet_id);
     }
     async function f_update_role(
         new_address: address, 
@@ -256,22 +265,25 @@ program sealance_freezelist_registry.aleo {
     // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the freeze list manager, or if enough signers sign on this request.
     async transition update_block_height_window(public blocks: u32, public salt: scalar, public wallet_id: address) -> Future {
-        let multisig_op: FreezeRegistryMultisigOp = FreezeRegistryMultisigOp {
-            op: MULTISIG_UPDATE_BLOCK_WINDOW,
-            user: ZERO_ADDRESS,
-            is_frozen: false, 
-            frozen_index: 0u32, 
-            previous_root: 0field,
-            new_root: 0field,
-            role: 0u16,
-            edition: 0u16,
-            checksum: [0u8; 32],
-            blocks: blocks
+        let salted_multisig_op: FreezeRegistryMultisigSaltedOp = FreezeRegistryMultisigSaltedOp {
+            multisig_op: FreezeRegistryMultisigOp { 
+                op: MULTISIG_UPDATE_BLOCK_WINDOW,
+                user: ZERO_ADDRESS,
+                is_frozen: false, 
+                frozen_index: 0u32, 
+                previous_root: 0field,
+                new_root: 0field,
+                role: 0u16,
+                edition: 0u16,
+                checksum: [0u8; 32],
+                blocks: blocks
+            },
+            salt: salt
         };
-        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let signing_op_id = BHP256::hash_to_field(salted_multisig_op);
         let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        return f_update_block_height_window(blocks, self.caller, wallet_signing_op_id_hash, multisig_op, salt, wallet_id);
+        return f_update_block_height_window(blocks, self.caller, wallet_signing_op_id_hash, salted_multisig_op.multisig_op, salted_multisig_op.salt, wallet_id);
     }
     async function f_update_block_height_window(
         blocks: u32, 
@@ -318,22 +330,25 @@ program sealance_freezelist_registry.aleo {
         public salt: scalar,
         public wallet_id: address
     ) -> Future {
-        let multisig_op: FreezeRegistryMultisigOp = FreezeRegistryMultisigOp {
-            op: MULTISIG_OP_UPDATE_FREEZE_LIST,
-            user: account,
-            is_frozen: is_frozen, 
-            frozen_index: frozen_index, 
-            previous_root: previous_root,
-            new_root: new_root,
-            role: 0u16,
-            edition: 0u16,
-            checksum: [0u8; 32],
-            blocks: 0u32
+        let salted_multisig_op: FreezeRegistryMultisigSaltedOp = FreezeRegistryMultisigSaltedOp {
+            multisig_op: FreezeRegistryMultisigOp {             
+                op: MULTISIG_OP_UPDATE_FREEZE_LIST,
+                user: account,
+                is_frozen: is_frozen, 
+                frozen_index: frozen_index, 
+                previous_root: previous_root,
+                new_root: new_root,
+                role: 0u16,
+                edition: 0u16,
+                checksum: [0u8; 32],
+                blocks: 0u32
+            },
+            salt: salt
         };
-        let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
+        let signing_op_id = BHP256::hash_to_field(salted_multisig_op);
         let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(wallet_id, signing_op_id);
 
-        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root, wallet_signing_op_id_hash, multisig_op, salt, wallet_id);
+        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root, wallet_signing_op_id_hash, salted_multisig_op.multisig_op, salted_multisig_op.salt, wallet_id);
     }
     async function f_update_freeze_list(
         account: address, 
