@@ -92,3 +92,8 @@ export const emptyRoot = 3642222252059314292809609689035560016959342421640560347
 export const fundedAmount = 10000000000000n;
 export const mode = ExecutionMode.SnarkExecute;
 export const defaultRate = 10n;
+
+export const emptyMultisigCommonParams = {
+  salt: 0n,
+  wallet_id: ZERO_ADDRESS,
+};

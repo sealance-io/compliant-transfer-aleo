@@ -24,6 +24,7 @@ import {
   FREEZELIST_MANAGER_ROLE,
   NONE_ROLE,
   MANAGER_ROLE,
+  emptyMultisigCommonParams,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -278,11 +279,18 @@ describe("test sealed_threshold_policy program", () => {
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      const tx = await freezeRegistryContractForAdmin.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        currentRoot,
+        root,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
     }
 
-    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
+    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300, emptyMultisigCommonParams);
     await tx.wait();
   });
 

@@ -15,6 +15,7 @@ import {
   emptyRoot,
   fundedAmount,
   NONE_ROLE,
+  emptyMultisigCommonParams,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -90,7 +91,14 @@ describe("test freeze_registry program", () => {
     const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
-      let rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+      let rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        0n,
+        root,
+        emptyMultisigCommonParams,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       if (deployerAddress !== adminAddress) {
@@ -123,32 +131,48 @@ describe("test freeze_registry program", () => {
 
   test(`test update_manager_address`, async () => {
     // Manager cannot unassign himself from being a manager
-    let rejectedTx = await freezeRegistryContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    let rejectedTx = await freezeRegistryContractForAdmin.update_role(
+      adminAddress,
+      NONE_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
+    let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
 
     let role = await freezeRegistryContract.address_to_role(frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
-    tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, NONE_ROLE);
+    tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, NONE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await freezeRegistryContract.address_to_role(frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Only the manager can update the roles
-    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
+    tx = await freezeRegistryContractForFrozenAccount.update_role(
+      frozenAccount,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(tx.wait()).rejects.toThrow();
   });
 
   test(`test update_freeze_list_manager`, async () => {
-    let tx = await freezeRegistryContractForAdmin.update_role(freezeListManager, FREEZELIST_MANAGER_ROLE);
+    let tx = await freezeRegistryContractForAdmin.update_role(
+      freezeListManager,
+      FREEZELIST_MANAGER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await tx.wait();
     const freezeListManagerRole = await freezeRegistryContract.address_to_role(freezeListManager);
     expect(freezeListManagerRole).toBe(FREEZELIST_MANAGER_ROLE);
 
-    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, FREEZELIST_MANAGER_ROLE);
+    tx = await freezeRegistryContractForFrozenAccount.update_role(
+      frozenAccount,
+      FREEZELIST_MANAGER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(tx.wait()).rejects.toThrow();
   });
 
@@ -162,11 +186,19 @@ describe("test freeze_registry program", () => {
       1,
       currentRoot,
       root,
+      emptyMultisigCommonParams,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot update the root if the previous root is incorrect
-    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(frozenAccount, false, 1, 0n, root);
+    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
+      frozenAccount,
+      false,
+      1,
+      0n,
+      root,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
@@ -178,6 +210,7 @@ describe("test freeze_registry program", () => {
         1,
         currentRoot,
         root,
+        emptyMultisigCommonParams,
       );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -187,6 +220,7 @@ describe("test freeze_registry program", () => {
         1,
         currentRoot,
         root,
+        emptyMultisigCommonParams,
       );
       await tx.wait();
       isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
@@ -205,6 +239,7 @@ describe("test freeze_registry program", () => {
       2,
       root,
       root,
+      emptyMultisigCommonParams,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -215,11 +250,19 @@ describe("test freeze_registry program", () => {
       1,
       root,
       root,
+      emptyMultisigCommonParams,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let randomAddress = new Account().address().to_string();
-    let tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
+    let tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
+      randomAddress,
+      true,
+      2,
+      root,
+      root,
+      emptyMultisigCommonParams,
+    );
     await tx.wait();
     isAccountFrozen = await freezeRegistryContract.freeze_list(randomAddress);
     let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(2);
@@ -237,6 +280,7 @@ describe("test freeze_registry program", () => {
       10,
       root,
       root,
+      emptyMultisigCommonParams,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
     // Cannot freeze an account when the frozen list index is already taken
@@ -246,15 +290,22 @@ describe("test freeze_registry program", () => {
       2,
       root,
       root,
+      emptyMultisigCommonParams,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test update_block_height_window`, async () => {
-    const rejectedTx = await freezeRegistryContractForFrozenAccount.update_block_height_window(BLOCK_HEIGHT_WINDOW);
+    const rejectedTx = await freezeRegistryContractForFrozenAccount.update_block_height_window(
+      BLOCK_HEIGHT_WINDOW,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await freezeRegistryContractForFreezeListManager.update_block_height_window(BLOCK_HEIGHT_WINDOW);
+    const tx = await freezeRegistryContractForFreezeListManager.update_block_height_window(
+      BLOCK_HEIGHT_WINDOW,
+      emptyMultisigCommonParams,
+    );
     await tx.wait();
   });
 
@@ -292,6 +343,7 @@ describe("test freeze_registry program", () => {
       1,
       root,
       emptyRoot,
+      emptyMultisigCommonParams,
     );
     await updateFreezeListTx.wait();
 
@@ -304,7 +356,10 @@ describe("test freeze_registry program", () => {
     tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
     await tx.wait();
 
-    const updateBlockHeightWindowTx = await freezeRegistryContractForFreezeListManager.update_block_height_window(1);
+    const updateBlockHeightWindowTx = await freezeRegistryContractForFreezeListManager.update_block_height_window(
+      1,
+      emptyMultisigCommonParams,
+    );
     await updateBlockHeightWindowTx.wait();
 
     // The transaction failed because the old root is expired
