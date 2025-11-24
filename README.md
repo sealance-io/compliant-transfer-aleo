@@ -209,7 +209,7 @@ Contributions are welcome. Please create pull requests with detailed description
 
 ## Audits
 
-1. [Sealance Compliance Technology for Aleo](./audits/veridise_09:2025.pdf) by [Veridise](https://veridise.com/) conducted at 09/2025. 
+1. [Sealance Compliance Technology for Aleo](./audits/veridise_09:2025.pdf) by [Veridise](https://veridise.com/) conducted at 09/2025.
 
 ## License
 
