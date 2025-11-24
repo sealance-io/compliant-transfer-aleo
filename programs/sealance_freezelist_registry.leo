@@ -138,7 +138,8 @@ program sealance_freezelist_registry.aleo {
         assert(signing_complete);
         let pending_request = pending_requests.get(wallet_signing_op_id_hash);
         assert_eq(pending_request, multisig_op);
-        
+        pending_requests.remove(wallet_signing_op_id_hash);
+
         approved_upgrades.set(multisig_op.edition, multisig_op.checksum);    
     }
 
@@ -202,6 +203,7 @@ program sealance_freezelist_registry.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
         
         wallet_id_to_role.set(new_address, new_role);
@@ -245,6 +247,8 @@ program sealance_freezelist_registry.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
+
         }
         
         address_to_role.set(new_address, new_role);
@@ -286,6 +290,7 @@ program sealance_freezelist_registry.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
@@ -351,6 +356,7 @@ program sealance_freezelist_registry.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);        
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
 
         let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);

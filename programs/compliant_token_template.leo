@@ -148,6 +148,7 @@ program compliant_token_template.aleo {
         init_signing_op_fut: Future,
     ) {
         assert(!pending_requests.contains(wallet_signing_op_id_hash));
+        assert(!private_pending_requests.contains(wallet_signing_op_id_hash));
         pending_requests.set(wallet_signing_op_id_hash, multisig_op);
         init_signing_op_fut.await();
     }
@@ -195,6 +196,7 @@ program compliant_token_template.aleo {
         assert(signing_complete);
         let pending_request = pending_requests.get(wallet_signing_op_id_hash);
         assert_eq(pending_request, multisig_op);
+        pending_requests.remove(wallet_signing_op_id_hash);
         
         approved_upgrades.set(multisig_op.edition, multisig_op.checksum);    
     }
@@ -230,6 +232,7 @@ program compliant_token_template.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
         
         wallet_id_to_role.set(new_address, new_role);
@@ -263,6 +266,7 @@ program compliant_token_template.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
         
         address_to_role.set(new_address, new_role);
@@ -384,6 +388,7 @@ program compliant_token_template.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
@@ -456,6 +461,7 @@ program compliant_token_template.aleo {
             let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             assert(private_pending_requests.contains(wallet_signing_op_id_hash));
+            private_pending_requests.remove(wallet_signing_op_id_hash);
         }
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
@@ -518,6 +524,7 @@ program compliant_token_template.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
 
         let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
@@ -584,6 +591,7 @@ program compliant_token_template.aleo {
             let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             assert(private_pending_requests.contains(wallet_signing_op_id_hash));
+            private_pending_requests.remove(wallet_signing_op_id_hash);
         }
         assert(role & BURNER_ROLE == BURNER_ROLE);
 
@@ -995,6 +1003,7 @@ program compliant_token_template.aleo {
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
+            pending_requests.remove(wallet_signing_op_id_hash);
         }
         
         pause.set(PAUSE_STATUS_INDEX, new_pause_status);
