@@ -6,8 +6,24 @@ program compliant_token_template.aleo {
     async constructor() {
         if (self.edition > 0) {
             if(UPGRADE_ADDRESS != self.program_owner) {
-                let approved_checksum = approved_upgrades.get(self.edition);
-                assert_eq(approved_checksum, self.checksum);
+                let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+                    op: MULTISIG_OP_UPGRADE,
+                    pause_status: false,
+                    user: ZERO_ADDRESS,
+                    role: 0u16,
+                    edition: self.edition,
+                    checksum: self.checksum,
+                    amount: 0u128,
+                    salt: self.edition as scalar
+                };
+                let signing_op_id = BHP256::hash_to_field(multisig_op);
+                wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: wallet_id };
+                let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet: wallet, signing_op_id: signing_op_id });
+                let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+                assert(signing_complete);
+                let pending_request = pending_requests.get(wallet_signing_op_id_hash);
+                assert_eq(pending_request, multisig_op);
+                pending_requests.remove(wallet_signing_op_id_hash);
             }
         }
     }
@@ -176,36 +192,6 @@ program compliant_token_template.aleo {
         init_signing_op_fut.await();
     }
 
-    // Can be called only if enough signers sign on this request
-    // Enables a future upgrade to proceed if the edition and checksum match.
-    async transition approve_upgrade(public edition: u16, public checksum: [u8; 32], public multisig_common_params: MultisigCommonParams) -> Future {
-        let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
-            op: MULTISIG_OP_UPGRADE,
-            pause_status: false,
-            user: ZERO_ADDRESS,
-            role: 0u16,
-            edition: edition,
-            checksum: checksum,
-            amount: 0u128,
-            salt: multisig_common_params.salt
-        };
-        let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
-
-        return f_approve_upgrade(multisig_common_params.wallet_id, wallet_signing_op_id_hash, multisig_op);
-    }
-    async function f_approve_upgrade(wallet_id: address, wallet_signing_op_id_hash: field, multisig_op: CompliantTokenMultisigOp) {
-        let wallet_id_role = wallet_id_to_role.get(wallet_id);
-        assert(wallet_id_role & MULTISIG_OP_UPGRADE == MULTISIG_OP_UPGRADE);
-        let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
-        assert(signing_complete);
-        let pending_request = pending_requests.get(wallet_signing_op_id_hash);
-        assert_eq(pending_request, multisig_op);
-        pending_requests.remove(wallet_signing_op_id_hash);
-        
-        approved_upgrades.set(multisig_op.edition, multisig_op.checksum);    
-    }
-
     // -------------------------
     // Called by token admins
     // -------------------------
@@ -229,6 +215,9 @@ program compliant_token_template.aleo {
         return f_update_wallet_id(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
     async function f_update_wallet_id(new_address: address, caller: address, new_role: u16, wallet_signing_op_id_hash: field, multisig_op: CompliantTokenMultisigOp, wallet_id: address) {
+        // The upgrade wallet_id is hardcoded
+        assert_neq(new_role & MULTISIG_OP_UPGRADE, MULTISIG_OP_UPGRADE);
+        
         let current_role: u16 = address_to_role.get(caller);
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
