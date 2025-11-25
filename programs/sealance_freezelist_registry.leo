@@ -7,7 +7,7 @@ program sealance_freezelist_registry.aleo {
     async constructor() {
         if (self.edition > 0) {
             if(UPGRADE_ADDRESS != self.program_owner) {
-                let multisig_op: CompliantTokenMultisigOp = CompliantTokenMultisigOp {
+                let multisig_op: FreezeRegistryMultisigOp = FreezeRegistryMultisigOp {
                     op: MULTISIG_OP_UPGRADE,
                     user: ZERO_ADDRESS,
                     is_frozen: false, 
@@ -15,13 +15,13 @@ program sealance_freezelist_registry.aleo {
                     previous_root: 0field,
                     new_root: 0field,
                     role: 0u16,
-                    edition: edition,
-                    checksum: checksum,
+                    edition: self.edition,
+                    checksum: self.checksum,
                     blocks: 0u32,
                     salt: self.edition as scalar
                 };
                 let signing_op_id = BHP256::hash_to_field(multisig_op);
-                wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: wallet_id };
+                let wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: UPGRADE_ADDRESS };
                 let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet: wallet, signing_op_id: signing_op_id });
                 let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);

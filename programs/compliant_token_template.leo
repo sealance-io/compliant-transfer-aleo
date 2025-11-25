@@ -17,7 +17,7 @@ program compliant_token_template.aleo {
                     salt: self.edition as scalar
                 };
                 let signing_op_id = BHP256::hash_to_field(multisig_op);
-                wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: wallet_id };
+                let wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: UPGRADE_ADDRESS };
                 let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet: wallet, signing_op_id: signing_op_id });
                 let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);
