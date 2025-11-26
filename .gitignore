@@ -11,3 +11,4 @@ tmp/
 .ledger-1-4/
 .ledger-1-5/
 **/.DS_Store
+.npmrc

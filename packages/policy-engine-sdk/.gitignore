@@ -5,5 +5,4 @@ coverage/
 .DS_Store
 .vitest
 package-lock.json
-# Note: .npmrc is NOT ignored - it contains project config, not secrets
-# Auth tokens should be in ~/.npmrc or environment variables, never committed
+.npmrc
