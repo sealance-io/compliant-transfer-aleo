@@ -45,6 +45,7 @@ program sealance_freezelist_registry.aleo {
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     mapping address_to_role: address => u16;
+    mapping wallet_id_to_role: address => u16;
 
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
@@ -65,15 +66,14 @@ program sealance_freezelist_registry.aleo {
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
 
-    const MULTISIG_OP_UPGRADE: u16 = 1u16;
-    const MULTISIG_OP_UPDATE_WALLET_ID: u16 = 2u16;
-    const MULTISIG_OP_UPDATE_ROLE: u16 = 4u16;
-    const MULTISIG_OP_UPDATE_FREEZE_LIST: u16 = 8u16;
-    const MULTISIG_OP_UPDATE_BLOCK_WINDOW: u16 = 16u16;
-    mapping wallet_id_to_role: address => u16;
+    const MULTISIG_OP_UPGRADE: u8 = 1u8;
+    const MULTISIG_OP_UPDATE_WALLET_ID: u8 = 2u8;
+    const MULTISIG_OP_UPDATE_ROLE: u8 = 3u8;
+    const MULTISIG_OP_UPDATE_FREEZE_LIST: u8 = 4u8;
+    const MULTISIG_OP_UPDATE_BLOCK_WINDOW: u8 = 5u8;
 
     struct FreezeRegistryMultisigOp {
-        op: u16,
+        op: u8,
 
         // Used for MULTISIG_OP_UPDATE_FREEZE_LIST and MULTISIG_OP_UPDATE_ROLE
         user: address,
@@ -185,13 +185,10 @@ program sealance_freezelist_registry.aleo {
         return f_update_wallet_id(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
     async function f_update_wallet_id(new_address: address, caller: address, new_role: u16, wallet_signing_op_id_hash: field, multisig_op: FreezeRegistryMultisigOp, wallet_id: address) {
-        // The upgrade wallet_id is hardcoded
-        assert_neq(new_role & MULTISIG_OP_UPGRADE, MULTISIG_OP_UPGRADE);
-
         let current_role: u16 = address_to_role.get_or_use(caller, NONE_ROLE);
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
-            assert(wallet_id_role & MULTISIG_OP_UPDATE_WALLET_ID == MULTISIG_OP_UPDATE_WALLET_ID);
+            assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
             let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
@@ -235,7 +232,7 @@ program sealance_freezelist_registry.aleo {
         let current_role: u16 = address_to_role.get_or_use(caller, NONE_ROLE);
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
-            assert(wallet_id_role & MULTISIG_OP_UPDATE_ROLE == MULTISIG_OP_UPDATE_ROLE);
+            assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
             let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
@@ -281,7 +278,7 @@ program sealance_freezelist_registry.aleo {
         let role: u16 = address_to_role.get_or_use(caller, NONE_ROLE);
         if (!(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
-            assert(wallet_id_role & MULTISIG_OP_UPDATE_BLOCK_WINDOW == MULTISIG_OP_UPDATE_BLOCK_WINDOW);
+            assert(wallet_id_role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
             let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
@@ -346,7 +343,7 @@ program sealance_freezelist_registry.aleo {
         let role: u16 = address_to_role.get_or_use(caller, NONE_ROLE);
         if (!(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
-            assert(wallet_id_role & MULTISIG_OP_UPDATE_FREEZE_LIST == MULTISIG_OP_UPDATE_FREEZE_LIST);
+            assert(wallet_id_role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
             let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);

@@ -272,7 +272,11 @@ describe("test sealed_threshold_policy program", () => {
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+      const tx = await freezeRegistryContractForAdmin.update_role(
+        adminAddress,
+        MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
     }
 

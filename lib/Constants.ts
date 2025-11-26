@@ -10,6 +10,7 @@ export const SEALED_THRESHOLD_POLICY_ADDRESS = "aleo14s6pc22xlf33wm62422v24equzj
 export { ZERO_ADDRESS }; // for backwards compatability
 export const SEALED_TIMELOCK_POLICY_ADDRESS = "aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq";
 export const TREASURE_ADDRESS = "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn";
+export const UPGRADE_ADDRESS = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px";
 
 export const BLOCK_HEIGHT_WINDOW = 300;
 
@@ -83,6 +84,16 @@ export const PAUSE_ROLE = 4;
 export const MANAGER_ROLE = 8;
 export const FREEZELIST_MANAGER_ROLE = 16;
 
+export const MULTISIG_OP_UPGRADE = 1;
+export const MULTISIG_OP_UPDATE_WALLET_ID = 2;
+export const MULTISIG_OP_UPDATE_ROLE = 3;
+export const MULTISIG_OP_MINT_PUBLIC = 4;
+export const MULTISIG_OP_BURN_PUBLIC = 5;
+export const MULTISIG_OP_MINT_PRIVATE = 6;
+export const MULTISIG_OP_BURN_PRIVATE = 7;
+export const MULTISIG_OP_SET_PAUSE_STATUS = 7;
+export const MULTISIG_OP_UPDATE_FREEZE_LIST = 4;
+export const MULTISIG_OP_UPDATE_BLOCK_WINDOW = 5;
 // merkle tree
 export const MAX_TREE_DEPTH = 16;
 
