@@ -6,7 +6,7 @@ program sealed_threshold_report_policy.aleo {
     async constructor() {
         if (self.edition > 0) {
             let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+            assert_eq(admin_address, self.program_owner); // MUTANT_SURVIVED: not covered by tests
         }
     }
 
@@ -128,7 +128,7 @@ program sealed_threshold_report_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        assert_eq(input_record.token_id, TOKEN_ID);
+        assert_eq(input_record.token_id, TOKEN_ID); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(input_record.owner);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
@@ -199,14 +199,14 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient.await();
 
         let role_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(role_address, investigator_address);
+        assert_eq(role_address, investigator_address); // MUTANT_SURVIVED: not covered by tests
 
-        assert(block.height >= estimated_block_height);
+        assert(block.height >= estimated_block_height); // MUTANT_SURVIVED: not covered by tests
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-        window = block.height > window 
+        window = block.height > window
             ? window
             : block.height;
-        assert(estimated_block_height >= (block.height - window));
+        assert(estimated_block_height >= (block.height - window)); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
@@ -252,7 +252,7 @@ program sealed_threshold_report_policy.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Future) {
-        assert_eq(input_state_record.owner, self.caller);
+        assert_eq(input_state_record.owner, self.caller); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -300,12 +300,12 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        assert(block.height >= estimated_block_height);
+        assert(block.height >= estimated_block_height); // MUTANT_SURVIVED: not covered by tests
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height >= (block.height - window));
+        assert(estimated_block_height >= (block.height - window)); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
@@ -369,12 +369,12 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        assert(block.height >= estimated_block_height);
+        assert(block.height >= estimated_block_height); // MUTANT_SURVIVED: not covered by tests
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height >= (block.height - window));
+        assert(estimated_block_height >= (block.height - window)); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
@@ -397,11 +397,11 @@ program sealed_threshold_report_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
-        assert_eq(input_state_record.owner, self.caller);
+        assert_eq(input_state_record.owner, self.caller); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
-        
+
         let owner: TokenOwner = TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
@@ -470,14 +470,14 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient.await();
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // MUTANT_SURVIVED: not covered by tests
 
-        assert(block.height >= estimated_block_height);
+        assert(block.height >= estimated_block_height); // MUTANT_SURVIVED: not covered by tests
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height >= (block.height - window));
+        assert(estimated_block_height >= (block.height - window)); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
@@ -501,7 +501,7 @@ program sealed_threshold_report_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        assert_eq(input_record.token_id, TOKEN_ID);
+        assert_eq(input_record.token_id, TOKEN_ID); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
@@ -577,14 +577,14 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient.await();
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // MUTANT_SURVIVED: not covered by tests
 
-        assert(block.height >= estimated_block_height);
+        assert(block.height >= estimated_block_height); // MUTANT_SURVIVED: not covered by tests
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-        window = block.height > window 
+        window = block.height > window
             ? window
             : block.height;
-        assert(estimated_block_height >= (block.height - window));
+        assert(estimated_block_height >= (block.height - window)); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
@@ -607,8 +607,8 @@ program sealed_threshold_report_policy.aleo {
         sender_merkle_proofs: [MerkleProof; 2],
         public investigator_address: address,
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
-        assert_eq(input_record.token_id, TOKEN_ID);
-        
+        assert_eq(input_record.token_id, TOKEN_ID); // MUTANT_SURVIVED: not covered by tests
+
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
@@ -678,14 +678,14 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient.await();
         
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // MUTANT_SURVIVED: not covered by tests
 
-        assert(block.height >= estimated_block_height);
+        assert(block.height >= estimated_block_height); // MUTANT_SURVIVED: not covered by tests
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
             ? window
             : block.height;
-        assert(estimated_block_height >= (block.height - window));
+        assert(estimated_block_height >= (block.height - window)); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();

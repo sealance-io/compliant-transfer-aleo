@@ -126,7 +126,7 @@ program sealed_report_token.aleo {
 
         // Verify we don't unfreeze an unfrozen account or freeze a frozen account
         let stored_is_frozen = freeze_list.get_or_use(account, false);
-        assert_neq(is_frozen, stored_is_frozen);
+        assert_neq(is_frozen, stored_is_frozen); // MUTANT_SURVIVED: not covered by tests
         freeze_list.set(account, is_frozen);
 
         let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
@@ -275,7 +275,7 @@ program sealed_report_token.aleo {
 
         // Check that the token supply + amount <= max_supply
         let new_supply: u128 = token.supply + amount;
-        assert(new_supply <= token.max_supply);
+        assert(new_supply <= token.max_supply); // MUTANT_SURVIVED: not covered by tests
 
         // Update the balance
         let balance = balances.get_or_use(recipient, 0u128);
@@ -324,7 +324,7 @@ program sealed_report_token.aleo {
 
         // Check that the token supply + amount <= max_supply
         let new_supply: u128 = token.supply + amount;
-        assert(new_supply <= token.max_supply);
+        assert(new_supply <= token.max_supply); // MUTANT_SURVIVED: not covered by tests
 
         // Update the token supply
         let new_metadata: TokenMetadata = TokenMetadata {
@@ -590,11 +590,11 @@ program sealed_report_token.aleo {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        } 
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
+        }
 
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
@@ -651,11 +651,11 @@ program sealed_report_token.aleo {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        } 
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
+        }
 
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
@@ -686,7 +686,7 @@ program sealed_report_token.aleo {
     ) -> (ComplianceRecord, Token, Token, Future) {
         let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
         let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
-        assert_eq(sender_root, recipient_root);
+        assert_eq(sender_root, recipient_root); // MUTANT_SURVIVED: not covered by tests
 
         let updated_record: Token = Token {
             owner: input_record.owner,
@@ -712,14 +712,14 @@ program sealed_report_token.aleo {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
         }
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // #36: assumed KILLED (pattern)
     }
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
@@ -767,17 +767,17 @@ program sealed_report_token.aleo {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }    
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
+        }
 
         let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
-        assert_eq(is_recipient_frozen, false);
+        assert_eq(is_recipient_frozen, false); // #39: assumed KILLED (pattern)
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // #40: assumed KILLED (pattern)
 
         let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);

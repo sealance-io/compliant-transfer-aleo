@@ -9,7 +9,7 @@ program gqrfmwbtyp.aleo {
     async constructor() {
         if (self.edition > 0) {
             let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+            assert_eq(admin_address, self.program_owner); // MUTANT_SURVIVED: not covered by tests
         }
     }
     
@@ -123,7 +123,7 @@ program gqrfmwbtyp.aleo {
 
     async function f_exchange_timelock_token(rate: u128, transfer_call: Future, mint_call: Future) {
         let stored_rate: u128 = token_rates.get_or_use(TIMELOCK_TOKEN_ID, DEFAULT_RATE);
-        assert_eq(rate, stored_rate);
+        assert_eq(rate, stored_rate); // MUTANT_SURVIVED: not covered by tests
 
         transfer_call.await();
         mint_call.await();

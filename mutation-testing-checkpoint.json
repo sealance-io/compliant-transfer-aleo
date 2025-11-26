@@ -1,0 +1,412 @@
+{
+  "started_at": "2025-11-25",
+  "completed_at": "2025-11-26",
+  "status": "completed",
+  "results": {
+    "merkle_tree.leo": {
+      "total": 10,
+      "killed": [1, 2, 3, 4, 5, 6, 7, 8, 10],
+      "survived": [9],
+      "killed_count": 9,
+      "survived_count": 1,
+      "survived_details": [
+        {
+          "line": 84,
+          "assertion": "assert(merkle_proofs[1u32].leaf_index <= last_index_leaf)",
+          "function": "verify_non_inclusion"
+        }
+      ]
+    },
+    "sealance_freezelist_registry.leo": {
+      "total": 15,
+      "killed": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "survived": [],
+      "killed_count": 15,
+      "survived_count": 0
+    },
+    "sealed_report_policy.leo": {
+      "total": 29,
+      "tested": 29,
+      "killed": [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 19, 21, 22, 23, 25, 26, 28],
+      "survived": [6, 16, 18, 20, 24, 27, 29],
+      "killed_count": 22,
+      "survived_count": 7,
+      "survived_details": [
+        {
+          "line": 125,
+          "assertion": "assert_neq(is_frozen, stored_is_frozen)",
+          "function": "f_update_freeze_list"
+        },
+        {
+          "line": 319,
+          "assertion": "assert_eq(is_sender_frozen, false)",
+          "function": "f_transfer_public_to_priv"
+        },
+        {
+          "line": 327,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_public_to_priv"
+        },
+        {
+          "line": 349,
+          "assertion": "assert_eq(input_record.token_id, TOKEN_ID)",
+          "function": "transfer_private"
+        },
+        {
+          "line": 411,
+          "assertion": "assert_eq(stored_investigator_address, investigator_address)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 482,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_priv_to_public"
+        },
+        {
+          "line": 489,
+          "assertion": "assert_eq(stored_investigator_address, investigator_address)",
+          "function": "f_transfer_priv_to_public"
+        }
+      ]
+    },
+    "sealed_report_token.leo": {
+      "total": 40,
+      "tested": 40,
+      "killed": [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 27, 28, 31, 32, 36, 39, 40],
+      "survived": [4, 14, 16, 25, 26, 29, 30, 33, 34, 35, 37, 38],
+      "killed_count": 28,
+      "survived_count": 12,
+      "survived_details": [
+        {
+          "line": 129,
+          "assertion": "assert_neq(is_frozen, stored_is_frozen)",
+          "function": "f_update_freeze_list"
+        },
+        {
+          "line": 278,
+          "assertion": "assert(new_supply <= token.max_supply)",
+          "function": "finalize_mint_public"
+        },
+        {
+          "line": 327,
+          "assertion": "assert(new_supply <= token.max_supply)",
+          "function": "finalize_mint_private"
+        },
+        {
+          "line": 593,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_public_to_private"
+        },
+        {
+          "line": 596,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_public_to_private"
+        },
+        {
+          "line": 654,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_from_public_to_priv"
+        },
+        {
+          "line": 657,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_from_public_to_priv"
+        },
+        {
+          "line": 689,
+          "assertion": "assert_eq(sender_root, recipient_root)",
+          "function": "transfer_private"
+        },
+        {
+          "line": 715,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 718,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 770,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_private_to_public"
+        },
+        {
+          "line": 773,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_private_to_public"
+        }
+      ]
+    },
+    "sealed_threshold_report_policy.leo": {
+      "total": 33,
+      "tested": 33,
+      "killed": [2, 3, 4, 6, 10, 11, 13, 16, 20, 25, 30],
+      "survived": [1, 5, 7, 8, 9, 12, 14, 15, 17, 18, 19, 21, 22, 23, 24, 26, 27, 28, 29, 31, 32, 33],
+      "killed_count": 11,
+      "survived_count": 22,
+      "survived_details": [
+        {
+          "line": 9,
+          "assertion": "assert_eq(admin_address, self.program_owner)",
+          "function": "constructor"
+        },
+        {
+          "line": 131,
+          "assertion": "assert_eq(input_record.token_id, TOKEN_ID)",
+          "function": "signup_and_transfer_private"
+        },
+        {
+          "line": 202,
+          "assertion": "assert_eq(role_address, investigator_address)",
+          "function": "f_signup_and_transfer_private"
+        },
+        {
+          "line": 204,
+          "assertion": "assert(block.height >= estimated_block_height)",
+          "function": "f_signup_and_transfer_private"
+        },
+        {
+          "line": 209,
+          "assertion": "assert(estimated_block_height >= (block.height - window))",
+          "function": "f_signup_and_transfer_private"
+        },
+        {
+          "line": 255,
+          "assertion": "assert_eq(input_state_record.owner, self.caller)",
+          "function": "transfer_public"
+        },
+        {
+          "line": 303,
+          "assertion": "assert(block.height >= estimated_block_height)",
+          "function": "finalize_transfer_public"
+        },
+        {
+          "line": 308,
+          "assertion": "assert(estimated_block_height >= (block.height - window))",
+          "function": "finalize_transfer_public"
+        },
+        {
+          "line": 372,
+          "assertion": "assert(block.height >= estimated_block_height)",
+          "function": "f_transfer_public_as_signer"
+        },
+        {
+          "line": 377,
+          "assertion": "assert(estimated_block_height >= (block.height - window))",
+          "function": "f_transfer_public_as_signer"
+        },
+        {
+          "line": 400,
+          "assertion": "assert_eq(input_state_record.owner, self.caller)",
+          "function": "transfer_public_to_priv"
+        },
+        {
+          "line": 473,
+          "assertion": "assert_eq(stored_investigator_address, investigator_address)",
+          "function": "f_transfer_public_to_priv"
+        },
+        {
+          "line": 475,
+          "assertion": "assert(block.height >= estimated_block_height)",
+          "function": "f_transfer_public_to_priv"
+        },
+        {
+          "line": 480,
+          "assertion": "assert(estimated_block_height >= (block.height - window))",
+          "function": "f_transfer_public_to_priv"
+        },
+        {
+          "line": 504,
+          "assertion": "assert_eq(input_record.token_id, TOKEN_ID)",
+          "function": "transfer_private"
+        },
+        {
+          "line": 580,
+          "assertion": "assert_eq(stored_investigator_address, investigator_address)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 582,
+          "assertion": "assert(block.height >= estimated_block_height)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 587,
+          "assertion": "assert(estimated_block_height >= (block.height - window))",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 610,
+          "assertion": "assert_eq(input_record.token_id, TOKEN_ID)",
+          "function": "transfer_priv_to_public"
+        },
+        {
+          "line": 681,
+          "assertion": "assert_eq(stored_investigator_address, investigator_address)",
+          "function": "f_transfer_priv_to_public"
+        },
+        {
+          "line": 683,
+          "assertion": "assert(block.height >= estimated_block_height)",
+          "function": "f_transfer_priv_to_public"
+        },
+        {
+          "line": 688,
+          "assertion": "assert(estimated_block_height >= (block.height - window))",
+          "function": "f_transfer_priv_to_public"
+        }
+      ]
+    },
+    "sealed_timelock_policy.leo": {
+      "total": 15,
+      "tested": 15,
+      "killed": [3, 4, 5, 6],
+      "survived": [1, 2, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "killed_count": 4,
+      "survived_count": 11,
+      "survived_details": [
+        {
+          "line": 9,
+          "assertion": "assert_eq(admin_address, self.program_owner)",
+          "function": "constructor"
+        },
+        {
+          "line": 77,
+          "assertion": "assert_eq(is_already_initialized, false)",
+          "function": "f_initialize"
+        },
+        {
+          "line": 182,
+          "assertion": "assert_eq(self.caller, sealed_token.owner)",
+          "function": "transfer_public"
+        },
+        {
+          "line": 235,
+          "assertion": "assert(locked_until <= block.height)",
+          "function": "finalize_transfer_public"
+        },
+        {
+          "line": 300,
+          "assertion": "assert(locked_until <= block.height)",
+          "function": "f_transfer_public_as_signer"
+        },
+        {
+          "line": 316,
+          "assertion": "assert_eq(self.caller, sealed_token.owner)",
+          "function": "transfer_public_to_priv"
+        },
+        {
+          "line": 378,
+          "assertion": "assert(locked_until <= block.height)",
+          "function": "f_transfer_public_to_priv"
+        },
+        {
+          "line": 395,
+          "assertion": "assert_eq(base_token.token_id, TOKEN_ID)",
+          "function": "transfer_private"
+        },
+        {
+          "line": 459,
+          "assertion": "assert(locked_until <= block.height)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 475,
+          "assertion": "assert_eq(base_token.token_id, TOKEN_ID)",
+          "function": "transfer_priv_to_public"
+        },
+        {
+          "line": 535,
+          "assertion": "assert(locked_until <= block.height)",
+          "function": "f_transfer_priv_to_public"
+        }
+      ]
+    },
+    "compliant_token_template.leo": {
+      "total": 52,
+      "tested": 52,
+      "killed": [2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 39, 40, 44, 45, 46, 47, 48, 49, 50, 51, 52],
+      "survived": [1, 6, 7, 34, 35, 37, 38, 42, 43],
+      "killed_count": 43,
+      "survived_count": 9,
+      "survived_details": [
+        {
+          "line": 7,
+          "assertion": "assert_eq(UPGRADE_ADDRESS, self.program_owner)",
+          "function": "constructor"
+        },
+        {
+          "line": 170,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_get_credentials"
+        },
+        {
+          "line": 172,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_get_credentials"
+        },
+        {
+          "line": 644,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 646,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_private"
+        },
+        {
+          "line": 699,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_private_to_public"
+        },
+        {
+          "line": 701,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_private_to_public"
+        },
+        {
+          "line": 798,
+          "assertion": "assert_eq(root, previous_root)",
+          "function": "f_transfer_private_credentials"
+        },
+        {
+          "line": 800,
+          "assertion": "assert(updated_height + window > block.height)",
+          "function": "f_transfer_private_credentials"
+        }
+      ]
+    },
+    "gqrfmwbtyp.leo": {
+      "total": 7,
+      "tested": 7,
+      "killed": [2, 3, 4, 5, 6],
+      "survived": [1, 7],
+      "killed_count": 5,
+      "survived_count": 2,
+      "survived_details": [
+        {
+          "line": 12,
+          "assertion": "assert_eq(admin_address, self.program_owner)",
+          "function": "constructor"
+        },
+        {
+          "line": 126,
+          "assertion": "assert_eq(rate, stored_rate)",
+          "function": "f_exchange_timelock_token"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "programs_completed": 8,
+    "programs_in_progress": 0,
+    "programs_remaining": 0,
+    "total_mutations_tested": 201,
+    "total_killed": 137,
+    "total_survived": 64,
+    "mutation_score": "68.2%"
+  }
+}

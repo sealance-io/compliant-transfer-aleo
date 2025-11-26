@@ -6,7 +6,7 @@ program sealed_timelock_policy.aleo {
     async constructor() {
         if (self.edition > 0) {
             let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+            assert_eq(admin_address, self.program_owner); // MUTANT_SURVIVED: not covered by tests
         }
     }
     
@@ -74,7 +74,7 @@ program sealed_timelock_policy.aleo {
     }
     async function f_initialize(token_registry_call: Future, admin: address, caller: address) {
         let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
-        assert_eq(is_already_initialized, false);
+        assert_eq(is_already_initialized, false); // MUTANT_SURVIVED: not covered by tests
 
         assert_eq(INITIAL_ADMIN, caller);
         roles.set(ADMIN_INDEX, admin);
@@ -179,7 +179,7 @@ program sealed_timelock_policy.aleo {
         sealed_token: CompliantToken,
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, Future) {
-        assert_eq(self.caller, sealed_token.owner);
+        assert_eq(self.caller, sealed_token.owner); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -232,7 +232,7 @@ program sealed_timelock_policy.aleo {
         authorization_call.await(); 
         transfer_call.await();
 
-        assert(locked_until <= block.height);
+        assert(locked_until <= block.height); // MUTANT_SURVIVED: not covered by tests
     }
 
     // Transfers public tokens from the signer to the recipient.
@@ -297,7 +297,7 @@ program sealed_timelock_policy.aleo {
         authorization_call.await();
         transfer_call.await();
 
-        assert(locked_until <= block.height);
+        assert(locked_until <= block.height); // MUTANT_SURVIVED: not covered by tests
     }
 
     // Transfers public tokens from the caller to a recipient as a private token.
@@ -313,7 +313,7 @@ program sealed_timelock_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         lock_until: u32
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
-        assert_eq(self.caller, sealed_token.owner);
+        assert_eq(self.caller, sealed_token.owner); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
@@ -375,7 +375,7 @@ program sealed_timelock_policy.aleo {
         authorization_call.await();
         transfer_call.await();
 
-        assert(locked_until <= block.height);
+        assert(locked_until <= block.height); // MUTANT_SURVIVED: not covered by tests
     }
 
     // Transfers private tokens from the record owner to a recipient.
@@ -392,7 +392,7 @@ program sealed_timelock_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        assert_eq(base_token.token_id, TOKEN_ID);
+        assert_eq(base_token.token_id, TOKEN_ID); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
@@ -456,7 +456,7 @@ program sealed_timelock_policy.aleo {
         authorization_call.await();
         transfer_call.await();
 
-        assert(locked_until <= block.height);
+        assert(locked_until <= block.height); // MUTANT_SURVIVED: not covered by tests
     }
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
@@ -472,7 +472,7 @@ program sealed_timelock_policy.aleo {
         sender_merkle_proofs: [MerkleProof; 2],
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
-        assert_eq(base_token.token_id, TOKEN_ID);
+        assert_eq(base_token.token_id, TOKEN_ID); // MUTANT_SURVIVED: not covered by tests
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
@@ -532,7 +532,7 @@ program sealed_timelock_policy.aleo {
         authorization_call.await();
         transfer_call.await();
 
-        assert(locked_until <= block.height);
+        assert(locked_until <= block.height); // MUTANT_SURVIVED: not covered by tests
     }
 
     // Joins two CompliantToken records into a single record.
