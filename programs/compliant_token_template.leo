@@ -4,7 +4,7 @@ program compliant_token_template.aleo {
     @custom
     async constructor() {
         if (self.edition > 0) {
-            assert_eq(UPGRADE_ADDRESS, self.program_owner);
+            assert_eq(UPGRADE_ADDRESS, self.program_owner); // MUTANT_SURVIVED: not covered by tests
         }
     }
 
@@ -167,9 +167,9 @@ program compliant_token_template.aleo {
 
         if (current_root != root) {
             let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
         }
     }
 
@@ -641,9 +641,9 @@ program compliant_token_template.aleo {
 
         if (current_root != root) {
             let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
         }
     }
 
@@ -696,10 +696,10 @@ program compliant_token_template.aleo {
 
         if (current_root != root) {
             let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        } 
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
+        }
 
         let is_recipient_frozen: bool = sealance_freezelist_registry.aleo/freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
@@ -795,9 +795,9 @@ program compliant_token_template.aleo {
 
         if (current_root != root) {
             let previous_root: field = sealance_freezelist_registry.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let updated_height: u32 = sealance_freezelist_registry.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
         }
     }
 

@@ -122,7 +122,7 @@ program sealed_report_policy.aleo {
 
         // Verify we don't unfreeze an unfrozen account or freeze a frozen account
         let stored_is_frozen = freeze_list.get_or_use(account, false);
-        assert_neq(is_frozen, stored_is_frozen);
+        assert_neq(is_frozen, stored_is_frozen); // MUTANT_SURVIVED: not covered by tests
         freeze_list.set(account, is_frozen);
 
         let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
@@ -316,7 +316,7 @@ program sealed_report_policy.aleo {
         investigator_address: address
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
-        assert_eq(is_sender_frozen, false);
+        assert_eq(is_sender_frozen, false); // MUTANT_SURVIVED: not covered by tests
 
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
@@ -324,7 +324,7 @@ program sealed_report_policy.aleo {
             assert_eq(root, previous_root);
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
+            assert(updated_height + window > block.height); // MUTANT_SURVIVED: not covered by tests
         }
 
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
@@ -346,7 +346,7 @@ program sealed_report_policy.aleo {
         recipient_merkle_proofs: [MerkleProof;2],
         public investigator_address: address
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
-        assert_eq(input_record.token_id, TOKEN_ID);
+        assert_eq(input_record.token_id, TOKEN_ID); // MUTANT_SURVIVED: not covered by tests
 
         let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
         let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
@@ -408,7 +408,7 @@ program sealed_report_policy.aleo {
         }
         
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
@@ -479,14 +479,14 @@ program sealed_report_policy.aleo {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
+            assert_eq(root, previous_root); // MUTANT_SURVIVED: not covered by tests
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
         
         let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
+        assert_eq(stored_investigator_address, investigator_address); // MUTANT_SURVIVED: not covered by tests
 
         authorization_call.await();
         transfer_call.await();
