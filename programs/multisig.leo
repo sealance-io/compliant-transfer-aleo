@@ -2,7 +2,8 @@ import multisig_impl.aleo;
 
 // The 'multisig' program.
 program multisig.aleo {
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    const ALEO_ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    const ETH_ZERO_ADDRESS: [u8; 20] = [0u8; 20];
 
     //@noupgrade
     @admin(address="aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px")
@@ -15,8 +16,8 @@ program multisig.aleo {
     // Create a new multisig wallet
     ///////////////////////////////////////////////////////////////////////////
 
-    async transition create_wallet(wallet_id: address, threshold: u8, signers: [address; 4]) -> Future {
-        let fut = multisig_impl.aleo/create_wallet(wallet_id, threshold, signers);
+    async transition create_wallet(public wallet_id: address, public threshold: u8, aleo_signers: [address; 4], ecdsa_signers: [[u8; 20]; 4]) -> Future {
+        let fut = multisig_impl.aleo/create_wallet(wallet_id, threshold, aleo_signers, ecdsa_signers);
         return finalize_create_wallet(fut);
     }
 
@@ -27,11 +28,10 @@ program multisig.aleo {
     ///////////////////////////////////////////////////////////////////////////
     // Begin a signing operation
     ///////////////////////////////////////////////////////////////////////////
-    async transition initiate_signing_op(wallet_id: address, signing_op_id: field) -> (field, Future) {
+    async transition initiate_signing_op(public wallet_id: address, public signing_op_id: field) -> (field, Future) {
         let (wallet_signing_op_id_hash, fut) = multisig_impl.aleo/initiate_signing_op(wallet_id, signing_op_id);
         return (wallet_signing_op_id_hash, finalize_initiate_signing_op(fut));
     }
-
     async function finalize_initiate_signing_op(fut: Future) {
        fut.await();
     }
@@ -39,8 +39,13 @@ program multisig.aleo {
     ///////////////////////////////////////////////////////////////////////////
     // Provide a signature to a signing operation
     ///////////////////////////////////////////////////////////////////////////
-    async transition sign(wallet_id: address, signing_op_id: field) -> Future {
+    async transition sign(public wallet_id: address, public signing_op_id: field) -> Future {
         let fut = multisig_impl.aleo/sign(wallet_id, signing_op_id);
+        return finalize_sign(fut);
+    }
+
+    async transition sign_ecdsa(public wallet_id: address, public signing_op_id: field, public ecdsa_signer: [u8; 20], public sig: [u8; 65]) -> Future {
+        let fut = multisig_impl.aleo/sign_ecdsa(wallet_id, signing_op_id, ecdsa_signer, sig);
         return finalize_sign(fut);
     }
 
@@ -59,27 +64,40 @@ program multisig.aleo {
         // Only used for ADMIN_OP_CHANGE_THRESHOLD
         threshold: u8,
 
-        // Only used for ADMIN_OP_ADD_SIGNER and ADMIN_OP_REMOVE_SIGNER
-        user: address,
+        // Only used for ADMIN_OP_ADD_SIGNER and ADMIN_OP_REMOVE_SIGNER.
+        // Only one of the two can be provided, the other has to be set to the zero address.
+        aleo_signer: address,
+        ecdsa_signer: [u8; 20],
     }
 
 
     function hash_admin_op(wallet: Wallet, admin_op: AdminOp) -> HashedAdminOp {
-        let wallet_user_hash = (admin_op.user == ZERO_ADDRESS) ? 0field : BHP256::hash_to_field(WalletUser {
-            wallet: wallet,
-            user: admin_op.user,
-        });
+        let wallet_signer_hash = 0field;
+        if (admin_op.aleo_signer != ALEO_ZERO_ADDRESS && admin_op.ecdsa_signer != ETH_ZERO_ADDRESS) {
+            assert(false);
+        } else if (admin_op.aleo_signer != ALEO_ZERO_ADDRESS) {
+            wallet_signer_hash = BHP256::hash_to_field(WalletAleoSigner {
+                wallet: wallet,
+                user: admin_op.aleo_signer,
+            });
+        } else if (admin_op.ecdsa_signer != ETH_ZERO_ADDRESS) {
+            wallet_signer_hash = BHP256::hash_to_field(WalletEcdsaSigner {
+                wallet: wallet,
+                ecdsa_signer: admin_op.ecdsa_signer,
+            });
+        }
+
         return HashedAdminOp {
             op: admin_op.op,
             threshold: admin_op.threshold,
-            wallet_user_hash: wallet_user_hash,
+            wallet_signer_hash: wallet_signer_hash,
         };
     }
 
 
    mapping pending_admin_ops: field => HashedAdminOp; // hash(WalletSigningOpId) => HashedAdminOp
 
-   async transition init_admin_op(wallet_id: address, signing_op_id: field, admin_op: AdminOp) -> (field, Future) {
+   async transition init_admin_op(public wallet_id: address, public signing_op_id: field, admin_op: AdminOp) -> (field, Future) {
         let wallet = Wallet { wallet_owner: self.address, wallet_id: wallet_id };
         let hashed_admin_op = hash_admin_op(wallet, admin_op);
 
@@ -101,7 +119,7 @@ program multisig.aleo {
         init_signing_op_fut.await();
     }
 
-    async transition exec_admin_op(wallet_id: address, signing_op_id: field, admin_op: AdminOp) -> Future {
+    async transition exec_admin_op(public wallet_id: address, public signing_op_id: field, admin_op: AdminOp) -> Future {
         let wallet = Wallet { wallet_owner: self.address, wallet_id: wallet_id };
         let hashed_admin_op = hash_admin_op(wallet, admin_op);
 
@@ -138,16 +156,16 @@ program multisig.aleo {
 
     }
 
-    transition get_signing_op_id_hash(wallet_id: address, signing_op_id: field) -> field {
+    transition get_signing_op_id_hash(public wallet_id: address, public signing_op_id: field) -> field {
         return get_signing_op_id_hash_fn(wallet_id, signing_op_id);
     }
 
-    transition get_wallet_hash(wallet_id: address) -> field {
+    transition get_wallet_hash(public wallet_id: address) -> field {
         let wallet = Wallet { wallet_owner: self.address, wallet_id: wallet_id };
         return BHP256::hash_to_field(wallet);
     }
 
-    async transition assert_signing_completed(wallet_id: address, signing_op_id: field) -> Future {
+    async transition assert_signing_completed(public wallet_id: address, public signing_op_id: field) -> Future {
         let fut = multisig_impl.aleo/assert_signing_completed(wallet_id, signing_op_id);
         return fin_assert_signing_completed(fut);
     }
