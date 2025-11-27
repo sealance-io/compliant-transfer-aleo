@@ -17,6 +17,7 @@ import {
   emptyRoot,
   fundedAmount,
   MAX_TREE_DEPTH,
+  emptyMultisigCommonParams,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -204,7 +205,11 @@ describe("test sealed_standalone_token program", () => {
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+      let tx = await freezeRegistryContractForAdmin.update_role(
+        adminAddress,
+        MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
       const role = await freezeRegistryContract.address_to_role(adminAddress);
       expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
@@ -213,7 +218,14 @@ describe("test sealed_standalone_token program", () => {
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      let tx = await freezeRegistryContractForAdmin.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        currentRoot,
+        root,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
       let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
       let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
@@ -227,72 +239,80 @@ describe("test sealed_standalone_token program", () => {
 
   test(`test update_roles`, async () => {
     // Manager can assign role
-    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
+    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     let role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
-    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE);
+    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
-    let rejectedTx = await tokenContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
+    let rejectedTx = await tokenContractForFrozenAccount.update_role(
+      frozenAccount,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update minter role
-    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update burner role
-    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update supply manager role
-    rejectedTx = await tokenContractForAccount.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(
+      supplyManager,
+      MINTER_ROLE + BURNER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update none role
-    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update pause role
-    rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager cannot unassign himself from being a manager
-    rejectedTx = await tokenContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    rejectedTx = await tokenContractForAdmin.update_role(adminAddress, NONE_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager can assign minter, burner, manager, pauser and supply manager roles
-    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE);
+    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(minter);
     expect(role).toBe(MINTER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE);
+    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(burner);
     expect(role).toBe(BURNER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
+    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE);
+    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(account);
     expect(role).toBe(NONE_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(pauser, PAUSE_ROLE);
+    tx = await tokenContractForAdmin.update_role(pauser, PAUSE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(pauser);
     expect(role).toBe(PAUSE_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE);
+    tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(adminAddress);
     expect(role).toBe(MANAGER_ROLE);
@@ -309,16 +329,16 @@ describe("test sealed_standalone_token program", () => {
     const supply = tokenInfo.supply;
 
     // a regular user cannot mint private assets
-    let rejectedTx = await tokenContractForAccount.mint_private(account, amount * 20n);
+    let rejectedTx = await tokenContractForAccount.mint_private(account, amount * 20n, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
     // a burner cannot mint private assets
-    rejectedTx = await tokenContractForBurner.mint_private(account, amount * 20n);
+    rejectedTx = await tokenContractForBurner.mint_private(account, amount * 20n, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
     // an admin cannot mint private assets
-    rejectedTx = await tokenContractForAdmin.mint_private(account, amount * 20n);
+    rejectedTx = await tokenContractForAdmin.mint_private(account, amount * 20n, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await tokenContractForMinter.mint_private(frozenAccount, amount * 20n);
+    let tx = await tokenContractForMinter.mint_private(frozenAccount, amount * 20n, emptyMultisigCommonParams);
     const [, encryptedFrozenAccountRecord] = await tx.wait();
     frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
     expect(frozenAccountRecord.amount).toBe(amount * 20n);
@@ -327,7 +347,7 @@ describe("test sealed_standalone_token program", () => {
     tokenInfo = await tokenContract.token_info(true);
     expect(tokenInfo.supply - supply).toBe(amount * 20n);
 
-    tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n);
+    tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n, emptyMultisigCommonParams);
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
     expect(accountRecord.amount).toBe(amount * 20n);
@@ -350,23 +370,23 @@ describe("test sealed_standalone_token program", () => {
     const supply = tokenInfo.supply;
 
     // a regular user cannot mint public assets
-    let rejectedTx = await tokenContractForAccount.mint_public(account, amount * 20n);
+    let rejectedTx = await tokenContractForAccount.mint_public(account, amount * 20n, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
     // a burner cannot mint public assets
-    rejectedTx = await tokenContractForBurner.mint_public(account, amount * 20n);
+    rejectedTx = await tokenContractForBurner.mint_public(account, amount * 20n, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
     // an admin cannot mint public assets
-    rejectedTx = await tokenContractForAdmin.mint_public(account, amount * 20n);
+    rejectedTx = await tokenContractForAdmin.mint_public(account, amount * 20n, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await tokenContractForMinter.mint_public(frozenAccount, amount * 20n);
+    let tx = await tokenContractForMinter.mint_public(frozenAccount, amount * 20n, emptyMultisigCommonParams);
     await tx.wait();
     let balance = await tokenContract.balances(frozenAccount);
     expect(balance).toBe(amount * 20n);
     tokenInfo = await tokenContract.token_info(true);
     expect(tokenInfo.supply - supply).toBe(amount * 20n);
 
-    tx = await tokenContractForSupplyManager.mint_public(account, amount * 20n);
+    tx = await tokenContractForSupplyManager.mint_public(account, amount * 20n, emptyMultisigCommonParams);
     await tx.wait();
     balance = await tokenContract.balances(account);
     expect(balance).toBe(amount * 20n);
@@ -379,23 +399,23 @@ describe("test sealed_standalone_token program", () => {
     const supply = tokenInfo.supply;
 
     // A regular user cannot burn public assets
-    let rejectedTx = await tokenContractForAccount.burn_public(account, amount);
+    let rejectedTx = await tokenContractForAccount.burn_public(account, amount, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // A minter user cannot burn public assets
-    rejectedTx = await tokenContractForMinter.burn_public(account, amount);
+    rejectedTx = await tokenContractForMinter.burn_public(account, amount, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    rejectedTx = await tokenContractForAdmin.burn_public(account, amount);
+    rejectedTx = await tokenContractForAdmin.burn_public(account, amount, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const previousAccountPublicBalance = await tokenContract.balances(account);
-    let tx = await tokenContractForBurner.burn_public(account, amount);
+    let tx = await tokenContractForBurner.burn_public(account, amount, emptyMultisigCommonParams);
     await tx.wait();
     tokenInfo = await tokenContract.token_info(true);
     expect(supply - tokenInfo.supply).toBe(amount);
 
-    tx = await tokenContractForSupplyManager.burn_public(account, amount);
+    tx = await tokenContractForSupplyManager.burn_public(account, amount, emptyMultisigCommonParams);
     await tx.wait();
     tokenInfo = await tokenContract.token_info(true);
     expect(supply - tokenInfo.supply).toBe(amount * 2n);
@@ -409,10 +429,10 @@ describe("test sealed_standalone_token program", () => {
     const supply = tokenInfo.supply;
 
     // A user that doesn't have a burner role cannot burn private assets
-    let rejectedTx = await tokenContractForAccount.burn_private(accountRecord, amount);
+    let rejectedTx = await tokenContractForAccount.burn_private(accountRecord, amount, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let mintTx = await tokenContractForMinter.mint_private(burner, amount);
+    let mintTx = await tokenContractForMinter.mint_private(burner, amount, emptyMultisigCommonParams);
     let [, encryptedAdminRecord] = await mintTx.wait();
     let adminRecord = decryptToken(encryptedAdminRecord, burnerPrivKey);
     expect(adminRecord.amount).toBe(amount);
@@ -420,7 +440,7 @@ describe("test sealed_standalone_token program", () => {
     tokenInfo = await tokenContract.token_info(true);
     expect(tokenInfo.supply - supply).toBe(amount);
 
-    let burnTx = await tokenContractForBurner.burn_private(adminRecord, amount);
+    let burnTx = await tokenContractForBurner.burn_private(adminRecord, amount, emptyMultisigCommonParams);
     let [complianceRecordFromBurning, encryptedAdminRecordFromBurning] = await burnTx.wait();
     adminRecord = decryptToken(encryptedAdminRecordFromBurning, burnerPrivKey);
     expect(adminRecord.amount).toBe(0n);
@@ -435,7 +455,7 @@ describe("test sealed_standalone_token program", () => {
     expect(decryptedComplianceRecord.recipient).toBe(ZERO_ADDRESS);
 
     // check that MINTER_ROLE+BURNER_ROLE can burn private assets
-    mintTx = await tokenContractForMinter.mint_private(supplyManager, amount);
+    mintTx = await tokenContractForMinter.mint_private(supplyManager, amount, emptyMultisigCommonParams);
     let [, encryptedSupplyManager] = await mintTx.wait();
     let supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
     expect(supplyManagerRecord.amount).toBe(amount);
@@ -443,7 +463,7 @@ describe("test sealed_standalone_token program", () => {
     tokenInfo = await tokenContract.token_info(true);
     expect(tokenInfo.supply - supply).toBe(amount);
 
-    burnTx = await tokenContractForSupplyManager.burn_private(supplyManagerRecord, amount);
+    burnTx = await tokenContractForSupplyManager.burn_private(supplyManagerRecord, amount, emptyMultisigCommonParams);
     [, encryptedSupplyManager] = await burnTx.wait();
     supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
     expect(supplyManagerRecord.amount).toBe(0n);
@@ -729,9 +749,13 @@ describe("test sealed_standalone_token program", () => {
       1,
       root,
       1n, // fake root
+      emptyMultisigCommonParams,
     );
     await updateFreezeListTx.wait();
-    let updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(1);
+    let updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
+      1,
+      emptyMultisigCommonParams,
+    );
     await updateBlockHeightWindowTx.wait();
 
     let rejectedTransferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
@@ -743,9 +767,19 @@ describe("test sealed_standalone_token program", () => {
     await expect(rejectedTransferPrivateTx.wait()).rejects.toThrow();
 
     // bring back the old root
-    updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 1n, root);
+    updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
+      frozenAccount,
+      true,
+      1,
+      1n,
+      root,
+      emptyMultisigCommonParams,
+    );
     await updateFreezeListTx.wait();
-    updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(BLOCK_HEIGHT_WINDOW);
+    updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
+      BLOCK_HEIGHT_WINDOW,
+      emptyMultisigCommonParams,
+    );
     await updateBlockHeightWindowTx.wait();
 
     transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
@@ -777,26 +811,26 @@ describe("test sealed_standalone_token program", () => {
 
   test(`test pausing the contract`, async () => {
     // Only the pauser can pause the program
-    const rejectedTx = await tokenContractForAdmin.set_pause_status(true);
+    const rejectedTx = await tokenContractForAdmin.set_pause_status(true, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await approveTx.wait();
 
     // pause the contract
-    let pauseTx = await tokenContractForPauser.set_pause_status(true);
+    let pauseTx = await tokenContractForPauser.set_pause_status(true, emptyMultisigCommonParams);
     await pauseTx.wait();
     let pauseStatus = await tokenContract.pause(true);
     expect(pauseStatus).toBe(true);
 
     // verify that all the functionalities are paused
-    const mintTx = await tokenContractForMinter.mint_public(recipient, amount);
+    const mintTx = await tokenContractForMinter.mint_public(recipient, amount, emptyMultisigCommonParams);
     await expect(mintTx.wait()).rejects.toThrow();
 
-    const mintPrivateTx = await tokenContractForMinter.mint_private(recipient, amount);
+    const mintPrivateTx = await tokenContractForMinter.mint_private(recipient, amount, emptyMultisigCommonParams);
     await expect(mintPrivateTx.wait()).rejects.toThrow();
 
-    const burnTx = await tokenContractForBurner.burn_public(recipient, amount);
+    const burnTx = await tokenContractForBurner.burn_public(recipient, amount, emptyMultisigCommonParams);
     await expect(burnTx.wait()).rejects.toThrow();
 
     let publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
@@ -849,7 +883,7 @@ describe("test sealed_standalone_token program", () => {
     await expect(privateWithTicketTx.wait()).rejects.toThrow();
 
     // unpause the contract
-    pauseTx = await tokenContractForPauser.set_pause_status(false);
+    pauseTx = await tokenContractForPauser.set_pause_status(false, emptyMultisigCommonParams);
     await pauseTx.wait();
     pauseStatus = await tokenContract.pause(true);
     expect(pauseStatus).toBe(false);
