@@ -1,5 +1,5 @@
 import sealance_freezelist_registry.aleo;
-import multisig.aleo;
+import multisig_core.aleo;
 
 program compliant_token_template.aleo {
     @custom
@@ -17,9 +17,8 @@ program compliant_token_template.aleo {
                     salt: self.edition as scalar
                 };
                 let signing_op_id = BHP256::hash_to_field(multisig_op);
-                let wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: UPGRADE_ADDRESS };
-                let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet: wallet, signing_op_id: signing_op_id });
-                let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+                let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: UPGRADE_ADDRESS, signing_op_id: signing_op_id });
+                let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);
                 let pending_request = pending_requests.get(wallet_signing_op_id_hash);
                 assert_eq(pending_request, multisig_op);
@@ -151,9 +150,9 @@ program compliant_token_template.aleo {
     // Registers the operation with the external multisig wallet using its signing_op_id.
     // Stores the associated CompliantTokenMultisigOp under the hashed wallet operation ID.
     // Fails if an operation with the same ID already exists.
-    async transition init_multisig_op(wallet_id: address, public multisig_op: CompliantTokenMultisigOp) -> (field, field, Future) {
+    async transition init_multisig_op(wallet_id: address, public multisig_op: CompliantTokenMultisigOp, public block_expiration: u32) -> (field, field, Future) {
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(wallet_id, signing_op_id);
+        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig_core.aleo/initiate_signing_op(wallet_id, signing_op_id, block_expiration);
         return (signing_op_id, wallet_signing_op_id_hash, fin_init_multisig_op(
             wallet_signing_op_id_hash,
             multisig_op,
@@ -171,9 +170,9 @@ program compliant_token_template.aleo {
         init_signing_op_fut.await();
     }
 
-    async transition init_private_multisig_op(wallet_id: address, multisig_op: PrivateCompliantTokenMultisigOp, salt: scalar) -> (field, Future) {
+    async transition init_private_multisig_op(wallet_id: address, multisig_op: PrivateCompliantTokenMultisigOp, salt: scalar, public block_expiration: u32) -> (field, Future) {
         let signing_op_id = BHP256::commit_to_field(multisig_op, salt);
-        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(wallet_id, signing_op_id);
+        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig_core.aleo/initiate_signing_op(wallet_id, signing_op_id, block_expiration);
         return (wallet_signing_op_id_hash, fin_init_private_multisig_op(
             wallet_signing_op_id_hash,
             init_signing_op_fut
@@ -207,7 +206,7 @@ program compliant_token_template.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return f_update_wallet_id(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
@@ -216,7 +215,7 @@ program compliant_token_template.aleo {
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -241,7 +240,7 @@ program compliant_token_template.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return f_update_role(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
@@ -250,7 +249,7 @@ program compliant_token_template.aleo {
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -360,7 +359,7 @@ program compliant_token_template.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
         return finalize_mint_public(recipient, amount, self.caller, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
     async function finalize_mint_public(
@@ -375,7 +374,7 @@ program compliant_token_template.aleo {
         if (!(role & MINTER_ROLE == MINTER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & MINTER_ROLE == MINTER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -433,7 +432,7 @@ program compliant_token_template.aleo {
             amount: amount
         };
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
         
         return (compliance_record, token, finalize_mint_private(amount, self.caller, wallet_signing_op_id_hash, multisig_common_params.wallet_id));
     }
@@ -448,7 +447,7 @@ program compliant_token_template.aleo {
         if (!(role & MINTER_ROLE == MINTER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & MINTER_ROLE == MINTER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             assert(private_pending_requests.contains(wallet_signing_op_id_hash));
             private_pending_requests.remove(wallet_signing_op_id_hash);
@@ -493,7 +492,7 @@ program compliant_token_template.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
         return finalize_burn_public(owner, amount, self.caller, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
 
@@ -509,7 +508,7 @@ program compliant_token_template.aleo {
         if (!(role & BURNER_ROLE == BURNER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & BURNER_ROLE == BURNER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -562,7 +561,7 @@ program compliant_token_template.aleo {
             amount: amount
         };
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return (compliance_record, output_record, finalize_burn_private(amount, self.caller, wallet_signing_op_id_hash, multisig_common_params.wallet_id));
     }
@@ -576,7 +575,7 @@ program compliant_token_template.aleo {
         if (!(role & BURNER_ROLE == BURNER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & BURNER_ROLE == BURNER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             assert(private_pending_requests.contains(wallet_signing_op_id_hash));
             private_pending_requests.remove(wallet_signing_op_id_hash);
@@ -973,7 +972,7 @@ program compliant_token_template.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
         return f_set_pause_status(pause_status, self.caller, wallet_signing_op_id_hash, multisig_op,multisig_common_params. wallet_id);
     }
     async function f_set_pause_status(
@@ -987,7 +986,7 @@ program compliant_token_template.aleo {
         if (!(role & PAUSE_ROLE == PAUSE_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & PAUSE_ROLE == PAUSE_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);

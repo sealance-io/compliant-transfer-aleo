@@ -21,6 +21,7 @@ import {
   MULTISIG_OP_UPDATE_WALLET_ID,
   MULTISIG_OP_UPDATE_FREEZE_LIST,
   MULTISIG_OP_UPDATE_BLOCK_WINDOW,
+  MAX_BLOCK_HEIGHT,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -29,8 +30,7 @@ import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_f
 import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
 import { Account } from "@provablehq/sdk";
 import { isProgramInitialized } from "../lib/Initalize";
-import { MultisigContract } from "../artifacts/js/multisig";
-import { Multisig_implContract } from "../artifacts/js/multisig_impl";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -63,11 +63,7 @@ const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const multiSigImplContract = new Multisig_implContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const multiSigContract = new MultisigContract({
+const multiSigContract = new Multisig_coreContract({
   mode,
   privateKey: deployerPrivKey,
 });
@@ -80,11 +76,11 @@ const threshold = 2;
 const managerWalletId = new Account().address().to_string();
 const freezeListManagerWalletId = new Account().address().to_string();
 
-const multiSigContractForSigner1 = new MultisigContract({
+const multiSigContractForSigner1 = new Multisig_coreContract({
   mode,
   privateKey: signer1.privateKey().to_string(),
 });
-const multiSigContractForSigner2 = new MultisigContract({
+const multiSigContractForSigner2 = new Multisig_coreContract({
   mode,
   privateKey: signer2.privateKey().to_string(),
 });
@@ -100,22 +96,26 @@ async function approveRequest(walletId: string, signingOpId: bigint) {
 
 describe("test freeze_registry program", () => {
   beforeAll(async () => {
+    // Deploy the multisig programs
+    await deployIfNotDeployed(multiSigContract);
+    // Create the wallets
+    let tx = await multiSigContract.init(false);
+    await tx.wait();
+    tx = await multiSigContract.create_wallet(UPGRADE_ADDRESS, threshold, aleoSigners, ecdsaSigners);
+    await tx.wait();
+    tx = await multiSigContract.create_wallet(managerWalletId, threshold, aleoSigners, ecdsaSigners);
+    await tx.wait();
+    tx = await multiSigContract.create_wallet(freezeListManagerWalletId, threshold, aleoSigners, ecdsaSigners);
+    await tx.wait();
+
+    await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(freezeRegistryContract);
+
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
     await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
     await fundWithCredits(deployerPrivKey, signer1.address().to_string(), fundedAmount);
     await fundWithCredits(deployerPrivKey, signer2.address().to_string(), fundedAmount);
-
-    // Deploy the multisig programs
-    await deployIfNotDeployed(multiSigImplContract);
-    await deployIfNotDeployed(multiSigContract);
-    // Create the wallets
-    multiSigContract.create_wallet(UPGRADE_ADDRESS, threshold, aleoSigners, ecdsaSigners);
-    multiSigContract.create_wallet(managerWalletId, threshold, aleoSigners, ecdsaSigners);
-    multiSigContract.create_wallet(freezeListManagerWalletId, threshold, aleoSigners, ecdsaSigners);
-
-    await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(freezeRegistryContract);
   });
 
   let adminMerkleProof: { siblings: any[]; leaf_index: any }[];
@@ -179,7 +179,8 @@ describe("test freeze_registry program", () => {
   });
 
   test(`test init_multi_sig`, async () => {
-    let multisigOp = {
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
       op: 0,
       user: ZERO_ADDRESS,
       is_frozen: false,
@@ -190,10 +191,10 @@ describe("test freeze_registry program", () => {
       edition: 0,
       checksum: Array(32).fill(0),
       blocks: 0,
-      salt: 0n,
+      salt: salt,
     };
 
-    const tx = await freezeRegistryContract.init_multisig_op(ZERO_ADDRESS, multisigOp);
+    const tx = await freezeRegistryContract.init_multisig_op(UPGRADE_ADDRESS, multisigOp, MAX_BLOCK_HEIGHT);
     const [, walletSigningOpIdHash] = await tx.wait();
     const pendingRequest = await freezeRegistryContract.pending_requests(walletSigningOpIdHash);
     expect(pendingRequest.op).toBe(0);
@@ -205,10 +206,10 @@ describe("test freeze_registry program", () => {
     expect(pendingRequest.role).toBe(0);
     expect(pendingRequest.edition).toBe(0);
     expect(pendingRequest.blocks).toBe(0);
-    expect(pendingRequest.salt).toBe(0n);
+    expect(pendingRequest.salt).toBe(salt);
 
     // It's impossible to initiate a request twice
-    const rejectedTx = await freezeRegistryContract.init_multisig_op(ZERO_ADDRESS, multisigOp);
+    const rejectedTx = await freezeRegistryContract.init_multisig_op(UPGRADE_ADDRESS, multisigOp, MAX_BLOCK_HEIGHT);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
@@ -245,7 +246,7 @@ describe("test freeze_registry program", () => {
       salt,
     };
 
-    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp);
+    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
     let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
@@ -300,7 +301,11 @@ describe("test freeze_registry program", () => {
     });
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    initMultiSigTx = await freezeRegistryContract.init_multisig_op(freezeListManagerWalletId, multisigOp);
+    initMultiSigTx = await freezeRegistryContract.init_multisig_op(
+      freezeListManagerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
+    );
     [signingOpId] = await initMultiSigTx.wait();
     await approveRequest(freezeListManagerWalletId, signingOpId);
 
@@ -328,7 +333,7 @@ describe("test freeze_registry program", () => {
       salt,
     };
 
-    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp);
+    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
     let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
@@ -382,7 +387,11 @@ describe("test freeze_registry program", () => {
     });
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    initMultiSigTx = await freezeRegistryContract.init_multisig_op(freezeListManagerWalletId, multisigOp);
+    initMultiSigTx = await freezeRegistryContract.init_multisig_op(
+      freezeListManagerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
+    );
     [signingOpId] = await initMultiSigTx.wait();
     await approveRequest(freezeListManagerWalletId, signingOpId);
 
@@ -575,7 +584,11 @@ describe("test freeze_registry program", () => {
       salt,
     };
 
-    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(freezeListManagerWalletId, multisigOp);
+    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(
+      freezeListManagerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
+    );
     let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
@@ -654,7 +667,7 @@ describe("test freeze_registry program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     multisigOp.is_frozen = false;
-    initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp);
+    initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
     [signingOpId] = await initMultiSigTx.wait();
     await approveRequest(managerWalletId, signingOpId);
 
@@ -694,7 +707,11 @@ describe("test freeze_registry program", () => {
       salt,
     };
 
-    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(freezeListManagerWalletId, multisigOp);
+    let initMultiSigTx = await freezeRegistryContract.init_multisig_op(
+      freezeListManagerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
+    );
     let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
@@ -742,7 +759,7 @@ describe("test freeze_registry program", () => {
     });
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp);
+    initMultiSigTx = await freezeRegistryContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
     [signingOpId] = await initMultiSigTx.wait();
     await approveRequest(managerWalletId, signingOpId);
 

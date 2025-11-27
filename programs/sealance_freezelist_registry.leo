@@ -1,6 +1,6 @@
 
 import merkle_tree.aleo;
-import multisig.aleo;
+import multisig_core.aleo;
 
 program sealance_freezelist_registry.aleo {
     @custom
@@ -21,9 +21,8 @@ program sealance_freezelist_registry.aleo {
                     salt: self.edition as scalar
                 };
                 let signing_op_id = BHP256::hash_to_field(multisig_op);
-                let wallet = Wallet { wallet_owner: multisig.aleo, wallet_id: UPGRADE_ADDRESS };
-                let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet: wallet, signing_op_id: signing_op_id });
-                let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+                let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: UPGRADE_ADDRESS, signing_op_id: signing_op_id });
+                let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);
                 let pending_request = pending_requests.get(wallet_signing_op_id_hash);
                 assert_eq(pending_request, multisig_op);
@@ -114,9 +113,9 @@ program sealance_freezelist_registry.aleo {
     // Registers the operation with the external multisig wallet using its signing_op_id.
     // Stores the associated FreezeRegistryMultisigOp under the hashed wallet operation ID.
     // Fails if an operation with the same ID already exists.
-    async transition init_multisig_op(wallet_id: address, multisig_op: FreezeRegistryMultisigOp) -> (field, field, Future) {
+    async transition init_multisig_op(wallet_id: address, multisig_op: FreezeRegistryMultisigOp, public block_expiration: u32) -> (field, field, Future) {
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig.aleo/initiate_signing_op(wallet_id, signing_op_id);
+        let (wallet_signing_op_id_hash, init_signing_op_fut) = multisig_core.aleo/initiate_signing_op(wallet_id, signing_op_id, block_expiration);
         return (signing_op_id, wallet_signing_op_id_hash, fin_init_multisig_op(
             wallet_signing_op_id_hash,
             multisig_op,
@@ -180,7 +179,7 @@ program sealance_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return f_update_wallet_id(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
@@ -189,7 +188,7 @@ program sealance_freezelist_registry.aleo {
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -217,7 +216,7 @@ program sealance_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return f_update_role(new_address, self.caller, role, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
@@ -233,7 +232,7 @@ program sealance_freezelist_registry.aleo {
         if (!(current_role & MANAGER_ROLE == MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -264,7 +263,7 @@ program sealance_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return f_update_block_height_window(blocks, self.caller, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
@@ -279,7 +278,7 @@ program sealance_freezelist_registry.aleo {
         if (!(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
@@ -325,7 +324,7 @@ program sealance_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
         return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root, wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id);
     }
@@ -344,7 +343,7 @@ program sealance_freezelist_registry.aleo {
         if (!(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE)) {
             let wallet_id_role = wallet_id_to_role.get(wallet_id);
             assert(wallet_id_role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
-            let signing_complete = multisig_impl.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);        

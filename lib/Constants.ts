@@ -108,3 +108,5 @@ export const emptyMultisigCommonParams = {
   salt: 0n,
   wallet_id: ZERO_ADDRESS,
 };
+
+export const MAX_BLOCK_HEIGHT = 4294967295; // 2**32 - 1
