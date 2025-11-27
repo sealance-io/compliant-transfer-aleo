@@ -164,6 +164,10 @@ program compliant_token_template.aleo {
         multisig_op: CompliantTokenMultisigOp,
         init_signing_op_fut: Future,
     ) {
+        // Check if the token has already been initialized
+        let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
+        assert_eq(already_initialized, false);
+        
         assert(!pending_requests.contains(wallet_signing_op_id_hash));
         assert(!private_pending_requests.contains(wallet_signing_op_id_hash));
         pending_requests.set(wallet_signing_op_id_hash, multisig_op);

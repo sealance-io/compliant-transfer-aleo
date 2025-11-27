@@ -127,6 +127,9 @@ program sealance_freezelist_registry.aleo {
         multisig_op: FreezeRegistryMultisigOp,
         init_signing_op_fut: Future,
     ) {
+        let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
+        assert_eq(is_already_initialized, false);
+
         assert(!pending_requests.contains(wallet_signing_op_id_hash));
         pending_requests.set(wallet_signing_op_id_hash, multisig_op);
         init_signing_op_fut.await();
