@@ -107,7 +107,7 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 | ------------------------- | ------- | ----------------------------------------------------- |
 | `DEVNET`                  | `false` | Enable full devnet mode (vs. single devnode)          |
 | `CONSENSUS_VERSION`       | `12`    | Target consensus version to wait for                  |
-| `SKIP_EXECUTE_PROOF`            | `false` | Skip ZK proof generation (devnode only)               |
+| `SKIP_EXECUTE_PROOF`      | `false` | Skip ZK proof generation (devnode only)               |
 | `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deployment certificate generation (devnode only) |
 
 ### Container Configuration
