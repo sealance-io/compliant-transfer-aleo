@@ -115,7 +115,7 @@ The project supports two testing modes optimized for different use cases:
 | Mode                  | Command                | Speed           | Use Case                           |
 | --------------------- | ---------------------- | --------------- | ---------------------------------- |
 | **Devnode** (default) | `npm test`             | Fast (minutes)  | Local development, rapid iteration |
-| **Devnet**            | `DEVNET=true npm test` | Slow (30-60min) | Pre-deployment validation, CI      |
+| **Devnet**            | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      |
 
 **Fast mode** skips ZK proof generation for quick feedback. **Full mode** runs complete consensus simulation with real proofs.
 
@@ -125,7 +125,7 @@ See [.env.testing](.env.testing) for configuration templates.
 
 ```bash
 # Fast development mode (default in .env.testing)
-SKIP_PROVING=true
+SKIP_EXECUTE_PROOF=true
 SKIP_DEPLOY_CERTIFICATE=true
 
 # Full devnet mode
