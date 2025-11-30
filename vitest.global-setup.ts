@@ -71,8 +71,8 @@ function validateConfiguration(): void {
   }
 
   // Check for conflicting configurations
-  if (IS_DEVNET && (process.env.SKIP_PROVING || process.env.SKIP_DEPLOY_CERTIFICATE)) {
-    warnings.push("SKIP_PROVING and SKIP_DEPLOY_CERTIFICATE are ignored in DEVNET mode (only applicable to devnode)");
+  if (IS_DEVNET && (process.env.SKIP_EXECUTE_PROOF || process.env.SKIP_DEPLOY_CERTIFICATE)) {
+    warnings.push("SKIP_EXECUTE_PROOF and SKIP_DEPLOY_CERTIFICATE are ignored in DEVNET mode (only applicable to devnode)");
   }
 
   // Check for suspicious values
@@ -101,7 +101,7 @@ function validateConfiguration(): void {
   console.log(`Use Testcontainers: ${USE_TEST_CONTAINERS}`);
 
   if (!IS_DEVNET) {
-    const skipProving = parseBooleanEnv(process.env.SKIP_PROVING, false);
+    const skipProving = parseBooleanEnv(process.env.SKIP_EXECUTE_PROOF, false);
     const skipCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE, false);
     console.log(`Skip Proving: ${skipProving}`);
     console.log(`Skip Deploy Certificate: ${skipCert}`);
@@ -235,16 +235,16 @@ export async function setup() {
       "1",
     ];
   } else {
-    command = ["devnode", "start", "--listener-addr", "0.0.0.0:3030"];
+    command = ["devnode", "start", "--socket-addr", "0.0.0.0:3030", '--private-key', ALEO_PRIVATE_KEY!];
   }
 
   let mappedPort: number = 3030;
   if (USE_TEST_CONTAINERS) {
     // Build environment object with only defined values
     const containerEnv: Record<string, string> = {};
-    if (ALEO_PRIVATE_KEY) {
-      containerEnv.PRIVATE_KEY = ALEO_PRIVATE_KEY;
-    }
+    // if (ALEO_PRIVATE_KEY) {
+    //   containerEnv.PRIVATE_KEY = ALEO_PRIVATE_KEY;
+    // }
     if (process.env.CONSENSUS_HEIGHT) {
       containerEnv.CONSENSUS_HEIGHT = process.env.CONSENSUS_HEIGHT;
     }
