@@ -43,7 +43,7 @@ npm test
 
 ```bash
 CONSENSUS_VERSION=12
-SKIP_PROVING=true
+SKIP_EXECUTE_PROOF=true
 SKIP_DEPLOY_CERTIFICATE=true
 ```
 
@@ -107,7 +107,7 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 | ------------------------- | ------- | ----------------------------------------------------- |
 | `DEVNET`                  | `false` | Enable full devnet mode (vs. single devnode)          |
 | `CONSENSUS_VERSION`       | `12`    | Target consensus version to wait for                  |
-| `SKIP_PROVING`            | `false` | Skip ZK proof generation (devnode only)               |
+| `SKIP_EXECUTE_PROOF`            | `false` | Skip ZK proof generation (devnode only)               |
 | `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deployment certificate generation (devnode only) |
 
 ### Container Configuration
@@ -147,9 +147,9 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 Examples:
 
 ```bash
-SKIP_PROVING=true
-SKIP_PROVING=yes
-SKIP_PROVING=1
+SKIP_EXECUTE_PROOF=true
+SKIP_EXECUTE_PROOF=yes
+SKIP_EXECUTE_PROOF=1
 # All equivalent
 ```
 
@@ -241,7 +241,7 @@ docker login ghcr.io
 
 ```bash
 # Edit .env
-SKIP_PROVING=true
+SKIP_EXECUTE_PROOF=true
 SKIP_DEPLOY_CERTIFICATE=true
 # Remove or comment out: DEVNET=true
 ```
@@ -289,7 +289,7 @@ See `vitest.config.ts` for test execution configuration.
 
 ## Best Practices
 
-1. **Use fast mode for development** - Save time with `SKIP_PROVING=true`
+1. **Use fast mode for development** - Save time with `SKIP_EXECUTE_PROOF=true`
 2. **Validate with devnet before deployment** - Always run full devnet tests before mainnet
 3. **Set realistic timeouts in CI** - CI is slower; use longer timeouts
 4. **Don't commit .env** - Keep `.env` in `.gitignore`, use `.env.testing` as template
