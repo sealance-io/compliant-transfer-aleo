@@ -11,3 +11,24 @@ export async function getLatestBlockHeight() {
   const latestBlockHeight = (await response.json()) as number;
   return latestBlockHeight;
 }
+
+// Helper sleep function
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function waitBlocks(blocks: number) {
+  const startHeight = await getLatestBlockHeight();
+  const targetHeight = startHeight + blocks;
+
+  while (true) {
+    const currentHeight = await getLatestBlockHeight();
+
+    if (currentHeight >= targetHeight) {
+      return; // Done!
+    }
+
+    // Wait a bit before checking again (adjust if needed)
+    await sleep(1000);
+  }
+}

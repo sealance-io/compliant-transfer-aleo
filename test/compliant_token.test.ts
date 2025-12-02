@@ -14,9 +14,19 @@ import {
   MANAGER_ROLE,
   FREEZELIST_MANAGER_ROLE,
   ZERO_ADDRESS,
-  emptyRoot,
   fundedAmount,
   MAX_TREE_DEPTH,
+  emptyMultisigCommonParams,
+  MULTISIG_OP_UPDATE_WALLET_ROLE,
+  MAX_BLOCK_HEIGHT,
+  MULTISIG_OP_UPDATE_ROLE,
+  MULTISIG_OP_MINT_PRIVATE,
+  MULTISIG_OP_MINT_PUBLIC,
+  MULTISIG_OP_BURN_PUBLIC,
+  MULTISIG_OP_SET_PAUSE_STATUS,
+  MULTISIG_OP_BURN_PRIVATE,
+  emptyRoot,
+  PREVIOUS_FREEZE_LIST_ROOT_INDEX,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -32,8 +42,10 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { isProgramInitialized } from "../lib/Initalize";
-import { getLatestBlockHeight } from "../lib/Block";
+import { getLatestBlockHeight, waitBlocks } from "../lib/Block";
 import { buildTree, generateLeaves, stringToBigInt } from "@sealance-io/policy-engine-aleo";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
+import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -51,8 +63,10 @@ const [
   burner,
   supplyManager,
   spender,
-  freezeListManager,
+  ,
   pauser,
+  signer1,
+  signer2,
 ] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
@@ -118,21 +132,42 @@ const merkleTreeContract = new Merkle_treeContract({
   privateKey: deployerPrivKey,
 });
 
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
+
+const managerWalletId = new Account().address().to_string();
+const pauseWalletId = new Account().address().to_string();
+const minterWalletId = new Account().address().to_string();
+const burnerWalletId = new Account().address().to_string();
+
 const amount = 10n;
 let root: bigint;
 
-describe("test sealed_standalone_token program", () => {
+describe("test compliant_token_template program", () => {
   beforeAll(async () => {
+    // Deploy the multisig programs
+    await deployIfNotDeployed(multiSigContract);
+    // Create the wallets
+    await initializeMultisig();
+    await createWallet(managerWalletId);
+    await createWallet(pauseWalletId);
+    await createWallet(minterWalletId);
+    await createWallet(burnerWalletId);
+
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
-    await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
 
     await fundWithCredits(deployerPrivKey, minter, fundedAmount);
     await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
     await fundWithCredits(deployerPrivKey, burner, fundedAmount);
     await fundWithCredits(deployerPrivKey, spender, fundedAmount);
     await fundWithCredits(deployerPrivKey, pauser, fundedAmount);
+
+    await fundWithCredits(deployerPrivKey, signer1, fundedAmount);
+    await fundWithCredits(deployerPrivKey, signer2, fundedAmount);
 
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(freezeRegistryContract);
@@ -165,7 +200,18 @@ describe("test sealed_standalone_token program", () => {
       const decimals = 6;
       const maxSupply = 1000_000000000000n;
 
-      const tx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
+      // The admin or the wallet ID manager has to be non zero
+      let rejectedTx = await freezeRegistryContract.initialize(ZERO_ADDRESS, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS);
+      await expect(rejectedTx.wait()).rejects.toThrow();
+
+      const tx = await tokenContractForAdmin.initialize(
+        name,
+        symbol,
+        decimals,
+        maxSupply,
+        adminAddress,
+        managerWalletId,
+      );
       await tx.wait();
       const tokenInfo = await tokenContract.token_info(true);
       expect(tokenInfo.supply).toBe(0n);
@@ -179,32 +225,30 @@ describe("test sealed_standalone_token program", () => {
       expect(pauseStatus).toBe(false);
 
       // It is possible to call to initialize only one time
-      let rejectedTx = await tokenContractForAdmin.initialize(name, symbol, decimals, maxSupply, adminAddress);
+      rejectedTx = await tokenContractForAdmin.initialize(
+        name,
+        symbol,
+        decimals,
+        maxSupply,
+        adminAddress,
+        managerWalletId,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
     }
 
     const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
     if (!isFreezeRegistryInitialized) {
-      const tx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
+      const tx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS);
       await tx.wait();
-      const isAccountFrozen = await freezeRegistryContract.freeze_list(ZERO_ADDRESS);
-      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
-      const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const role = await freezeRegistryContract.address_to_role(adminAddress);
-
-      expect(role).toBe(MANAGER_ROLE);
-      expect(isAccountFrozen).toBe(false);
-      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
-      expect(lastIndex).toBe(0);
-      expect(initializedRoot).toBe(emptyRoot);
-      expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
     }
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      let tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+      let tx = await freezeRegistryContractForAdmin.update_role(
+        adminAddress,
+        MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
       const role = await freezeRegistryContract.address_to_role(adminAddress);
       expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
@@ -213,7 +257,14 @@ describe("test sealed_standalone_token program", () => {
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      let tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      let tx = await freezeRegistryContractForAdmin.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        currentRoot,
+        root,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
       let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
       let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
@@ -225,77 +276,399 @@ describe("test sealed_standalone_token program", () => {
     }
   });
 
-  test(`test update_roles`, async () => {
+  test(`test init_multisig_op`, async () => {
+    let salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
+      op: 0,
+      user: ZERO_ADDRESS,
+      pause_status: false,
+      amount: 0n,
+      role: 0,
+      salt,
+    };
+
+    let tx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    let [, walletSigningOpIdHash] = await tx.wait();
+    let pendingRequest = await tokenContract.pending_requests(walletSigningOpIdHash);
+    expect(pendingRequest.op).toBe(0);
+    expect(pendingRequest.user).toBe(ZERO_ADDRESS);
+    expect(pendingRequest.pause_status).toBe(false);
+    expect(pendingRequest.role).toBe(0);
+    expect(pendingRequest.amount).toBe(0n);
+    expect(pendingRequest.salt).toBe(salt);
+
+    // It's impossible to initiate a request twice
+    const rejectedTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    salt = BigInt(Math.floor(Math.random() * 100000));
+    multisigOp.salt = salt;
+    tx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, 1);
+    [, walletSigningOpIdHash] = await tx.wait();
+    pendingRequest = await tokenContract.pending_requests(walletSigningOpIdHash);
+    expect(pendingRequest.salt).toBe(salt);
+    await waitBlocks(1);
+    // It's possible to initiate this request twice because the previous expired
+    tx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [, walletSigningOpIdHash] = await tx.wait();
+  });
+
+  test(`test init_private_multisig_op`, async () => {
+    let salt = BigInt(Math.floor(Math.random() * 100000));
+    const privMultisigOp = {
+      op: 0,
+      user: ZERO_ADDRESS,
+      amount: 0n,
+    };
+
+    let tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
+    let [, walletSigningOpIdHash] = await tx.wait();
+    let privatePendingRequest = await tokenContract.private_pending_requests(walletSigningOpIdHash);
+    expect(privatePendingRequest).toBe(true);
+
+    // It's impossible to initiate a request twice
+    const rejectedTx = await tokenContract.init_private_multisig_op(
+      managerWalletId,
+      privMultisigOp,
+      salt,
+      MAX_BLOCK_HEIGHT,
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    salt = BigInt(Math.floor(Math.random() * 100000));
+    tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, 1);
+    [, walletSigningOpIdHash] = await tx.wait();
+    privatePendingRequest = await tokenContract.private_pending_requests(walletSigningOpIdHash);
+    expect(privatePendingRequest).toBe(true);
+    // It's possible to initiate this request twice because the previous expired
+    tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
+    [, walletSigningOpIdHash] = await tx.wait();
+  });
+
+  test(`test update_wallet_id_role`, async () => {
+    // Non manager address can't update the wallet_id without multisig approval
+    let rejectedTx = await tokenContract.update_wallet_id_role(
+      managerWalletId,
+      MULTISIG_OP_UPDATE_WALLET_ROLE,
+      emptyMultisigCommonParams,
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let tx = await tokenContractForAdmin.update_wallet_id_role(
+      managerWalletId,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
+    );
+    await tx.wait();
+    let role = await tokenContract.wallet_id_to_role(managerWalletId);
+    expect(role).toBe(MANAGER_ROLE);
+
+    // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
+    // which fails because no such request exists.
+    rejectedTx = await tokenContractForAdmin.update_wallet_id_role(managerWalletId, MANAGER_ROLE, {
+      wallet_id: managerWalletId,
+      salt: 0n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+    // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
+    rejectedTx = await tokenContractForAdmin.update_wallet_id_role(managerWalletId, MANAGER_ROLE, {
+      wallet_id: ZERO_ADDRESS,
+      salt: 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let salt = BigInt(Math.floor(Math.random() * 100000));
+    let multisigOp = {
+      op: MULTISIG_OP_UPDATE_WALLET_ROLE,
+      user: pauseWalletId,
+      pause_status: false,
+      amount: 0n,
+      role: PAUSE_ROLE,
+      salt,
+    };
+
+    let initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(managerWalletId, signingOpId);
+
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
+      wallet_id: managerWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the address doesn't match the address in the request the transaction will fail
+    rejectedTx = await tokenContract.update_wallet_id_role(minterWalletId, PAUSE_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the role doesn't match the role in the request the transaction will fail
+    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, MANAGER_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    tx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await tx.wait();
+    role = await tokenContract.wallet_id_to_role(pauseWalletId);
+    expect(role).toBe(PAUSE_ROLE);
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(pauseWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    salt = BigInt(Math.floor(Math.random() * 100000));
+    multisigOp = {
+      op: MULTISIG_OP_UPDATE_WALLET_ROLE,
+      user: minterWalletId,
+      pause_status: false,
+      amount: 0n,
+      role: MINTER_ROLE,
+      salt,
+    };
+
+    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+    tx = await tokenContract.update_wallet_id_role(minterWalletId, MINTER_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await tx.wait();
+    role = await tokenContract.wallet_id_to_role(minterWalletId);
+    expect(role).toBe(MINTER_ROLE);
+
+    salt = BigInt(Math.floor(Math.random() * 100000));
+    multisigOp = {
+      op: MULTISIG_OP_UPDATE_WALLET_ROLE,
+      user: burnerWalletId,
+      pause_status: false,
+      amount: 0n,
+      role: BURNER_ROLE,
+      salt,
+    };
+
+    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+    tx = await tokenContract.update_wallet_id_role(burnerWalletId, BURNER_ROLE, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await tx.wait();
+    role = await tokenContract.wallet_id_to_role(burnerWalletId);
+    expect(role).toBe(BURNER_ROLE);
+  });
+
+  test(`test update_role`, async () => {
     // Manager can assign role
-    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
+    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     let role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
-    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE);
+    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
-    let rejectedTx = await tokenContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
+    let rejectedTx = await tokenContractForFrozenAccount.update_role(
+      frozenAccount,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update minter role
-    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update burner role
-    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update supply manager role
-    rejectedTx = await tokenContractForAccount.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(
+      supplyManager,
+      MINTER_ROLE + BURNER_ROLE,
+      emptyMultisigCommonParams,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update none role
-    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update pause role
-    rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE);
+    rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager cannot unassign himself from being a manager
-    rejectedTx = await tokenContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    rejectedTx = await tokenContractForAdmin.update_role(adminAddress, NONE_ROLE, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager can assign minter, burner, manager, pauser and supply manager roles
-    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE);
+    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(minter);
     expect(role).toBe(MINTER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE);
+    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(burner);
     expect(role).toBe(BURNER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE);
+    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE);
+    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(account);
     expect(role).toBe(NONE_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(pauser, PAUSE_ROLE);
+    tx = await tokenContractForAdmin.update_role(pauser, PAUSE_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(pauser);
     expect(role).toBe(PAUSE_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE);
+    tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE, emptyMultisigCommonParams);
     await tx.wait();
     role = await tokenContract.address_to_role(adminAddress);
     expect(role).toBe(MANAGER_ROLE);
+
+    const randomAddress = new Account().address().to_string();
+    const randomRole = [MANAGER_ROLE, BURNER_ROLE, MINTER_ROLE, PAUSE_ROLE, MINTER_ROLE + BURNER_ROLE][
+      Math.floor(Math.random() * 5)
+    ];
+
+    // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
+    // which fails because no such request exists.
+    rejectedTx = await tokenContractForAdmin.update_role(randomAddress, randomRole, {
+      wallet_id: managerWalletId,
+      salt: 0n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+    // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
+    rejectedTx = await tokenContractForAdmin.update_role(randomAddress, randomRole, {
+      wallet_id: ZERO_ADDRESS,
+      salt: 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
+      op: MULTISIG_OP_UPDATE_ROLE,
+      user: randomAddress,
+      pause_status: false,
+      amount: 0n,
+      role: randomRole,
+      salt,
+    };
+
+    let initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(managerWalletId, signingOpId);
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
+      wallet_id: managerWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the address doesn't match the address in the request the transaction will fail
+    rejectedTx = await tokenContract.update_role(deployerAddress, randomRole, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the role doesn't match the role in the request the transaction will fail
+    rejectedTx = await tokenContract.update_role(randomAddress, randomRole + 1, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    tx = await tokenContract.update_role(randomAddress, randomRole, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await tx.wait();
+    role = await tokenContract.address_to_role(randomAddress);
+    expect(role).toBe(randomRole);
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(pauseWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   let accountRecord: Token;
@@ -345,6 +718,107 @@ describe("test sealed_standalone_token program", () => {
     privateAccountBalance += amount * 20n;
   });
 
+  test(`test mint_private_multisig`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
+    const randomAccount = new Account();
+    const randomPrivKey = randomAccount.privateKey().to_string();
+    const randomAddress = randomAccount.address().to_string();
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const privMultisigOp = {
+      op: MULTISIG_OP_MINT_PRIVATE,
+      user: randomAddress,
+      amount: amount,
+    };
+
+    let initMultiSigTx = await tokenContract.init_private_multisig_op(
+      minterWalletId,
+      privMultisigOp,
+      salt,
+      MAX_BLOCK_HEIGHT,
+    );
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    let rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(minterWalletId, signingOpId);
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the address doesn't match the address in the request the transaction will fail
+    rejectedTx = await tokenContract.mint_private_multisig(deployerAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the amount doesn't match the amount in the request the transaction will fail
+    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount + 1n, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await tokenContract.mint_private_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await tx.wait();
+    const [complianceRandomRecord, encryptedRandomRecord] = await tx.wait();
+    const randomAccountRecord = decryptToken(encryptedRandomRecord, randomPrivKey);
+    expect(randomAccountRecord.amount).toBe(amount);
+    expect(randomAccountRecord.owner).toBe(randomAddress);
+
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount);
+
+    const decryptedRandomComplianceRecord = decryptComplianceRecord(complianceRandomRecord, investigatorPrivKey);
+    expect(decryptedRandomComplianceRecord.owner).toBe(investigatorAddress);
+    expect(decryptedRandomComplianceRecord.amount).toBe(amount);
+    expect(decryptedRandomComplianceRecord.sender).toBe(ZERO_ADDRESS);
+    expect(decryptedRandomComplianceRecord.recipient).toBe(randomAddress);
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_private_multisig_op(
+      managerWalletId,
+      privMultisigOp,
+      salt,
+      MAX_BLOCK_HEIGHT,
+    );
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+  });
+
   test(`test mint_public`, async () => {
     let tokenInfo = await tokenContract.token_info(true);
     const supply = tokenInfo.supply;
@@ -372,6 +846,89 @@ describe("test sealed_standalone_token program", () => {
     expect(balance).toBe(amount * 20n);
     tokenInfo = await tokenContract.token_info(true);
     expect(tokenInfo.supply - supply).toBe(amount * 40n);
+  });
+
+  test(`test mint_public_multisig`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
+    const randomAddress = new Account().address().to_string();
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
+      op: MULTISIG_OP_MINT_PUBLIC,
+      user: randomAddress,
+      pause_status: false,
+      amount: amount,
+      role: 0,
+      salt,
+    };
+
+    let initMultiSigTx = await tokenContract.init_multisig_op(minterWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    let rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(minterWalletId, signingOpId);
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the address doesn't match the address in the request the transaction will fail
+    rejectedTx = await tokenContract.mint_public_multisig(deployerAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the amount doesn't match the amount in the request the transaction will fail
+    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount + 1n, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await tokenContract.mint_public_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await tx.wait();
+    const balance = await tokenContract.balances(randomAddress);
+    expect(balance).toBe(amount);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(tokenInfo.supply - supply).toBe(amount);
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
+      wallet_id: minterWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test burn_public`, async () => {
@@ -402,6 +959,88 @@ describe("test sealed_standalone_token program", () => {
 
     let balance = await tokenContract.balances(account);
     expect(balance).toBe(previousAccountPublicBalance - amount * 2n);
+  });
+
+  test(`test burn_public_multisig`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+    const previousAccountPublicBalance = await tokenContract.balances(account);
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
+      op: MULTISIG_OP_BURN_PUBLIC,
+      user: account,
+      pause_status: false,
+      amount: amount,
+      role: 0,
+      salt,
+    };
+
+    let initMultiSigTx = await tokenContract.init_multisig_op(burnerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    let rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(burnerWalletId, signingOpId);
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
+      wallet_id: burnerWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the address doesn't match the address in the request the transaction will fail
+    rejectedTx = await tokenContract.burn_public_multisig(frozenAccount, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the amount doesn't match the amount in the request the transaction will fail
+    rejectedTx = await tokenContract.burn_public_multisig(account, amount + 1n, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const tx = await tokenContract.burn_public_multisig(account, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await tx.wait();
+    tokenInfo = await tokenContract.token_info(true);
+    expect(supply - tokenInfo.supply).toBe(amount);
+    const balance = await tokenContract.balances(account);
+    expect(balance).toBe(previousAccountPublicBalance - amount);
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test burn_private`, async () => {
@@ -450,6 +1089,99 @@ describe("test sealed_standalone_token program", () => {
     expect(supplyManagerRecord.owner).toBe(supplyManager);
     tokenInfo = await tokenContract.token_info(true);
     expect(supply).toBe(tokenInfo.supply);
+  });
+
+  test(`test burn_private_multisig`, async () => {
+    let tokenInfo = await tokenContract.token_info(true);
+    const supply = tokenInfo.supply;
+
+    // check multisig support
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const privMultisigOp = {
+      op: MULTISIG_OP_BURN_PRIVATE,
+      user: account,
+      amount: amount,
+    };
+
+    let initMultiSigTx = await tokenContract.init_private_multisig_op(
+      burnerWalletId,
+      privMultisigOp,
+      salt,
+      MAX_BLOCK_HEIGHT,
+    );
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    let rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(burnerWalletId, signingOpId);
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
+      wallet_id: burnerWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the address doesn't match the address in the request the transaction will fail
+    rejectedTx = await tokenContractForFrozenAccount.burn_private_multisig(frozenAccountRecord, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the amount doesn't match the amount in the request the transaction will fail
+    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount - 1n, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const accountRecordBalanceBefore = accountRecord.amount;
+    const burnTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    const [, encryptedAccountRecord] = await burnTx.wait();
+    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
+    expect(accountRecord.amount).toBe(accountRecordBalanceBefore - amount);
+    expect(accountRecord.owner).toBe(account);
+    tokenInfo = await tokenContract.token_info(true);
+    expect(supply - tokenInfo.supply).toBe(amount);
+    privateAccountBalance -= amount;
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
+      wallet_id: burnerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_private_multisig_op(
+      managerWalletId,
+      privMultisigOp,
+      salt,
+      MAX_BLOCK_HEIGHT,
+    );
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
   test(`test transfer_public`, async () => {
@@ -729,9 +1461,13 @@ describe("test sealed_standalone_token program", () => {
       1,
       root,
       1n, // fake root
+      emptyMultisigCommonParams,
     );
     await updateFreezeListTx.wait();
-    let updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(1);
+    let updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
+      1,
+      emptyMultisigCommonParams,
+    );
     await updateBlockHeightWindowTx.wait();
 
     let rejectedTransferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
@@ -743,9 +1479,19 @@ describe("test sealed_standalone_token program", () => {
     await expect(rejectedTransferPrivateTx.wait()).rejects.toThrow();
 
     // bring back the old root
-    updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 1n, root);
+    updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
+      frozenAccount,
+      true,
+      1,
+      1n,
+      root,
+      emptyMultisigCommonParams,
+    );
     await updateFreezeListTx.wait();
-    updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(BLOCK_HEIGHT_WINDOW);
+    updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
+      BLOCK_HEIGHT_WINDOW,
+      emptyMultisigCommonParams,
+    );
     await updateBlockHeightWindowTx.wait();
 
     transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
@@ -777,14 +1523,14 @@ describe("test sealed_standalone_token program", () => {
 
   test(`test pausing the contract`, async () => {
     // Only the pauser can pause the program
-    const rejectedTx = await tokenContractForAdmin.set_pause_status(true);
+    let rejectedTx = await tokenContractForAdmin.set_pause_status(true, emptyMultisigCommonParams);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     let approveTx = await tokenContractForAccount.approve_public(spender, amount);
     await approveTx.wait();
 
     // pause the contract
-    let pauseTx = await tokenContractForPauser.set_pause_status(true);
+    let pauseTx = await tokenContractForPauser.set_pause_status(true, emptyMultisigCommonParams);
     await pauseTx.wait();
     let pauseStatus = await tokenContract.pause(true);
     expect(pauseStatus).toBe(true);
@@ -849,7 +1595,7 @@ describe("test sealed_standalone_token program", () => {
     await expect(privateWithTicketTx.wait()).rejects.toThrow();
 
     // unpause the contract
-    pauseTx = await tokenContractForPauser.set_pause_status(false);
+    pauseTx = await tokenContractForPauser.set_pause_status(false, emptyMultisigCommonParams);
     await pauseTx.wait();
     pauseStatus = await tokenContract.pause(true);
     expect(pauseStatus).toBe(false);
@@ -857,6 +1603,104 @@ describe("test sealed_standalone_token program", () => {
     //verify that the functionalities are back (one is enough)
     publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
     await publicTx.wait();
+
+    // Even though the caller is a pauser, a non-ZERO wallet_id triggers a multisig check,
+    // which fails because no such request exists.
+    rejectedTx = await tokenContractForBurner.set_pause_status(true, {
+      wallet_id: managerWalletId,
+      salt: 0n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+    // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
+    rejectedTx = await tokenContractForBurner.set_pause_status(true, {
+      wallet_id: ZERO_ADDRESS,
+      salt: 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
+      op: MULTISIG_OP_SET_PAUSE_STATUS,
+      user: ZERO_ADDRESS,
+      pause_status: true,
+      amount: 0n,
+      role: 0,
+      salt,
+    };
+
+    let initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    let [signingOpId] = await initMultiSigTx.wait();
+
+    // If the request wasn't approved yet the transaction will fail
+    rejectedTx = await tokenContract.set_pause_status(true, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    await approveRequest(pauseWalletId, signingOpId);
+    // If the wallet_id is incorrect the transaction will fail
+    rejectedTx = await tokenContract.set_pause_status(true, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the salt is incorrect the transaction will fail
+    rejectedTx = await tokenContract.set_pause_status(true, {
+      wallet_id: pauseWalletId,
+      salt: salt + 1n,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // If the pause status doesn't match the pause status in the request the transaction will fail
+    rejectedTx = await tokenContract.set_pause_status(false, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    let tx = await tokenContract.set_pause_status(true, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await tx.wait();
+    pauseStatus = await tokenContract.pause(true);
+    expect(pauseStatus).toBe(true);
+
+    // It's possible to execute the request only once
+    rejectedTx = await tokenContract.set_pause_status(true, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(managerWalletId, signingOpId);
+
+    // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
+    rejectedTx = await tokenContract.set_pause_status(true, {
+      wallet_id: managerWalletId,
+      salt,
+    });
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    salt = BigInt(Math.floor(Math.random() * 100000));
+    multisigOp.pause_status = false;
+    multisigOp.salt = salt;
+
+    initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
+    [signingOpId] = await initMultiSigTx.wait();
+    await approveRequest(pauseWalletId, signingOpId);
+
+    tx = await tokenContract.set_pause_status(false, {
+      wallet_id: pauseWalletId,
+      salt,
+    });
+    await tx.wait();
+    pauseStatus = await tokenContract.pause(true);
+    expect(pauseStatus).toBe(false);
   });
 
   test(`calculate private balance`, async () => {
@@ -910,5 +1754,151 @@ describe("test sealed_standalone_token program", () => {
     }
     expect(calculatedAccountBalance).toBe(privateAccountBalance);
     expect(calculatedBurnerBalance).toBe(0n);
+  });
+
+  test(`test expired multisig requests`, async () => {
+    const randomWalletId = new Account().address().to_string();
+    await createWallet(randomWalletId, 1, [deployerAddress, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
+    const updateWalletTx = await tokenContractForAdmin.update_wallet_id_role(
+      randomWalletId,
+      MANAGER_ROLE + MINTER_ROLE + BURNER_ROLE + PAUSE_ROLE,
+      emptyMultisigCommonParams,
+    );
+    await updateWalletTx.wait();
+    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const multisigOp = {
+      op: MULTISIG_OP_UPDATE_WALLET_ROLE,
+      user: ZERO_ADDRESS,
+      pause_status: false,
+      amount: 0n,
+      role: 0,
+      salt,
+    };
+    let initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
+    let [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updateWalletIdTX = await tokenContract.update_wallet_id_role(ZERO_ADDRESS, 0, {
+      salt,
+      wallet_id: randomWalletId,
+    });
+    await expect(updateWalletIdTX.wait()).rejects.toThrow();
+
+    multisigOp.op = MULTISIG_OP_UPDATE_ROLE;
+    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
+    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updateRoleTX = await tokenContract.update_role(ZERO_ADDRESS, 0, { salt, wallet_id: randomWalletId });
+    await expect(updateRoleTX.wait()).rejects.toThrow();
+
+    multisigOp.op = MULTISIG_OP_MINT_PUBLIC;
+    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
+    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updateMintPublicTX = await tokenContract.mint_public_multisig(ZERO_ADDRESS, 0n, {
+      salt,
+      wallet_id: randomWalletId,
+    });
+    await expect(updateMintPublicTX.wait()).rejects.toThrow();
+
+    multisigOp.op = MULTISIG_OP_BURN_PUBLIC;
+    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
+    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updateBurnPublicTX = await tokenContract.burn_public_multisig(ZERO_ADDRESS, 0n, {
+      salt,
+      wallet_id: randomWalletId,
+    });
+    await expect(updateBurnPublicTX.wait()).rejects.toThrow();
+
+    multisigOp.op = MULTISIG_OP_SET_PAUSE_STATUS;
+    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
+    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updatePausePublicTX = await tokenContract.set_pause_status(false, { salt, wallet_id: randomWalletId });
+    await expect(updatePausePublicTX.wait()).rejects.toThrow();
+
+    const privMultisigOp = {
+      op: MULTISIG_OP_MINT_PRIVATE,
+      amount: 1n,
+      user: account,
+    };
+    initMultiSigTx = await tokenContract.init_private_multisig_op(randomWalletId, privMultisigOp, salt, 1);
+    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updateMintPrivateTX = await tokenContract.mint_private_multisig(account, 1n, {
+      salt,
+      wallet_id: randomWalletId,
+    });
+    await expect(updateMintPrivateTX.wait()).rejects.toThrow();
+
+    privMultisigOp.op = MULTISIG_OP_BURN_PRIVATE;
+    initMultiSigTx = await tokenContract.init_private_multisig_op(randomWalletId, privMultisigOp, salt, 1);
+    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
+    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
+    await waitBlocks(1);
+    const updateBurnPrivateTX = await tokenContractForAccount.burn_private_multisig(accountRecord, 1n, {
+      salt,
+      wallet_id: randomWalletId,
+    });
+    await expect(updateBurnPrivateTX.wait()).rejects.toThrow();
+  });
+
+  test(`test old root support`, async () => {
+    const leaves = generateLeaves([]);
+    const tree = buildTree(leaves);
+    expect(tree[tree.length - 1]).toBe(emptyRoot);
+
+    const senderLeafIndices = getLeafIndices(tree, account);
+    const emptyTreeSenderMerkleProof = [
+      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
+      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
+    ];
+    // The transaction failed because the root is mismatch
+    let rejectedTx = await tokenContractForAccount.transfer_private(
+      recipient,
+      amount,
+      accountRecord,
+      emptyTreeSenderMerkleProof,
+    );
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    const updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
+      frozenAccount,
+      false,
+      1,
+      root,
+      emptyRoot, // fake root
+      emptyMultisigCommonParams,
+    );
+    await updateFreezeListTx.wait();
+
+    const newRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await freezeRegistryContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    expect(oldRoot).toBe(root);
+    expect(newRoot).toBe(emptyRoot);
+
+    // The transaction succeed because the old root is match
+    let tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
+    const [, encryptedAccountRecord] = await tx.wait();
+    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
+
+    const updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
+      1,
+      emptyMultisigCommonParams,
+    );
+    await updateBlockHeightWindowTx.wait();
+
+    // The transaction failed because the old root is expired
+    rejectedTx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, emptyTreeSenderMerkleProof);
+    await tx.wait();
   });
 });

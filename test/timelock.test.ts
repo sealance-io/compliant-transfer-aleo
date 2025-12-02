@@ -18,16 +18,18 @@ import {
   MANAGER_ROLE,
   FREEZELIST_MANAGER_ROLE,
   NONE_ROLE,
+  emptyMultisigCommonParams,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
-import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
+import { buildTree, generateLeaves, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
 import type { Token } from "../artifacts/js/types/token_registry";
 import type { CompliantToken } from "../artifacts/js/types/sealed_timelock_policy";
 import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -81,6 +83,10 @@ const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract(
   mode,
   privateKey: adminPrivKey,
 });
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 
 const amount = 10n;
 let root: bigint;
@@ -111,6 +117,7 @@ describe("test sealed_timelock_policy program", () => {
 
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(multiSigContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(timelockContract);
   });
@@ -217,22 +224,33 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`freeze registry setup`, async () => {
-    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
+    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
+      const tx = await freezeRegistryContractForAdmin.update_role(
+        adminAddress,
+        MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
     }
 
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+      const tx = await freezeRegistryContractForAdmin.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        currentRoot,
+        root,
+        emptyMultisigCommonParams,
+      );
       await tx.wait();
     }
 
-    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
+    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300, emptyMultisigCommonParams);
     await tx.wait();
   });
 
