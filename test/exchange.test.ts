@@ -17,6 +17,7 @@ import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_f
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 import { initializeProgram } from "../lib/Initalize";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -72,6 +73,10 @@ const exchangeContractForAccount = new GqrfmwbtypContract({
   mode,
   privateKey: accountPrivKey,
 });
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 
 const amount = 10n;
 
@@ -83,6 +88,7 @@ describe("test exchange contract", () => {
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(reportPolicyContract);
+    await deployIfNotDeployed(multiSigContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(thresholdContract);
     await deployIfNotDeployed(timelockContract);

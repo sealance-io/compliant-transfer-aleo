@@ -15,8 +15,9 @@ import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_
 import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 import { initializeProgram } from "../lib/Initalize";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
-import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
+import { stringToBigInt, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
 import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -89,6 +90,10 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
   mode,
   privateKey: adminPrivKey,
 });
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 
 (async () => {
   await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
@@ -98,6 +103,7 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
   await deployIfNotDeployed(tokenRegistryContract);
   await deployIfNotDeployed(merkleTreeContract);
   await deployIfNotDeployed(reportPolicyContract);
+  await deployIfNotDeployed(multiSigContract);
   await deployIfNotDeployed(freezeRegistryContract);
   await deployIfNotDeployed(thresholdContract);
   await deployIfNotDeployed(timelockContract);
@@ -110,7 +116,7 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
   await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
 
   await initializeProgram(reportPolicyContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, investigatorAddress]);
-  await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
+  await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
   await initializeProgram(thresholdContractForAdmin, [
     adminAddress,
     policies.threshold.blockHeightWindow,
@@ -133,6 +139,7 @@ const compliantTokenContractForAdmin = new Compliant_token_templateContract({
     6,
     1000_000000000000n,
     adminAddress,
+    ZERO_ADDRESS,
   ]);
 
   // assign exchange program to be a minter

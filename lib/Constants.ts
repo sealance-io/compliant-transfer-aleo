@@ -83,12 +83,29 @@ export const PAUSE_ROLE = 4;
 export const MANAGER_ROLE = 8;
 export const FREEZELIST_MANAGER_ROLE = 16;
 
+export const MULTISIG_OP_UPDATE_WALLET_ROLE = 1;
+export const MULTISIG_OP_UPDATE_ROLE = 2;
+export const MULTISIG_OP_SET_PAUSE_STATUS = 3;
+export const MULTISIG_OP_MINT_PUBLIC = 4;
+export const MULTISIG_OP_BURN_PUBLIC = 5;
+export const MULTISIG_OP_MINT_PRIVATE = 6;
+export const MULTISIG_OP_BURN_PRIVATE = 7;
+export const MULTISIG_OP_UPDATE_BLOCK_WINDOW = 3;
+export const MULTISIG_OP_UPDATE_FREEZE_LIST = 4;
+
 // merkle tree
 export const MAX_TREE_DEPTH = 16;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;
 export const emptyRoot = 3642222252059314292809609689035560016959342421640560347114299934615987159853n;
-export const fundedAmount = 10000000000000n;
+export const fundedAmount = 1000000000000n;
 export const mode = ExecutionMode.SnarkExecute;
 export const defaultRate = 10n;
+
+export const emptyMultisigCommonParams = {
+  salt: 0n,
+  wallet_id: ZERO_ADDRESS,
+};
+
+export const MAX_BLOCK_HEIGHT = 4294967295; // 2**32 - 1
