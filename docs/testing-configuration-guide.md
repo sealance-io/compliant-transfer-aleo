@@ -6,10 +6,28 @@ This guide explains how to configure the testing environment for the compliant-t
 
 The project supports two distinct testing modes optimized for different use cases:
 
-| Mode        | Use Case                           | Speed   | Realism | Command       |
-| ----------- | ---------------------------------- | ------- | ------- | ------------- |
-| **Devnode** | Local development, rapid iteration | ⚡ Fast | Basic   | Default       |
-| **Devnet**  | Pre-deployment validation, CI      | 🐌 Slow | High    | `DEVNET=true` |
+| Mode        | Use Case                           | Speed   | Realism | Command       | Status       |
+| ----------- | ---------------------------------- | ------- | ------- | ------------- | ------------ |
+| **Devnet**  | Pre-deployment validation, CI      | 🐌 Slow | High    | `DEVNET=true` | **Stable**   |
+| **Devnode** | Local development, rapid iteration | ⚡ Fast | Basic   | Default       | Experimental |
+
+> **Important: Devnode is Experimental**
+>
+> The `devnode` feature is **not yet included in Leo v3.4.0**. It relies on a feature branch that has not been merged to the main Leo repository. For production-like testing and CI, always use **devnet mode** (`DEVNET=true`).
+>
+> To use devnode locally, you must either:
+>
+> 1. **Install Leo from feature branch:**
+>
+>    ```bash
+>    git clone https://github.com/ProvableHQ/leo.git
+>    cd leo
+>    git checkout feat/leo-devnode-final
+>    cargo install --path .
+>    ```
+>
+> 2. **Use the pre-built devnode image** (recommended for Testcontainers):
+>    `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
 
 ## Quick Start
 
@@ -289,12 +307,33 @@ See `vitest.config.ts` for test execution configuration.
 
 ## Best Practices
 
-1. **Use fast mode for development** - Save time with `SKIP_EXECUTE_PROOF=true`
-2. **Validate with devnet before deployment** - Always run full devnet tests before mainnet
+1. **Use devnet for CI** - CI should always use `DEVNET=true` for stable, production-like testing
+2. **Devnode for local development only** - Use devnode (without `DEVNET=true`) for fast iteration, but remember it's experimental
 3. **Set realistic timeouts in CI** - CI is slower; use longer timeouts
 4. **Don't commit .env** - Keep `.env` in `.gitignore`, use `.env.testing` as template
 5. **Monitor verbosity** - Use `ALEO_VERBOSITY=2` for CI, `4` for debugging
 6. **Clean Docker regularly** - Old containers/images can consume disk space
+
+## Deployment Scripts Warning
+
+> **CRITICAL: Never use devnode/devnet modes for public network deployments**
+>
+> The `devnode` and `devnet` modes are **testing environments only**. When deploying to public networks:
+>
+> - **Testnet**: Use `npm run deploy:testnet` with proper testnet endpoint
+> - **Mainnet**: Use appropriate mainnet deployment scripts with production endpoints
+>
+> Deployment scripts (`scripts/deploy-testnet.ts`, `scripts/deploy-devnet.ts`) use `ExecutionMode.SnarkExecute` which generates real ZK proofs. Ensure your `.env` configuration points to the correct public network endpoint:
+>
+> ```bash
+> # For testnet deployment (NOT devnet testing)
+> TESTNET_ENDPOINT=https://api.explorer.aleo.org/v1
+>
+> # For mainnet deployment
+> # Configure mainnet endpoint in aleo-config.js
+> ```
+>
+> The `devnet` testing mode (using Testcontainers) is for **local testing only** and should never be confused with deploying to the public Aleo testnet.
 
 ## Further Reading
 

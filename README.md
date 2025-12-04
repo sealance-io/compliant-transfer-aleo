@@ -112,12 +112,30 @@ ALEO_VERBOSITY=4 npm test
 
 The project supports two testing modes optimized for different use cases:
 
-| Mode                  | Command                | Speed           | Use Case                           |
-| --------------------- | ---------------------- | --------------- | ---------------------------------- |
-| **Devnode** (default) | `npm test`             | Fast (minutes)  | Local development, rapid iteration |
-| **Devnet**            | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      |
+| Mode        | Command                | Speed           | Use Case                           | Status       |
+| ----------- | ---------------------- | --------------- | ---------------------------------- | ------------ |
+| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      | **Stable**   |
+| **Devnode** | `npm test`             | Fast (minutes)  | Local development, rapid iteration | Experimental |
 
-**Fast mode** skips ZK proof generation for quick feedback. **Full mode** runs complete consensus simulation with real proofs.
+**Devnet mode** (CI default) runs complete consensus simulation with real proofs - use this for stable, production-like testing.
+
+**Devnode mode** skips ZK proof generation for quick feedback during local development.
+
+> **Warning: Devnode is Experimental**
+>
+> The `devnode` feature is not yet included in Leo v3.4.0. To use devnode locally, you must install Leo from the feature branch:
+>
+> ```bash
+> # Clone and build Leo from feature branch
+> git clone https://github.com/ProvableHQ/leo.git
+> cd leo
+> git checkout feat/leo-devnode-final
+> cargo install --path .
+> ```
+>
+> Alternatively, use the pre-built devnode image: `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
+>
+> For stable testing, use devnet mode (`DEVNET=true`).
 
 See [.env.testing](.env.testing) for configuration templates.
 
