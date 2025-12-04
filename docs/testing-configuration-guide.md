@@ -120,7 +120,7 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 **Default Images:**
 
 - Devnode: `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
-- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
+- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0`
 
 ### Network Configuration
 

@@ -38,7 +38,7 @@ jobs:
       actions: "read"
     timeout-minutes: 60
     container:
-      image: ghcr.io/sealance-io/leo-lang-ci:v3.3.1-devnode
+      image: ghcr.io/sealance-io/leo-lang-ci:v3.4.0
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
@@ -75,8 +75,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull leo-devnode image
-        run: docker pull ghcr.io/sealance-io/leo-lang:v3.3.1-devnode
+      - name: Pull aleo-devnet image
+        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0
 
       - name: Compile leo
         run: npm run compile
@@ -89,7 +89,8 @@ jobs:
           USE_TEST_CONTAINERS: 1
           VITEST_HOOK_TIMING: true
           VITEST_TEST_MARKERS: true
-          SKIP_EXECUTE_PROOF: true
-          SKIP_DEPLOY_CERTIFICATE: true
+          DEVENT: true
+          # SKIP_EXECUTE_PROOF: true
+          # SKIP_DEPLOY_CERTIFICATE: true
           CONSENSUS_VERSION: 12
           CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11"
