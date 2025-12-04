@@ -6,7 +6,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v3.3.1
+- [Leo](https://github.com/ProvableHQ/leo) CLI v3.4.0
 
 - [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
 
@@ -91,117 +91,91 @@ npm run format --workspaces
 
 ## Testing
 
-This project uses automated testing with infrastructure components that simulate a local Aleo blockchain environment.
+**For comprehensive testing documentation, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md)**
 
-### Default Testing Approach
+### Quick Start
 
-Tests use [Testcontainers](https://node.testcontainers.org/) to automatically spin up a local Aleo devnet using [leo devnet](https://github.com/ProvableHQ/leo/releases/tag/v3.3.1). This approach requires no manual setup and provides a consistent testing environment across different machines.
-
-#### Running Tests
+Tests use [Testcontainers](https://node.testcontainers.org/) to automatically provision an Aleo blockchain environment. By default, tests run in **fast development mode** using devnode with proof skipping.
 
 ```bash
-# Run all tests
+# Run all tests (fast mode - default)
 npm test
 
-# Run specific tests
+# Run specific test
 npm run test:select ./test/merkle_tree.test.ts
+
+# Run with verbose logging
+ALEO_VERBOSITY=4 npm test
 ```
 
-#### Customizing Devnet Behaviour
+### Testing Modes
 
-You can customize the leo devnet container with environment variables:
+The project supports two testing modes optimized for different use cases:
+
+| Mode        | Command                | Speed           | Use Case                           | Status       |
+| ----------- | ---------------------- | --------------- | ---------------------------------- | ------------ |
+| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      | **Stable**   |
+| **Devnode** | `npm test`             | Fast (minutes)  | Local development, rapid iteration | Experimental |
+
+**Devnet mode** (CI default) runs complete consensus simulation with real proofs - use this for stable, production-like testing.
+
+**Devnode mode** skips ZK proof generation for quick feedback during local development.
+
+> **Warning: Devnode is Experimental**
+>
+> The `devnode` feature is not yet included in Leo v3.4.0. To use devnode locally, you must install Leo from the feature branch:
+>
+> ```bash
+> # Clone and build Leo from feature branch
+> git clone https://github.com/ProvableHQ/leo.git
+> cd leo
+> git checkout feat/leo-devnode-final
+> cargo install --path .
+> ```
+>
+> Alternatively, use the pre-built devnode image: `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
+>
+> For stable testing, use devnet mode (`DEVNET=true`).
+
+See [.env.testing](.env.testing) for configuration templates.
+
+### Key Configuration Options
 
 ```bash
-# Use a custom leo devnet image
-ALEO_DEVNET_IMAGE=custom/aleo-devnet:latest npm test
+# Fast development mode (default in .env.testing)
+SKIP_EXECUTE_PROOF=true
+SKIP_DEPLOY_CERTIFICATE=true
 
-# Set verbosity level (0-4, default is 1, 4 is most verbose)
-DEVNET_VERBOSITY=4 npm test
+# Full devnet mode
+DEVNET=true
+
+# Manual devnet setup (no containers)
+USE_TEST_CONTAINERS=0
+
+# Custom Docker image
+ALEO_TEST_IMAGE=custom/image:latest
 ```
 
-**Note:** The devnet container does not persist blockchain state by default, and the same chain is reused across all tests.
-
-#### Container Runtime Support
-
-Both Docker and Podman are supported as container runtimes. For troubleshooting container-related issues, refer to:
-
-- [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
-- [Configuration Options](https://node.testcontainers.org/configuration/)
-
-### Alternative Testing Methods
-
-#### Option 1: Running Tests Without Containers
-
-You can disable testcontainers and use your own manually-started infrastructure:
-
-```bash
-# Disable testcontainers
-USE_TEST_CONTAINERS=0 npm test
-```
-
-1. `docker pull ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
-2. Run in background: `docker run -it -d -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0` or run in foreground in a dedicated terminal tab : `docker run -it -p 3030:3030 ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0`
-3. `USE_TEST_CONTAINERS=0 VITEST_HOOK_TIMING=true VITEST_TEST_MARKERS=true npm run test:select ./test/merkle_tree.test.ts`
-4. Kill any running containers like:
-   `docker ps -q | xargs -n 1 -P 8 -I {} docker stop {}`
-   `docker ps -a -q | xargs -n 1 -P 8 -I {} docker rm {}`
-
-When disabling containers, you'll need to run devnet manually outside the test environment.
-For instructions, refer to the [aleo-containers repository](https://github.com/sealance-io/aleo-containers).
-
-#### Option 2: Using Aleo's Full Devnet (Not Recommended)
-
-A slower and more cumbersome option is to use Aleo's `devnet.sh` script:
-
-1. **Run devnet**
-
-   ```bash
-   ./devnet.sh
-   ```
-
-   (Following instructions from [snarkOS](https://github.com/ProvableHQ/snarkOS/blob/staging/devnet.sh))
-
-2. **Run tests**
-   ```bash
-   npm test
-   ```
-
-This approach is not recommended for regular development as it's significantly slower and requires more system resources than the containerized devnet approach.
+**Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
 ### Troubleshooting
 
-If you encounter issues with the containerized tests:
+**Tests timeout waiting for consensus:**
 
-1. Ensure Docker/Podman is running and properly configured
-2. For macOS and/or podman make sure to refer to [Supported Container Runtimes](https://node.testcontainers.org/supported-container-runtimes/)
-3. Check container runtime logs for errors
-4. Try increasing Testcontainers verbosity using `DEBUG=testcontainers*` (refer to [Testcontainers configuration](https://node.testcontainers.org/configuration/))
-5. If on Linux, ensure your user has permissions to access the container runtime
-6. On macOS, ensure Docker Desktop or podman-machine is running with sufficient resources allocated
-7. Try increasing devnet node's verbosity with `DEVNET_VERBOSITY=4`
+```bash
+CONSENSUS_CHECK_TIMEOUT=600000 npm test
+```
 
-#### Container Registry Authentication
+**Container authentication issues:**
 
-If you're using an image from a container registry that requires authentication (such as GitHub Container Registry - ghcr.io) and experience authentication issues:
+```bash
+docker login ghcr.io
+```
 
-1. Run `docker login` or `podman login` in the same terminal session you'll use to run tests
-2. Explicitly pull the target devnet image before running tests:
+**Tests too slow:**
+Use fast mode by removing `DEVNET=true` from `.env`
 
-   ```bash
-   # For Docker
-   docker pull ghcr.io/sealance-io/aleo-devnet:latest
-
-   # For Podman
-   podman pull ghcr.io/sealance-io/aleo-devnet:latest
-   ```
-
-This can help resolve authentication timeouts or permission issues that might occur when Testcontainers attempts to pull images automatically.
-
-For container-specific issues, refer to the [Testcontainers documentation](https://node.testcontainers.org/).
-
-### CI Test Workflows
-
-- **Manual Triggering Only**: Tests are computationally intensive and can take significant time to complete. To conserve CI resources, automatic triggers on pull requests have been disabled. All test runs must be manually initiated.
+For detailed troubleshooting, configuration reference, and manual setup instructions, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md).
 
 ## Contributing
 
