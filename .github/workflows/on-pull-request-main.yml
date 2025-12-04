@@ -89,7 +89,7 @@ jobs:
           USE_TEST_CONTAINERS: 1
           VITEST_HOOK_TIMING: true
           VITEST_TEST_MARKERS: true
-          DEVENT: true
+          DEVNET: true
           # SKIP_EXECUTE_PROOF: true
           # SKIP_DEPLOY_CERTIFICATE: true
           CONSENSUS_VERSION: 12
