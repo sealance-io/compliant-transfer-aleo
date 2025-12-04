@@ -6,7 +6,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v3.3.1
+- [Leo](https://github.com/ProvableHQ/leo) CLI v3.4.0
 
 - [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
 
