@@ -1,6 +1,6 @@
 import { ExecutionMode } from "@doko-js/core";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { MAX_TREE_DEPTH, ZERO_ADDRESS } from "../lib/Constants";
+import { MAX_TREE_DEPTH } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import {
@@ -359,68 +359,117 @@ describe("merkle_tree program tests", () => {
     ).rejects.toThrow();
   });
 
-  test(`test second preimage attack`, async () => {
-    const size = 32;
-    let tree: any[] = [];
-    let addresses: string[] = [];
-    let frozenAddress = ZERO_ADDRESS;
-    let leftLeafIndex = 0;
-    let rightLeafIndex = 0;
+  /**
+   * Domain Separation Tests (Second Preimage Attack Prevention)
+   *
+   * Tests that the Merkle tree uses different hash prefixes for leaves vs internal nodes:
+   * - Leaves: hash(1field, left, right)
+   * - Internal nodes: hash(0field, left, right)
+   *
+   * This prevents an attacker from using internal node hashes as leaf values
+   * or vice versa, which could allow bypassing inclusion/non-inclusion checks.
+   *
+   * Attack scenario: Use proofs computed from internal nodes (tree.slice(numLeaves))
+   * as if they were a valid tree. Two cases:
+   * 1. Boundary case (same indices): verify_non_inclusion succeeds but returns WRONG root
+   * 2. Normal case (different indices): verify_non_inclusion rejects entirely
+   */
 
-    while (frozenAddress === ZERO_ADDRESS) {
-      addresses = Array(size)
-        .fill(null)
-        .map(() => new Account().address().to_string());
+  test(`second preimage attack - domain separation boundary case`, async () => {
+    const numLeaves = 128;
+    let boundaryLeaf: string | undefined;
+    let boundaryIdx = 0;
+    let tree: bigint[] = [];
+    let internalNodesTree: bigint[] = [];
+    const internalLeafCount = numLeaves / 2;
+
+    // Retry with new addresses until we find a boundary case
+    while (!boundaryLeaf) {
+      const addresses = await generateAddressesParallel(numLeaves);
       const leaves = generateLeaves(addresses);
       tree = buildTree(leaves);
-      const root = tree[tree.length - 1];
-      for (const leaf of leaves) {
-        const bigIntLeaf = BigInt(leaf.slice(0, leaf.length - "field".length));
-        const isBiggest = tree.slice(size, size + size / 2).every(num => bigIntLeaf > num);
-        if (isBiggest) {
-          frozenAddress = convertFieldToAddress(leaf);
-          leftLeafIndex = size / 2 - 1;
-          rightLeafIndex = size / 2 - 1;
-          break;
-        }
-        const isSmallest = tree.slice(size, size + size / 2).every(num => bigIntLeaf < num);
-        if (isSmallest) {
-          frozenAddress = convertFieldToAddress(leaf);
-          leftLeafIndex = 0;
-          rightLeafIndex = 0;
-          break;
-        }
-        for (let i = 0; i < size / 2; i++) {
-          if (tree[i + size] < bigIntLeaf && tree[i + 1 + size] > bigIntLeaf) {
-            frozenAddress = convertFieldToAddress(leaf);
-            leftLeafIndex = i;
-            rightLeafIndex = i + 1;
-            break;
-          }
-        }
-        if (frozenAddress !== ZERO_ADDRESS) {
-          break;
-        }
+
+      internalNodesTree = tree.slice(numLeaves);
+      const internalLeaves = internalNodesTree.slice(0, internalLeafCount);
+
+      const maxInternalNode = internalLeaves.reduce((a, b) => (a > b ? a : b));
+      const minInternalNode = internalLeaves.reduce((a, b) => (a < b ? a : b));
+
+      const nonZeroLeaves = leaves.filter(l => l !== "0field");
+
+      // Try finding leaf > all internal nodes
+      boundaryLeaf = nonZeroLeaves.find(leaf => {
+        const val = BigInt(leaf.slice(0, -5));
+        return val > maxInternalNode;
+      });
+      if (boundaryLeaf) {
+        boundaryIdx = internalLeafCount - 1;
+        break;
+      }
+
+      // Try finding leaf < all internal nodes
+      boundaryLeaf = nonZeroLeaves.find(leaf => {
+        const val = BigInt(leaf.slice(0, -5));
+        return val < minInternalNode;
+      });
+      if (boundaryLeaf) {
+        boundaryIdx = 0;
+        break;
       }
     }
-    const merkleProof1 = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_DEPTH);
-    const merkleProof2 = getSiblingPath(tree.slice(size), rightLeafIndex, MAX_TREE_DEPTH);
 
-    if (leftLeafIndex === rightLeafIndex) {
-      // When the merkle proofs are the same, `verify_non_inclusion` will succeed, but the computed root will differ from the original tree root.
-      const merkleProof = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_DEPTH);
-      const tx = await contract.verify_non_inclusion(frozenAddress, [merkleProof, merkleProof]);
-      const [root] = await tx.wait();
+    const expectedRoot = tree[tree.length - 1];
+    const targetAddress = convertFieldToAddress(boundaryLeaf);
+    const attackProof = getSiblingPath(internalNodesTree, boundaryIdx, MAX_TREE_DEPTH);
 
-      expect(addresses.includes(frozenAddress));
-      // If a second preimage attack succeeds, the computed root would incorrectly match the original root
-      expect(root).not.toBe(tree[tree.length - 1]);
-    } else {
-      // When the merkle proofs correspond to different leaves, `verify_non_inclusion` should reject the proofs.
-      const merkleProof1 = getSiblingPath(tree.slice(size), leftLeafIndex, MAX_TREE_DEPTH);
-      const merkleProof2 = getSiblingPath(tree.slice(size), rightLeafIndex, MAX_TREE_DEPTH);
-      // If a second preimage attack were possible here, this call would unexpectedly succeed.
-      await expect(contract.verify_non_inclusion(frozenAddress, [merkleProof1, merkleProof2])).rejects.toThrow();
+    const tx = await contract.verify_non_inclusion(targetAddress, [attackProof, attackProof]);
+    const [computedRoot] = await tx.wait();
+
+    // CRITICAL: verify_non_inclusion succeeds but returns WRONG root
+    expect(computedRoot).not.toBe(expectedRoot);
+  });
+
+  test(`second preimage attack - domain separation normal case`, async () => {
+    const numLeaves = 128;
+    let normalLeaf: string | undefined;
+    let tree: bigint[] = [];
+    let internalNodesTree: bigint[] = [];
+    let internalLeaves: bigint[] = [];
+    const internalLeafCount = numLeaves / 2;
+
+    // Retry with new addresses until we find a normal case
+    while (!normalLeaf) {
+      const addresses = await generateAddressesParallel(numLeaves);
+      const leaves = generateLeaves(addresses);
+      tree = buildTree(leaves);
+
+      internalNodesTree = tree.slice(numLeaves);
+      internalLeaves = internalNodesTree.slice(0, internalLeafCount);
+
+      const maxInternalNode = internalLeaves.reduce((a, b) => (a > b ? a : b));
+      const minInternalNode = internalLeaves.reduce((a, b) => (a < b ? a : b));
+
+      const nonZeroLeaves = leaves.filter(l => l !== "0field");
+
+      // Find leaf between min and max internal nodes
+      normalLeaf = nonZeroLeaves.find(leaf => {
+        const val = BigInt(leaf.slice(0, -5));
+        return val > minInternalNode && val < maxInternalNode;
+      });
     }
+
+    const targetAddress = convertFieldToAddress(normalLeaf);
+    const targetField = convertAddressToField(targetAddress);
+
+    // Find adjacent internal node positions where target falls between
+    const rightIdx = internalLeaves.findIndex(node => targetField <= node);
+    const leftIdx = rightIdx - 1;
+
+    const leftAttackProof = getSiblingPath(internalNodesTree, leftIdx, MAX_TREE_DEPTH);
+    const rightAttackProof = getSiblingPath(internalNodesTree, rightIdx, MAX_TREE_DEPTH);
+
+    // Normal case: different proofs for left and right
+    // Contract should REJECT because domain separation breaks the proof
+    await expect(contract.verify_non_inclusion(targetAddress, [leftAttackProof, rightAttackProof])).rejects.toThrow();
   });
 });
