@@ -67,7 +67,7 @@ jobs:
       actions: "read"
     timeout-minutes: 180
     container:
-      image: ghcr.io/sealance-io/leo-lang-ci:v3.3.1
+      image: ghcr.io/sealance-io/leo-lang-ci:v3.4.0
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
@@ -105,7 +105,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull aleo-devnet image
-        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0
+        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0
 
       # Start devnet since compiling will try to fetch 'credits.aleo'
       - name: Start aleo-devnet
@@ -115,7 +115,7 @@ jobs:
             -p 3030:3030 \
             --name aleo-devnet \
             --rm \
-            ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0
+            ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0
 
           echo "Container started with name: aleo-devnet"
 
@@ -269,7 +269,7 @@ jobs:
           fi
 
           # Clean up any orphaned containers (just in case)
-          ORPHANED=$(docker ps -aq --filter "ancestor=ghcr.io/sealance-io/aleo-devnet:v3.3.1-v4.3.0" 2>/dev/null)
+          ORPHANED=$(docker ps -aq --filter "ancestor=ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0" 2>/dev/null)
           if [ -n "$ORPHANED" ]; then
             echo "Found orphaned aleo-devnet containers, removing..."
             echo "$ORPHANED" | xargs docker rm -f 2>/dev/null || true
