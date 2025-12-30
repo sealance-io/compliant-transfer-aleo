@@ -52,7 +52,7 @@ export async function initializeMultisig() {
   try {
     await multiSigContract.program_settings_map(true);
   } catch {
-    const tx = await multiSigContract.init(false);
+    const tx = await multiSigContract.init(deployerAddress, false);
     await tx.wait();
   }
 }
