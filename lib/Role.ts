@@ -51,6 +51,11 @@ export async function updateFreezeListManagerRole(contract: any, address: string
 }
 
 export async function updateAddressToRole(contract: any, address: string, role: number) {
+  const tx = await contract.update_role(address, role);
+  await tx.wait();
+}
+
+export async function updateAddressToRoleWithEmptyMultisigParams(contract: any, address: string, role: number) {
   const tx = await contract.update_role(address, role, emptyMultisigCommonParams);
   await tx.wait();
 }

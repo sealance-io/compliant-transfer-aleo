@@ -26,10 +26,6 @@ const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
 const reportTokenContract = new Sealed_report_tokenContract({
   mode,
   privateKey: deployerPrivKey,
@@ -60,7 +56,7 @@ describe("test upgradeability", () => {
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(reportTokenContract);
 
-    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
+    await initializeProgram(freezeRegistryContract, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
     await initializeProgram(reportTokenContractForAdmin, [
       stringToBigInt("Report Token"),
       stringToBigInt("REPORT_TOKEN"),
