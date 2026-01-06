@@ -272,7 +272,7 @@ jobs:
 
   multisig-freezelist-proxy-test:
     needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_multisig_freezelist_proxy == 'true' leo}}
+    if: ${{ needs.check-trigger.outputs.run_multisig_freezelist_proxy == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
       job_name: "Multisig Freezelist Proxy tests"
