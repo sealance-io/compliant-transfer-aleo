@@ -24,7 +24,7 @@ import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
 import { waitBlocks } from "../lib/Block";
-import { Freezelist_programContract } from "../artifacts/js/freezelist_program";
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Multisig_freezelist_proxyContract } from "../artifacts/js/multisig_freezelist_proxy";
 import { updateAddressToRole } from "../lib/Role";
 
@@ -38,11 +38,11 @@ const [deployerAddress, adminAddress, , frozenAccount, , , , , , , freezeListMan
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const freezeRegistryContract = new Freezelist_programContract({
+const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContractForAdmin = new Freezelist_programContract({
+const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
   mode,
   privateKey: adminPrivKey,
 });

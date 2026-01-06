@@ -26,11 +26,11 @@ import { waitBlocks } from "../lib/Block";
 import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
-import { Stablecoin_programContract } from "../artifacts/js/stablecoin_program";
+import { Compliant_token_templateContract } from "../artifacts/js/compliant_token_template";
 import { Multisig_token_proxyContract } from "../artifacts/js/multisig_token_proxy";
 import { updateAddressToRole } from "../lib/Role";
-import { Token } from "../artifacts/js/types/stablecoin_program";
-import { Freezelist_programContract } from "../artifacts/js/freezelist_program";
+import { Token } from "../artifacts/js/types/compliant_token_template";
+import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -44,16 +44,16 @@ const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 
-const tokenContract = new Stablecoin_programContract({
+const tokenContract = new Compliant_token_templateContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const tokenContractForAdmin = new Stablecoin_programContract({
+const tokenContractForAdmin = new Compliant_token_templateContract({
   mode,
   privateKey: adminPrivKey,
 });
 
-const freezeRegistryContract = new Freezelist_programContract({
+const freezeRegistryContract = new Sealance_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
@@ -91,7 +91,7 @@ const burnerWalletId = new Account().address().to_string();
 
 const amount = 10n;
 
-describe("test compliant_token_template program", () => {
+describe("test multisig token proxy program", () => {
   beforeAll(async () => {
     // Deploy the multisig programs
     await deployIfNotDeployed(multiSigContract);
@@ -127,7 +127,7 @@ describe("test compliant_token_template program", () => {
     );
   });
 
-  test(`test initialize `, async () => {
+  test(`test initialize`, async () => {
     // The caller is not the initial admin
     let rejectedTx = await tokenProxyContract.initialize(managerWalletId);
     await expect(rejectedTx.wait()).rejects.toThrow();
