@@ -274,33 +274,22 @@ describe("test sealed_threshold_policy program", () => {
   });
 
   test(`freeze registry setup`, async () => {
-    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
+    await initializeProgram(freezeRegistryContract, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
 
     const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      const tx = await freezeRegistryContractForAdmin.update_role(
-        adminAddress,
-        MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
-        emptyMultisigCommonParams,
-      );
+      const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
       await tx.wait();
     }
 
     const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
     if (!isAccountFrozen) {
       const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx = await freezeRegistryContractForAdmin.update_freeze_list(
-        frozenAccount,
-        true,
-        1,
-        currentRoot,
-        root,
-        emptyMultisigCommonParams,
-      );
+      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
       await tx.wait();
     }
 
-    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300, emptyMultisigCommonParams);
+    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
     await tx.wait();
   });
 

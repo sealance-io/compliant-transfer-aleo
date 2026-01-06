@@ -4,13 +4,13 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { BLOCK_HEIGHT_WINDOW, fundedAmount, MAX_BLOCK_HEIGHT } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { getDeployedProgramChecksum, getProgramEdition, upgradeProgram } from "../lib/Upgrade";
 import { initializeProgram } from "../lib/Initalize";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
 import { stringToBigInt, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
+import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -22,11 +22,11 @@ const [deployerAddress, adminAddress, investigatorAddress, , , , , , , , , , sig
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const freezeRegistryContract = new Sealance_freezelist_registryContract({
+const freezeRegistryContract = new Multisig_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
 });
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
+const freezeRegistryContractForAdmin = new Multisig_freezelist_registryContract({
   mode,
   privateKey: adminPrivKey,
 });
@@ -99,8 +99,8 @@ describe("test upgradeability", () => {
 
     // Only The multisig can upgrade the freeze registry program
     // upgrade by a multisig request
-    let freezeRegistryEditionBefore = await getProgramEdition("sealance_freezelist_registry");
-    const checksum = await getDeployedProgramChecksum("sealance_freezelist_registry");
+    let freezeRegistryEditionBefore = await getProgramEdition("multisig_freezelist_registry");
+    const checksum = await getDeployedProgramChecksum("multisig_freezelist_registry");
     const getSigningOpIdForDeployTx = await freezeRegistryContract.get_signing_op_id_for_deploy(
       checksum,
       freezeRegistryEditionBefore + 1,
@@ -113,15 +113,15 @@ describe("test upgradeability", () => {
     );
     await tx.wait();
     // The upgrade fail because the multisig request is not approved yet
-    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
-    let freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
+    isUpgradeSuccessful = await upgradeProgram("multisig_freezelist_registry", adminPrivKey);
+    let freezeRegistryTreeEditionAfter = await getProgramEdition("multisig_freezelist_registry");
     expect(isUpgradeSuccessful).toBe(false);
     expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);
 
     await approveRequest(freezeRegistryContract.address(), signingOpId);
 
-    isUpgradeSuccessful = await upgradeProgram("sealance_freezelist_registry", adminPrivKey);
-    freezeRegistryTreeEditionAfter = await getProgramEdition("sealance_freezelist_registry");
+    isUpgradeSuccessful = await upgradeProgram("multisig_freezelist_registry", adminPrivKey);
+    freezeRegistryTreeEditionAfter = await getProgramEdition("multisig_freezelist_registry");
     expect(isUpgradeSuccessful).toBe(true);
     expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
   });

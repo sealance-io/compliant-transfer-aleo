@@ -35,10 +35,27 @@ on:
         description: "Run Compliant Token template tests"
         type: boolean
         default: true
+      run_multisig_compliant_token:
+        description: "Run Multisig Compliant Token template tests"
+        type: boolean
+        default: true
       run_upgrade:
         description: "Run Upgrade tests"
         type: boolean
         default: true
+      run_multisig_token_proxy:
+        description: "Run Multisig Token Proxy tests"
+        type: boolean
+        default: true
+      run_multisig_freezelist_registry:
+        description: "Run Multisig Freezelist Registry tests"
+        type: boolean
+        default: true
+      run_multisig_freezelist_proxy:
+        description: "Run Multisig Freezelist Proxy tests"
+        type: boolean
+        default: true
+
   pull_request:
     branches:
       - main
@@ -105,9 +122,29 @@ jobs:
           github.event_name == 'workflow_dispatch' && inputs.run_compliant_token_template || 
           github.event_name == 'pull_request'
         }}
+      run_multisig_compliant_token: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_multisig_compliant_token || 
+          github.event_name == 'pull_request'
+        }}
       run_upgrade: >-
         ${{ 
           github.event_name == 'workflow_dispatch' && inputs.run_upgrade || 
+          github.event_name == 'pull_request'
+        }}
+      run_multisig_token_proxy: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_multisig_token_proxy || 
+          github.event_name == 'pull_request'
+        }}
+      run_multisig_freezelist_registry: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_multisig_freezelist_registry || 
+          github.event_name == 'pull_request'
+        }}
+      run_multisig_freezelist_proxy: >-
+        ${{ 
+          github.event_name == 'workflow_dispatch' && inputs.run_multisig_freezelist_proxy || 
           github.event_name == 'pull_request'
         }}
     steps:
@@ -201,4 +238,44 @@ jobs:
       job_name: "Upgrade tests"
       test_command: "npm run test:select ./test/upgrade.test.ts"
       watched_paths: "programs/sealance_freezelist_registry.leo,programs/merkle_tree.leo,programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  multisig-token-proxy-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_multisig_token_proxy == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Multisig Token Proxy tests"
+      test_command: "npm run test:select ./test/multisig_token_proxy.test.ts"
+      watched_paths: "programs/multisig_token_proxy.leo,programs/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  multisig-compliant-tokene-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_multisig_compliant_token == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Multisig Compliant Token tests"
+      test_command: "npm run test:select ./test/multisig_compliant_token.test.ts"
+      watched_paths: "programs/multisig_compliant_token.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  multisig-freezelist-registry-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_multisig_freezelist_registry == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Multisig Freezelist Registry tests"
+      test_command: "npm run test:select ./test/multisig_freeze_registry.test.ts"
+      watched_paths: "programs/multisig_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
+    secrets: inherit
+
+  multisig-freezelist-proxy-test:
+    needs: check-trigger
+    if: ${{ needs.check-trigger.outputs.run_multisig_freezelist_proxy == 'true' }}
+    uses: ./.github/workflows/reusable-aleo-test.yml
+    with:
+      job_name: "Multisig Freezelist Proxy tests"
+      test_command: "npm run test:select ./test/multisig_freezelist_proxy.test.ts"
+      watched_paths: "programs/multisig_freezelist_proxy.leo,programs/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
