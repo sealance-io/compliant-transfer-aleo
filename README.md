@@ -18,6 +18,14 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 
 - **/programs**: Aleo token programs implementing various compliance policies
 
+  - `compliant_token_template.leo`
+
+    Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list.
+
+  - `multisig_compliant_token_template.leo`
+
+    Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list. The program additionally supports a multisig manager for administering privileged operations.
+
   - `sealed_report_policy.leo`
 
     Token program that grants asset issuers access to transaction details. Both sender and recipient must not be on the sanctions list.
@@ -38,12 +46,24 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 
     Standalone program implementing a freeze list registry with functions to add/remove addresses and privately verify address status.
 
+  - `multisig_freezelist_registry.leo`
+
+    Standalone program implementing a freeze list registry with functions to add/remove addresses and privately verify address status. The program additionally supports a multisig manager for administering privileged operations.
+
   - `merkle_tree.leo`
 
     Program containing functions for verifying Merkle proofs for leaf inclusion and non-inclusion.
 
   - `gqrfmwbtyp.leo`
     Program enabling users to exchange native Aleo tokens for compliant tokens.
+
+  - `multisig_compliant_token_proxy.leo`
+
+    Proxy program that enables multisig control of a non-multisig compliant token by accepting multisig requests and forwarding the corresponding management actions to the underlying token program.
+
+  - `multisig_freezelist_proxy.leo`
+
+    Proxy program that enables multisig control of a non-multisig freeze registry by accepting multisig requests and forwarding the corresponding management actions to the underlying freeze-list/registry program.
 
 - **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts.
 - **/test**: TypeScript tests that validate contract functionalities.

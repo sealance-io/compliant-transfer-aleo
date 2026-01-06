@@ -1,5 +1,5 @@
 
-import stablecoin_program.aleo;
+import compliant_token_template.aleo;
 import multisig_core.aleo;
 
 program multisig_token_proxy.aleo {
@@ -228,15 +228,15 @@ program multisig_token_proxy.aleo {
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
-        let stablecoin_program_call: Future = stablecoin_program.aleo/update_role(new_address, role);
+        let compliant_token_template_call: Future = compliant_token_template.aleo/update_role(new_address, role);
 
-        return f_update_role(wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, stablecoin_program_call);
+        return f_update_role(wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, compliant_token_template_call);
     }
     async function f_update_role(
         wallet_signing_op_id_hash: field,
         multisig_op: CompliantTokenMultisigOp,
         wallet_id: address,
-        stablecoin_program_call: Future
+        compliant_token_template_call: Future
     ) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
         assert(wallet_id_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -248,7 +248,7 @@ program multisig_token_proxy.aleo {
         assert_eq(pending_request, multisig_op);
         pending_requests.remove(wallet_signing_op_id_hash);
         
-        stablecoin_program_call.await();
+        compliant_token_template_call.await();
     }
 
         // Mints new public tokens to the specified recipient’s balance.
@@ -272,15 +272,15 @@ program multisig_token_proxy.aleo {
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
-        let stablecoin_program_call: Future = stablecoin_program.aleo/mint_public(recipient, amount);
+        let compliant_token_template_call: Future = compliant_token_template.aleo/mint_public(recipient, amount);
 
-        return finalize_mint_public(wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, stablecoin_program_call);
+        return finalize_mint_public(wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, compliant_token_template_call);
     }
     async function finalize_mint_public(
         wallet_signing_op_id_hash: field,
         multisig_op: CompliantTokenMultisigOp,
         wallet_id: address,
-        stablecoin_program_call: Future
+        compliant_token_template_call: Future
     ) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
         assert(wallet_id_role & MINTER_ROLE == MINTER_ROLE);
@@ -292,7 +292,7 @@ program multisig_token_proxy.aleo {
         assert_eq(pending_request, multisig_op);
         pending_requests.remove(wallet_signing_op_id_hash);
 
-        stablecoin_program_call.await();
+        compliant_token_template_call.await();
     }
 
         // Mints new private tokens to the specified recipient.
@@ -304,7 +304,7 @@ program multisig_token_proxy.aleo {
         recipient: address,
         public amount: u128,
         multisig_common_params: MultisigCommonParams
-        ) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {
+        ) -> (compliant_token_template.aleo/ComplianceRecord, compliant_token_template.aleo/Token, Future) {
         let multisig_op: PrivateCompliantTokenMultisigOp = PrivateCompliantTokenMultisigOp {
             op: MULTISIG_OP_MINT_PRIVATE,
             user: recipient,
@@ -313,14 +313,14 @@ program multisig_token_proxy.aleo {
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
         let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
         
-        let stablecoin_program_call: (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) = stablecoin_program.aleo/mint_private(recipient, amount);
+        let compliant_token_template_call: (compliant_token_template.aleo/ComplianceRecord, compliant_token_template.aleo/Token, Future) = compliant_token_template.aleo/mint_private(recipient, amount);
 
-        return (stablecoin_program_call.0, stablecoin_program_call.1, finalize_mint_private(wallet_signing_op_id_hash, multisig_common_params.wallet_id, stablecoin_program_call.2));
+        return (compliant_token_template_call.0, compliant_token_template_call.1, finalize_mint_private(wallet_signing_op_id_hash, multisig_common_params.wallet_id, compliant_token_template_call.2));
     }
     async function finalize_mint_private(
         wallet_signing_op_id_hash: field,
         wallet_id: address,
-        stablecoin_program_call: Future
+        compliant_token_template_call: Future
     ) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
         assert(wallet_id_role & MINTER_ROLE == MINTER_ROLE);
@@ -331,7 +331,7 @@ program multisig_token_proxy.aleo {
         assert(private_pending_requests.contains(wallet_signing_op_id_hash));
         private_pending_requests.remove(wallet_signing_op_id_hash);
 
-        stablecoin_program_call.await();
+        compliant_token_template_call.await();
     }
 
     // Burns public tokens from the specified owner’s balance.
@@ -353,14 +353,14 @@ program multisig_token_proxy.aleo {
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
-        let stablecoin_program_call: Future = stablecoin_program.aleo/burn_public(owner, amount);
-        return finalize_burn_public( wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, stablecoin_program_call);
+        let compliant_token_template_call: Future = compliant_token_template.aleo/burn_public(owner, amount);
+        return finalize_burn_public( wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, compliant_token_template_call);
     }
     async function finalize_burn_public(
         wallet_signing_op_id_hash: field,
         multisig_op: CompliantTokenMultisigOp,
         wallet_id: address,
-        stablecoin_program_call: Future
+        compliant_token_template_call: Future
     ) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
         assert(wallet_id_role & BURNER_ROLE == BURNER_ROLE);
@@ -372,7 +372,7 @@ program multisig_token_proxy.aleo {
         assert_eq(pending_request, multisig_op);
         pending_requests.remove(wallet_signing_op_id_hash);
 
-        stablecoin_program_call.await();
+        compliant_token_template_call.await();
     }
 
         // Burns tokens from a private record (non-public asset).
@@ -380,10 +380,10 @@ program multisig_token_proxy.aleo {
     // Can be executed by any caller if the corresponding multisig burn private request was approved and it is not expired.
     // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
     async transition burn_private(
-        input_record: stablecoin_program.aleo/Token,
+        input_record: compliant_token_template.aleo/Token,
         public amount: u128,
         multisig_common_params: MultisigCommonParams
-    ) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {
+    ) -> (compliant_token_template.aleo/ComplianceRecord, compliant_token_template.aleo/Token, Future) {
         let multisig_op: PrivateCompliantTokenMultisigOp = PrivateCompliantTokenMultisigOp {
             op: MULTISIG_OP_BURN_PRIVATE,
             user: input_record.owner,
@@ -392,14 +392,14 @@ program multisig_token_proxy.aleo {
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
         let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
 
-        let stablecoin_program_call: (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) = stablecoin_program.aleo/burn_private(input_record, amount);
+        let compliant_token_template_call: (compliant_token_template.aleo/ComplianceRecord, compliant_token_template.aleo/Token, Future) = compliant_token_template.aleo/burn_private(input_record, amount);
 
-        return (stablecoin_program_call.0, stablecoin_program_call.1, finalize_burn_private(wallet_signing_op_id_hash, multisig_common_params.wallet_id, stablecoin_program_call.2));
+        return (compliant_token_template_call.0, compliant_token_template_call.1, finalize_burn_private(wallet_signing_op_id_hash, multisig_common_params.wallet_id, compliant_token_template_call.2));
     }
     async function finalize_burn_private(
         wallet_signing_op_id_hash: field,
         wallet_id: address,
-        stablecoin_program_call: Future
+        compliant_token_template_call: Future
     ) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
         assert(wallet_id_role & BURNER_ROLE == BURNER_ROLE);
@@ -410,7 +410,7 @@ program multisig_token_proxy.aleo {
         assert(private_pending_requests.contains(wallet_signing_op_id_hash));
         private_pending_requests.remove(wallet_signing_op_id_hash);
 
-        stablecoin_program_call.await();
+        compliant_token_template_call.await();
     }
 
     // Stops or resumes all token transfers.
@@ -428,15 +428,15 @@ program multisig_token_proxy.aleo {
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo/get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
-        let stablecoin_program_call: Future = stablecoin_program.aleo/set_pause_status(pause_status);
+        let compliant_token_template_call: Future = compliant_token_template.aleo/set_pause_status(pause_status);
 
-        return f_set_pause_status(wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, stablecoin_program_call);
+        return f_set_pause_status(wallet_signing_op_id_hash, multisig_op, multisig_common_params.wallet_id, compliant_token_template_call);
     }
     async function f_set_pause_status(
         wallet_signing_op_id_hash: field,
         multisig_op: CompliantTokenMultisigOp,
         wallet_id: address,
-        stablecoin_program_call: Future
+        compliant_token_template_call: Future
     ) {
         let wallet_id_role = wallet_id_to_role.get(wallet_id);
         assert(wallet_id_role & PAUSE_ROLE == PAUSE_ROLE);
@@ -448,6 +448,6 @@ program multisig_token_proxy.aleo {
         assert_eq(pending_request, multisig_op);
         pending_requests.remove(wallet_signing_op_id_hash);
 
-        stablecoin_program_call.await();
+        compliant_token_template_call.await();
     }
 }
