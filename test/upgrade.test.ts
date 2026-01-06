@@ -11,6 +11,7 @@ import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token
 import { stringToBigInt, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
+import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -22,9 +23,13 @@ const [deployerAddress, adminAddress, investigatorAddress, , , , , , , , , , sig
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
-const freezeRegistryContract = new Sealance_freezelist_registryContract({
+const freezeRegistryContract = new Multisig_freezelist_registryContract({
   mode,
   privateKey: deployerPrivKey,
+});
+const freezeRegistryContractForAdmin = new Multisig_freezelist_registryContract({
+  mode,
+  privateKey: adminPrivKey,
 });
 const reportTokenContract = new Sealed_report_tokenContract({
   mode,
@@ -56,7 +61,7 @@ describe("test upgradeability", () => {
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(reportTokenContract);
 
-    await initializeProgram(freezeRegistryContract, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
+    await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
     await initializeProgram(reportTokenContractForAdmin, [
       stringToBigInt("Report Token"),
       stringToBigInt("REPORT_TOKEN"),

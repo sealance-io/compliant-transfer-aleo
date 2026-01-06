@@ -255,7 +255,7 @@ jobs:
     if: ${{ needs.check-trigger.outputs.run_multisig_compliant_token == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
-      job_name: "Compliant Token template tests"
+      job_name: "Multisig Compliant Token tests"
       test_command: "npm run test:select ./test/multisig_compliant_token.test.ts"
       watched_paths: "programs/multisig_compliant_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
@@ -265,7 +265,7 @@ jobs:
     if: ${{ needs.check-trigger.outputs.run_multisig_freezelist_registry == 'true' }}
     uses: ./.github/workflows/reusable-aleo-test.yml
     with:
-      job_name: "Freezelist Program tests"
+      job_name: "Multisig Freezelist Registry tests"
       test_command: "npm run test:select ./test/multisig_freeze_registry.test.ts"
       watched_paths: "programs/multisig_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit

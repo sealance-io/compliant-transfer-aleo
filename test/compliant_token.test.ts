@@ -122,7 +122,7 @@ const multiSigContract = new Multisig_coreContract({
 const amount = 10n;
 let root: bigint;
 
-describe("test sealed_standalone_token program", () => {
+describe("test compliant token program", () => {
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
