@@ -75,7 +75,7 @@ const freezeListManagerWalletId = new Account().address().to_string();
 
 let root: bigint;
 
-describe("test freeze_registry program", () => {
+describe("test multisig freeze registry program", () => {
   beforeAll(async () => {
     // Deploy the multisig programs
     await deployIfNotDeployed(multiSigContract);

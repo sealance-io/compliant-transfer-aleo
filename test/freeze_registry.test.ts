@@ -62,7 +62,7 @@ const multiSigContract = new Multisig_coreContract({
 
 let root: bigint;
 
-describe("test freeze_registry program", () => {
+describe("test freeze registry program", () => {
   beforeAll(async () => {
     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
