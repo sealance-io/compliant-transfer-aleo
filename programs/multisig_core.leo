@@ -880,7 +880,7 @@ program multisig_core.aleo {
             digest[28u8 + i] = hash[i];
         }
 
-        let hash_bits = Keccak256::hash_to_bits(digest);
+        let hash_bits = Keccak256::hash_to_bits_raw(digest);
         return Deserialize::from_bits_raw::[[u8; 32]](hash_bits);
     }
 }
