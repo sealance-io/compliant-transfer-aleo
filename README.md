@@ -133,7 +133,7 @@ The project supports two testing modes optimized for different use cases:
 > cargo install --path .
 > ```
 >
-> Alternatively, use the pre-built devnode image: `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
+> Alternatively, use the pre-built devnode image: `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`
 >
 > For stable testing, use devnet mode (`DEVNET=true`).
 
