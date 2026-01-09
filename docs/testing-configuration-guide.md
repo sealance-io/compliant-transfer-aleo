@@ -27,7 +27,7 @@ The project supports two distinct testing modes optimized for different use case
 >    ```
 >
 > 2. **Use the pre-built devnode image** (recommended for Testcontainers):
->    `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
+>    `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`
 
 ## Quick Start
 
@@ -137,7 +137,7 @@ CONSENSUS_VERSION_HEIGHTS=0,1,2,3,4,5,6,7,8,9,10,11
 
 **Default Images:**
 
-- Devnode: `ghcr.io/sealance-io/leo-lang:v3.3.1-devnode`
+- Devnode: `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`
 - Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0`
 
 ### Network Configuration
@@ -218,7 +218,7 @@ If you need to run devnet manually:
 export USE_TEST_CONTAINERS=0
 
 # 2. Start devnode manually in another terminal
-docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.3.1-devnode \
+docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.4.0-devnode \
   leo devnode start --listener-addr 0.0.0.0:3030 \
   --private-key "$ALEO_PRIVATE_KEY" \
   --verbosity 1

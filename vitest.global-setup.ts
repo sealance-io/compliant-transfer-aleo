@@ -1,5 +1,6 @@
 import { GenericContainer, StartedTestContainer } from "testcontainers";
 import networkConfig from "./aleo-config";
+import { advanceBlocks } from "./lib/Block";
 
 function parseBooleanEnv(value: string | undefined, defaultValue = true): boolean {
   if (value === undefined || value === "") {
@@ -27,10 +28,10 @@ function parseBooleanEnv(value: string | undefined, defaultValue = true): boolea
 let devnetContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, false);
+const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, true);
 const DEFAULT_ALEO_IMAGE = IS_DEVNET
   ? "ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0"
-  : "ghcr.io/sealance-io/leo-lang:v3.3.1-devnode";
+  : "ghcr.io/sealance-io/leo-lang:v3.4.0-devnode";
 const ALEO_TEST_IMAGE = process.env.ALEO_TEST_IMAGE || DEFAULT_ALEO_IMAGE;
 const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "1";
 const TARGET_CONSENSUS_VERSION = parseInt(process.env.CONSENSUS_VERSION || "12", 10);
@@ -38,28 +39,6 @@ const FIRST_BLOCK = parseInt(process.env.FIRST_BLOCK || "20", 10);
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "300000", 10); // 5 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 const ALEO_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
-
-async function advanceBlocks(numBlocks: number): Promise<void> {
-  const networkName = networkConfig.defaultNetwork;
-  const endpoint = networkConfig.networks[networkName].endpoint;
-  const apiUrl = `${endpoint}/testnet/block/create`;
-
-  // Call the REST API to advance the ledger by N block.
-  const payload = {
-    private_key: ALEO_PRIVATE_KEY,
-    num_blocks: numBlocks,
-  };
-
-  await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  console.log(`Advanced ${numBlocks} blocks`);
-}
 
 function validateConfiguration(): void {
   const errors: string[] = [];
