@@ -34,7 +34,7 @@ jobs:
       contents: "read"
       packages: "read"
       actions: "read"
-    timeout-minutes: 60
+    timeout-minutes: 360  # Maximum allowed since using full-scale devnet
     container:
       image: ghcr.io/sealance-io/leo-lang-ci:v3.4.0
       credentials:
