@@ -244,7 +244,7 @@ export async function setup() {
         container: 3030,
         host: 3030,
       })
-      .withStartupTimeout(120000) // 2 minutes timeout
+      .withStartupTimeout(600_000) // 10 minutes timeout
       .start();
 
     mappedPort = devnetContainer.getMappedPort(3030);
