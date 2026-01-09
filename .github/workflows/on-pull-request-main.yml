@@ -29,8 +29,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DEVNET_CHECK_TIMEOUT: 30000 # 30 seconds in ms
-      DEVNET_CHECK_INTERVAL: 5000 # 5 seconds in ms
       TESTNET_ENDPOINT: "http://host.docker.internal:3030"
     permissions:
       contents: "read"
