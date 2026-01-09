@@ -1,0 +1,56 @@
+name: Nightly Full Test Suite
+
+on:
+  schedule:
+    # Run at 2 AM UTC daily
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      has_commits: ${{ steps.check.outputs.has_commits }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for commits in last 24 hours
+        id: check
+        run: |
+          COMMITS=$(git log --oneline --since="24 hours ago" origin/main | wc -l)
+          if [ "$COMMITS" -gt 0 ]; then
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "Found $COMMITS commit(s) in last 24 hours"
+          else
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "No commits in last 24 hours, skipping tests"
+          fi
+
+  discover-tests:
+    needs: check-commits
+    if: needs.check-commits.outputs.has_commits == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover test files
+        id: set-matrix
+        run: |
+          # Find all test files and create JSON array
+          files=$(find test -name "*.test.ts" -type f | xargs -I{} basename {} | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "matrix={\"test-file\":$files}" >> $GITHUB_OUTPUT
+          echo "Discovered test files: $files"
+
+  test-devnet:
+    needs: [check-commits, discover-tests]
+    if: needs.check-commits.outputs.has_commits == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      test-file: ${{ matrix.test-file }}
+      mode: devnet
+    secrets: inherit

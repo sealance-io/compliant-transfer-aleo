@@ -2,6 +2,15 @@ name: Aleo Program Tests
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Test mode'
+        required: true
+        default: 'devnet'
+        type: choice
+        options:
+          - devnet
+          - devnode
   pull_request:
     branches:
       - main
@@ -26,69 +35,31 @@ jobs:
       - name: Run prettier
         run: npm run format
 
-  test:
-    runs-on: ubuntu-latest
-    env:
-      TESTNET_ENDPOINT: "http://host.docker.internal:3030"
-    permissions:
-      contents: "read"
-      packages: "read"
-      actions: "read"
-    timeout-minutes: 360 # Maximum allowed since using full-scale devnet
-    container:
-      image: ghcr.io/sealance-io/leo-lang-ci:v3.4.0
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.github_token }}
-      options: --cpus 2 --add-host=host.docker.internal:host-gateway
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup doko-js-cli
-        uses: sealance-io/setup-doko-js-action@v0.1.4
-        with:
-          doko-repo: "sealance-io/doko-js"
-          doko-branch: "fixes_to_dokojs"
-          node-version: 24
-          rust-version: "stable"
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "npm"
-          cache-dependency-path: "./package-lock.json"
+  # Devnet mode: Matrix of jobs for CORE tests only (default)
+  # Full suite runs nightly via nightly-tests.yml
+  test-devnet:
+    needs: linter
+    if: inputs.mode != 'devnode'
+    strategy:
+      fail-fast: false
+      matrix:
+        test-file:
+          # Core subset for PR validation (full suite runs nightly)
+          - merkle_tree.test.ts
+          - freeze_registry.test.ts
+          - compliant_token.test.ts
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      test-file: ${{ matrix.test-file }}
+      mode: devnet
+    secrets: inherit
 
-      - run: cp .env.example .env
-
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull aleo-devnet image
-        run: docker pull ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0
-
-      - name: Compile leo
-        run: npm run compile
-
-      - name: Run test (bypass test-containers)
-        run: npm run test
-        env:
-          DOCKER_HOST: "unix:///var/run/docker.sock"
-          TESTCONTAINERS_RYUK_DISABLED: true
-          USE_TEST_CONTAINERS: 1
-          VITEST_HOOK_TIMING: true
-          VITEST_TEST_MARKERS: true
-          DEVNET: true
-          # SKIP_EXECUTE_PROOF: true
-          # SKIP_DEPLOY_CERTIFICATE: true
-          CONSENSUS_VERSION: 12
-          CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11"
+  # Devnode mode: Single job for ALL tests (future default)
+  test-devnode:
+    needs: linter
+    if: inputs.mode == 'devnode'
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      test-file: all
+      mode: devnode
+    secrets: inherit
