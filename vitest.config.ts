@@ -1,6 +1,26 @@
 import { defineConfig } from "vitest/config";
+import { BaseSequencer } from "vitest/node";
 import { fileURLToPath } from "url";
 import { resolve, dirname } from "path";
+
+/**
+ * Custom sequencer that sorts test files alphabetically.
+ *
+ * By default, Vitest's BaseSequencer uses cached test durations to order files
+ * (slower tests run first). This can cause issues when tests share global on-chain
+ * state and have implicit ordering dependencies.
+ *
+ * For example, if upgrade.test.ts (which initializes sealed_report_token in beforeAll)
+ * runs before report_token.test.ts (which has a "test initialize" without a guard),
+ * the latter test fails because the program is already initialized.
+ *
+ * Alphabetical ordering ensures predictable test execution order.
+ */
+class AlphabeticalSequencer extends BaseSequencer {
+  async sort(files: string[]) {
+    return files.sort();
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +49,7 @@ export default defineConfig({
 
     // 3. Strict sequence ordering, no concurrency or shuffling
     sequence: {
+      sequencer: AlphabeticalSequencer,
       shuffle: {
         files: false,
         tests: false,
