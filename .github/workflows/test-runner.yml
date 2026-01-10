@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       mode:
-        description: 'devnet or devnode'
+        description: "devnet or devnode"
         required: true
         type: string
 
