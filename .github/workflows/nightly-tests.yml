@@ -3,7 +3,7 @@ name: Nightly Full Test Suite
 on:
   schedule:
     # Run at 2 AM UTC daily
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
   workflow_dispatch: # Allow manual trigger
 
 jobs:

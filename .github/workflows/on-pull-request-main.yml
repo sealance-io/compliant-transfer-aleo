@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Test mode'
+        description: "Test mode"
         required: true
-        default: 'devnet'
+        default: "devnet"
         type: choice
         options:
           - devnet
