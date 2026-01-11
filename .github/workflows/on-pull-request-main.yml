@@ -157,7 +157,7 @@ jobs:
     with:
       job_name: "Merkle Tree Test"
       test_command: "npm run test:select ./test/merkle_tree.test.ts"
-      watched_paths: "programs/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/core/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   report-policy-test:
@@ -167,7 +167,7 @@ jobs:
     with:
       job_name: "Report Policy Test"
       test_command: "npm run test:select ./test/report_policy.test.ts"
-      watched_paths: "programs/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/policy/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   freeze-registry-test:
@@ -177,7 +177,7 @@ jobs:
     with:
       job_name: "Freeze Registry Test"
       test_command: "npm run test:select ./test/freeze_registry.test.ts"
-      watched_paths: "programs/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/freezelist_registry/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   timelock-policy-test:
@@ -187,7 +187,7 @@ jobs:
     with:
       job_name: "Timelock Policy Test"
       test_command: "npm run test:select ./test/timelock.test.ts"
-      watched_paths: "programs/sealed_timelock_policy.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/policy/sealed_timelock_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   threshold-policy-test:
@@ -197,7 +197,7 @@ jobs:
     with:
       job_name: "Threshold Policy Test"
       test_command: "npm run test:select ./test/threshold.test.ts"
-      watched_paths: "programs/sealed_threshold_report_policy.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/policy/sealed_threshold_report_policy.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   exchange-test:
@@ -207,7 +207,7 @@ jobs:
     with:
       job_name: "Exchange Test"
       test_command: "npm run test:select ./test/exchange.test.ts"
-      watched_paths: "programs/exchange.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/demo/exchange.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   sealed-report-token-test:
@@ -217,7 +217,7 @@ jobs:
     with:
       job_name: "Sealed Report Token Test"
       test_command: "npm run test:select ./test/report_token.test.ts"
-      watched_paths: "programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/token/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   compliant-token-template-test:
@@ -227,7 +227,7 @@ jobs:
     with:
       job_name: "Compliant Token template tests"
       test_command: "npm run test:select ./test/compliant_token.test.ts"
-      watched_paths: "programs/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/token/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   upgrade-test:
@@ -237,7 +237,7 @@ jobs:
     with:
       job_name: "Upgrade tests"
       test_command: "npm run test:select ./test/upgrade.test.ts"
-      watched_paths: "programs/sealance_freezelist_registry.leo,programs/merkle_tree.leo,programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/freezelist_registry/sealance_freezelist_registry.leo,programs/core/merkle_tree.leo,programs/token/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   multisig-token-proxy-test:
@@ -247,7 +247,7 @@ jobs:
     with:
       job_name: "Multisig Token Proxy tests"
       test_command: "npm run test:select ./test/multisig_token_proxy.test.ts"
-      watched_paths: "programs/multisig_token_proxy.leo,programs/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/proxy/multisig_token_proxy.leo,programs/token/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   multisig-compliant-tokene-test:
@@ -257,7 +257,7 @@ jobs:
     with:
       job_name: "Multisig Compliant Token tests"
       test_command: "npm run test:select ./test/multisig_compliant_token.test.ts"
-      watched_paths: "programs/multisig_compliant_token.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/token/multisig_compliant_token.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   multisig-freezelist-registry-test:
@@ -267,7 +267,7 @@ jobs:
     with:
       job_name: "Multisig Freezelist Registry tests"
       test_command: "npm run test:select ./test/multisig_freeze_registry.test.ts"
-      watched_paths: "programs/multisig_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/freezelist_registry/multisig_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
 
   multisig-freezelist-proxy-test:
@@ -277,5 +277,5 @@ jobs:
     with:
       job_name: "Multisig Freezelist Proxy tests"
       test_command: "npm run test:select ./test/multisig_freezelist_proxy.test.ts"
-      watched_paths: "programs/multisig_freezelist_proxy.leo,programs/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
+      watched_paths: "programs/proxy/multisig_freezelist_proxy.leo,programs/freezelist_registry/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
     secrets: inherit
