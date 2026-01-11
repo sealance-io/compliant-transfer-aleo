@@ -14,7 +14,9 @@
     "test": "test"
   },
   "scripts": {
+    "preinstall": "npx lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https",
     "postinstall": "patch-package",
+    "lint:licenses": "npx license-checker-rseidelsohn --failOn 'GPL-2.0-only;GPL-2.0-or-later;GPL-3.0-only;GPL-3.0-or-later;AGPL-3.0-only;AGPL-3.0-or-later'",
     "deploy:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-devnet.ts",
     "deploy:testnet": "cross-env TESTNET_ENDPOINT='https://api.explorer.provable.com/v1' npx tsx --tsconfig tsconfig.tsx.json scripts/deploy-testnet.ts",
     "update-freeze-list:devnet": "npx tsx --tsconfig tsconfig.tsx.json scripts/update-freeze-list.ts",
