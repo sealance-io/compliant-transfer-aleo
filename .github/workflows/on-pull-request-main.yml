@@ -14,15 +14,43 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
 
 concurrency:
   group: ci-tests-${{ github.ref }}-1
   cancel-in-progress: true
 
 jobs:
+  # Detect if code changed (skip tests for doc-only PRs)
+  # NOTE: This replaces `paths-ignore: ["**/*.md"]` at the workflow level.
+  # Workflow-level path filters cause required status checks to remain "Pending"
+  # forever when skipped, blocking PR merges. Job-level skipping via `if:` reports
+  # "Success" for skipped jobs, allowing the CI Status rollup to pass.
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Check for code changes
+        id: filter
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+
+          # Check if any non-markdown files changed
+          if echo "$CHANGED" | grep -qvE '\.md$'; then
+            echo "code=true" >> $GITHUB_OUTPUT
+            echo "Code changes detected"
+          else
+            echo "code=false" >> $GITHUB_OUTPUT
+            echo "No code changes (docs only)"
+          fi
+
   linter:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.3.0
@@ -38,8 +66,8 @@ jobs:
   # Devnet mode: Matrix of jobs for CORE tests only (default)
   # Full suite runs nightly via nightly-tests.yml
   test-devnet:
-    needs: linter
-    if: inputs.mode != 'devnode'
+    needs: [detect-changes, linter]
+    if: needs.detect-changes.outputs.code == 'true' && inputs.mode != 'devnode'
     strategy:
       fail-fast: false
       matrix:
@@ -56,8 +84,8 @@ jobs:
 
   # Devnode mode: Single job for ALL tests (future default)
   test-devnode:
-    needs: linter
-    if: inputs.mode == 'devnode'
+    needs: [detect-changes, linter]
+    if: needs.detect-changes.outputs.code == 'true' && inputs.mode == 'devnode'
     uses: ./.github/workflows/test-runner.yml
     with:
       test-file: all
@@ -69,26 +97,31 @@ jobs:
   # Configure branch protection to require "CI Status" instead of individual test jobs.
   ci-status:
     name: CI Status
-    needs: [linter, test-devnet, test-devnode]
+    needs: [detect-changes, linter, test-devnet, test-devnode]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
           echo "::group::Job Results"
+          echo "Code changes: ${{ needs.detect-changes.outputs.code }}"
           echo "Linter: ${{ needs.linter.result }}"
           echo "Devnet tests: ${{ needs.test-devnet.result }}"
           echo "Devnode tests: ${{ needs.test-devnode.result }}"
           echo "::endgroup::"
 
-          # Fail if linter failed
+          # No code changes - all skipped is OK
+          if [[ "${{ needs.detect-changes.outputs.code }}" != "true" ]]; then
+            echo "::notice::No code changes - skipped tests"
+            exit 0
+          fi
+
+          # Code changed - verify jobs passed
           if [[ "${{ needs.linter.result }}" != "success" ]]; then
             echo "::error::Linter failed or was cancelled"
             exit 1
           fi
 
-          # Fail if either test suite failed or was cancelled
-          # (One will be 'skipped' based on mode - that's expected)
           if [[ "${{ needs.test-devnet.result }}" == "failure" ||
                 "${{ needs.test-devnet.result }}" == "cancelled" ]]; then
             echo "::error::Devnet tests failed"
@@ -101,7 +134,7 @@ jobs:
             exit 1
           fi
 
-          # Ensure at least one test suite ran
+          # Ensure at least one test suite ran (when code changed)
           if [[ "${{ needs.test-devnet.result }}" == "skipped" &&
                 "${{ needs.test-devnode.result }}" == "skipped" ]]; then
             echo "::error::No test suite ran - check workflow conditions"
