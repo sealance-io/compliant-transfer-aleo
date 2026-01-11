@@ -36,7 +36,7 @@ const ALEO_TEST_IMAGE = process.env.ALEO_TEST_IMAGE || DEFAULT_ALEO_IMAGE;
 const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "1";
 const TARGET_CONSENSUS_VERSION = parseInt(process.env.CONSENSUS_VERSION || "12", 10);
 const FIRST_BLOCK = parseInt(process.env.FIRST_BLOCK || "20", 10);
-const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "300000", 10); // 5 minutes default
+const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "600000", 10); // 10 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 const ALEO_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
 
