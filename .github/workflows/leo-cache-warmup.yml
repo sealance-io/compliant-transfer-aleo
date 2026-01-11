@@ -1,0 +1,54 @@
+name: Leo CLI Cache Warmup
+
+on:
+  schedule:
+    # Run every Saturday at 11 PM UTC (before work week)
+    - cron: "0 23 * * 6"
+  workflow_dispatch:
+    inputs:
+      force-rebuild:
+        description: "Force rebuild even if cache exists"
+        type: boolean
+        default: false
+
+jobs:
+  warmup-cache:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # Required for cache operations
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Leo CLI (Cache Warmup)
+        id: setup-leo
+        uses: sealance-io/setup-leo-action@b30e4cc53c73355def527d832604763e9b601fb2
+        with:
+          version: "3.4.0"
+          rust-version: "1.90.0"
+          enable-cache: true
+          cache-save: always # Always save to ensure cache is refreshed
+          run-audit: true
+          audit-deny-warnings: false
+
+      - name: Report cache status
+        run: |
+          echo "## Leo CLI Cache Warmup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Leo Version | 3.4.0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rust Version | 1.90.0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cache Hit (Binary) | ${{ steps.setup-leo.outputs.cache-hit-binary }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Time | ${{ steps.setup-leo.outputs.build-time-seconds }}s |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.setup-leo.outputs.cache-hit-binary }}" = "true" ]; then
+            echo "Cache was already warm - refreshed for another 7 days" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Cache miss - Leo was compiled from source and cached" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Verify Leo installation
+        run: leo --version

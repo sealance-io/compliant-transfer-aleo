@@ -3,54 +3,54 @@ name: Aleo Program Tests
 on:
   workflow_dispatch:
     inputs:
-      run_merkle_tree:
-        description: "Run Merkle Tree tests"
-        type: boolean
-        default: true
-      run_report_policy:
-        description: "Run Sealed Report Policy tests"
-        type: boolean
-        default: true
-      run_freeze_registry:
-        description: "Run Freeze Registry tests"
-        type: boolean
-        default: true
-      run_timelock_policy:
-        description: "Run Timelock Policy tests"
-        type: boolean
-        default: true
-      run_threshold_policy:
-        description: "Run Threshold Policy tests"
-        type: boolean
-        default: true
-      run_exchange:
-        description: "Run Exchange tests"
-        type: boolean
-        default: true
-      run_sealed_report_token:
-        description: "Run Sealed Report Token tests"
-        type: boolean
-        default: true
-      run_compliant_token_template:
-        description: "Run Compliant Token template tests"
-        type: boolean
-        default: true
-      run_upgrade:
-        description: "Run Upgrade tests"
-        type: boolean
-        default: true
+      mode:
+        description: "Test mode"
+        required: true
+        default: "devnet"
+        type: choice
+        options:
+          - devnet
+          - devnode
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
 
 concurrency:
   group: ci-tests-${{ github.ref }}-1
   cancel-in-progress: true
 
 jobs:
+  # Detect if code changed (skip tests for doc-only PRs)
+  # NOTE: This replaces `paths-ignore: ["**/*.md"]` at the workflow level.
+  # Workflow-level path filters cause required status checks to remain "Pending"
+  # forever when skipped, blocking PR merges. Job-level skipping via `if:` reports
+  # "Success" for skipped jobs, allowing the CI Status rollup to pass.
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Check for code changes
+        id: filter
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+
+          # Check if any non-markdown files changed
+          if echo "$CHANGED" | grep -qvE '\.md$'; then
+            echo "code=true" >> $GITHUB_OUTPUT
+            echo "Code changes detected"
+          else
+            echo "code=false" >> $GITHUB_OUTPUT
+            echo "No code changes (docs only)"
+          fi
+
   linter:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.3.0
@@ -62,143 +62,83 @@ jobs:
         run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
       - name: Run prettier
         run: npm run format
-  check-trigger:
+
+  # Devnet mode: Matrix of jobs for CORE tests only (default)
+  # Full suite runs nightly via nightly-tests.yml
+  test-devnet:
+    needs: [detect-changes, linter]
+    if: needs.detect-changes.outputs.code == 'true' && inputs.mode != 'devnode'
+    strategy:
+      fail-fast: false
+      matrix:
+        test-file:
+          # Core subset for PR validation (full suite runs nightly)
+          - merkle_tree.test.ts
+          - freeze_registry.test.ts
+          - compliant_token.test.ts
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      test-file: ${{ matrix.test-file }}
+      mode: devnet
+    secrets: inherit
+
+  # Devnode mode: Single job for ALL tests (future default)
+  test-devnode:
+    needs: [detect-changes, linter]
+    if: needs.detect-changes.outputs.code == 'true' && inputs.mode == 'devnode'
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      test-file: all
+      mode: devnode
+    secrets: inherit
+
+  # Rollup job: Stable check name for branch protection
+  # This job aggregates all test results into a single status check.
+  # Configure branch protection to require "CI Status" instead of individual test jobs.
+  ci-status:
+    name: CI Status
+    needs: [detect-changes, linter, test-devnet, test-devnode]
+    if: always()
     runs-on: ubuntu-latest
-    outputs:
-      run_merkle_tree: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_merkle_tree || 
-          github.event_name == 'pull_request'
-        }}
-      run_report_policy: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_report_policy || 
-          github.event_name == 'pull_request'
-        }}
-      run_freeze_registry: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_freeze_registry || 
-          github.event_name == 'pull_request'
-        }}
-      run_timelock_policy: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_timelock_policy || 
-          github.event_name == 'pull_request'
-        }}
-      run_threshold_policy: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_threshold_policy || 
-          github.event_name == 'pull_request'
-        }}
-      run_exchange: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_exchange || 
-          github.event_name == 'pull_request'
-        }}
-      run_sealed_report_token: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_sealed_report_token || 
-          github.event_name == 'pull_request'
-        }}
-      run_compliant_token_template: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_compliant_token_template || 
-          github.event_name == 'pull_request'
-        }}
-      run_upgrade: >-
-        ${{ 
-          github.event_name == 'workflow_dispatch' && inputs.run_upgrade || 
-          github.event_name == 'pull_request'
-        }}
     steps:
-      - run: echo "Determining which jobs to run"
+      - name: Check results
+        run: |
+          echo "::group::Job Results"
+          echo "Code changes: ${{ needs.detect-changes.outputs.code }}"
+          echo "Linter: ${{ needs.linter.result }}"
+          echo "Devnet tests: ${{ needs.test-devnet.result }}"
+          echo "Devnode tests: ${{ needs.test-devnode.result }}"
+          echo "::endgroup::"
 
-  merkle-tree-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_merkle_tree == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Merkle Tree Test"
-      test_command: "npm run test:select ./test/merkle_tree.test.ts"
-      watched_paths: "programs/merkle_tree.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+          # No code changes - all skipped is OK
+          if [[ "${{ needs.detect-changes.outputs.code }}" != "true" ]]; then
+            echo "::notice::No code changes - skipped tests"
+            exit 0
+          fi
 
-  report-policy-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_report_policy == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Report Policy Test"
-      test_command: "npm run test:select ./test/report_policy.test.ts"
-      watched_paths: "programs/sealed_report_policy.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+          # Code changed - verify jobs passed
+          if [[ "${{ needs.linter.result }}" != "success" ]]; then
+            echo "::error::Linter failed or was cancelled"
+            exit 1
+          fi
 
-  freeze-registry-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_freeze_registry == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Freeze Registry Test"
-      test_command: "npm run test:select ./test/freeze_registry.test.ts"
-      watched_paths: "programs/sealance_freezelist_registry.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+          if [[ "${{ needs.test-devnet.result }}" == "failure" ||
+                "${{ needs.test-devnet.result }}" == "cancelled" ]]; then
+            echo "::error::Devnet tests failed"
+            exit 1
+          fi
 
-  timelock-policy-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_timelock_policy == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Timelock Policy Test"
-      test_command: "npm run test:select ./test/timelock.test.ts"
-      watched_paths: "programs/sealed_timelock_policy.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+          if [[ "${{ needs.test-devnode.result }}" == "failure" ||
+                "${{ needs.test-devnode.result }}" == "cancelled" ]]; then
+            echo "::error::Devnode tests failed"
+            exit 1
+          fi
 
-  threshold-policy-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_threshold_policy == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Threshold Policy Test"
-      test_command: "npm run test:select ./test/threshold.test.ts"
-      watched_paths: "programs/sealed_threshold_report_policy.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+          # Ensure at least one test suite ran (when code changed)
+          if [[ "${{ needs.test-devnet.result }}" == "skipped" &&
+                "${{ needs.test-devnode.result }}" == "skipped" ]]; then
+            echo "::error::No test suite ran - check workflow conditions"
+            exit 1
+          fi
 
-  exchange-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_exchange == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Exchange Test"
-      test_command: "npm run test:select ./test/exchange.test.ts"
-      watched_paths: "programs/exchange.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
-
-  sealed-report-token-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_sealed_report_token == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Sealed Report Token Test"
-      test_command: "npm run test:select ./test/report_token.test.ts"
-      watched_paths: "programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
-
-  compliant-token-template-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_compliant_token_template == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Compliant Token template tests"
-      test_command: "npm run test:select ./test/compliant_token.test.ts"
-      watched_paths: "programs/compliant_token_template.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
-
-  upgrade-test:
-    needs: check-trigger
-    if: ${{ needs.check-trigger.outputs.run_upgrade == 'true' }}
-    uses: ./.github/workflows/reusable-aleo-test.yml
-    with:
-      job_name: "Upgrade tests"
-      test_command: "npm run test:select ./test/upgrade.test.ts"
-      watched_paths: "programs/sealance_freezelist_registry.leo,programs/merkle_tree.leo,programs/sealed_report_token.leo,package.json,package-lock.json,aleo-config.js"
-    secrets: inherit
+          echo "::notice::All checks passed"
