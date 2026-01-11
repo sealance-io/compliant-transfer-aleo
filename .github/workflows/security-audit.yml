@@ -1,0 +1,173 @@
+name: Security Audit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run weekly on Mondays at 00:00 UTC
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+# No default permissions - jobs must explicitly request what they need
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Detect if workflow files changed (skip audit for unrelated PRs)
+  # NOTE: This replaces workflow-level `paths` filter. Equivalent to:
+  #   paths:
+  #     - ".github/workflows/**"
+  #     - ".github/zizmor.yml"
+  # Workflow-level path filters cause required status checks to remain "Pending"
+  # forever when skipped, blocking PR merges. Job-level skipping via `if:` reports
+  # "Success" for skipped jobs, allowing the Security Audit Status rollup to pass.
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check for workflow changes
+        id: filter
+        run: |
+          # For push to main, compare with previous commit
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          # For PRs, compare with base branch
+          elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
+            CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || echo "")
+          # For scheduled/manual runs, always run
+          else
+            echo "workflows=true" >> $GITHUB_OUTPUT
+            echo "Scheduled/manual run - always audit"
+            exit 0
+          fi
+
+          # Check if workflow files changed
+          WORKFLOW_CHANGES=$(echo "$CHANGED" | grep -E '^\.github/(workflows/|zizmor\.yml)' || echo "")
+
+          if [[ -n "$WORKFLOW_CHANGES" ]]; then
+            echo "workflows=true" >> $GITHUB_OUTPUT
+            echo "Workflow changes detected:"
+            echo "$WORKFLOW_CHANGES"
+          else
+            echo "workflows=false" >> $GITHUB_OUTPUT
+            echo "No workflow changes"
+          fi
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+
+  zizmor-audit:
+    name: Workflow Security Audit
+    needs: detect-changes
+    if: needs.detect-changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Required for SARIF upload
+      actions: read # Required for workflow analysis
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+
+      # Regular mode: Standard security checks
+      - name: Run zizmor (regular mode)
+        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        with:
+          sarif-file: zizmor-regular.sarif
+
+      # Pedantic mode: Stricter checks (on PRs)
+      - name: Run zizmor (pedantic mode)
+        if: github.event_name == 'pull_request'
+        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        with:
+          args: --pedantic
+          sarif-file: zizmor-pedantic.sarif
+
+      # PR annotations: Inline annotations with medium+ severity failure
+      - name: Run zizmor (PR annotations)
+        if: github.event_name == 'pull_request'
+        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        with:
+          annotations: true
+          advanced-security: false
+          min-severity: medium
+          persona: pedantic
+
+      # Auditor mode: Most comprehensive checks (scheduled/manual runs)
+      - name: Run zizmor (auditor mode)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        with:
+          args: --persona=auditor
+          sarif-file: zizmor-auditor.sarif
+
+      - name: Upload SARIF (regular)
+        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
+        if: always()
+        with:
+          sarif_file: zizmor-regular.sarif
+          category: zizmor-regular
+
+      - name: Upload SARIF (pedantic)
+        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
+        if: always() && github.event_name == 'pull_request'
+        with:
+          sarif_file: zizmor-pedantic.sarif
+          category: zizmor-pedantic
+
+      - name: Upload SARIF (auditor)
+        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        with:
+          sarif_file: zizmor-auditor.sarif
+          category: zizmor-auditor
+
+  # Rollup job: Stable check name for branch protection
+  # This job aggregates audit results into a single status check.
+  # Configure branch protection to require "Security Audit Status" instead of individual jobs.
+  security-status:
+    name: Security Audit Status
+    needs: [detect-changes, zizmor-audit]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {} # No permissions needed - just checks job results
+    steps:
+      - name: Check results
+        run: |
+          echo "::group::Job Results"
+          echo "Workflow changes: $WORKFLOW_CHANGES"
+          echo "Audit result: $AUDIT_RESULT"
+          echo "::endgroup::"
+
+          # No workflow changes - skipped audit is OK
+          if [[ "$WORKFLOW_CHANGES" != "true" ]]; then
+            echo "::notice::No workflow changes - skipped security audit"
+            exit 0
+          fi
+
+          # Workflow changed - verify audit passed
+          if [[ "$AUDIT_RESULT" != "success" ]]; then
+            echo "::error::Security audit failed or was cancelled"
+            exit 1
+          fi
+
+          echo "::notice::Security audit passed"
+        env:
+          WORKFLOW_CHANGES: ${{ needs.detect-changes.outputs.workflows }}
+          AUDIT_RESULT: ${{ needs.zizmor-audit.result }}

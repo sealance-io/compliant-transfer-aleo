@@ -1,0 +1,8 @@
+# zizmor configuration
+# https://docs.zizmor.sh/configuration/
+#
+# Security posture: All checks enabled, no rules disabled or ignored.
+# This config documents our security stance - all default checks are active.
+
+# No rules are disabled - we want all security checks enabled
+rules: {}
