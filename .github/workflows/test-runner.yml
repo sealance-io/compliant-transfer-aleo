@@ -11,6 +11,13 @@ on:
         description: "devnet or devnode"
         required: true
         type: string
+    secrets:
+      GITHUB_TOKEN:
+        description: "GitHub token for container registry access"
+        required: true
+
+# No default permissions - jobs must explicitly request what they need
+permissions: {}
 
 jobs:
   run-tests:
@@ -19,19 +26,21 @@ jobs:
       TESTNET_ENDPOINT: "http://localhost:3030"
     permissions:
       contents: read
-      packages: read
-      actions: read
+      packages: read # Pull container images from GHCR
+      actions: read # Access workflow cache (setup-leo-action)
     timeout-minutes: 180
     defaults:
       run:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
 
       - name: Setup Leo CLI
         id: setup-leo
-        uses: sealance-io/setup-leo-action@b30e4cc53c73355def527d832604763e9b601fb2
+        uses: sealance-io/setup-leo-action@b30e4cc53c73355def527d832604763e9b601fb2 # v0.1.0
         with:
           version: "3.4.0"
           rust-version: "1.90.0"
@@ -43,10 +52,13 @@ jobs:
       - name: Verify Leo installation
         run: |
           leo --version
-          echo "Cache hit (binary): ${{ steps.setup-leo.outputs.cache-hit-binary }}"
-          echo "Build time: ${{ steps.setup-leo.outputs.build-time-seconds }}s"
+          echo "Cache hit (binary): $CACHE_HIT_BINARY"
+          echo "Build time: ${BUILD_TIME_SECONDS}s"
+        env:
+          CACHE_HIT_BINARY: ${{ steps.setup-leo.outputs.cache-hit-binary }}
+          BUILD_TIME_SECONDS: ${{ steps.setup-leo.outputs.build-time-seconds }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
@@ -61,20 +73,47 @@ jobs:
 
       - run: cp .env.example .env
 
+      # Note: Lockfile validation happens in caller workflow's linter job
+      # Not duplicated here to avoid running with GITHUB_TOKEN in environment
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
+        run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
+      - name: Run postinstall
+        run: npm run postinstall
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Container images pinned to SHA256 digests for supply chain security
+      - name: Pull test container image
+        run: |
+          if [ "$TEST_MODE" = "devnet" ]; then
+            docker pull ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0@sha256:816c5001cbf5ca73c78f8eb660dee77eedef1c9629c4c43d97f0d118f70c87a3
+          else
+            docker pull ghcr.io/sealance-io/leo-lang:v3.4.0-devnode@sha256:a8b989b0aefd16e14a2f5fc1518f36347963b01ce7fd409c042a26f77f7b5528
+          fi
+        env:
+          TEST_MODE: ${{ inputs.mode }}
 
       - name: Compile Leo programs
         run: npm run compile
 
       - name: Run tests
         run: |
-          if [ "${{ inputs.test-file }}" = "all" ]; then
+          if [ "$TEST_FILE" = "all" ]; then
             npm test
           else
-            npm run test:select ./test/${{ inputs.test-file }}
+            npm run test:select "./test/$TEST_FILE"
           fi
         env:
+          TEST_FILE: ${{ inputs.test-file }}
           DOCKER_HOST: "unix:///var/run/docker.sock"
           TESTCONTAINERS_RYUK_DISABLED: true
           USE_TEST_CONTAINERS: 1

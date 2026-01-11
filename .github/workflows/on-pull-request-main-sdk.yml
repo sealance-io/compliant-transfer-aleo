@@ -5,11 +5,39 @@ on:
     branches:
       - main
 
+# No default permissions - jobs must explicitly request what they need
+permissions: {}
+
 concurrency:
-  group: ci-sdk-tests-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Review dependency changes for vulnerabilities and license compliance
+  # Runs independently - only analyzes dependency diff, not full codebase
+  dependency-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
+        with:
+          fail-on-severity: high
+          # Block licenses incompatible with Apache-2.0
+          # GPL-2.0: Incompatible due to patent clause conflicts
+          # GPL-3.0: One-way compatibility only (Apache→GPL ok, GPL→Apache not ok)
+          # AGPL: Network copyleft, incompatible
+          deny-licenses: >-
+            GPL-2.0-only,
+            GPL-2.0-or-later,
+            GPL-3.0-only,
+            GPL-3.0-or-later,
+            AGPL-3.0-only,
+            AGPL-3.0-or-later
+
   # Detect if SDK code changed (skip for non-SDK or docs-only changes)
   # NOTE: This replaces workflow-level `paths` filter. Equivalent to:
   #   paths:
@@ -21,17 +49,20 @@ jobs:
   # "Success" for skipped jobs, allowing the SDK Status rollup to pass.
   detect-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       sdk: ${{ steps.filter.outputs.sdk }}
     steps:
-      - uses: actions/checkout@v4.3.0
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Check for SDK code changes
         id: filter
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+          git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
+          CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || echo "")
 
           # Filter to SDK files, excluding .md and examples
           SDK_CHANGES=$(echo "$CHANGED" | grep '^packages/policy-engine-sdk/' | grep -vE '\.md$' | grep -v '^packages/policy-engine-sdk/examples/' || echo "")
@@ -44,23 +75,36 @@ jobs:
             echo "sdk=false" >> $GITHUB_OUTPUT
             echo "No SDK code changes"
           fi
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
   linter:
     needs: detect-changes
     if: needs.detect-changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
 
+      # Validate lockfile BEFORE npm ci (npx runs without install)
+      - name: Validate lockfile
+        run: npx lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https
+
       - name: Install dependencies
         run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
 
       - name: Run prettier
         run: npm run format --workspace=@sealance-io/policy-engine-aleo
@@ -69,18 +113,25 @@ jobs:
     needs: [detect-changes, linter]
     if: needs.detect-changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
+        run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+
+      - name: Run postinstall
+        run: npm run postinstall
 
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
@@ -91,33 +142,46 @@ jobs:
   # Rollup job: Stable check name for branch protection
   sdk-status:
     name: SDK Status
-    needs: [detect-changes, linter, test]
+    needs: [dependency-review, detect-changes, linter, test]
     if: always()
     runs-on: ubuntu-latest
+    permissions: {} # No permissions needed - just checks job results
     steps:
       - name: Check results
         run: |
           echo "::group::Job Results"
-          echo "SDK changes: ${{ needs.detect-changes.outputs.sdk }}"
-          echo "Linter: ${{ needs.linter.result }}"
-          echo "Test: ${{ needs.test.result }}"
+          echo "Dependency review: $DEP_REVIEW_RESULT"
+          echo "SDK changes: $SDK_CHANGES"
+          echo "Linter: $LINTER_RESULT"
+          echo "Test: $TEST_RESULT"
           echo "::endgroup::"
 
+          # Dependency review must always pass (runs on all PRs)
+          if [[ "$DEP_REVIEW_RESULT" != "success" ]]; then
+            echo "::error::Dependency review failed - check for vulnerabilities or license issues"
+            exit 1
+          fi
+
           # No SDK changes - all skipped is OK
-          if [[ "${{ needs.detect-changes.outputs.sdk }}" != "true" ]]; then
+          if [[ "$SDK_CHANGES" != "true" ]]; then
             echo "::notice::No SDK code changes - skipped checks"
             exit 0
           fi
 
           # SDK changed - verify jobs passed
-          if [[ "${{ needs.linter.result }}" != "success" ]]; then
+          if [[ "$LINTER_RESULT" != "success" ]]; then
             echo "::error::Linter failed"
             exit 1
           fi
 
-          if [[ "${{ needs.test.result }}" != "success" ]]; then
+          if [[ "$TEST_RESULT" != "success" ]]; then
             echo "::error::SDK tests failed"
             exit 1
           fi
 
           echo "::notice::All SDK checks passed"
+        env:
+          DEP_REVIEW_RESULT: ${{ needs.dependency-review.result }}
+          SDK_CHANGES: ${{ needs.detect-changes.outputs.sdk }}
+          LINTER_RESULT: ${{ needs.linter.result }}
+          TEST_RESULT: ${{ needs.test.result }}

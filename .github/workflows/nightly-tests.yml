@@ -6,15 +6,25 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch: # Allow manual trigger
 
+# No default permissions - jobs must explicitly request what they need
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-commits:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       has_commits: ${{ steps.check.outputs.has_commits }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Check for commits in last 24 hours
         id: check
         run: |
@@ -31,10 +41,14 @@ jobs:
     needs: check-commits
     if: needs.check-commits.outputs.has_commits == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
       - name: Discover test files
         id: set-matrix
         run: |
@@ -53,7 +67,8 @@ jobs:
     with:
       test-file: ${{ matrix.test-file }}
       mode: devnet
-    secrets: inherit
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Rollup job: Aggregates all test results into a single status
   # Useful for notifications, badges, and tracking nightly health
@@ -62,36 +77,42 @@ jobs:
     needs: [check-commits, discover-tests, test-devnet]
     if: always()
     runs-on: ubuntu-latest
+    permissions: {} # No permissions needed - just checks job results
     steps:
       - name: Check results
         run: |
           echo "::group::Job Results"
-          echo "Check commits: ${{ needs.check-commits.result }}"
-          echo "Discover tests: ${{ needs.discover-tests.result }}"
-          echo "Test devnet: ${{ needs.test-devnet.result }}"
+          echo "Check commits: $CHECK_COMMITS_RESULT"
+          echo "Discover tests: $DISCOVER_TESTS_RESULT"
+          echo "Test devnet: $TEST_DEVNET_RESULT"
           echo "::endgroup::"
 
           # If no commits in last 24 hours, that's a valid skip (not a failure)
-          if [[ "${{ needs.check-commits.outputs.has_commits }}" != "true" ]]; then
+          if [[ "$HAS_COMMITS" != "true" ]]; then
             echo "::notice::No commits in last 24 hours - skipped tests"
             exit 0
           fi
 
           # If we got here, commits exist - check if tests passed
-          if [[ "${{ needs.check-commits.result }}" != "success" ]]; then
+          if [[ "$CHECK_COMMITS_RESULT" != "success" ]]; then
             echo "::error::Commit check failed"
             exit 1
           fi
 
-          if [[ "${{ needs.discover-tests.result }}" != "success" ]]; then
+          if [[ "$DISCOVER_TESTS_RESULT" != "success" ]]; then
             echo "::error::Test discovery failed"
             exit 1
           fi
 
-          if [[ "${{ needs.test-devnet.result }}" == "failure" ||
-                "${{ needs.test-devnet.result }}" == "cancelled" ]]; then
+          if [[ "$TEST_DEVNET_RESULT" == "failure" ||
+                "$TEST_DEVNET_RESULT" == "cancelled" ]]; then
             echo "::error::Nightly tests failed"
             exit 1
           fi
 
           echo "::notice::All nightly tests passed"
+        env:
+          CHECK_COMMITS_RESULT: ${{ needs.check-commits.result }}
+          DISCOVER_TESTS_RESULT: ${{ needs.discover-tests.result }}
+          TEST_DEVNET_RESULT: ${{ needs.test-devnet.result }}
+          HAS_COMMITS: ${{ needs.check-commits.outputs.has_commits }}
