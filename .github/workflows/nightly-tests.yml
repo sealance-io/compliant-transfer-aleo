@@ -54,3 +54,44 @@ jobs:
       test-file: ${{ matrix.test-file }}
       mode: devnet
     secrets: inherit
+
+  # Rollup job: Aggregates all test results into a single status
+  # Useful for notifications, badges, and tracking nightly health
+  nightly-status:
+    name: Nightly Status
+    needs: [check-commits, discover-tests, test-devnet]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "::group::Job Results"
+          echo "Check commits: ${{ needs.check-commits.result }}"
+          echo "Discover tests: ${{ needs.discover-tests.result }}"
+          echo "Test devnet: ${{ needs.test-devnet.result }}"
+          echo "::endgroup::"
+
+          # If no commits in last 24 hours, that's a valid skip (not a failure)
+          if [[ "${{ needs.check-commits.outputs.has_commits }}" != "true" ]]; then
+            echo "::notice::No commits in last 24 hours - skipped tests"
+            exit 0
+          fi
+
+          # If we got here, commits exist - check if tests passed
+          if [[ "${{ needs.check-commits.result }}" != "success" ]]; then
+            echo "::error::Commit check failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.discover-tests.result }}" != "success" ]]; then
+            echo "::error::Test discovery failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test-devnet.result }}" == "failure" ||
+                "${{ needs.test-devnet.result }}" == "cancelled" ]]; then
+            echo "::error::Nightly tests failed"
+            exit 1
+          fi
+
+          echo "::notice::All nightly tests passed"
