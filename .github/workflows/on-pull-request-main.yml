@@ -15,11 +15,39 @@ on:
     branches:
       - main
 
+# No default permissions - jobs must explicitly request what they need
+permissions: {}
+
 concurrency:
-  group: ci-tests-${{ github.ref }}-1
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Review dependency changes for vulnerabilities and license compliance
+  # Runs independently - only analyzes dependency diff, not full codebase
+  dependency-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
+        with:
+          fail-on-severity: high
+          # Block licenses incompatible with Apache-2.0
+          # GPL-2.0: Incompatible due to patent clause conflicts
+          # GPL-3.0: One-way compatibility only (Apache→GPL ok, GPL→Apache not ok)
+          # AGPL: Network copyleft, incompatible
+          deny-licenses: >-
+            GPL-2.0-only,
+            GPL-2.0-or-later,
+            GPL-3.0-only,
+            GPL-3.0-or-later,
+            AGPL-3.0-only,
+            AGPL-3.0-or-later
+
   # Detect if code changed (skip tests for doc-only PRs)
   # NOTE: This replaces `paths-ignore: ["**/*.md"]` at the workflow level.
   # Workflow-level path filters cause required status checks to remain "Pending"
@@ -27,17 +55,20 @@ jobs:
   # "Success" for skipped jobs, allowing the CI Status rollup to pass.
   detect-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v4.3.0
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Check for code changes
         id: filter
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+          git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
+          CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || echo "")
 
           # Check if any non-markdown files changed
           if echo "$CHANGED" | grep -qvE '\.md$'; then
@@ -47,19 +78,32 @@ jobs:
             echo "code=false" >> $GITHUB_OUTPUT
             echo "No code changes (docs only)"
           fi
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
   linter:
     needs: detect-changes
     if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4.3.0
-      - uses: actions/setup-node@v4.4.0
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
+      # Validate lockfile BEFORE npm ci (npx runs without install)
+      - name: Validate lockfile
+        run: npx lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund --ignore-scripts && npm run postinstall
+        run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+      - name: Run postinstall
+        run: npm run postinstall
       - name: Run prettier
         run: npm run format
 
@@ -90,7 +134,8 @@ jobs:
     with:
       test-file: ${{ matrix.test-file }}
       mode: devnet
-    secrets: inherit
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Devnode mode: Single job for ALL tests (future default)
   test-devnode:
@@ -100,35 +145,44 @@ jobs:
     with:
       test-file: all
       mode: devnode
-    secrets: inherit
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Rollup job: Stable check name for branch protection
   # This job aggregates all test results into a single status check.
   # Configure branch protection to require "CI Status" instead of individual test jobs.
   ci-status:
     name: CI Status
-    needs: [detect-changes, linter, discover-tests, test-devnet, test-devnode]
+    needs: [dependency-review, detect-changes, linter, discover-tests, test-devnet, test-devnode]
     if: always()
     runs-on: ubuntu-latest
+    permissions: {} # No permissions needed - just checks job results
     steps:
       - name: Check results
         run: |
           echo "::group::Job Results"
-          echo "Code changes: ${{ needs.detect-changes.outputs.code }}"
-          echo "Linter: ${{ needs.linter.result }}"
+          echo "Dependency review: $DEP_REVIEW_RESULT"
+          echo "Code changes: $CODE_CHANGES"
+          echo "Linter: $LINTER_RESULT"
           echo "Discover tests: ${{ needs.discover-tests.result }}"
-          echo "Devnet tests: ${{ needs.test-devnet.result }}"
-          echo "Devnode tests: ${{ needs.test-devnode.result }}"
+          echo "Devnet tests: $DEVNET_RESULT"
+          echo "Devnode tests: $DEVNODE_RESULT"
           echo "::endgroup::"
 
+          # Dependency review must always pass (runs on all PRs)
+          if [[ "$DEP_REVIEW_RESULT" != "success" ]]; then
+            echo "::error::Dependency review failed - check for vulnerabilities or license issues"
+            exit 1
+          fi
+
           # No code changes - all skipped is OK
-          if [[ "${{ needs.detect-changes.outputs.code }}" != "true" ]]; then
+          if [[ "$CODE_CHANGES" != "true" ]]; then
             echo "::notice::No code changes - skipped tests"
             exit 0
           fi
 
           # Code changed - verify jobs passed
-          if [[ "${{ needs.linter.result }}" != "success" ]]; then
+          if [[ "$LINTER_RESULT" != "success" ]]; then
             echo "::error::Linter failed or was cancelled"
             exit 1
           fi
@@ -138,23 +192,29 @@ jobs:
             exit 1
           fi
 
-          if [[ "${{ needs.test-devnet.result }}" == "failure" ||
-                "${{ needs.test-devnet.result }}" == "cancelled" ]]; then
+          if [[ "$DEVNET_RESULT" == "failure" ||
+                "$DEVNET_RESULT" == "cancelled" ]]; then
             echo "::error::Devnet tests failed"
             exit 1
           fi
 
-          if [[ "${{ needs.test-devnode.result }}" == "failure" ||
-                "${{ needs.test-devnode.result }}" == "cancelled" ]]; then
+          if [[ "$DEVNODE_RESULT" == "failure" ||
+                "$DEVNODE_RESULT" == "cancelled" ]]; then
             echo "::error::Devnode tests failed"
             exit 1
           fi
 
           # Ensure at least one test suite ran (when code changed)
-          if [[ "${{ needs.test-devnet.result }}" == "skipped" &&
-                "${{ needs.test-devnode.result }}" == "skipped" ]]; then
+          if [[ "$DEVNET_RESULT" == "skipped" &&
+                "$DEVNODE_RESULT" == "skipped" ]]; then
             echo "::error::No test suite ran - check workflow conditions"
             exit 1
           fi
 
           echo "::notice::All checks passed"
+        env:
+          DEP_REVIEW_RESULT: ${{ needs.dependency-review.result }}
+          CODE_CHANGES: ${{ needs.detect-changes.outputs.code }}
+          LINTER_RESULT: ${{ needs.linter.result }}
+          DEVNET_RESULT: ${{ needs.test-devnet.result }}
+          DEVNODE_RESULT: ${{ needs.test-devnode.result }}
