@@ -4,18 +4,50 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - "packages/policy-engine-sdk/**"
-      - "!packages/policy-engine-sdk/**/*.md"
-      - "!packages/policy-engine-sdk/examples/**"
 
 concurrency:
   group: ci-sdk-tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  format:
-    name: Format Check
+  # Detect if SDK code changed (skip for non-SDK or docs-only changes)
+  # NOTE: This replaces workflow-level `paths` filter. Equivalent to:
+  #   paths:
+  #     - "packages/policy-engine-sdk/**"
+  #     - "!packages/policy-engine-sdk/**/*.md"
+  #     - "!packages/policy-engine-sdk/examples/**"
+  # Workflow-level path filters cause required status checks to remain "Pending"
+  # forever when skipped, blocking PR merges. Job-level skipping via `if:` reports
+  # "Success" for skipped jobs, allowing the SDK Status rollup to pass.
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      sdk: ${{ steps.filter.outputs.sdk }}
+    steps:
+      - uses: actions/checkout@v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Check for SDK code changes
+        id: filter
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+
+          # Filter to SDK files, excluding .md and examples
+          SDK_CHANGES=$(echo "$CHANGED" | grep '^packages/policy-engine-sdk/' | grep -vE '\.md$' | grep -v '^packages/policy-engine-sdk/examples/' || echo "")
+
+          if [[ -n "$SDK_CHANGES" ]]; then
+            echo "sdk=true" >> $GITHUB_OUTPUT
+            echo "SDK code changes detected:"
+            echo "$SDK_CHANGES"
+          else
+            echo "sdk=false" >> $GITHUB_OUTPUT
+            echo "No SDK code changes"
+          fi
+
+  linter:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -34,7 +66,8 @@ jobs:
         run: npm run format --workspace=@sealance-io/policy-engine-aleo
 
   test:
-    name: SDK Tests
+    needs: [detect-changes, linter]
+    if: needs.detect-changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -54,3 +87,37 @@ jobs:
 
       - name: Run tests with coverage
         run: npm run test:coverage --workspace=@sealance-io/policy-engine-aleo
+
+  # Rollup job: Stable check name for branch protection
+  sdk-status:
+    name: SDK Status
+    needs: [detect-changes, linter, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "::group::Job Results"
+          echo "SDK changes: ${{ needs.detect-changes.outputs.sdk }}"
+          echo "Linter: ${{ needs.linter.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "::endgroup::"
+
+          # No SDK changes - all skipped is OK
+          if [[ "${{ needs.detect-changes.outputs.sdk }}" != "true" ]]; then
+            echo "::notice::No SDK code changes - skipped checks"
+            exit 0
+          fi
+
+          # SDK changed - verify jobs passed
+          if [[ "${{ needs.linter.result }}" != "success" ]]; then
+            echo "::error::Linter failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test.result }}" != "success" ]]; then
+            echo "::error::SDK tests failed"
+            exit 1
+          fi
+
+          echo "::notice::All SDK checks passed"
