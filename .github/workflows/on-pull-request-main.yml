@@ -63,3 +63,49 @@ jobs:
       test-file: all
       mode: devnode
     secrets: inherit
+
+  # Rollup job: Stable check name for branch protection
+  # This job aggregates all test results into a single status check.
+  # Configure branch protection to require "CI Status" instead of individual test jobs.
+  ci-status:
+    name: CI Status
+    needs: [linter, test-devnet, test-devnode]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "::group::Job Results"
+          echo "Linter: ${{ needs.linter.result }}"
+          echo "Devnet tests: ${{ needs.test-devnet.result }}"
+          echo "Devnode tests: ${{ needs.test-devnode.result }}"
+          echo "::endgroup::"
+
+          # Fail if linter failed
+          if [[ "${{ needs.linter.result }}" != "success" ]]; then
+            echo "::error::Linter failed or was cancelled"
+            exit 1
+          fi
+
+          # Fail if either test suite failed or was cancelled
+          # (One will be 'skipped' based on mode - that's expected)
+          if [[ "${{ needs.test-devnet.result }}" == "failure" ||
+                "${{ needs.test-devnet.result }}" == "cancelled" ]]; then
+            echo "::error::Devnet tests failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test-devnode.result }}" == "failure" ||
+                "${{ needs.test-devnode.result }}" == "cancelled" ]]; then
+            echo "::error::Devnode tests failed"
+            exit 1
+          fi
+
+          # Ensure at least one test suite ran
+          if [[ "${{ needs.test-devnet.result }}" == "skipped" &&
+                "${{ needs.test-devnode.result }}" == "skipped" ]]; then
+            echo "::error::No test suite ran - check workflow conditions"
+            exit 1
+          fi
+
+          echo "::notice::All checks passed"
