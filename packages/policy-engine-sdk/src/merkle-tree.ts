@@ -123,8 +123,30 @@ export function generateLeaves(addresses: string[], maxTreeDepth: number = 15): 
 }
 
 /**
+ * Binary search to find the first index where leaves[i] >= target.
+ * Returns leaves.length if target is greater than all elements.
+ */
+function lowerBound(leaves: bigint[], target: bigint): number {
+  let left = 0;
+  let right = leaves.length;
+
+  while (left < right) {
+    const mid = Math.floor((left + right) / 2);
+    if (leaves[mid] < target) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+
+  return left;
+}
+
+/**
  * Finds the leaf indices for non-inclusion proof of an address
  * Returns the indices of the two adjacent leaves that surround the target address
+ *
+ * Uses binary search for O(log n) performance on sorted leaves.
  *
  * @param merkleTree - The complete Merkle tree as array of BigInts
  * @param address - The Aleo address to find indices for
@@ -137,19 +159,23 @@ export function generateLeaves(addresses: string[], maxTreeDepth: number = 15): 
  * ```
  */
 export function getLeafIndices(merkleTree: bigint[], address: string): [number, number] {
-  const num_leaves = Math.floor((merkleTree.length + 1) / 2);
+  const numLeaves = Math.floor((merkleTree.length + 1) / 2);
   const addressBigInt = convertAddressToField(address);
-  const leaves = merkleTree.slice(0, num_leaves);
-  let rightLeafIndex = leaves.findIndex((leaf: bigint) => addressBigInt <= leaf);
-  let leftLeafIndex = rightLeafIndex - 1;
-  if (rightLeafIndex === -1) {
-    rightLeafIndex = leaves.length - 1;
-    leftLeafIndex = leaves.length - 1;
+  const leaves = merkleTree.slice(0, numLeaves);
+
+  const index = lowerBound(leaves, addressBigInt);
+
+  if (index >= leaves.length) {
+    // Address is larger than all leaves
+    return [leaves.length - 1, leaves.length - 1];
   }
-  if (rightLeafIndex === 0) {
-    leftLeafIndex = 0;
+  if (index === 0) {
+    // Address is smaller than or equal to first leaf
+    return [0, 0];
   }
-  return [leftLeafIndex, rightLeafIndex];
+
+  // Normal case: address falls between leaves[index-1] and leaves[index]
+  return [index - 1, index];
 }
 
 /**
