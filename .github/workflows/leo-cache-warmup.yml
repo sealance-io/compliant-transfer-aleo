@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup Leo CLI (Cache Warmup)
         id: setup-leo
-        uses: sealance-io/setup-leo-action@b30e4cc53c73355def527d832604763e9b601fb2 # v0.1.0
+        uses: sealance-io/setup-leo-action@e0c5065dc5aab7edcc8b137369637c669c772b09 # v1.0.0-rc.2
         with:
           version: "3.4.0"
           rust-version: "1.90.0"
