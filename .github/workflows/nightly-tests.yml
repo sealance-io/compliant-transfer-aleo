@@ -16,6 +16,7 @@ concurrency:
 jobs:
   check-commits:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
@@ -41,6 +42,7 @@ jobs:
     needs: check-commits
     if: needs.check-commits.outputs.has_commits == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
@@ -53,7 +55,8 @@ jobs:
         id: set-matrix
         run: |
           # Find all test files and create JSON array
-          files=$(find test -name "*.test.ts" -type f | xargs -I{} basename {} | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          # Uses -exec instead of xargs to safely handle special characters in filenames
+          files=$(find test -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "matrix={\"test-file\":$files}" >> $GITHUB_OUTPUT
           echo "Discovered test files: $files"
 
@@ -77,6 +80,7 @@ jobs:
     needs: [check-commits, discover-tests, test-devnet]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions: {} # No permissions needed - just checks job results
     steps:
       - name: Check results

@@ -65,9 +65,11 @@ jobs:
           cache-dependency-path: "./package-lock.json"
 
       - name: Install dokojs CLI
+        env:
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm config set @sealance-io:registry https://npm.pkg.github.com
-          npm config set //npm.pkg.github.com/:_authToken ${{ secrets.GITHUB_TOKEN }}
+          npm config set "//npm.pkg.github.com/:_authToken" "$NPM_TOKEN"
           npm install -g @sealance-io/dokojs@1.0.0 --ignore-scripts
           dokojs --version
 
@@ -85,7 +87,7 @@ jobs:
         run: npm run postinstall
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
