@@ -66,7 +66,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
    **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.
 
 2. **Install doko-js CLI**
-   [Jump to Installation Guide](docs/doko-installation-guide.md)
+   `npm install -g @sealance-io/dokojs@1.0.0 --ignore-scripts`
 
 3. **Build the Contracts**
    ```bash
@@ -88,10 +88,6 @@ npm install --workspace=@sealance-io/policy-engine-aleo <package-name>
 # Run commands in all workspaces
 npm run format --workspaces
 ```
-
-## Testing
-
-**For comprehensive testing documentation, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md)**
 
 ### Quick Start
 
@@ -137,8 +133,6 @@ The project supports two testing modes optimized for different use cases:
 >
 > For stable testing, use devnet mode (`DEVNET=true`).
 
-See [.env.testing](.env.testing) for configuration templates.
-
 ### Key Configuration Options
 
 ```bash
@@ -157,6 +151,8 @@ ALEO_TEST_IMAGE=custom/image:latest
 ```
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
+
+**For comprehensive testing documentation, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md)**
 
 ### Troubleshooting
 

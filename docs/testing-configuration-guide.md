@@ -35,27 +35,37 @@ The project supports two distinct testing modes optimized for different use case
 
 ```bash
 # Copy the recommended config
-cp .env.testing .env
+cp .env.example .env
 
 # Run tests with fast mode (default)
-npm test
-```
-
-The default configuration in `.env.testing` uses **devnode with proof skipping** for maximum speed during development.
-
-### For Comprehensive Testing
-
-```bash
-# Edit .env and uncomment the devnet configuration
-# DEVNET=true
-# CONSENSUS_VERSION=12
-
-npm test
+DEVNET=true npm test
 ```
 
 ## Configuration Modes
 
-### Mode 1: Fast Development (Default) ⚡
+### Mode 1: Full Devnet (Default) 🔬
+
+**Best for:** Final validation before deployment, CI pipelines
+
+```bash
+DEVNET=true
+CONSENSUS_VERSION=12
+```
+
+**What it does:**
+
+- Runs full devnet with multiple validators
+- Performs complete consensus simulation
+- Generates real ZK proofs
+- Creates deployment certificates
+
+**Performance:** Slow but realistic (minutes per transaction)
+
+**Trade-offs:** Significantly slower, resource-intensive
+
+---
+
+### Mode 2: Fast Development (Default) ⚡
 
 **Best for:** Daily development, quick feedback loops
 
@@ -75,28 +85,6 @@ SKIP_DEPLOY_CERTIFICATE=true
 **Performance:** Transactions complete in seconds instead of minutes
 
 **Trade-offs:** Not a realistic simulation of mainnet/testnet behavior
-
----
-
-### Mode 2: Full Devnet 🔬
-
-**Best for:** Final validation before deployment, CI pipelines
-
-```bash
-DEVNET=true
-CONSENSUS_VERSION=12
-```
-
-**What it does:**
-
-- Runs full devnet with multiple validators
-- Performs complete consensus simulation
-- Generates real ZK proofs
-- Creates deployment certificates
-
-**Performance:** Slow but realistic (minutes per transaction)
-
-**Trade-offs:** Significantly slower, resource-intensive
 
 ---
 
