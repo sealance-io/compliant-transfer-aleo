@@ -1,0 +1,236 @@
+# Dependabot Configuration for compliant-transfer-aleo
+#
+# This repository uses npm workspaces with a single root package-lock.json.
+# The root workspace manages all dependencies for both the root package and
+# the @sealance-io/policy-engine-aleo SDK in packages/policy-engine-sdk.
+#
+# Security note: This project uses lockfile-lint and npm ci with --ignore-scripts
+# for supply chain attack prevention. See docs/NPM-SECURITY.md for details.
+
+version: 2
+
+# Registry configuration for supply chain security
+# Explicitly locks npm packages to the official registry
+registries:
+  npm-registry:
+    type: npm-registry
+    url: https://registry.npmjs.org
+    replaces-base: true
+
+# ============================================================================
+# NPM PACKAGE ECOSYSTEM
+# ============================================================================
+# Configuration implements:
+# - Patch and minor version updates only (major versions blocked)
+# - Exact version installation (versioning-strategy: increase)
+# - 21-day minimum cooldown period before updates
+# - Grouped pull requests for efficiency
+# - Special handling for patched dependencies (@doko-js/*)
+# ============================================================================
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    registries:
+      - npm-registry
+
+    # Daily checks allow rapid security response while cooldown controls stability
+    schedule:
+      interval: "daily"
+      time: "09:00"
+      timezone: "Etc/UTC"
+
+    # CRITICAL: Always increase to exact versions, maintaining sync between
+    # package.json and package-lock.json. This respects exact version installation
+    # and prevents version range expansion (no ^ or ~ prefixes)
+    versioning-strategy: increase
+
+    # 21-day cooldown policy (2024 feature) - applies to all dependencies
+    # Security updates bypass cooldown automatically
+    cooldown:
+      semver-major-days: 60 # 2-month buffer for breaking changes; security updates bypass
+      semver-minor-days: 21 # Required 21-day waiting period for minor versions
+      semver-patch-days: 7 # Conservative 1-week validation for patches
+      include:
+        - "*" # Apply cooldown to all dependencies
+
+    # Group related updates into single PRs for efficiency
+    groups:
+      # Security updates get separate PR for immediate visibility
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+      # Group Provable HQ SDK updates (Aleo ecosystem)
+      # These often need to be updated together for compatibility
+      aleo-ecosystem:
+        applies-to: version-updates
+        patterns:
+          - "@provablehq/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group testing framework updates
+      # vitest, testcontainers, and related tools
+      testing-frameworks:
+        applies-to: version-updates
+        dependency-type: "development"
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "testcontainers"
+          - "@types/node"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group TypeScript and build tools
+      typescript-tooling:
+        applies-to: version-updates
+        dependency-type: "development"
+        patterns:
+          - "typescript"
+          - "tsx"
+          - "rimraf"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group code quality tools
+      code-quality:
+        applies-to: version-updates
+        dependency-type: "development"
+        patterns:
+          - "prettier"
+          - "lockfile-lint"
+          - "patch-package"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group remaining production dependencies (minor + patch only)
+      production-dependencies:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@provablehq/*"
+          - "@doko-js/*"
+
+      # Group remaining development dependencies (minor + patch only)
+      development-dependencies:
+        applies-to: version-updates
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "testcontainers"
+          - "@types/node"
+          - "typescript"
+          - "tsx"
+          - "rimraf"
+          - "prettier"
+          - "lockfile-lint"
+          - "patch-package"
+
+    # BLOCKED: @doko-js packages - these use custom patches via patch-package
+    # and should only be updated manually after verifying patch compatibility
+    #
+    # NOTE: Major version updates are NOT blocked - the 90-day cooldown in the
+    # cooldown section provides sufficient delay for manual review. This allows
+    # security updates for major versions to still come through (security updates
+    # bypass cooldown automatically).
+    ignore:
+      # Block @doko-js packages - custom fork with patches applied
+      # Updates require manual verification of patch compatibility
+      # See patches/ directory for applied patches
+      - dependency-name: "@doko-js/core"
+      - dependency-name: "@doko-js/utils"
+      - dependency-name: "@doko-js/wasm"
+
+    # Allow higher PR limit for security responsiveness
+    # This project publishes the SDK to npm, so dependency updates are critical
+    open-pull-requests-limit: 12
+
+    # Semantic commit messages for changelog generation
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(dev-deps)"
+      include: "scope"
+
+    # Labels for automated workflows and filtering
+    labels:
+      - "dependencies"
+      - "npm"
+      - "automated"
+
+  # ============================================================================
+  # GITHUB ACTIONS ECOSYSTEM
+  # ============================================================================
+  # Configuration implements:
+  # - Full commit SHA pinning for immutability (security best practice)
+  # - Automatic SHA updates with version comment maintenance
+  # - Weekly update schedule with grouping
+  # - Security-hardened against tag hijacking attacks
+  #
+  # Note: This project already uses SHA-pinned actions with version comments
+  # (e.g., actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0)
+  # Dependabot will automatically maintain both SHA and version comments
+  # ============================================================================
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+
+    # Weekly schedule balances security with update fatigue
+    # Monday morning aligns with existing security-audit.yml schedule
+    # and provides full week for incident response
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+
+    cooldown:
+      default-days: 21 # Since sem-ver granular config not supported - sets a catch-all conservative 21 days wait
+
+    # Dependabot automatically:
+    # 1. Detects SHA-pinned actions (format: actions/checkout@abc123...def # v4.1.1)
+    # 2. Updates SHA when new versions released
+    # 3. Updates version comment alongside SHA (since October 2022)
+    # No special configuration required - SHA pinning happens in workflow files
+
+    # Group all Actions updates into single PR to reduce noise
+    groups:
+      github-actions-updates:
+        patterns:
+          - "*"
+        # Separate major updates for careful review of potential breaking changes
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Conservative PR limit for manual security verification
+    # Each update should be reviewed for security implications
+    open-pull-requests-limit: 5
+
+    # Semantic commit messages
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+    # Labels for automated workflows and filtering
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"

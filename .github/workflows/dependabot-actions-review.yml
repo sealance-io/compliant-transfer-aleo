@@ -1,0 +1,151 @@
+# Adds review guidelines to GitHub Actions Dependabot PRs
+#
+# Since Dependabot doesn't support semver-based cooldowns for GitHub Actions,
+# this workflow provides contextual review guidance to help reviewers assess
+# risk based on: action source, version change type, and security impact.
+
+name: Dependabot Actions Review Guide
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+
+permissions:
+  pull-requests: write # Required for commenting on dependabot PRs
+
+jobs:
+  add-review-guide:
+    # Only run on Dependabot PRs for GitHub Actions
+    # Uses github.event.pull_request.user.login instead of github.actor
+    # to prevent spoofing (github.actor can be manipulated by pushing commits)
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Generate review guidance
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const prTitle = context.payload.pull_request.title;
+            const prBody = context.payload.pull_request.body || '';
+
+            // Parse action name and versions from PR title
+            // Format: "Bump actions/checkout from 4.1.0 to 4.2.0"
+            const bumpMatch = prTitle.match(/[Bb]ump\s+([^\s]+)\s+from\s+([^\s]+)\s+to\s+([^\s]+)/);
+
+            if (!bumpMatch) {
+              console.log('Not a standard Dependabot bump PR, skipping');
+              return;
+            }
+
+            const [, actionName, fromVersion, toVersion] = bumpMatch;
+
+            // Determine source trust level
+            let trustLevel, trustEmoji, trustGuidance;
+            if (actionName.startsWith('actions/') || actionName.startsWith('github/')) {
+              trustLevel = 'Official GitHub';
+              trustEmoji = ':white_check_mark:';
+              trustGuidance = 'Maintained by GitHub. Generally safe to merge after basic review.';
+            } else if (['docker/', 'azure/', 'aws-actions/', 'google-github-actions/'].some(p => actionName.startsWith(p))) {
+              trustLevel = 'Verified Publisher';
+              trustEmoji = ':blue_square:';
+              trustGuidance = 'From a verified organization. Standard review recommended.';
+            } else {
+              trustLevel = 'Third-Party';
+              trustEmoji = ':warning:';
+              trustGuidance = 'Third-party action. Enhanced scrutiny required - review changelog and source.';
+            }
+
+            // Determine semver change type
+            const fromParts = fromVersion.replace(/^v/, '').split('.').map(Number);
+            const toParts = toVersion.replace(/^v/, '').split('.').map(Number);
+
+            let semverType, semverEmoji, semverGuidance;
+            if (toParts[0] > fromParts[0]) {
+              semverType = 'Major';
+              semverEmoji = ':red_circle:';
+              semverGuidance = 'Breaking changes likely. Review changelog thoroughly and test in a feature branch if possible.';
+            } else if (toParts[1] > fromParts[1]) {
+              semverType = 'Minor';
+              semverEmoji = ':yellow_circle:';
+              semverGuidance = 'New features added. Check for any breaking changes in release notes.';
+            } else {
+              semverType = 'Patch';
+              semverEmoji = ':green_circle:';
+              semverGuidance = 'Bug fixes only. Low risk, quick review appropriate.';
+            }
+
+            // Build the review guidance comment
+            const comment = `## :robot: GitHub Actions Update Review Guide
+
+            This PR updates \`${actionName}\` from \`${fromVersion}\` to \`${toVersion}\`.
+
+            ### Risk Assessment
+
+            | Factor | Value | Guidance |
+            |--------|-------|----------|
+            | **Source** | ${trustEmoji} ${trustLevel} | ${trustGuidance} |
+            | **Version Change** | ${semverEmoji} ${semverType} | ${semverGuidance} |
+
+            ### Review Checklist
+
+            **Before approving, verify:**
+
+            - [ ] **Changelog reviewed** - No suspicious changes ([View Releases](https://github.com/${actionName}/releases))
+            - [ ] **Permissions unchanged** - Action doesn't require new permissions
+            - [ ] **SHA is pinned** - Update includes full commit SHA (not just tag)
+            - [ ] **CI passes** - All workflow checks are green
+
+            <details>
+            <summary><b>Security Impact Quick Reference</b></summary>
+
+            Check which workflows use this action and their permissions:
+
+            | Permission | Risk if Compromised |
+            |------------|---------------------|
+            | \`contents: write\` | Can modify repository code |
+            | \`id-token: write\` | Can generate OIDC tokens for cloud access |
+            | \`packages: write\` | Can publish malicious packages |
+            | \`deployments: write\` | Can trigger deployments |
+            | \`secrets\` access | Can exfiltrate sensitive data |
+
+            **Higher scrutiny needed if this action is used in:**
+            - Release/deployment workflows
+            - Workflows that access secrets
+            - Security-sensitive operations
+
+            </details>
+
+            ---
+            <sub>Generated by [dependabot-actions-review.yml](../blob/main/.github/workflows/dependabot-actions-review.yml) | [Review Guidelines](../blob/main/docs/DEPENDABOT-STRATEGY.md#github-actions-ecosystem-configuration)</sub>
+            `.replace(/^            /gm, '');
+
+            // Post or update comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('GitHub Actions Update Review Guide')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: comment,
+              });
+            }
