@@ -26,8 +26,8 @@ jobs:
       TESTNET_ENDPOINT: "http://localhost:3030"
     permissions:
       contents: read
-      packages: read # Pull container images from GHCR
-      actions: read # Access workflow cache (setup-leo-action)
+      packages: read # Required for installing @sealance-io/dokojs@1.0.0 (github packages)
+      actions: read # Required for accessing workflow cache (setup-leo-action)
     timeout-minutes: 180
     defaults:
       run:
