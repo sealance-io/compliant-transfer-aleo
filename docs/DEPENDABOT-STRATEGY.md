@@ -208,41 +208,20 @@ cooldown:
 
 **Result**: Zero-day vulnerabilities can be patched without waiting for cooldown periods.
 
-## Registry Configuration
-
-```yaml
-registries:
-  npm-registry:
-    type: npm-registry
-    url: https://registry.npmjs.org
-
-updates:
-  - package-ecosystem: "npm"
-    registries:
-      - npm-registry
-```
-
-**Security Benefits:**
-
-- ✅ Explicit registry declaration for auditability
-- ✅ Works with `lockfile-lint` for end-to-end registry validation
-- ✅ Combined with lockfile validation prevents dependency confusion attacks
-
-**Note**: This repository does NOT use `.npmrc` for registry configuration. Registry security is enforced through Dependabot's `registries` section combined with `lockfile-lint` validation.
-
 ## Integration with Security Practices
 
 Dependabot configuration works with other security measures:
 
-| Layer           | Tool            | Purpose                                    |
-| --------------- | --------------- | ------------------------------------------ |
-| **0. Registry** | Dependabot      | Explicit registry configuration            |
-| **1. Install**  | `npm ci`        | Deterministic installation from lockfile   |
-| **2. Validate** | `lockfile-lint` | Verify package sources and HTTPS           |
-| **3. Scan**     | `npm audit`     | Check for known vulnerabilities            |
-| **4. Update**   | Dependabot      | Automated security and maintenance updates |
-| **5. Review**   | GitHub PR       | Human review before merge                  |
-| **6. Audit**    | `zizmor`        | Weekly workflow security checks            |
+| Layer          | Tool            | Purpose                                    |
+| -------------- | --------------- | ------------------------------------------ |
+| **1. Install** | `npm ci`        | Deterministic installation from lockfile   |
+| **2. Validate**| `lockfile-lint` | Verify package sources and HTTPS           |
+| **3. Scan**    | `npm audit`     | Check for known vulnerabilities            |
+| **4. Update**  | Dependabot      | Automated security and maintenance updates |
+| **5. Review**  | GitHub PR       | Human review before merge                  |
+| **6. Audit**   | `zizmor`        | Weekly workflow security checks            |
+
+**Note**: Registry security is enforced through `lockfile-lint` validation (not Dependabot registry configuration, which requires authentication for npm).
 
 ## Open Pull Request Limits
 

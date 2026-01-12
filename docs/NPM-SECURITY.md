@@ -194,30 +194,15 @@ npm audit --audit-level=moderate
 
 **Location:** `.github/dependabot.yml`
 
-This repository does NOT use `.npmrc` for registry configuration. Instead, registry security is enforced through:
+This repository does NOT use `.npmrc` for registry configuration. Instead, registry security is enforced through `lockfile-lint` validation which checks all lockfile URLs before installation.
 
-1. **Dependabot `registries` configuration** - Explicitly defines allowed package sources
-2. **`lockfile-lint` validation** - Validates all lockfile URLs before installation
-
-**Dependabot Registry Configuration:**
-
-```yaml
-registries:
-  npm-registry:
-    type: npm-registry
-    url: https://registry.npmjs.org
-
-updates:
-  - package-ecosystem: "npm"
-    registries:
-      - npm-registry
-```
+**Note**: Dependabot's `registries` configuration requires authentication for npm-registry type, so we rely on `lockfile-lint` for registry enforcement instead.
 
 **What This Prevents:**
 
-- ✅ Explicit registry declaration for auditability
-- ✅ Combined with `lockfile-lint` prevents supply chain confusion
+- ✅ `lockfile-lint` validates all packages come from `registry.npmjs.org`
 - ✅ Version range attacks (Dependabot uses `versioning-strategy: increase` for exact versions)
+- ✅ Supply chain confusion (lockfile validation before every install)
 
 **Complementary Protection:**
 
@@ -235,7 +220,7 @@ updates:
 - [x] Use `npm ci` instead of `npm install` in CI/CD
 - [x] Use `--ignore-scripts` flag to prevent automatic script execution
 - [x] Use `--prefer-offline` to reduce network exposure
-- [x] Configure Dependabot with explicit registry for supply chain security
+- [x] Use `lockfile-lint` to validate registry sources before installation
 - [x] Use Dependabot `versioning-strategy: increase` for exact versions
 - [x] Use `--no-audit` and run audit separately for control
 - [x] Validate lockfile before installation with `lockfile-lint`
