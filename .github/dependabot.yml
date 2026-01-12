@@ -9,13 +9,6 @@
 
 version: 2
 
-# Registry configuration for supply chain security
-# Explicitly declares npm packages come from the official registry
-registries:
-  npm-registry:
-    type: npm-registry
-    url: https://registry.npmjs.org
-
 # ============================================================================
 # NPM PACKAGE ECOSYSTEM
 # ============================================================================
@@ -30,8 +23,6 @@ registries:
 updates:
   - package-ecosystem: "npm"
     directory: "/"
-    registries:
-      - npm-registry
 
     # Daily checks allow rapid security response while cooldown controls stability
     schedule:
