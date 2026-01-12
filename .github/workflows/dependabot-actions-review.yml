@@ -11,8 +11,8 @@ on:
     paths:
       - ".github/workflows/**"
 
-permissions:
-  pull-requests: write # Required for commenting on dependabot PRs
+# Restrict default permissions; jobs declare only what they need
+permissions: {}
 
 jobs:
   add-review-guide:
@@ -22,6 +22,8 @@ jobs:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      pull-requests: write # Required for commenting on dependabot PRs
 
     steps:
       - name: Generate review guidance

@@ -171,7 +171,7 @@ jobs:
           echo "Dependency review: $DEP_REVIEW_RESULT"
           echo "Code changes: $CODE_CHANGES"
           echo "Linter: $LINTER_RESULT"
-          echo "Discover tests: ${{ needs.discover-tests.result }}"
+          echo "Discover tests: $DISCOVER_TESTS_RESULT"
           echo "Devnet tests: $DEVNET_RESULT"
           echo "Devnode tests: $DEVNODE_RESULT"
           echo "::endgroup::"
@@ -194,7 +194,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "${{ needs.discover-tests.result }}" != "success" ]]; then
+          if [[ "$DISCOVER_TESTS_RESULT" != "success" ]]; then
             echo "::error::Test discovery failed"
             exit 1
           fi
@@ -223,5 +223,6 @@ jobs:
           DEP_REVIEW_RESULT: ${{ needs.dependency-review.result }}
           CODE_CHANGES: ${{ needs.detect-changes.outputs.code }}
           LINTER_RESULT: ${{ needs.linter.result }}
+          DISCOVER_TESTS_RESULT: ${{ needs.discover-tests.result }}
           DEVNET_RESULT: ${{ needs.test-devnet.result }}
           DEVNODE_RESULT: ${{ needs.test-devnode.result }}
