@@ -63,6 +63,10 @@ jobs:
   test-devnet:
     needs: [check-commits, discover-tests]
     if: needs.check-commits.outputs.has_commits == 'true'
+    permissions:
+      contents: read
+      packages: read # Required for installing @sealance-io/dokojs@1.0.0 (github packages)
+      actions: read # Required for accessing workflow cache (setup-leo-action)
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
