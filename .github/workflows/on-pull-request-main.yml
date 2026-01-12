@@ -63,19 +63,29 @@ jobs:
       - name: Run prettier
         run: npm run format
 
-  # Devnet mode: Matrix of jobs for CORE tests only (default)
-  # Full suite runs nightly via nightly-tests.yml
+  discover-tests:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4.3.0
+      - name: Discover test files
+        id: set-matrix
+        run: |
+          # Find all test files and create JSON array
+          files=$(find test -name "*.test.ts" -type f | xargs -I{} basename {} | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "matrix={\"test-file\":$files}" >> $GITHUB_OUTPUT
+          echo "Discovered test files: $files"
+
+  # Devnet mode: Matrix of jobs for ALL tests (default)
   test-devnet:
-    needs: [detect-changes, linter]
+    needs: [detect-changes, linter, discover-tests]
     if: needs.detect-changes.outputs.code == 'true' && inputs.mode != 'devnode'
     strategy:
       fail-fast: false
-      matrix:
-        test-file:
-          # Core subset for PR validation (full suite runs nightly)
-          - merkle_tree.test.ts
-          - freeze_registry.test.ts
-          - compliant_token.test.ts
+      matrix: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
     uses: ./.github/workflows/test-runner.yml
     with:
       test-file: ${{ matrix.test-file }}
@@ -97,7 +107,7 @@ jobs:
   # Configure branch protection to require "CI Status" instead of individual test jobs.
   ci-status:
     name: CI Status
-    needs: [detect-changes, linter, test-devnet, test-devnode]
+    needs: [detect-changes, linter, discover-tests, test-devnet, test-devnode]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -106,6 +116,7 @@ jobs:
           echo "::group::Job Results"
           echo "Code changes: ${{ needs.detect-changes.outputs.code }}"
           echo "Linter: ${{ needs.linter.result }}"
+          echo "Discover tests: ${{ needs.discover-tests.result }}"
           echo "Devnet tests: ${{ needs.test-devnet.result }}"
           echo "Devnode tests: ${{ needs.test-devnode.result }}"
           echo "::endgroup::"
@@ -119,6 +130,11 @@ jobs:
           # Code changed - verify jobs passed
           if [[ "${{ needs.linter.result }}" != "success" ]]; then
             echo "::error::Linter failed or was cancelled"
+            exit 1
+          fi
+
+          if [[ "${{ needs.discover-tests.result }}" != "success" ]]; then
+            echo "::error::Test discovery failed"
             exit 1
           fi
 
