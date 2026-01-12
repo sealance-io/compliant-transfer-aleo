@@ -71,7 +71,7 @@ jobs:
       test-file: ${{ matrix.test-file }}
       mode: devnet
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Rollup job: Aggregates all test results into a single status
   # Useful for notifications, badges, and tracking nightly health
