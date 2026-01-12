@@ -117,12 +117,15 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4.3.0
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
       - name: Discover test files
         id: set-matrix
         run: |
           # Find all test files and create JSON array
-          files=$(find test -name "*.test.ts" -type f | xargs -I{} basename {} | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          # Uses -exec instead of xargs to safely handle special characters in filenames
+          files=$(find test -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "matrix={\"test-file\":$files}" >> $GITHUB_OUTPUT
           echo "Discovered test files: $files"
 
