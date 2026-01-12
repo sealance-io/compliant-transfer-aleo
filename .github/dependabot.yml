@@ -38,6 +38,7 @@ updates:
     # 21-day cooldown policy (2024 feature) - applies to all dependencies
     # Security updates bypass cooldown automatically
     cooldown:
+      default-days: 21 # Catch-all fallback for any unlisted update types
       semver-major-days: 60 # 2-month buffer for breaking changes; security updates bypass
       semver-minor-days: 21 # Required 21-day waiting period for minor versions
       semver-patch-days: 7 # Conservative 1-week validation for patches
