@@ -86,24 +86,6 @@ jobs:
       - name: Run postinstall
         run: npm run postinstall
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Container images pinned to SHA256 digests for supply chain security
-      - name: Pull test container image
-        run: |
-          if [ "$TEST_MODE" = "devnet" ]; then
-            docker pull ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0@sha256:816c5001cbf5ca73c78f8eb660dee77eedef1c9629c4c43d97f0d118f70c87a3
-          else
-            docker pull ghcr.io/sealance-io/leo-lang:v3.4.0-devnode@sha256:a8b989b0aefd16e14a2f5fc1518f36347963b01ce7fd409c042a26f77f7b5528
-          fi
-        env:
-          TEST_MODE: ${{ inputs.mode }}
-
       - name: Compile Leo programs
         run: npm run compile
 
