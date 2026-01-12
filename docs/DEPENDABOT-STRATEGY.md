@@ -66,12 +66,12 @@ ignore:
 
 Updates are grouped by domain to reduce PR volume:
 
-| Group                  | Purpose                                              | Packages                               |
-| ---------------------- | ---------------------------------------------------- | -------------------------------------- |
-| **aleo-ecosystem**     | Aleo SDK dependencies often need coordinated updates | `@provablehq/*`                        |
+| Group                  | Purpose                                              | Packages                                        |
+| ---------------------- | ---------------------------------------------------- | ----------------------------------------------- |
+| **aleo-ecosystem**     | Aleo SDK dependencies often need coordinated updates | `@provablehq/*`                                 |
 | **testing-frameworks** | Test infrastructure changes together                 | vitest, testcontainers, @vitest/\*, @types/node |
-| **typescript-tooling** | Build tools update together                          | TypeScript, tsx, rimraf                |
-| **code-quality**       | Linting and formatting tools                         | prettier, lockfile-lint, patch-package |
+| **typescript-tooling** | Build tools update together                          | TypeScript, tsx, rimraf                         |
+| **code-quality**       | Linting and formatting tools                         | prettier, lockfile-lint, patch-package          |
 
 **Benefits**:
 
@@ -210,14 +210,14 @@ cooldown:
 
 Dependabot configuration works with other security measures:
 
-| Layer          | Tool            | Purpose                                    |
-| -------------- | --------------- | ------------------------------------------ |
-| **1. Install** | `npm ci`        | Deterministic installation from lockfile   |
-| **2. Validate**| `lockfile-lint` | Verify package sources and HTTPS           |
-| **3. Scan**    | `npm audit`     | Check for known vulnerabilities            |
-| **4. Update**  | Dependabot      | Automated security and maintenance updates |
-| **5. Review**  | GitHub PR       | Human review before merge                  |
-| **6. Audit**   | `zizmor`        | Weekly workflow security checks            |
+| Layer           | Tool            | Purpose                                    |
+| --------------- | --------------- | ------------------------------------------ |
+| **1. Install**  | `npm ci`        | Deterministic installation from lockfile   |
+| **2. Validate** | `lockfile-lint` | Verify package sources and HTTPS           |
+| **3. Scan**     | `npm audit`     | Check for known vulnerabilities            |
+| **4. Update**   | Dependabot      | Automated security and maintenance updates |
+| **5. Review**   | GitHub PR       | Human review before merge                  |
+| **6. Audit**    | `zizmor`        | Weekly workflow security checks            |
 
 **Note**: Registry security is enforced through `lockfile-lint` validation (not Dependabot registry configuration, which requires authentication for npm).
 
