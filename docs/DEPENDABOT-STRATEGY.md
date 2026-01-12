@@ -62,8 +62,6 @@ ignore:
 
 - **@doko-js packages**: Use custom patches via `patch-package`; automatic updates would break patches
 
-**Note**: Major versions are **not blocked**. The 90-day cooldown provides sufficient delay for manual review, while still allowing security updates for major versions to come through immediately (security updates bypass cooldown).
-
 ### Grouped Updates
 
 Updates are grouped by domain to reduce PR volume:
@@ -71,7 +69,7 @@ Updates are grouped by domain to reduce PR volume:
 | Group                  | Purpose                                              | Packages                               |
 | ---------------------- | ---------------------------------------------------- | -------------------------------------- |
 | **aleo-ecosystem**     | Aleo SDK dependencies often need coordinated updates | `@provablehq/*`                        |
-| **testing-frameworks** | Test infrastructure changes together                 | vitest, testcontainers, @vitest/\*     |
+| **testing-frameworks** | Test infrastructure changes together                 | vitest, testcontainers, @vitest/\*, @types/node |
 | **typescript-tooling** | Build tools update together                          | TypeScript, tsx, rimraf                |
 | **code-quality**       | Linting and formatting tools                         | prettier, lockfile-lint, patch-package |
 
