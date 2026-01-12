@@ -131,7 +131,7 @@ jobs:
       test-file: ${{ matrix.test-file }}
       mode: devnet
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Devnode mode: Single job for ALL tests (future default)
   test-devnode:
@@ -142,7 +142,7 @@ jobs:
       test-file: all
       mode: devnode
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Rollup job: Stable check name for branch protection
   # This job aggregates all test results into a single status check.
