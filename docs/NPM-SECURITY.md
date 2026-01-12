@@ -247,9 +247,12 @@ This repository does NOT use `.npmrc` for registry configuration. Instead, regis
 - [x] Use `prepublishOnly` script to ensure build before publish
 - [x] Configure `publishConfig.access: public` explicitly
 - [x] Separate publish scripts for different registries
-- [ ] Enable npm 2FA with `auth-and-writes` (for maintainers)
-- [ ] Consider npm provenance attestations (requires npm 9.5.0+)
-- [ ] Consider OIDC trusted publishing (eliminates long-lived tokens)
+- [x] Enable npm 2FA with `auth-and-writes` (for maintainers)
+- [x] npm provenance attestations (automatic with OIDC)
+- [x] OIDC trusted publishing (eliminates long-lived tokens)
+- [x] Emergency procedures documented (see `docs/RELEASING.md`)
+- [x] Cache disabled in release workflows (prevents cache poisoning)
+- [x] Fresh registry downloads during publish (no `--prefer-offline`)
 
 ---
 
@@ -332,6 +335,28 @@ event-stream@3.3.6 (safe) → event-stream@3.3.7 (compromised)
 
 ---
 
+### 5. Cache Poisoning in Release Workflow
+
+**Attack:** Attacker poisons GitHub Actions npm cache to inject malicious code during release
+
+**Prevention:** Release workflows disable caching entirely and download fresh from registry
+
+**How it works:**
+
+```yaml
+# Release workflow setup-node
+- uses: actions/setup-node@...
+  with:
+    # cache: "npm"  # DISABLED - prevents cache poisoning
+
+# Release workflow npm ci
+- run: npm ci --ignore-scripts # No --prefer-offline
+```
+
+🛡️ **Blocked** - No cache to poison, fresh downloads ensure integrity
+
+---
+
 ## 🚀 Advanced Security Recommendations
 
 ### Implemented
@@ -349,6 +374,58 @@ Dependabot is configured with cooldown periods to wait before adopting newly rel
 Security updates **bypass all cooldowns** automatically.
 
 See `.github/dependabot.yml` and `docs/DEPENDABOT-STRATEGY.md` for full configuration.
+
+---
+
+### Implemented (SDK Release Workflow)
+
+#### 1. **npm Provenance Attestations** ✅
+
+Cryptographic proof of package build origin. Automatically enabled with OIDC trusted publishing.
+
+**Benefits:**
+
+- Verifies package was built in GitHub Actions
+- Cryptographically signed build attestations
+- Prevents compromised package uploads
+
+**Verification:**
+
+```bash
+npm audit signatures  # Verify provenance of installed packages
+```
+
+#### 2. **OIDC Trusted Publishing** ✅
+
+Eliminates long-lived npm tokens entirely using short-lived OIDC credentials.
+
+**Benefits:**
+
+- No token storage in repository secrets (normal flow)
+- Automatic credential generation per-publish
+- Scoped to specific workflows and environments
+- Eliminates token theft risk
+
+**Configuration:** See `docs/RELEASING.md` for npm trusted publisher setup.
+
+#### 3. **Emergency Procedures** ✅
+
+Documented manual procedures for emergency situations.
+
+**Covered scenarios:**
+
+- Manual publish (when workflow is broken)
+- Rollback to previous version (dist-tag)
+- Deprecate bad versions
+- Unpublish (last resort, with limitations)
+
+**Features:**
+
+- Two-person rule (second admin approval required)
+- Step-by-step runbook for each scenario
+- Emergency checklist for consistency
+
+**Documentation:** See `docs/RELEASING.md` for emergency procedures.
 
 ---
 
@@ -370,37 +447,7 @@ npx npq install express
 - Typosquatting detection
 - Vulnerability database checks
 
-#### 2. **npm Provenance Attestations**
-
-Cryptographic proof of package build origin (requires npm 9.5.0+).
-
-**Benefits:**
-
-- Verifies package was built in GitHub Actions
-- Cryptographically signed build attestations
-- Prevents compromised package uploads
-
-**Implementation:**
-
-```yaml
-permissions:
-  id-token: write # Required for OIDC
-steps:
-  - run: npm publish --provenance
-```
-
-#### 3. **OIDC Trusted Publishing**
-
-Replace long-lived npm tokens with short-lived OIDC tokens.
-
-**Benefits:**
-
-- No token storage in repository secrets
-- Automatic token rotation
-- Scoped to specific workflows
-- Eliminates token theft risk
-
-#### 4. **Development Container Isolation**
+#### 2. **Development Container Isolation**
 
 Use dev containers to sandbox dependency execution.
 
@@ -426,8 +473,11 @@ Use dev containers to sandbox dependency execution.
 | `Snyk`                     | Deep vulnerability scanning | ❌          | Consider |
 | `Socket Security`          | Supply chain risk detection | ❌          | Consider |
 | `Dependabot`               | Automated updates           | ✅          | Active   |
-| Provenance                 | Build attestations          | ❌          | Future   |
-| OIDC Publishing            | Token-less publishing       | ❌          | Future   |
+| Provenance                 | Build attestations          | ✅          | Active   |
+| OIDC Publishing            | Token-less publishing       | ✅          | Active   |
+| Changesets                 | Version management          | ✅          | Active   |
+| Release cache disabled     | Prevent cache poisoning     | ✅          | Active   |
+| Publish retry + verify     | Robust publishing           | ✅          | Active   |
 
 ---
 
@@ -511,9 +561,11 @@ All workflows follow this security flow:
 3. ✅ Add `npm audit` to CI workflows
 4. ✅ Add `dependency-review-action` for PR-scoped vulnerability + license gating
 5. ✅ Configure Dependabot with cooldown strategy and registry locking
-6. ⏳ Evaluate Snyk or Socket Security for deeper scanning
-7. ⏳ Add npm provenance attestations for published packages
-8. ⏳ Migrate to OIDC trusted publishing
+6. ✅ Add npm provenance attestations for published packages
+7. ✅ Migrate to OIDC trusted publishing
+8. ✅ Implement Changesets for version management
+9. ✅ Document emergency procedures (rollback, deprecate, unpublish)
+10. ⏳ Evaluate Snyk or Socket Security for deeper scanning
 
 ---
 
