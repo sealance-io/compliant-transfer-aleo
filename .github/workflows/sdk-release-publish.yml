@@ -91,8 +91,9 @@ jobs:
 
       - name: Determine dist-tag
         id: dist-tag
+        env:
+          VERSION: ${{ needs.check-release.outputs.version }}
         run: |
-          VERSION="${{ needs.check-release.outputs.version }}"
           if [[ "$VERSION" == *"-alpha"* ]]; then
             echo "tag=alpha" >> $GITHUB_OUTPUT
             echo "Detected alpha pre-release: using 'alpha' dist-tag"
@@ -187,6 +188,7 @@ jobs:
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
 
       - name: Publish to GitHub Packages
+        # zizmor: ignore[use-trusted-publishing] - GitHub Packages uses GITHUB_TOKEN (no OIDC alternative)
         run: npm publish --workspace=@sealance-io/policy-engine-aleo --registry=https://npm.pkg.github.com
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
