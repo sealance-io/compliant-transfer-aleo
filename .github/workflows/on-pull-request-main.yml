@@ -27,6 +27,7 @@ jobs:
   # Runs independently - only analyzes dependency diff, not full codebase
   dependency-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
@@ -55,6 +56,7 @@ jobs:
   # "Success" for skipped jobs, allowing the CI Status rollup to pass.
   detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
@@ -85,6 +87,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -156,6 +159,7 @@ jobs:
     needs: [dependency-review, detect-changes, linter, discover-tests, test-devnet, test-devnode]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions: {} # No permissions needed - just checks job results
     steps:
       - name: Check results
