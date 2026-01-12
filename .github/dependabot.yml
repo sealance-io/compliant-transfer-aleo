@@ -136,11 +136,6 @@ updates:
 
     # BLOCKED: @doko-js packages - these use custom patches via patch-package
     # and should only be updated manually after verifying patch compatibility
-    #
-    # NOTE: Major version updates are NOT blocked - the 90-day cooldown in the
-    # cooldown section provides sufficient delay for manual review. This allows
-    # security updates for major versions to still come through (security updates
-    # bypass cooldown automatically).
     ignore:
       # Block @doko-js packages - custom fork with patches applied
       # Updates require manual verification of patch compatibility
