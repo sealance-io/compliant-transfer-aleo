@@ -10,12 +10,11 @@
 version: 2
 
 # Registry configuration for supply chain security
-# Explicitly locks npm packages to the official registry
+# Explicitly declares npm packages come from the official registry
 registries:
   npm-registry:
     type: npm-registry
     url: https://registry.npmjs.org
-    replaces-base: true
 
 # ============================================================================
 # NPM PACKAGE ECOSYSTEM
