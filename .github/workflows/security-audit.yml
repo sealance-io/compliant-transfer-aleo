@@ -88,58 +88,23 @@ jobs:
         with:
           persist-credentials: false
 
-      # Regular mode: Standard security checks
-      - name: Run zizmor (regular mode)
+      # Main audit: Upload results to GitHub Advanced Security
+      - name: Run zizmor
         uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
         with:
-          sarif-file: zizmor-regular.sarif
+          persona: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'auditor' || 'pedantic' }}
+          min-severity: medium
+          advanced-security: true
 
-      # Pedantic mode: Stricter checks (on PRs)
-      - name: Run zizmor (pedantic mode)
+      # PR annotations: Inline comments on changed lines
+      - name: Annotate PR
         if: github.event_name == 'pull_request'
         uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
         with:
-          args: --pedantic
-          sarif-file: zizmor-pedantic.sarif
-
-      # PR annotations: Inline annotations with medium+ severity failure
-      - name: Run zizmor (PR annotations)
-        if: github.event_name == 'pull_request'
-        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
-        with:
+          persona: pedantic
+          min-severity: medium
           annotations: true
           advanced-security: false
-          min-severity: medium
-          persona: pedantic
-
-      # Auditor mode: Most comprehensive checks (scheduled/manual runs)
-      - name: Run zizmor (auditor mode)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
-        with:
-          args: --persona=auditor
-          sarif-file: zizmor-auditor.sarif
-
-      - name: Upload SARIF (regular)
-        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
-        if: always()
-        with:
-          sarif_file: zizmor-regular.sarif
-          category: zizmor-regular
-
-      - name: Upload SARIF (pedantic)
-        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
-        if: always() && github.event_name == 'pull_request'
-        with:
-          sarif_file: zizmor-pedantic.sarif
-          category: zizmor-pedantic
-
-      - name: Upload SARIF (auditor)
-        uses: github/codeql-action/upload-sarif@45c373516f557556c15d420e3f5e0aa3d64366bc # v3.31.9
-        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-        with:
-          sarif_file: zizmor-auditor.sarif
-          category: zizmor-auditor
 
   # Rollup job: Stable check name for branch protection
   # This job aggregates audit results into a single status check.
