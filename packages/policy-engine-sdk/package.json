@@ -31,9 +31,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build",
-    "build:examples": "npm run build && cd examples && npm install --ignore-scripts",
-    "publish:github": "npm publish --registry=https://npm.pkg.github.com",
-    "publish:npm": "npm publish --registry=https://registry.npmjs.org"
+    "build:examples": "npm run build && cd examples && npm install --ignore-scripts"
   },
   "keywords": [
     "aleo",
