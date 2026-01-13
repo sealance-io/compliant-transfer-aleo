@@ -33,7 +33,7 @@
     "@doko-js/wasm": "1.0.0",
     "@provablehq/sdk": "0.9.9",
     "@sealance-io/policy-engine-aleo": "workspace:*",
-    "@types/node": "24.9.1",
+    "@types/node": "24.10.4",
     "cross-env": "7.0.3",
     "dotenv": "16.5.0",
     "patch-package": "8.0.1",
