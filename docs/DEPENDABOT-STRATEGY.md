@@ -136,10 +136,10 @@ SHA-pinned actions do **not** receive Dependabot security alerts or automatic se
 
 > "Dependabot only creates alerts for vulnerable actions that use semantic versioning and will not create alerts for actions pinned to SHA values."
 
-| Pinning Style | Security Alerts | Security Updates | Tag Hijacking Protection |
-|---------------|-----------------|------------------|--------------------------|
-| Semver (`@v4`) | ✅ Yes | ✅ Yes | ❌ No |
-| SHA (`@abc123...`) | ❌ No | ❌ No | ✅ Yes |
+| Pinning Style      | Security Alerts | Security Updates | Tag Hijacking Protection |
+| ------------------ | --------------- | ---------------- | ------------------------ |
+| Semver (`@v4`)     | ✅ Yes          | ✅ Yes           | ❌ No                    |
+| SHA (`@abc123...`) | ❌ No           | ❌ No            | ✅ Yes                   |
 
 **Why we chose SHA pinning despite this trade-off**:
 
@@ -296,12 +296,12 @@ labels:
 
 When deciding on configuration values, we considered:
 
-| Factor                   | npm            | GitHub Actions   | Weight       |
-| ------------------------ | -------------- | ---------------- | ------------ |
-| **Security Impact**      | High (runtime) | Medium (CI-only) | 🔴 Critical  |
-| **Breaking Change Risk** | High           | Medium           | 🟡 Important |
-| **Update Frequency**     | Daily          | Weekly           | 🟢 Moderate  |
-| **Manual Review Need**   | High           | Medium           | 🟡 Important |
+| Factor                   | npm            | GitHub Actions           | Weight       |
+| ------------------------ | -------------- | ------------------------ | ------------ |
+| **Security Impact**      | High (runtime) | Medium (CI-only)         | 🔴 Critical  |
+| **Breaking Change Risk** | High           | Medium                   | 🟡 Important |
+| **Update Frequency**     | Daily          | Weekly                   | 🟢 Moderate  |
+| **Manual Review Need**   | High           | Medium                   | 🟡 Important |
 | **SHA Pinning**          | N/A            | Yes (no security alerts) | 🟡 Important |
 
 **Result**: Conservative npm cooldowns, pragmatic Actions cooldowns with manual security review
