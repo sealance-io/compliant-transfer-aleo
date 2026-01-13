@@ -89,7 +89,7 @@ jobs:
 
       # Main audit: Upload results to GitHub Advanced Security
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        uses: zizmorcore/zizmor-action@e639db99335bc9038abc0e066dfcd72e23d26fb4 # v0.3.0
         with:
           persona: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'auditor' || 'pedantic' }}
           min-severity: medium
@@ -98,7 +98,7 @@ jobs:
       # PR annotations: Inline comments on changed lines
       - name: Annotate PR
         if: github.event_name == 'pull_request'
-        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        uses: zizmorcore/zizmor-action@e639db99335bc9038abc0e066dfcd72e23d26fb4 # v0.3.0
         with:
           persona: pedantic
           min-severity: medium
