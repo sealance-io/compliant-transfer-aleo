@@ -37,9 +37,9 @@ updates:
 
     # 21-day cooldown policy (2024 feature) - applies to all dependencies
     # Security updates bypass cooldown automatically
+    # Note: Major updates are blocked via ignore rule, so no semver-major-days needed
     cooldown:
       default-days: 21 # Catch-all fallback for any unlisted update types
-      semver-major-days: 60 # 2-month buffer for breaking changes; security updates bypass
       semver-minor-days: 21 # Required 21-day waiting period for minor versions
       semver-patch-days: 7 # Conservative 1-week validation for patches
       include:
@@ -144,22 +144,22 @@ updates:
       - dependency-name: "@doko-js/core"
       - dependency-name: "@doko-js/utils"
       - dependency-name: "@doko-js/wasm"
+      # Block ALL major version updates - require manual review
+      # Security updates bypass this automatically
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
-    # Allow higher PR limit for security responsiveness
-    # This project publishes the SDK to npm, so dependency updates are critical
-    open-pull-requests-limit: 12
+    # Conservative PR limit to avoid overwhelming CI
+    open-pull-requests-limit: 5
 
     # Semantic commit messages for changelog generation
     commit-message:
       prefix: "chore(deps)"
       prefix-development: "chore(dev-deps)"
-      include: "scope"
 
     # Labels for automated workflows and filtering
     labels:
       - "dependencies"
-      - "npm"
-      - "automated"
 
   # ============================================================================
   # GITHUB ACTIONS ECOSYSTEM
@@ -213,10 +213,7 @@ updates:
     # Semantic commit messages
     commit-message:
       prefix: "ci"
-      include: "scope"
 
     # Labels for automated workflows and filtering
     labels:
       - "dependencies"
-      - "github-actions"
-      - "automated"
