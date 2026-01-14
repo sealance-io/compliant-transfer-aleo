@@ -28,7 +28,7 @@ jobs:
       contents: read
       packages: read # Required for installing @sealance-io/dokojs@1.0.0 (github packages)
       actions: read # Required for accessing workflow cache (setup-leo-action)
-    timeout-minutes: 180
+    timeout-minutes: 240 # 4 hours for devnet based tests
     defaults:
       run:
         shell: bash
@@ -106,3 +106,4 @@ jobs:
           DEVNET: ${{ inputs.mode == 'devnet' }}
           CONSENSUS_VERSION: 12
           CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11"
+          CONSENSUS_CHECK_TIMEOUT: 900000 # 15 minutes waiting for devnet bootstap
