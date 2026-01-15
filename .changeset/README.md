@@ -16,6 +16,7 @@ npx changeset
 ```
 
 Follow the prompts to:
+
 1. Select the package being changed (policy-engine-sdk)
 2. Choose the semver bump type (patch/minor/major)
 3. Write a summary of the changes

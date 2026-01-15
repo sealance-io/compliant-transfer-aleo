@@ -342,6 +342,7 @@ event-stream@3.3.6 (safe) → event-stream@3.3.7 (compromised)
 **Prevention:** Release workflows disable caching entirely and download fresh from registry
 
 **How it works:**
+
 ```yaml
 # Release workflow setup-node
 - uses: actions/setup-node@...
@@ -349,7 +350,7 @@ event-stream@3.3.6 (safe) → event-stream@3.3.7 (compromised)
     # cache: "npm"  # DISABLED - prevents cache poisoning
 
 # Release workflow npm ci
-- run: npm ci --ignore-scripts  # No --prefer-offline
+- run: npm ci --ignore-scripts # No --prefer-offline
 ```
 
 🛡️ **Blocked** - No cache to poison, fresh downloads ensure integrity

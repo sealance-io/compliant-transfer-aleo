@@ -68,15 +68,15 @@ Add support for custom Merkle tree depth configuration
 
 ### When to Add Changesets
 
-| Change Type                  | Bump Type | Example                                       |
-| ---------------------------- | --------- | --------------------------------------------- |
-| Bug fix                      | `patch`   | Fix incorrect proof generation                |
-| Documentation                | `patch`   | Update README, fix typos                      |
-| New feature                  | `minor`   | Add new API method                            |
-| Deprecation                  | `minor`   | Mark old method as deprecated                 |
-| Breaking change              | `major`   | Change function signature, remove API         |
-| Dependency update (breaking) | `major`   | Update to incompatible @provablehq/sdk        |
-| Dependency update (minor)    | `patch`   | Update compatible dependencies                |
+| Change Type                  | Bump Type | Example                                |
+| ---------------------------- | --------- | -------------------------------------- |
+| Bug fix                      | `patch`   | Fix incorrect proof generation         |
+| Documentation                | `patch`   | Update README, fix typos               |
+| New feature                  | `minor`   | Add new API method                     |
+| Deprecation                  | `minor`   | Mark old method as deprecated          |
+| Breaking change              | `major`   | Change function signature, remove API  |
+| Dependency update (breaking) | `major`   | Update to incompatible @provablehq/sdk |
+| Dependency update (minor)    | `patch`   | Update compatible dependencies         |
 
 ### When NOT to Add Changesets
 
@@ -93,12 +93,12 @@ Not all changes require a release. Skip changesets for:
 
 **Note on SDK markdown files:**
 
-| File | Ships to npm? | Needs changeset? |
-|------|--------------|------------------|
-| `README.md` | ✅ Yes | ✅ Yes (patch) |
-| `CHANGELOG.md` | ✅ Yes (auto) | ❌ No (auto-generated) |
-| `DEVELOPMENT.md` | ❌ No | ❌ No |
-| `QUICK_START.md` | ❌ No | ❌ No |
+| File             | Ships to npm? | Needs changeset?       |
+| ---------------- | ------------- | ---------------------- |
+| `README.md`      | ✅ Yes        | ✅ Yes (patch)         |
+| `CHANGELOG.md`   | ✅ Yes (auto) | ❌ No (auto-generated) |
+| `DEVELOPMENT.md` | ❌ No         | ❌ No                  |
+| `QUICK_START.md` | ❌ No         | ❌ No                  |
 
 ---
 
@@ -167,11 +167,13 @@ Add support for custom Merkle tree depth configuration
 ```
 
 **You can:**
+
 - Edit the summary text before committing
 - Edit the bump type if you reconsider
 - Delete the file if you decide not to release this change
 
 **You should NOT:**
+
 - Rename the file (the random name prevents merge conflicts)
 - Create files manually (use `npx changeset` to ensure correct format)
 
@@ -274,6 +276,7 @@ npx changeset version  # Creates 1.0.0-alpha.0, then 1.0.0-alpha.1, etc.
 ```
 
 The publish workflow automatically:
+
 - Detects pre-release versions (contains `-`)
 - Publishes with appropriate dist-tag (`alpha`, `beta`, `rc`, or `next`)
 - Marks GitHub Release as pre-release
@@ -289,13 +292,13 @@ npx changeset version   # Next version will be stable (1.0.0)
 
 #### Dist-tag Behavior
 
-| Version Pattern | Dist-tag | Install Command |
-|-----------------|----------|-----------------|
-| `1.0.0` | `latest` | `npm install @sealance-io/policy-engine-aleo` |
-| `1.0.0-alpha.0` | `alpha` | `npm install @sealance-io/policy-engine-aleo@alpha` |
-| `1.0.0-beta.0` | `beta` | `npm install @sealance-io/policy-engine-aleo@beta` |
-| `1.0.0-rc.0` | `rc` | `npm install @sealance-io/policy-engine-aleo@rc` |
-| `1.0.0-foo.0` | `next` | `npm install @sealance-io/policy-engine-aleo@next` |
+| Version Pattern | Dist-tag | Install Command                                     |
+| --------------- | -------- | --------------------------------------------------- |
+| `1.0.0`         | `latest` | `npm install @sealance-io/policy-engine-aleo`       |
+| `1.0.0-alpha.0` | `alpha`  | `npm install @sealance-io/policy-engine-aleo@alpha` |
+| `1.0.0-beta.0`  | `beta`   | `npm install @sealance-io/policy-engine-aleo@beta`  |
+| `1.0.0-rc.0`    | `rc`     | `npm install @sealance-io/policy-engine-aleo@rc`    |
+| `1.0.0-foo.0`   | `next`   | `npm install @sealance-io/policy-engine-aleo@next`  |
 
 #### Example: Full Pre-release Cycle
 
@@ -362,6 +365,7 @@ npm view @sealance-io/policy-engine-aleo version
 ```
 
 **Post-publish:**
+
 - Create GitHub Release manually
 - Document the incident
 - Fix the broken workflow
@@ -406,12 +410,14 @@ npm unpublish @sealance-io/policy-engine-aleo@<version>
 ```
 
 **Limitations:**
+
 - Only works within **72 hours** of publish
 - Only works if the package has **fewer than 300 downloads/week**
 - Cannot unpublish if other packages depend on that exact version
 - Leaves a "hole" in version history (can't reuse that version number)
 
 **When to unpublish:**
+
 - Accidentally published secrets/credentials
 - Severe security vulnerability with no workaround
 - Published completely broken/corrupt package
@@ -439,15 +445,16 @@ For any emergency action:
 This is the primary security gate for npm publishing. Configure at:
 `Repository Settings → Environments → npm-publish`
 
-| Setting                         | Value             | Rationale                                      |
-| ------------------------------- | ----------------- | ---------------------------------------------- |
-| **Required reviewers**          | 2+ repository admins | Enforces two-person rule                     |
-| **Prevent self-review**         | ✅ Enabled        | Person who triggered can't approve themselves  |
-| **Allow admin bypass**          | ❌ Disabled       | Use break-glass workflow for emergencies       |
-| **Deployment branches**         | `main` only       | Prevents publishing from feature branches/forks |
-| **Wait timer** (optional)       | 0-5 minutes       | Cooling-off period before deployment proceeds  |
+| Setting                   | Value                | Rationale                                       |
+| ------------------------- | -------------------- | ----------------------------------------------- |
+| **Required reviewers**    | 2+ repository admins | Enforces two-person rule                        |
+| **Prevent self-review**   | ✅ Enabled           | Person who triggered can't approve themselves   |
+| **Allow admin bypass**    | ❌ Disabled          | Use break-glass workflow for emergencies        |
+| **Deployment branches**   | `main` only          | Prevents publishing from feature branches/forks |
+| **Wait timer** (optional) | 0-5 minutes          | Cooling-off period before deployment proceeds   |
 
 **Why disable admin bypass?**
+
 - Maintains two-person rule even for admins
 - If an admin account is compromised, attacker still can't publish alone
 - Break-glass workflow provides audited emergency path
@@ -458,12 +465,13 @@ This is the primary security gate for npm publishing. Configure at:
 Less critical since GitHub Packages is non-blocking. Configure at:
 `Repository Settings → Environments → github-packages`
 
-| Setting                 | Value       | Rationale                                |
-| ----------------------- | ----------- | ---------------------------------------- |
-| **Required reviewers**  | None        | Non-blocking job, low risk               |
-| **Deployment branches** | `main` only | Consistency with npm-publish             |
+| Setting                 | Value       | Rationale                    |
+| ----------------------- | ----------- | ---------------------------- |
+| **Required reviewers**  | None        | Non-blocking job, low risk   |
+| **Deployment branches** | `main` only | Consistency with npm-publish |
 
 **Why no required reviewers?**
+
 - GitHub Packages is secondary (npm is primary)
 - Publishing is non-blocking (`continue-on-error: true`)
 - Failure just means GitHub Packages is out of sync
@@ -485,12 +493,12 @@ When the publish workflow runs:
 
 Setting `Deployment branches: main only` ensures:
 
-| Scenario                    | Result           |
-| --------------------------- | ---------------- |
-| Workflow on `main`          | ✅ Can request environment |
-| Workflow on feature branch  | ❌ Blocked       |
-| Workflow from fork PR       | ❌ Blocked       |
-| Compromised PR workflow     | ❌ Blocked       |
+| Scenario                   | Result                     |
+| -------------------------- | -------------------------- |
+| Workflow on `main`         | ✅ Can request environment |
+| Workflow on feature branch | ❌ Blocked                 |
+| Workflow from fork PR      | ❌ Blocked                 |
+| Compromised PR workflow    | ❌ Blocked                 |
 
 This prevents attackers from triggering publishes via malicious PRs or compromised feature branches.
 
@@ -514,6 +522,7 @@ Configure on npmjs.com:
 After release, verify:
 
 1. **npm**: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo
+
    - Check version is correct
    - Check provenance badge appears
 
@@ -555,6 +564,7 @@ After release, verify:
 ### Workflow Re-run After Partial Failure
 
 The workflow is designed to be idempotent. If a re-run is needed:
+
 - npm publish will fail if package version already exists (expected - means it succeeded previously)
 - GitHub tag/release creation will skip if already exists
 - Check the `Release Status` job for the actual outcome
@@ -562,6 +572,7 @@ The workflow is designed to be idempotent. If a re-run is needed:
 ### GitHub Packages Failed But Release Succeeded
 
 This is expected behavior. GitHub Packages is non-blocking:
+
 - npm is the primary registry - users can install from there
 - Check the warning in the workflow logs for details
 - Manually publish to GitHub Packages later if needed
@@ -590,6 +601,7 @@ The release workflow includes several robustness features to handle transient fa
 ### Dry-run Validation
 
 Before actual publishing, the workflow runs `npm publish --dry-run` to validate:
+
 - Package contents and structure are correct
 - Version doesn't already exist on the registry
 - Package.json configuration is valid
@@ -604,6 +616,7 @@ npm publish retries up to 3 times with 30-second backoff between attempts. This 
 ### Pre-release Dist-tags
 
 The workflow automatically detects pre-release versions and publishes with appropriate dist-tags:
+
 - `1.0.0-alpha.X` → published with `--tag alpha`
 - `1.0.0-beta.X` → published with `--tag beta`
 - `1.0.0-rc.X` → published with `--tag rc`
@@ -619,6 +632,7 @@ After publishing, the workflow verifies the package is available on npm by runni
 ### Non-Blocking GitHub Packages
 
 GitHub Packages publishing is non-blocking (`continue-on-error: true`). If it fails:
+
 - The release still succeeds (npm is the primary registry)
 - A warning is logged
 - Users can still install from npm
@@ -626,6 +640,7 @@ GitHub Packages publishing is non-blocking (`continue-on-error: true`). If it fa
 ### Idempotent Releases
 
 The GitHub Release creation handles re-runs gracefully:
+
 - If the tag already exists, it continues without error
 - If the release already exists, it continues without error
 - This allows safe workflow re-runs after partial failures
