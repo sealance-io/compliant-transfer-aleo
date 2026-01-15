@@ -522,6 +522,7 @@ Configure on npmjs.com:
 After release, verify:
 
 1. **npm**: https://www.npmjs.com/package/@sealance-io/policy-engine-aleo
+
    - Check version is correct
    - Check provenance badge appears
 
