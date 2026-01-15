@@ -18,7 +18,6 @@ export default defineConfig({
         "src/types.ts", // Type definitions only, no runtime code
       ],
       include: ["src/**/*.ts"],
-      all: true,
       thresholds: {
           statements: 80,
           branches: 80,

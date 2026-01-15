@@ -197,7 +197,7 @@ describe("fetch-utils", () => {
     });
 
     afterEach(() => {
-      vi.restoreAllMocks();
+      vi.resetAllMocks();
     });
 
     it("resolves after specified delay", async () => {

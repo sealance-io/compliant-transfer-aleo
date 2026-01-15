@@ -17,7 +17,7 @@ describe("AleoAPIClient", () => {
     });
 
     // Clear all mocks
-    vi.restoreAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("Constructor", () => {

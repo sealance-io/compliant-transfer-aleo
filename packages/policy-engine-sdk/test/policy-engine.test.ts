@@ -17,7 +17,7 @@ describe("PolicyEngine", () => {
       logger: silentLogger, // Suppress log noise in tests
     });
 
-    vi.restoreAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("Constructor", () => {

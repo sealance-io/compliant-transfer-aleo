@@ -5,7 +5,7 @@ import type { Logger } from "../src/logger.js";
 
 describe("trackTransactionStatus", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.resetAllMocks();
     vi.useFakeTimers();
   });
 
