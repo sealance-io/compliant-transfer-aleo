@@ -114,6 +114,7 @@ program multisig_token_proxy.aleo {
             assert(existing_pending_op.expires_at_block < block.height);
         }
 
+        assert(!private_pending_requests.contains(wallet_signing_op_id_hash));
         pending_requests.set(wallet_signing_op_id_hash, multisig_op);
         init_signing_op_fut.await();
     }
