@@ -41,11 +41,8 @@ export default defineConfig({
     // 1. No file-level parallelism: run test files one after another
     fileParallelism: false,
 
-    // 2. No worker threads or child-process forks: single thread + single fork
-    poolOptions: {
-      threads: { singleThread: true },
-      forks: { singleFork: true },
-    },
+    // 2. No worker threads or child-process forks: use single worker
+    maxWorkers: 1,
 
     // 3. Strict sequence ordering, no concurrency or shuffling
     sequence: {
