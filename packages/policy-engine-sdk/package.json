@@ -44,7 +44,6 @@
     "privacy"
   ],
   "dependencies": {
-    "@provablehq/sdk": "^0.9.9",
     "@scure/base": "^2.0.0"
   },
   "devDependencies": {
@@ -62,5 +61,8 @@
     "type": "git",
     "url": "git+https://github.com/sealance-io/compliant-transfer-aleo.git",
     "directory": "packages/policy-engine-sdk"
+  },
+  "peerDependencies": {
+    "@provablehq/sdk": "^0.9.14"
   }
 }
