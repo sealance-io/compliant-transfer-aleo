@@ -37,7 +37,7 @@
     "cross-env": "10.1.0",
     "dotenv": "17.2.3",
     "patch-package": "8.0.1",
-    "prettier": "3.5.3",
+    "prettier": "3.7.4",
     "rimraf": "6.0.1",
     "testcontainers": "11.11.0",
     "tsx": "4.20.6",
