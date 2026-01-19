@@ -11,7 +11,9 @@ This document explains the rationale behind our Dependabot configuration. For im
 | Cooldown (patch) | 3 days | 21 days |
 | Major updates | Blocked | Grouped |
 | Grouping | Aggressive | All grouped |
-| PR limit | 5 | 5 |
+| PR limit | 5 | **0 (disabled)** |
+
+> **Note:** GitHub Actions version updates are temporarily disabled (`open-pull-requests-limit: 0`) pending policy review. Since actions are SHA-pinned, no security updates are available either (see trade-off below). Weekly `zizmor` audits provide security coverage. The policy below is retained for when updates are re-enabled.
 
 ## Core Principles
 
