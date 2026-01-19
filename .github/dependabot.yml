@@ -15,8 +15,8 @@ version: 2
 # Configuration implements:
 # - Patch and minor version updates only (major versions blocked)
 # - Exact version installation (versioning-strategy: increase)
-# - 21-day minimum cooldown period before updates
-# - Grouped pull requests for efficiency
+# - 7/3-day cooldown (minor/patch) per GitHub recommended defaults
+# - Aggressive grouping (SDK deps excluded for individual review)
 # - Special handling for patched dependencies (@doko-js/*)
 # ============================================================================
 
@@ -24,7 +24,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
 
-    # Daily checks allow rapid security response while cooldown controls stability
+    # Daily checks maximize chances of catching releases post-cooldown; security updates trigger immediately
     schedule:
       interval: "daily"
       time: "09:00"
@@ -35,105 +35,37 @@ updates:
     # and prevents version range expansion (no ^ or ~ prefixes)
     versioning-strategy: increase
 
-    # 21-day cooldown policy (2024 feature) - applies to all dependencies
+    # 7/3-day cooldown policy (GitHub recommended defaults)
+    # Blocks ~80% of supply chain attacks while minimizing "stuck forever" bug risk
     # Security updates bypass cooldown automatically
-    # Note: Major updates are blocked via ignore rule, so no semver-major-days needed
     cooldown:
-      default-days: 21 # Catch-all fallback for any unlisted update types
-      semver-minor-days: 21 # Required 21-day waiting period for minor versions
-      semver-patch-days: 7 # Conservative 1-week validation for patches
+      default-days: 7 # Catch-all fallback for any unlisted update types
+      semver-minor-days: 7 # 7-day waiting period for minor versions
+      semver-patch-days: 3 # 3-day validation for patches
       include:
         - "*" # Apply cooldown to all dependencies
 
-    # Group related updates into single PRs for efficiency
+    # Simplified grouping: bundle all non-SDK dependencies into single PRs
     groups:
-      # Security updates get separate PR for immediate visibility
+      # Security updates grouped for immediate visibility
       security-updates:
         applies-to: security-updates
         patterns:
           - "*"
 
-      # Group Provable HQ SDK updates (Aleo ecosystem)
-      # These often need to be updated together for compatibility
-      aleo-ecosystem:
+      # All non-SDK dependencies grouped together (minor + patch only)
+      # SDK dependencies (@provablehq/*, @scure/base) get individual PRs for careful review
+      all-dependencies:
         applies-to: version-updates
-        patterns:
-          - "@provablehq/*"
-        update-types:
-          - "minor"
-          - "patch"
-
-      # Group testing framework updates
-      # vitest, testcontainers, and related tools
-      testing-frameworks:
-        applies-to: version-updates
-        dependency-type: "development"
-        patterns:
-          - "vitest"
-          - "@vitest/*"
-          - "testcontainers"
-          - "@types/node"
-        update-types:
-          - "minor"
-          - "patch"
-
-      # Group TypeScript and build tools
-      typescript-tooling:
-        applies-to: version-updates
-        dependency-type: "development"
-        patterns:
-          - "typescript"
-          - "tsx"
-          - "rimraf"
-        update-types:
-          - "minor"
-          - "patch"
-
-      # Group code quality tools
-      code-quality:
-        applies-to: version-updates
-        dependency-type: "development"
-        patterns:
-          - "prettier"
-          - "lockfile-lint"
-          - "patch-package"
-        update-types:
-          - "minor"
-          - "patch"
-
-      # Group remaining production dependencies (minor + patch only)
-      production-dependencies:
-        applies-to: version-updates
-        dependency-type: "production"
-        update-types:
-          - "minor"
-          - "patch"
         patterns:
           - "*"
         exclude-patterns:
-          - "@provablehq/*"
-          - "@doko-js/*"
-
-      # Group remaining development dependencies (minor + patch only)
-      development-dependencies:
-        applies-to: version-updates
-        dependency-type: "development"
+          - "@provablehq/*" # SDK dep - review individually
+          - "@scure/base" # SDK dep - review individually
+          - "@doko-js/*" # Blocked anyway (patches)
         update-types:
           - "minor"
           - "patch"
-        patterns:
-          - "*"
-        exclude-patterns:
-          - "vitest"
-          - "@vitest/*"
-          - "testcontainers"
-          - "@types/node"
-          - "typescript"
-          - "tsx"
-          - "rimraf"
-          - "prettier"
-          - "lockfile-lint"
-          - "patch-package"
 
     # BLOCKED: @doko-js packages - these use custom patches via patch-package
     # and should only be updated manually after verifying patch compatibility
