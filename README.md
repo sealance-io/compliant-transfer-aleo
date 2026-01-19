@@ -85,7 +85,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
    **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.
 
 2. **Install doko-js CLI**
-   `npm install -g @sealance-io/dokojs@1.0.0 --ignore-scripts`
+   `npm install -g @sealance-io/dokojs@1.0.1 --ignore-scripts`
 
 3. **Build the Contracts**
    ```bash

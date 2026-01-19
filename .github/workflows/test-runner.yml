@@ -26,7 +26,7 @@ jobs:
       TESTNET_ENDPOINT: "http://localhost:3030"
     permissions:
       contents: read
-      packages: read # Required for installing @sealance-io/dokojs@1.0.0 (github packages)
+      packages: read # Required for installing @sealance-io/dokojs@1.0.1 (github packages)
       actions: read # Required for accessing workflow cache (setup-leo-action)
     timeout-minutes: 240 # 4 hours for devnet based tests
     defaults:
@@ -70,7 +70,7 @@ jobs:
         run: |
           npm config set @sealance-io:registry https://npm.pkg.github.com
           npm config set "//npm.pkg.github.com/:_authToken" "$NPM_TOKEN"
-          npm install -g @sealance-io/dokojs@1.0.0 --ignore-scripts
+          npm install -g @sealance-io/dokojs@1.0.1 --ignore-scripts
           dokojs --version
 
       - run: cp .env.example .env
