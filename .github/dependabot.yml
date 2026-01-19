@@ -140,7 +140,7 @@ updates:
 
     # Conservative PR limit for manual security verification
     # Each update should be reviewed for security implications
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0 # disable
 
     # Semantic commit messages
     commit-message:
