@@ -4,14 +4,14 @@ This document explains the rationale behind our Dependabot configuration. For im
 
 ## Policy Summary
 
-| Setting | npm | GitHub Actions |
-|---------|-----|----------------|
-| Schedule | Daily | Weekly (Monday) |
-| Cooldown (minor) | 7 days | 21 days |
-| Cooldown (patch) | 3 days | 21 days |
-| Major updates | Blocked | Grouped |
-| Grouping | Aggressive | All grouped |
-| PR limit | 5 | **0 (disabled)** |
+| Setting          | npm        | GitHub Actions   |
+| ---------------- | ---------- | ---------------- |
+| Schedule         | Daily      | Weekly (Monday)  |
+| Cooldown (minor) | 7 days     | 21 days          |
+| Cooldown (patch) | 3 days     | 21 days          |
+| Major updates    | Blocked    | Grouped          |
+| Grouping         | Aggressive | All grouped      |
+| PR limit         | 5          | **0 (disabled)** |
 
 > **Note:** GitHub Actions version updates are temporarily disabled (`open-pull-requests-limit: 0`) pending policy review. Since actions are SHA-pinned, no security updates are available either (see trade-off below). Weekly `zizmor` audits provide security coverage. The policy below is retained for when updates are re-enabled.
 
@@ -29,11 +29,11 @@ This document explains the rationale behind our Dependabot configuration. For im
 
 Based on [empirical attack data](https://blog.yossarian.net/2025/11/21/We-should-all-be-using-dependency-cooldowns):
 
-| Cooldown | Attacks Blocked | Our Choice |
-|----------|-----------------|------------|
-| 3 days | ~60% | Patches |
-| 7 days | ~80% | Minor |
-| 14 days | ~90% | Too conservative |
+| Cooldown | Attacks Blocked | Our Choice       |
+| -------- | --------------- | ---------------- |
+| 3 days   | ~60%            | Patches          |
+| 7 days   | ~80%            | Minor            |
+| 14 days  | ~90%            | Too conservative |
 
 We chose GitHub's recommended defaults (7/3) to balance security with avoiding the ["stuck forever" bug](https://github.com/dependabot/dependabot-core/issues/13691) where frequently-released packages never update.
 
@@ -41,11 +41,11 @@ We chose GitHub's recommended defaults (7/3) to balance security with avoiding t
 
 **Aggressive grouping** - all dependencies in a single PR, except:
 
-| Excluded | Reason |
-|----------|--------|
+| Excluded        | Reason                                                       |
+| --------------- | ------------------------------------------------------------ |
 | `@provablehq/*` | SDK dependency - needs careful review for Aleo compatibility |
-| `@scure/base` | SDK dependency - cryptographic library |
-| `@doko-js/*` | Blocked entirely (custom patches) |
+| `@scure/base`   | SDK dependency - cryptographic library                       |
+| `@doko-js/*`    | Blocked entirely (custom patches)                            |
 
 This reduces PR volume significantly while ensuring SDK-affecting changes get individual attention.
 
@@ -60,13 +60,14 @@ This reduces PR volume significantly while ensuring SDK-affecting changes get in
 
 We use commit SHA pinning (`@abc123...`) instead of semver tags (`@v4`):
 
-| | Semver Tags | SHA Pinning |
-|-|-------------|-------------|
-| Security alerts | Yes | **No** |
-| Tag hijacking protection | No | **Yes** |
-| Immutability | No | **Yes** |
+|                          | Semver Tags | SHA Pinning |
+| ------------------------ | ----------- | ----------- |
+| Security alerts          | Yes         | **No**      |
+| Tag hijacking protection | No          | **Yes**     |
+| Immutability             | No          | **Yes**     |
 
 **Why SHA despite no security alerts?** A compromised tag can be silently updated; a SHA cannot. We compensate through:
+
 - 21-day cooldown for community vetting
 - Manual changelog review on each PR
 - Weekly `zizmor` workflow audits
@@ -75,10 +76,10 @@ We use commit SHA pinning (`@abc123...`) instead of semver tags (`@v4`):
 
 Since SHA-pinned actions don't receive automatic security alerts:
 
-| Risk Level | Actions | Review |
-|------------|---------|--------|
-| Lower | Official (`actions/*`, `github/*`), patch versions | Standard review |
-| Higher | Third-party, major versions, write permissions | Enhanced scrutiny |
+| Risk Level | Actions                                            | Review            |
+| ---------- | -------------------------------------------------- | ----------------- |
+| Lower      | Official (`actions/*`, `github/*`), patch versions | Standard review   |
+| Higher     | Third-party, major versions, write permissions     | Enhanced scrutiny |
 
 ## Integration with Security Stack
 
