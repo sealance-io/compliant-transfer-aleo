@@ -470,19 +470,16 @@ All workflows follow this security flow:
 ### If a Compromised Dependency is Detected
 
 1. **Immediate Actions:**
-
    - Review `npm audit` output for details
    - Check if compromised version is in lockfile
    - Isolate affected environments
 
 2. **Investigation:**
-
    - Run `npm audit` locally
    - Review `package-lock.json` changes in recent PRs
    - Check for unexpected lockfile modifications
 
 3. **Remediation:**
-
    - Update to patched version if available
    - Remove compromised dependency if no patch exists
    - Consider alternatives or workarounds
