@@ -106,4 +106,4 @@ jobs:
           DEVNET: ${{ inputs.mode == 'devnet' }}
           CONSENSUS_VERSION: 12
           CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11"
-          CONSENSUS_CHECK_TIMEOUT: 900000 # 15 minutes waiting for devnet bootstap
+          CONSENSUS_CHECK_TIMEOUT: 1200000 # 20 minutes waiting for devnet bootstap
