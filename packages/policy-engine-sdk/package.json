@@ -47,7 +47,7 @@
     "@scure/base": "^2.0.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.7",
+    "@types/node": "^24.10.9",
     "@vitest/coverage-v8": "^4.0.17",
     "prettier": "^3.7.4",
     "rimraf": "^6.1.2",
