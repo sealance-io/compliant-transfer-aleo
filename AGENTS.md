@@ -133,31 +133,38 @@ npm run lint:licenses
 Programs are organized in `/programs` subdirectories by function:
 
 **`core/`** - Foundation programs
+
 - **`merkle_tree.leo`**: Core program for verifying Merkle proofs (inclusion and non-inclusion). Imported by freeze list registry and compliance programs.
 
 **`freezelist_registry/`** - Freeze list management
+
 - **`sealance_freezelist_registry.leo`**: Standalone freeze list registry with Merkle tree verification. Uses role-based access control with `MANAGER_ROLE` and `FREEZELIST_MANAGER_ROLE`. Maintains current and previous Merkle roots with configurable block height windows for smooth transitions.
 - **`multisig_freezelist_registry.leo`**: Multi-signature variant of the freeze list registry.
 
 **`policy/`** - Compliance policies
+
 - **`sealed_report_policy.leo`**: Token policy that grants issuers access to transaction details. Enforces sanctions list compliance for both sender and recipient.
 - **`sealed_threshold_report_policy.leo`**: Reports transactions only when daily spend exceeds 1000. Enforces sanctions compliance.
 - **`sealed_timelock_policy.leo`**: Allows senders to lock funds for a specified period. Enforces sanctions compliance.
 
 **`token/`** - Token implementations
+
 - **`sealed_report_token.leo`**: Self-contained token that manages its own supply and balances without relying on `token_registry.aleo`. Includes transaction reporting to issuers.
 - **`compliant_token_template.leo`**: Template for creating new compliant tokens.
 - **`multisig_compliant_token.leo`**: Multi-signature compliant token implementation.
 
 **`proxy/`** - Proxy contracts
+
 - **`multisig_token_proxy.leo`**: Multi-signature proxy for token operations.
 - **`multisig_freezelist_proxy.leo`**: Multi-signature proxy for freeze list operations.
 
 **`vendor/`** - External/shared programs
+
 - **`token_registry.leo`**: Shared token registry used by some policies.
 - **`multisig_core.leo`**: Core multi-signature functionality.
 
 **`demo/`** - Demo/example programs
+
 - **`gqrfmwbtyp.leo`**: Enables exchange of native Aleo tokens for compliant tokens.
 
 **Program Dependencies:**
@@ -177,6 +184,7 @@ gqrfmwbtyp.aleo (token exchange)
 ### Compliance Architecture
 
 **Key Pattern**: Programs use **Merkle tree non-inclusion proofs** to privately verify addresses are NOT on the freeze list:
+
 1. Freeze list stored on-chain in `sealance_freezelist_registry.aleo`
 2. SDK fetches list, builds Merkle tree off-chain, generates non-inclusion proofs
 3. Proofs submitted with transactions for private compliance verification
@@ -188,6 +196,7 @@ gqrfmwbtyp.aleo (token exchange)
 ### Policy Engine SDK
 
 Located in `/packages/policy-engine-sdk`. Key modules:
+
 - **`policy-engine.ts`**: Main `PolicyEngine` class - fetches freeze lists, generates non-inclusion proofs
 - **`api-client.ts`**: Blockchain API client with retry logic and concurrency control
 - **`merkle-tree.ts`**: `buildTree()`, `getSiblingPath()`, `getLeafIndices()` for Merkle operations
@@ -196,6 +205,7 @@ Located in `/packages/policy-engine-sdk`. Key modules:
 ### Testing Infrastructure
 
 Tests use **Testcontainers** to spin up a containerized Aleo environment. Configuration:
+
 - `vitest.global-setup.ts`: Starts container, waits for consensus, exposes port 3030
 - `vitest.config.ts`: Sequential execution, long timeouts (3000s), alphabetical ordering
 - `aleo-config.js`: Test accounts (deployer, admin, investigator, etc.) and network config
@@ -301,15 +311,15 @@ Uses custom fork (`@doko-js/core`, `@doko-js/utils`, `@doko-js/wasm`) for compil
 
 ## File Locations
 
-| Path | Contents |
-|------|----------|
-| `/programs/**/*.leo` | Leo programs (subdirs: `core/`, `freezelist_registry/`, `policy/`, `token/`, `proxy/`, `vendor/`, `demo/`) |
-| `/packages/policy-engine-sdk/src/` | SDK source |
-| `/test/*.test.ts` | Tests |
-| `/lib/` | Shared libraries |
-| `/artifacts/` | Compiled output |
-| `/scripts/` | Deployment scripts |
-| `/docs/` | `NPM-SECURITY.md`, `RELEASING.md`, `testing-configuration-guide.md` |
+| Path                               | Contents                                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `/programs/**/*.leo`               | Leo programs (subdirs: `core/`, `freezelist_registry/`, `policy/`, `token/`, `proxy/`, `vendor/`, `demo/`) |
+| `/packages/policy-engine-sdk/src/` | SDK source                                                                                                 |
+| `/test/*.test.ts`                  | Tests                                                                                                      |
+| `/lib/`                            | Shared libraries                                                                                           |
+| `/artifacts/`                      | Compiled output                                                                                            |
+| `/scripts/`                        | Deployment scripts                                                                                         |
+| `/docs/`                           | `NPM-SECURITY.md`, `RELEASING.md`, `testing-configuration-guide.md`                                        |
 
 ## Dependency Management & Security
 
@@ -320,6 +330,7 @@ Uses custom fork (`@doko-js/core`, `@doko-js/utils`, `@doko-js/wasm`) for compil
 ## CI/CD and Branch Protection
 
 **Required status checks** for branch protection (use rollup job names, not individual test names):
+
 - `CI Status` (on-pull-request-main.yml)
 - `SDK Status` (on-pull-request-main-sdk.yml)
 - `Nightly Status`, `Security Audit Status`, `Release Status`
