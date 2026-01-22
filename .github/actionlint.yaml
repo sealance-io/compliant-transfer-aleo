@@ -1,0 +1,13 @@
+# actionlint configuration
+# See: https://github.com/rhysd/actionlint/blob/main/docs/config.md
+
+self-hosted-runner:
+  labels: []
+
+# Ignore patterns for specific workflow files
+paths:
+  .github/workflows/sdk-release-publish.yml:
+    ignore:
+      # 'outcome' is valid for jobs with continue-on-error: true (gives result before continue-on-error)
+      # actionlint's type checker doesn't recognize this property
+      - 'property "outcome" is not defined'
