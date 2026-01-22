@@ -23,6 +23,9 @@ jobs:
     outputs:
       should_publish: ${{ steps.check.outputs.should_publish }}
       version: ${{ steps.version.outputs.version }}
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Check if release PR
         id: check
@@ -30,10 +33,10 @@ jobs:
           # Primary check: source branch is changeset-release/main (canonical changesets pattern)
           # This is more robust than title matching since the branch name is deterministic
           if [[ "$PR_MERGED" == "true" && "$HEAD_REF" == "changeset-release/main" ]]; then
-            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
             echo "Release PR detected (branch: $HEAD_REF) - proceeding to publish"
           else
-            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
             echo "Not a release PR (merged=$PR_MERGED, branch=$HEAD_REF) - skipping"
           fi
         env:
@@ -51,7 +54,7 @@ jobs:
         id: version
         run: |
           VERSION=$(jq -r '.version' packages/policy-engine-sdk/package.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Package version: $VERSION"
 
   # Publish to npm registry using OIDC (no token required)
@@ -64,6 +67,9 @@ jobs:
     permissions:
       contents: read
       id-token: write # REQUIRED for npm OIDC trusted publishing
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -95,33 +101,33 @@ jobs:
           VERSION: ${{ needs.check-release.outputs.version }}
         run: |
           if [[ "$VERSION" == *"-alpha"* ]]; then
-            echo "tag=alpha" >> $GITHUB_OUTPUT
+            echo "tag=alpha" >> "$GITHUB_OUTPUT"
             echo "Detected alpha pre-release: using 'alpha' dist-tag"
           elif [[ "$VERSION" == *"-beta"* ]]; then
-            echo "tag=beta" >> $GITHUB_OUTPUT
+            echo "tag=beta" >> "$GITHUB_OUTPUT"
             echo "Detected beta pre-release: using 'beta' dist-tag"
           elif [[ "$VERSION" == *"-rc"* ]]; then
-            echo "tag=rc" >> $GITHUB_OUTPUT
+            echo "tag=rc" >> "$GITHUB_OUTPUT"
             echo "Detected release candidate: using 'rc' dist-tag"
           elif [[ "$VERSION" == *"-"* ]]; then
-            echo "tag=next" >> $GITHUB_OUTPUT
+            echo "tag=next" >> "$GITHUB_OUTPUT"
             echo "Detected pre-release: using 'next' dist-tag"
           else
-            echo "tag=latest" >> $GITHUB_OUTPUT
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
             echo "Stable release: using 'latest' dist-tag"
           fi
 
       - name: Publish to npm (with retry)
         run: |
-          TAG_FLAG=""
+          publish_args=(--workspace=@sealance-io/policy-engine-aleo)
           if [[ "$DIST_TAG" != "latest" ]]; then
-            TAG_FLAG="--tag $DIST_TAG"
+            publish_args+=(--tag "$DIST_TAG")
             echo "Publishing with dist-tag: $DIST_TAG"
           fi
 
           for attempt in 1 2 3; do
             echo "Publish attempt $attempt of 3..."
-            if npm publish --workspace=@sealance-io/policy-engine-aleo $TAG_FLAG; then
+            if npm publish "${publish_args[@]}"; then
               echo "Successfully published to npm"
               exit 0
             fi
@@ -143,7 +149,7 @@ jobs:
           sleep 15
           for attempt in 1 2 3; do
             echo "Verification attempt $attempt of 3..."
-            if npm view @sealance-io/policy-engine-aleo@$VERSION version 2>/dev/null; then
+            if npm view "@sealance-io/policy-engine-aleo@${VERSION}" version 2>/dev/null; then
               echo "Verified: package v$VERSION is available on npm"
               exit 0
             fi
@@ -167,6 +173,9 @@ jobs:
     permissions:
       contents: read
       packages: write # Required for GitHub Packages
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -261,6 +270,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {} # No permissions needed - just checks job results
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Check results
         run: |
@@ -302,5 +314,5 @@ jobs:
         env:
           SHOULD_PUBLISH: ${{ needs.check-release.outputs.should_publish }}
           NPM_RESULT: ${{ needs.publish-npm.result }}
-          GITHUB_OUTCOME: ${{ needs.publish-github.outcome }}
+          GITHUB_OUTCOME: ${{ needs.publish-github.outcome }} # outcome gives actual result before continue-on-error
           RELEASE_RESULT: ${{ needs.create-release.result }}
