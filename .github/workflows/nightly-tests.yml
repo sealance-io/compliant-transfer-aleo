@@ -21,6 +21,9 @@ jobs:
       contents: read
     outputs:
       has_commits: ${{ steps.check.outputs.has_commits }}
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -31,10 +34,10 @@ jobs:
         run: |
           COMMITS=$(git log --oneline --since="24 hours ago" origin/main | wc -l)
           if [ "$COMMITS" -gt 0 ]; then
-            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "has_commits=true" >> "$GITHUB_OUTPUT"
             echo "Found $COMMITS commit(s) in last 24 hours"
           else
-            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "has_commits=false" >> "$GITHUB_OUTPUT"
             echo "No commits in last 24 hours, skipping tests"
           fi
 
@@ -47,6 +50,9 @@ jobs:
       contents: read
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -57,7 +63,7 @@ jobs:
           # Find all test files and create JSON array
           # Uses -exec instead of xargs to safely handle special characters in filenames
           files=$(find test -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
-          echo "matrix={\"test-file\":$files}" >> $GITHUB_OUTPUT
+          echo "matrix={\"test-file\":$files}" >> "$GITHUB_OUTPUT"
           echo "Discovered test files: $files"
 
   test-devnet:
@@ -86,6 +92,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {} # No permissions needed - just checks job results
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Check results
         run: |
