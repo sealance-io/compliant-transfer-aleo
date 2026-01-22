@@ -25,6 +25,9 @@ jobs:
       contents: read
       actions: write # Required for cache operations
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
 
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -44,20 +47,22 @@ jobs:
 
       - name: Report cache status
         run: |
-          echo "## Leo CLI Cache Warmup Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Leo Version | 3.4.0 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Rust Version | 1.90.0 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Cache Hit (Binary) | $CACHE_HIT_BINARY |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build Time | ${BUILD_TIME_SECONDS}s |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "$CACHE_HIT_BINARY" = "true" ]; then
-            echo "Cache was already warm - refreshed for another 7 days" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Cache miss - Leo was compiled from source and cached" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Leo CLI Cache Warmup Summary"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Leo Version | 3.4.0 |"
+            echo "| Rust Version | 1.90.0 |"
+            echo "| Cache Hit (Binary) | $CACHE_HIT_BINARY |"
+            echo "| Build Time | ${BUILD_TIME_SECONDS}s |"
+            echo ""
+            if [ "$CACHE_HIT_BINARY" = "true" ]; then
+              echo "Cache was already warm - refreshed for another 7 days"
+            else
+              echo "Cache miss - Leo was compiled from source and cached"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
         env:
           CACHE_HIT_BINARY: ${{ steps.setup-leo.outputs.cache-hit-binary }}
           BUILD_TIME_SECONDS: ${{ steps.setup-leo.outputs.build-time-seconds }}

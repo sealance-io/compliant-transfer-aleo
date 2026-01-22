@@ -45,6 +45,9 @@ jobs:
       contents: read
     outputs:
       sdk: ${{ steps.filter.outputs.sdk }}
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -60,11 +63,11 @@ jobs:
           SDK_CHANGES=$(echo "$CHANGED" | grep '^packages/policy-engine-sdk/' | grep -vE '\.md$' | grep -v '^packages/policy-engine-sdk/examples/' || echo "")
 
           if [[ -n "$SDK_CHANGES" ]]; then
-            echo "sdk=true" >> $GITHUB_OUTPUT
+            echo "sdk=true" >> "$GITHUB_OUTPUT"
             echo "SDK code changes detected:"
             echo "$SDK_CHANGES"
           else
-            echo "sdk=false" >> $GITHUB_OUTPUT
+            echo "sdk=false" >> "$GITHUB_OUTPUT"
             echo "No SDK code changes"
           fi
         env:
@@ -77,6 +80,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -109,6 +115,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -148,6 +157,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {} # No permissions needed - just checks job results
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
     steps:
       - name: Check results
         run: |
