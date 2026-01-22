@@ -42,7 +42,7 @@ jobs:
           # No cache needed - changesets/action uses npx internally, no npm ci required
 
       - name: Create Release Pull Request
-        uses: changesets/action@c8bada60c408975afd1a20b3db81d6eee6f41536 # v1.4.9
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
         with:
           # Uses default: npx @changesets/cli version (no npm ci needed)
           title: "chore(release): version packages"
