@@ -15,7 +15,6 @@ import {
   MINTER_ROLE,
   NONE_ROLE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
-  SUPPLY_MANAGER_ROLE,
   ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
@@ -28,6 +27,7 @@ import { Account } from "@provablehq/sdk";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
 import { decryptToken } from "../artifacts/js/leo2js/sealed_report_token";
 import { Token } from "../artifacts/js/types/sealed_report_token";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -99,6 +99,10 @@ const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 
 const amount = 10n;
 let root: bigint;
@@ -115,6 +119,7 @@ describe("test sealed_report_token program", () => {
     await fundWithCredits(deployerPrivKey, burner, fundedAmount);
     await fundWithCredits(deployerPrivKey, spender, fundedAmount);
 
+    await deployIfNotDeployed(multiSigContract);
     await deployIfNotDeployed(merkleTreeContract);
     await deployIfNotDeployed(reportTokenContract);
   });

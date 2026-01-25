@@ -87,8 +87,8 @@ describe("test exchange contract", () => {
 
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(reportPolicyContract);
     await deployIfNotDeployed(multiSigContract);
+    await deployIfNotDeployed(reportPolicyContract);
     await deployIfNotDeployed(freezeRegistryContract);
     await deployIfNotDeployed(thresholdContract);
     await deployIfNotDeployed(timelockContract);
