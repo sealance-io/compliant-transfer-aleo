@@ -300,13 +300,11 @@ Blocks licenses incompatible with Apache-2.0:
 ### Before Merging Workflow Changes
 
 1. **Automated checks:**
-
    - zizmor security audit runs automatically
    - SARIF results uploaded to Security tab
    - PR annotations show inline findings
 
 2. **Manual review:**
-
    - Verify all actions remain hash-pinned
    - Check for new secret usage
    - Validate permission changes are minimal
@@ -333,13 +331,11 @@ Blocks licenses incompatible with Apache-2.0:
 If a security issue is discovered in workflows:
 
 1. **Immediate actions:**
-
    - Disable affected workflows if actively exploited
    - Rotate any exposed secrets/tokens
    - Review workflow run logs for evidence of compromise
 
 2. **Investigation:**
-
    - Run `zizmor --pedantic .github/workflows/` locally
    - Review recent workflow changes in git history
    - Check Security tab for SARIF findings
