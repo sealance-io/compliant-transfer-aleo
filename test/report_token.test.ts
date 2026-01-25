@@ -150,7 +150,7 @@ describe("test sealed_report_token program", () => {
 
   test(`test initialize`, async () => {
     // Cannot update freeze list before initialization
-    let rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+    let rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, 0n, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const name = stringToBigInt("Report Token");
@@ -390,14 +390,26 @@ describe("test sealed_report_token program", () => {
     );
 
     // Cannot unfreeze an unfrozen account
-    rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 1, currentRoot, root);
+    rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(
+      frozenAccount,
+      false,
+      1,
+      currentRoot,
+      root,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot update the root if the previous root is incorrect
-    rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 1, 0n, root);
+    rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, false, 1, 0n, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+    let tx = await reportTokenContractForFreezeListManager.update_freeze_list(
+      frozenAccount,
+      true,
+      1,
+      currentRoot,
+      root,
+    );
     await tx.wait();
     let isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
     let frozenAccountByIndex = await reportTokenContract.freeze_list_index(1);
@@ -408,14 +420,14 @@ describe("test sealed_report_token program", () => {
     expect(lastIndex).toBe(1);
 
     // Cannot unfreeze an account when the frozen list index is incorrect
-    rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 2, root, root);
+    rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, false, 2, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot freeze a frozen account
-    rejectedTx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+    rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    tx = await reportTokenContractForAdmin.update_freeze_list(frozenAccount, false, 1, root, root);
+    tx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, false, 1, root, root);
     await tx.wait();
     isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
     frozenAccountByIndex = await reportTokenContract.freeze_list_index(1);
@@ -425,7 +437,6 @@ describe("test sealed_report_token program", () => {
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
     expect(lastIndex).toBe(1);
 
-    // Also the freeze list manager can update the freeze list
     tx = await reportTokenContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
     await tx.wait();
     isAccountFrozen = await reportTokenContract.freeze_list(frozenAccount);
@@ -437,7 +448,7 @@ describe("test sealed_report_token program", () => {
     expect(lastIndex).toBe(1);
 
     let randomAddress = new Account().address().to_string();
-    tx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
+    tx = await reportTokenContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await tx.wait();
     isAccountFrozen = await reportTokenContractForAdmin.freeze_list(randomAddress);
     frozenAccountByIndex = await reportTokenContractForAdmin.freeze_list_index(2);
@@ -449,11 +460,11 @@ describe("test sealed_report_token program", () => {
 
     randomAddress = new Account().address().to_string();
     // Cannot freeze an account when the frozen list index is greater than the last index
-    rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 10, root, root);
+    rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(randomAddress, true, 10, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot freeze an account when the frozen list index is already taken
-    rejectedTx = await reportTokenContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
+    rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
@@ -782,7 +793,7 @@ describe("test sealed_report_token program", () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const updateFreezeListTx = await reportTokenContractForAdmin.update_freeze_list(
+    const updateFreezeListTx = await reportTokenContractForFreezeListManager.update_freeze_list(
       frozenAccount,
       false,
       1,
