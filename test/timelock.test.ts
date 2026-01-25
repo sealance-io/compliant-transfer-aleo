@@ -116,6 +116,7 @@ describe("test sealed_timelock_policy program", () => {
     await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
     await fundWithCredits(deployerPrivKey, account, fundedAmount);
     await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
+    await fundWithCredits(deployerPrivKey, minter, fundedAmount);
 
     await deployIfNotDeployed(multiSigContract);
     await deployIfNotDeployed(tokenRegistryContract);
