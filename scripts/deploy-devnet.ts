@@ -5,16 +5,10 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { BaseContract } from "../contract/base-contract";
-import { BLOCK_HEIGHT_WINDOW, FREEZELIST_MANAGER_ROLE, fundedAmount, policies } from "../lib/Constants";
+import { BLOCK_HEIGHT_WINDOW, FREEZELIST_MANAGER_ROLE, fundedAmount, MINTER_ROLE, policies } from "../lib/Constants";
 import { registerTokenProgram } from "../lib/Token";
 import { fundWithCredits } from "../lib/Fund";
-import {
-  setTokenRegistryRole,
-  updateAddressToRole,
-  updateAddressToRoleWithEmptyMultisigParams,
-  updateFreezeListManagerRole,
-  updateMinterRole,
-} from "../lib/Role";
+import { setTokenRegistryRole, updateAddressToRole, updateAddressToRoleWithEmptyMultisigParams } from "../lib/Role";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
 import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
@@ -29,8 +23,7 @@ import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_f
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
-const [deployerAddress, adminAddress, investigatorAddress, , , , , , , , freezeListManagerAddress] =
-  contract.getAccounts();
+const [deployerAddress, adminAddress, , , , , , , , , freezeListManagerAddress] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 
@@ -137,14 +130,10 @@ const multiSigContract = new Multisig_coreContract({
   await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
   await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
 
-  await initializeProgram(reportPolicyContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, investigatorAddress]);
+  await initializeProgram(reportPolicyContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW]);
   await initializeProgram(freezeRegistryContract, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
   await initializeProgram(multisigFreezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
-  await initializeProgram(thresholdContractForAdmin, [
-    adminAddress,
-    policies.threshold.blockHeightWindow,
-    investigatorAddress,
-  ]);
+  await initializeProgram(thresholdContractForAdmin, [adminAddress, policies.threshold.blockHeightWindow]);
   await initializeProgram(timelockContractForAdmin, [adminAddress]);
   await initializeProgram(exchangeContractForAdmin, [adminAddress]);
   await initializeProgram(reportTokenContractForAdmin, [
@@ -154,7 +143,6 @@ const multiSigContract = new Multisig_coreContract({
     1000_000000000000n,
     adminAddress,
     BLOCK_HEIGHT_WINDOW,
-    investigatorAddress,
   ]);
   await initializeProgram(compliantTokenContract, [
     stringToBigInt("Stable Token"),
@@ -176,11 +164,11 @@ const multiSigContract = new Multisig_coreContract({
   // assign exchange program to be a minter
   await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
   await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-  await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
+  await updateAddressToRole(timelockContractForAdmin, exchangeContract.address(), MINTER_ROLE);
 
   // Update the freeze list manager
-  await updateFreezeListManagerRole(reportPolicyContractForAdmin, freezeListManagerAddress);
-  await updateFreezeListManagerRole(reportTokenContractForAdmin, freezeListManagerAddress);
+  await updateAddressToRole(reportPolicyContractForAdmin, freezeListManagerAddress, FREEZELIST_MANAGER_ROLE);
+  await updateAddressToRole(reportTokenContractForAdmin, freezeListManagerAddress, FREEZELIST_MANAGER_ROLE);
   await updateAddressToRole(freezeRegistryContractForAdmin, freezeListManagerAddress, FREEZELIST_MANAGER_ROLE);
   await updateAddressToRoleWithEmptyMultisigParams(
     multisigFreezeRegistryContractForAdmin,

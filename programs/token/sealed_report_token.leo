@@ -1,18 +1,19 @@
 import merkle_tree.aleo;
+import multisig_core.aleo;
 
 program sealed_report_token.aleo {
     @custom
     async constructor() {
-        if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+        // Only require multisig for upgrades - initial deployment has no checks.
+        if self.edition > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
         }
     }
     
-    // Admin: can assign roles, assign supply roles, mint assets, burn assets, update the freeze list and upgrade the program
-    const ADMIN_INDEX: u8 = 1u8;
-    // Investigator: receives compliant records with transaction details
-    const INVESTIGATOR_INDEX: u8 = 2u8;
     // Freeze list manager: can update the freeze list
     const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
@@ -21,14 +22,12 @@ program sealed_report_token.aleo {
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     const FREEZE_LIST_LAST_INDEX: bool = true;
 
-    const NONE_ROLE: u8 = 0u8;
-    const MINTER_ROLE: u8 = 1u8;
-    const BURNER_ROLE: u8 = 2u8;
-    const SUPPLY_MANAGER_ROLE: u8 = 3u8;
-
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    // Only this address can initialize the program
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    // This address receives compliance records (can be updated with the contract upgrade)
+    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
 
     record Token {
         owner: address,
@@ -48,7 +47,7 @@ program sealed_report_token.aleo {
         leaf_index: u32
     }
 
-    struct TokenMetadata {
+    struct TokenInfo {
         name: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         symbol: u128, // ASCII text represented in bits, and the u128 value of the bitstring
         decimals: u8,
@@ -60,17 +59,19 @@ program sealed_report_token.aleo {
         account: address,
         spender: address,
     }
+
+    struct ChecksumEdition {
+        checksum: [u8; 32],
+        edition: u16,
+    }
     
-    const TOKEN_METADATA_INDEX: bool = true;
+    const TOKEN_INFO_INDEX: bool = true;
     // token specs
-    mapping token_metadata: bool => TokenMetadata;
+    mapping token_info: bool => TokenInfo;
 
     mapping balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => Allowance
-    mapping supply_roles: address => u8;
 
-    // Maps a role ID to an address (e.g., 1 = admin).
-    mapping roles: u8 => address;
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
     // Mimics an array of frozen addresses by storing them at sequential indexes.
@@ -83,7 +84,13 @@ program sealed_report_token.aleo {
     mapping root_updated_height: bool => u32;
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
-
+   // Roles can be assigned using bitmasking to allow multiple roles per address
+    const NONE_ROLE: u16 = 0u16;
+    const MINTER_ROLE: u16 = 1u16;
+    const BURNER_ROLE: u16 = 2u16;
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+    mapping address_to_role: address => u16;
 
     // -------------------------
     // Called by token admins
@@ -102,7 +109,7 @@ program sealed_report_token.aleo {
     // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
-    // Can only be called by the admin and the freeze list manager.
+    // Can only be called by the freeze list manager.
     async transition update_freeze_list(
         public account: address, 
         public is_frozen: bool, 
@@ -113,11 +120,8 @@ program sealed_report_token.aleo {
         return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root);
     }
     async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        if(admin_address != caller) {
-            let freeze_list_manager_address: address = roles.get(FREEZE_LIST_MANAGER_INDEX);
-            assert_eq(freeze_list_manager_address, caller);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
         let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(previous_root, old_root);
@@ -131,7 +135,7 @@ program sealed_report_token.aleo {
 
         let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
         if (is_frozen) {
-            // Verify that the frozen_index is empty
+            // Verify that the frozen_index is empty.
             assert_eq(current_address_at_index, ZERO_ADDRESS);
 
             // Verify that the frozen index equal or smaller than the last index plus 1
@@ -145,7 +149,7 @@ program sealed_report_token.aleo {
 
             freeze_list_index.set(frozen_index, account);
         } else {
-            // Verify we update the correct frozen_index
+            // Verify that we update the correct frozen_index
             assert_eq(current_address_at_index, account);
             freeze_list_index.set(frozen_index, ZERO_ADDRESS);
         }
@@ -154,14 +158,19 @@ program sealed_report_token.aleo {
     }
 
     // Updates the address assigned to a given role.
-    // Can only be called by the current admin.
-    async transition update_role(public new_address: address, role: u8) -> Future {
+    // Can only be called by the current role manager.
+    async transition update_role(public new_address: address, role: u16) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_address);
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
+
+        address_to_role.set(new_address, new_role);
     }
 
     // Updates the number of blocks during which the previous root is still considered valid.
@@ -170,28 +179,16 @@ program sealed_report_token.aleo {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        let role: u16 = address_to_role.get(caller);
+        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
-    // Assigns a supply role (minter, burner, or supply manager) to the given address.
-    // Can only be called by the current admin.
-    async transition update_supply_role(public new_address: address, role: u8) -> Future {
-        return f_update_supply_role(new_address, self.caller, role);
-    }
-    async function f_update_supply_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-
-        supply_roles.set(new_address, role);
-    }
-
-    // Initializes the freeze list, token specifications, the admin and the investigator.
+    // Initializes the freeze list, token specifications, and the admin.
     // Can only be called once — ensures the contract has not already been initialized.    
-    // Can be called only by the INITIAL_ADMIN
-    // Sets the token metadata (name, symbol, decimals, max supply).
+    // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
+    // Sets the token info (name, symbol, decimals, max supply).
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
     async transition initialize(
@@ -200,8 +197,7 @@ program sealed_report_token.aleo {
         public decimals: u8,
         public max_supply: u128,
         public admin: address,
-        public blocks: u32,
-        public investigator_address: address
+        public blocks: u32
     ) -> Future {
         return finalize_initialize(
             name,
@@ -211,7 +207,6 @@ program sealed_report_token.aleo {
             admin,
             self.caller,
             blocks,
-            investigator_address
         );
     }
     async function finalize_initialize(
@@ -221,18 +216,17 @@ program sealed_report_token.aleo {
         max_supply: u128,
         admin: address,
         caller: address,
-        blocks: u32,
-        investigator_address: address
+        blocks: u32
     ) {
         // Check if the token has already been initialized
-        let already_initialized: bool = token_metadata.contains(TOKEN_METADATA_INDEX);
+        let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
         assert_eq(already_initialized, false);
 
-        assert_eq(caller, INITIAL_ADMIN);
-        roles.set(ADMIN_INDEX, admin);
-        roles.set(INVESTIGATOR_INDEX, investigator_address);
+        assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
 
-        let token: TokenMetadata = TokenMetadata {
+        address_to_role.set(admin, MANAGER_ROLE);
+
+        let token: TokenInfo = TokenInfo {
             name: name,
             symbol: symbol,
             decimals: decimals,
@@ -240,7 +234,7 @@ program sealed_report_token.aleo {
             max_supply: max_supply
         };
 
-        token_metadata.set(TOKEN_METADATA_INDEX, token);
+        token_info.set(TOKEN_INFO_INDEX, token);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
         freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
@@ -252,7 +246,7 @@ program sealed_report_token.aleo {
     // Mints new public tokens to the specified recipient’s balance.
     // Can be called by the admin, a minter, or a supply manager.
     // Ensures that the new total supply does not exceed the maximum supply.
-    // Updates the recipient’s balance and the total token supply in the token metadata.
+    // Updates the recipient’s balance and the total token supply in the token info.
     async transition mint_public(
         public recipient: address,
         public amount: u128,
@@ -264,14 +258,10 @@ program sealed_report_token.aleo {
         amount: u128,
         caller: address
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & MINTER_ROLE == MINTER_ROLE);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
         // Check that the token supply + amount <= max_supply
         let new_supply: u128 = token.supply + amount;
@@ -284,20 +274,20 @@ program sealed_report_token.aleo {
  
 
         // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_info: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
             supply: new_supply,
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_info);
     }
 
     // Mints new private tokens to the specified recipient.
     // Can be called by the admin, a minter, or a supply manager.
     // Ensures that the new total supply does not exceed the maximum supply.
-    // Updates the total token supply in the token metadata.
+    // Updates the total token supply in the token info.
     async transition mint_private(
         recipient: address,
         public amount: u128
@@ -313,33 +303,29 @@ program sealed_report_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & MINTER_ROLE == MINTER_ROLE);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
         // Check that the token supply + amount <= max_supply
         let new_supply: u128 = token.supply + amount;
         assert(new_supply <= token.max_supply);
 
         // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_info: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
             supply: new_supply,
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_info);
     }
 
     // Burns public tokens from the specified owner’s balance.
     // Can be called by the admin, a burner, or a supply manager.
-    // Decreases the owner’s balance and reduces the total token supply in the token metadata.
+    // Decreases the owner’s balance and reduces the total token supply in the token info.
     async transition burn_public(
         public owner: address,
         public amount: u128
@@ -352,33 +338,29 @@ program sealed_report_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & BURNER_ROLE == BURNER_ROLE);
 
         // Update the balance
         let balance = balances.get(owner);
         let new_balance = balance - amount;
         balances.set(owner, new_balance);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_info: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
             supply: token.supply - amount, // underflow will be caught by the VM
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_info);
     }
 
     // Burns tokens from a private record (non-public asset).
     // Can be called by the admin, a burner, or a supply manager.
-    // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
+    // Reduces the amount in the provided private record and decreases the total token supply in the token info.
     async transition burn_private(
         input_record: Token,
         public amount: u128
@@ -393,24 +375,20 @@ program sealed_report_token.aleo {
         amount: u128,
         caller: address,
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let is_admin: bool = caller == admin_address;
-        if(!is_admin) {
-            let role: u8 = supply_roles.get(caller);
-            assert(role == BURNER_ROLE || role == SUPPLY_MANAGER_ROLE);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & BURNER_ROLE == BURNER_ROLE);
 
-        let token = token_metadata.get(TOKEN_METADATA_INDEX);
+        let token = token_info.get(TOKEN_INFO_INDEX);
 
         // Update the token supply
-        let new_metadata: TokenMetadata = TokenMetadata {
+        let new_info: TokenInfo = TokenInfo {
             name: token.name,
             symbol: token.symbol,
             decimals: token.decimals,
             supply: token.supply - amount, // underflow will be caught by the VM
             max_supply: token.max_supply,
         };
-        token_metadata.set(TOKEN_METADATA_INDEX, new_metadata);
+        token_info.set(TOKEN_INFO_INDEX, new_info);
     }
 
     // -------------------------
@@ -562,8 +540,7 @@ program sealed_report_token.aleo {
     async transition transfer_public_to_private(
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
@@ -573,19 +550,18 @@ program sealed_report_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: self.caller,
             recipient: recipient,
         };
 
-        return (compliance_record, token, f_transfer_public_to_private(amount, self.caller, root, investigator_address));
+        return (compliance_record, token, f_transfer_public_to_private(amount, self.caller, root));
     }
     async function f_transfer_public_to_private(
         amount: u128,
         sender: address,
-        root: field,
-        investigator_address: address
+        root: field
     ) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
@@ -598,9 +574,6 @@ program sealed_report_token.aleo {
 
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         let sender_balance = balances.get(sender);
         balances.set(sender, sender_balance - amount);
@@ -616,8 +589,7 @@ program sealed_report_token.aleo {
         public owner: address,
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         
@@ -633,20 +605,19 @@ program sealed_report_token.aleo {
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: owner,
             recipient: recipient,
         };
 
-        return (compliance_record, token, f_transfer_from_public_to_priv(owner, amount, allowance_key, root, investigator_address));
+        return (compliance_record, token, f_transfer_from_public_to_priv(owner, amount, allowance_key, root));
     }
     async function f_transfer_from_public_to_priv(
         sender: address,
         amount: u128,
         allowance_key: field,
-        root: field,
-        investigator_address: address
+        root: field
     ) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
@@ -659,9 +630,6 @@ program sealed_report_token.aleo {
 
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         // Check that the spender is authorized to spend the amount
         let current_allowance: u128 = allowances.get(allowance_key);
@@ -681,8 +649,7 @@ program sealed_report_token.aleo {
         amount: u128,
         input_record: Token,
         sender_merkle_proofs: [MerkleProof;2],
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, Token, Token, Future) {
         let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
         let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
@@ -699,16 +666,16 @@ program sealed_report_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
         };
 
-        return (compliance_record, updated_record, transfer_record, f_transfer_private(sender_root, investigator_address));
+        return (compliance_record, updated_record, transfer_record, f_transfer_private(sender_root));
     }
 
-    async function f_transfer_private(root: field, investigator_address: address) {
+    async function f_transfer_private(root: field) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
             let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
@@ -717,9 +684,6 @@ program sealed_report_token.aleo {
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
     }
 
     // Transfers private tokens from the record owner to a recipient as a public tokens.
@@ -730,8 +694,7 @@ program sealed_report_token.aleo {
         public recipient: address,
         public amount: u128,
         input_record: Token,
-        sender_merkle_proofs: [MerkleProof; 2],
-        public investigator_address: address
+        sender_merkle_proofs: [MerkleProof; 2]
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 
@@ -741,7 +704,7 @@ program sealed_report_token.aleo {
         };
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -753,16 +716,14 @@ program sealed_report_token.aleo {
             f_transfer_private_to_public(
                 root,
                 recipient,
-                amount,
-                investigator_address
+                amount
             )
         );
     }
     async function f_transfer_private_to_public(
         root: field,
         recipient: address,
-        amount: u128,
-        investigator_address: address
+        amount: u128
     ) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
@@ -775,9 +736,6 @@ program sealed_report_token.aleo {
 
         let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         let recipient_balance = balances.get_or_use(recipient, 0u128);
         balances.set(recipient, recipient_balance + amount);

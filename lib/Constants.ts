@@ -59,10 +59,6 @@ export const policies: { [key: string]: IPolicy } = {
 };
 
 // Indexes
-export const ADMIN_INDEX = 1;
-export const INVESTIGATOR_INDEX = 2;
-export const MINTER_INDEX = 3;
-export const FREEZE_LIST_MANAGER_INDEX = 4;
 export const CURRENT_FREEZE_LIST_ROOT_INDEX = 1;
 export const PREVIOUS_FREEZE_LIST_ROOT_INDEX = 2;
 export const ROOT_UPDATED_HEIGHT_INDEX = true;
