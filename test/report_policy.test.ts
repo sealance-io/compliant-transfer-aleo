@@ -30,6 +30,7 @@ import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
 import type { Token } from "../artifacts/js/types/token_registry";
 import { Account } from "@provablehq/sdk";
 import { isProgramInitialized } from "../lib/Initalize";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -95,6 +96,10 @@ const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 
 const amount = 10n;
 let root: bigint;
@@ -108,6 +113,7 @@ describe("test sealed_report_policy program", () => {
 
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(multiSigContract);
     await deployIfNotDeployed(reportPolicyContract);
 
     await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
