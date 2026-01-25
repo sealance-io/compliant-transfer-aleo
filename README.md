@@ -1,5 +1,10 @@
 # Compliant Transfer - Aleo Projects
 
+[![Nightly](https://img.shields.io/github/actions/workflow/status/sealance-io/compliant-transfer-aleo/nightly-tests.yml?label=Nightly)](https://github.com/sealance-io/compliant-transfer-aleo/actions/workflows/nightly-tests.yml)
+[![SDK](https://img.shields.io/npm/v/@sealance-io/policy-engine-aleo.svg?label=SDK)](https://www.npmjs.com/package/@sealance-io/policy-engine-aleo)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Audited by Veridise](https://img.shields.io/badge/Audited%20by-Veridise-green.svg)](./audits/veridise_09:2025.pdf)
+
 This repository contains programs (smart contracts), tests, and auxiliary scripts for implementing compliant token transfers on the Aleo blockchain.
 
 ## Compatibility
@@ -8,65 +13,61 @@ This project is developed and tested with the following tooling:
 
 - [Leo](https://github.com/ProvableHQ/leo) CLI v3.4.0
 
-- [Dokojs](https://github.com/sealance-io/sealed-token-aleo) testing framework, a custom fork with fixes that are not yet released by the [maintainers](https://github.com/venture23-aleo/doko-js)
+- [Dokojs](https://github.com/venture23-aleo/doko-js) testing framework (using [Sealance fork](https://github.com/sealance-io/dokojs) with fixes not yet released upstream)
+
+## Audits
+
+- [Sealance Compliance Technology for Aleo](./audits/veridise_09:2025.pdf) by [Veridise](https://veridise.com/) conducted at 09/2025.
 
 ## Repository Structure
 
 This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) to manage the monorepo structure.
 
 - **/packages/policy-engine-sdk**: TypeScript SDK for generating Merkle proofs and interacting with Aleo compliance policy programs (published as `@sealance-io/policy-engine-aleo`)
+- **/programs**: Aleo programs implementing various compliance policies (see below)
+- **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts
+- **/test**: TypeScript tests that validate contract functionalities
+- **/lib**: Shared TypeScript utility libraries
+- **/scripts**: Deployment and configuration scripts
+- **/docs**: Additional documentation (testing, security)
+- **/imports**: Shared Aleo modules (e.g., credits.aleo)
 
-- **/programs**: Aleo token programs implementing various compliance policies
-  - `compliant_token_template.leo`
+### Programs
 
-    Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list.
+**Core** (`/programs/core`)
 
-  - `multisig_compliant_token.leo`
+- `merkle_tree.leo` - Functions for verifying Merkle proofs (inclusion and non-inclusion)
 
-    Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list. The program additionally supports a multisig manager for administering privileged operations.
+**Freeze List Registry** (`/programs/freezelist_registry`)
 
-  - `sealed_report_policy.leo`
+- `sealance_freezelist_registry.leo` - Standalone freeze list registry with role-based access control for adding/removing addresses and privately verifying address status
+- `multisig_freezelist_registry.leo` - Multi-signature variant with multisig manager for privileged operations
 
-    Token program that grants asset issuers access to transaction details. Both sender and recipient must not be on the sanctions list.
+**Compliance Policies** (`/programs/policy`)
 
-  - `sealed_report_token.leo`
+- `sealed_report_policy.leo` - Grants issuers access to transaction details; both sender and recipient must not be on the sanctions list
+- `sealed_threshold_report_policy.leo` - Reports transactions when daily spent amount exceeds 1000; sanctions compliance for both parties
+- `sealed_timelock_policy.leo` - Allows senders to lock funds for a specified period; sanctions compliance for both parties
 
-    Token program that grants asset issuers access to transaction details. Manages its own supply and balances without relying on a `token_registry.aleo` Both sender and recipient must not be on the sanctions list.
+**Tokens** (`/programs/token`)
 
-  - `sealed_threshold_report_policy.leo`
+- `compliant_token_template.leo` - Template token program granting issuers access to transaction details; sender must not be sanctioned
+- `sealed_report_token.leo` - Self-contained token managing its own supply and balances without relying on `token_registry.aleo`; sanctions compliance for both parties
+- `multisig_compliant_token.leo` - Compliant token with multisig manager for privileged operations
 
-    Token program that grants asset issuers access to transaction details when daily spent amount exceeds 1000. Both sender and recipient must not be on the sanctions list.
+**Proxies** (`/programs/proxy`)
 
-  - `sealed_timelock_policy.leo`
+- `multisig_token_proxy.leo` - Proxy enabling multisig control of non-multisig compliant tokens
+- `multisig_freezelist_proxy.leo` - Proxy enabling multisig control of non-multisig freeze registries
 
-    Token program that allows senders to lock funds for a specified period. Both sender and recipient must not be on the sanctions list.
+**Demo** (`/programs/demo`)
 
-  - `sealance_freezelist_registry.leo`
+- `gqrfmwbtyp.leo` - Enables exchange of native Aleo tokens for compliant tokens
 
-    Standalone program implementing a freeze list registry with functions to add/remove addresses and privately verify address status.
+**Vendor** (`/programs/vendor`)
 
-  - `multisig_freezelist_registry.leo`
-
-    Standalone program implementing a freeze list registry with functions to add/remove addresses and privately verify address status. The program additionally supports a multisig manager for administering privileged operations.
-
-  - `merkle_tree.leo`
-
-    Program containing functions for verifying Merkle proofs for leaf inclusion and non-inclusion.
-
-  - `gqrfmwbtyp.leo`
-    Program enabling users to exchange native Aleo tokens for compliant tokens.
-
-  - `multisig_token_proxy.leo`
-
-    Proxy program that enables multisig control of a non-multisig compliant token by accepting multisig requests and forwarding the corresponding management actions to the underlying token program.
-
-  - `multisig_freezelist_proxy.leo`
-
-    Proxy program that enables multisig control of a non-multisig freeze registry by accepting multisig requests and forwarding the corresponding management actions to the underlying freeze-list/registry program.
-
-- **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts.
-- **/test**: TypeScript tests that validate contract functionalities.
-- **/imports**: Shared Aleo modules (e.g., credits.aleo).
+- `token_registry.leo` - Shared token registry used by some policies
+- `multisig_core.leo` - Core multi-signature functionality
 
 ## Getting Started
 
@@ -79,7 +80,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
    cd compliant-transfer-aleo
 
    # Install all dependencies (root + SDK workspace)
-   npm ci
+   npm ci --ignore-scripts
    ```
 
    **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.
@@ -108,9 +109,9 @@ npm install --workspace=@sealance-io/policy-engine-aleo <package-name>
 npm run format --workspaces
 ```
 
-### Quick Start
+## Testing
 
-Tests use [Testcontainers](https://node.testcontainers.org/) to automatically provision an Aleo blockchain environment. By default, tests run in **fast development mode** using devnode with proof skipping.
+Tests use [Testcontainers](https://node.testcontainers.org/) to automatically provision an Aleo blockchain environment.
 
 ```bash
 # Run all tests (fast mode - default)
@@ -125,8 +126,6 @@ ALEO_VERBOSITY=4 npm test
 
 ### Testing Modes
 
-The project supports two testing modes optimized for different use cases:
-
 | Mode        | Command                | Speed           | Use Case                           | Status       |
 | ----------- | ---------------------- | --------------- | ---------------------------------- | ------------ |
 | **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      | **Stable**   |
@@ -138,69 +137,17 @@ The project supports two testing modes optimized for different use cases:
 
 > **Warning: Devnode is Experimental**
 >
-> The `devnode` feature is not yet included in Leo v3.4.0. To use devnode locally, you must install Leo from the feature branch:
->
-> ```bash
-> # Clone and build Leo from feature branch
-> git clone https://github.com/ProvableHQ/leo.git
-> cd leo
-> git checkout feat/leo-devnode-final
-> cargo install --path .
-> ```
->
-> Alternatively, use the pre-built devnode image: `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`
->
-> For stable testing, use devnet mode (`DEVNET=true`).
-
-### Key Configuration Options
-
-```bash
-# Fast development mode (default in .env.testing)
-SKIP_EXECUTE_PROOF=true
-SKIP_DEPLOY_CERTIFICATE=true
-
-# Full devnet mode
-DEVNET=true
-
-# Manual devnet setup (no containers)
-USE_TEST_CONTAINERS=0
-
-# Custom Docker image
-ALEO_TEST_IMAGE=custom/image:latest
-```
+> The `devnode` feature is not yet included in Leo v3.4.0. Use the pre-built image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode` or build Leo from the `feat/leo-devnode-final` branch. For stable testing, use devnet mode (`DEVNET=true`).
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
-**For comprehensive testing documentation, see [docs/TESTING.md](docs/TESTING.md)**
-
-### Troubleshooting
-
-**Tests timeout waiting for consensus:**
-
-```bash
-CONSENSUS_CHECK_TIMEOUT=600000 npm test
-```
-
-**Container authentication issues:**
-
-```bash
-docker login ghcr.io
-```
-
-**Tests too slow:**
-Use fast mode by removing `DEVNET=true` from `.env`
-
-For detailed troubleshooting, configuration reference, and manual setup instructions, see [docs/TESTING.md](docs/TESTING.md).
+For complete configuration reference, troubleshooting, and manual setup instructions, see [docs/TESTING.md](docs/TESTING.md).
 
 ## Contributing
 
-Contributions are welcome. Please create pull requests with detailed descriptions and adhere to the repository's coding guidelines.
-
-## Audits
-
-1. [Sealance Compliance Technology for Aleo](./audits/veridise_09:2025.pdf) by [Veridise](https://veridise.com/) conducted at 09/2025.
+Contributions are welcome. Please create pull requests with detailed descriptions and adhere to the repository's coding guidelines. For questions or discussions, open an issue on GitHub.
 
 ## License
 
-This repository is licensed under the Apache License, Version 2.0.  
+This repository is licensed under the Apache License, Version 2.0.
 See the [LICENSE](./LICENSE) file for details.
