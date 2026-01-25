@@ -116,6 +116,8 @@ describe("test exchange contract", () => {
 
     const role = await exchangeContract.address_to_role(adminAddress);
     expect(role).toBe(MANAGER_ROLE);
+    const initialized = await exchangeContract.initialized(true);
+    expect(initialized).toBe(true);
 
     // It is possible to call to initialize only one time
     const rejectedTx = await exchangeContractForAdmin.initialize(adminAddress);
