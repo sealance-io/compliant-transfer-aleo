@@ -34,9 +34,9 @@ Validates: npm registry only, HTTPS enforcement, SHA-512 integrity hashes.
 
 ### 4. Vulnerability Scanning
 
-| Environment | Command                         | Threshold |
-| ----------- | ------------------------------- | --------- |
-| CI          | `npm audit --audit-level=high`  | High+     |
+| Environment | Command                            | Threshold |
+| ----------- | ---------------------------------- | --------- |
+| CI          | `npm audit --audit-level=high`     | High+     |
 | Local       | `npm audit --audit-level=moderate` | Moderate+ |
 
 ## CI Workflow
@@ -50,20 +50,20 @@ Validates: npm registry only, HTTPS enforcement, SHA-512 integrity hashes.
 
 ## Attack Prevention
 
-| Attack                     | Prevention                                    |
-| -------------------------- | --------------------------------------------- |
-| Malicious post-install     | `--ignore-scripts` blocks automatic execution |
-| Lockfile poisoning         | `lockfile-lint` validates registry URLs       |
-| Dependency confusion       | Lockfile validation + registry restrictions   |
-| Compromised update         | Lockfile pinning + `npm audit` + PR review    |
+| Attack                 | Prevention                                    |
+| ---------------------- | --------------------------------------------- |
+| Malicious post-install | `--ignore-scripts` blocks automatic execution |
+| Lockfile poisoning     | `lockfile-lint` validates registry URLs       |
+| Dependency confusion   | Lockfile validation + registry restrictions   |
+| Compromised update     | Lockfile pinning + `npm audit` + PR review    |
 
 ## Dependabot Cooldowns
 
-| Update Type | Cooldown | Rationale                              |
-| ----------- | -------- | -------------------------------------- |
-| Patch       | 3 days   | Allow community to discover issues     |
+| Update Type | Cooldown | Rationale                                 |
+| ----------- | -------- | ----------------------------------------- |
+| Patch       | 3 days   | Allow community to discover issues        |
 | Minor       | 7 days   | Longer validation for significant changes |
-| Major       | Blocked  | Manual review required                 |
+| Major       | Blocked  | Manual review required                    |
 
 Security updates bypass all cooldowns. See `.github/dependabot.yml` and `docs/DEPENDABOT-STRATEGY.md`.
 

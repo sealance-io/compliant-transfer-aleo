@@ -44,8 +44,8 @@ Images pinned to SHA256 digests to prevent tag poisoning.
 
 ### 5. Safe Triggers Only
 
-| Used                                        | Avoided (PPE risk)                          |
-| ------------------------------------------- | ------------------------------------------- |
+| Used                                                    | Avoided (PPE risk)                    |
+| ------------------------------------------------------- | ------------------------------------- |
 | `pull_request`, `push`, `schedule`, `workflow_dispatch` | `pull_request_target`, `workflow_run` |
 
 ### 6. Injection Prevention
@@ -76,17 +76,18 @@ Blocked licenses: GPL-2.0, GPL-3.0, AGPL (incompatible with Apache-2.0).
 
 ## Action Trust Levels
 
-| Action                     | Publisher | Trust   |
-| -------------------------- | --------- | ------- |
-| `actions/*`                | GitHub    | High    |
-| `github/codeql-action`     | GitHub    | High    |
-| `docker/login-action`      | Docker    | High    |
-| `zizmorcore/zizmor-action` | Zizmor    | Medium  |
-| `sealance-io/setup-leo-action` | Sealance | Internal |
+| Action                         | Publisher | Trust    |
+| ------------------------------ | --------- | -------- |
+| `actions/*`                    | GitHub    | High     |
+| `github/codeql-action`         | GitHub    | High     |
+| `docker/login-action`          | Docker    | High     |
+| `zizmorcore/zizmor-action`     | Zizmor    | Medium   |
+| `sealance-io/setup-leo-action` | Sealance  | Internal |
 
 ## Security Review Checklist
 
 Before merging workflow changes:
+
 1. zizmor audit passes (automated)
 2. Actions remain hash-pinned
 3. Permission changes are minimal
