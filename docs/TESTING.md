@@ -2,10 +2,10 @@
 
 ## Testing Modes
 
-| Mode        | Command             | Speed | Use Case                    |
-| ----------- | ------------------- | ----- | --------------------------- |
-| **Devnet**  | `DEVNET=true`       | Slow  | CI, pre-deployment (stable) |
-| **Devnode** | Default (no flag)   | Fast  | Local development (experimental) |
+| Mode        | Command           | Speed | Use Case                         |
+| ----------- | ----------------- | ----- | -------------------------------- |
+| **Devnet**  | `DEVNET=true`     | Slow  | CI, pre-deployment (stable)      |
+| **Devnode** | Default (no flag) | Fast  | Local development (experimental) |
 
 > **Devnode requires** Leo from `feat/leo-devnode-final` branch or the image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`. For stable testing, use devnet.
 
@@ -22,27 +22,27 @@ npm run test:select ./test/your-test.test.ts  # Single test
 
 ### Core
 
-| Variable                  | Default | Description                              |
-| ------------------------- | ------- | ---------------------------------------- |
-| `DEVNET`                  | `false` | Enable full devnet mode                  |
-| `SKIP_EXECUTE_PROOF`      | `false` | Skip ZK proofs (devnode only)            |
-| `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deploy certificates (devnode only)  |
+| Variable                  | Default | Description                             |
+| ------------------------- | ------- | --------------------------------------- |
+| `DEVNET`                  | `false` | Enable full devnet mode                 |
+| `SKIP_EXECUTE_PROOF`      | `false` | Skip ZK proofs (devnode only)           |
+| `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deploy certificates (devnode only) |
 
 ### Container
 
-| Variable              | Default | Description                    |
-| --------------------- | ------- | ------------------------------ |
-| `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers             |
-| `ALEO_TEST_IMAGE`     | Auto    | Docker image override          |
+| Variable              | Default | Description           |
+| --------------------- | ------- | --------------------- |
+| `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers    |
+| `ALEO_TEST_IMAGE`     | Auto    | Docker image override |
 
 Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`, Devnet `ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0`
 
 ### Timing & Logging
 
-| Variable                  | Default  | Description                      |
-| ------------------------- | -------- | -------------------------------- |
-| `CONSENSUS_CHECK_TIMEOUT` | `300000` | Max wait for consensus (ms)      |
-| `ALEO_VERBOSITY`          | `1`      | Log level: 0 (quiet) to 4 (debug)|
+| Variable                  | Default  | Description                       |
+| ------------------------- | -------- | --------------------------------- |
+| `CONSENSUS_CHECK_TIMEOUT` | `300000` | Max wait for consensus (ms)       |
+| `ALEO_VERBOSITY`          | `1`      | Log level: 0 (quiet) to 4 (debug) |
 
 ## Manual Setup (Without Testcontainers)
 
@@ -59,12 +59,12 @@ npm test
 
 ## Troubleshooting
 
-| Issue | Solution |
-| ----- | -------- |
-| Consensus timeout | `CONSENSUS_CHECK_TIMEOUT=600000 npm test` |
-| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`) |
-| Tests too slow | Use devnode: remove `DEVNET=true`, set `SKIP_EXECUTE_PROOF=true` |
-| Port 3030 in use | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
+| Issue                | Solution                                                                     |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                    |
+| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                        |
+| Tests too slow       | Use devnode: remove `DEVNET=true`, set `SKIP_EXECUTE_PROOF=true`             |
+| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
 
 ## Notes
 
