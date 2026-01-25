@@ -177,7 +177,13 @@ describe("test sealed_report_policy program", () => {
     const isFreezeRegistryInitialized = await isProgramInitialized(reportPolicyContract);
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
-      let rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+      let rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        0n,
+        root,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       if (deployerAddress !== adminAddress) {
@@ -301,11 +307,22 @@ describe("test sealed_report_policy program", () => {
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
     expect(lastIndex).toBe(1);
 
+    // Also the freeze list manager can update the freeze list
+    tx = await reportPolicyContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
+    await tx.wait();
+    isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
+    frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
+    lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+
+    expect(isAccountFrozen).toBe(true);
+    expect(frozenAccountByIndex).toBe(frozenAccount);
+    expect(lastIndex).toBe(1);
+
     let randomAddress = new Account().address().to_string();
-    tx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 1, root, root);
+    tx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await tx.wait();
     isAccountFrozen = await reportPolicyContract.freeze_list(randomAddress);
-    frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
+    frozenAccountByIndex = await reportPolicyContract.freeze_list_index(2);
     lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
@@ -318,7 +335,7 @@ describe("test sealed_report_policy program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot freeze an account when the frozen list index is already taken
-    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 1, root, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
@@ -581,7 +598,7 @@ describe("test sealed_report_policy program", () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const updateFreezeListTx = await reportPolicyContractForAdmin.update_freeze_list(
+    const updateFreezeListTx = await reportPolicyContractForFreezeListManager.update_freeze_list(
       frozenAccount,
       false,
       1,
