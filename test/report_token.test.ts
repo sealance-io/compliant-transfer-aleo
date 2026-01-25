@@ -317,23 +317,12 @@ describe("test sealed_report_token program", () => {
     let rejectedTx = await reportTokenContractForAccount.burn_private(accountRecord, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let mintTx = await reportTokenContractForMinter.mint_private(adminAddress, amount);
-    let [encryptedAdminRecord] = await mintTx.wait();
-    let adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
-    expect(adminRecord.amount).toBe(amount);
-    expect(adminRecord.owner).toBe(adminAddress);
-    let burnTx = await reportTokenContractForBurner.burn_private(adminRecord, amount);
-    [encryptedAdminRecord] = await burnTx.wait();
-    adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
-    expect(adminRecord.amount).toBe(0n);
-    expect(adminRecord.owner).toBe(adminAddress);
-
-    mintTx = await reportTokenContractForMinter.mint_private(burner, amount);
+    let mintTx = await reportTokenContractForMinter.mint_private(burner, amount);
     let [encryptedBurnerRecord] = await mintTx.wait();
     let burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
     expect(burnerRecord.amount).toBe(amount);
     expect(burnerRecord.owner).toBe(burner);
-    burnTx = await reportTokenContractForBurner.burn_private(burnerRecord, amount);
+    let burnTx = await reportTokenContractForBurner.burn_private(burnerRecord, amount);
     [encryptedBurnerRecord] = await burnTx.wait();
     burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
     expect(burnerRecord.amount).toBe(0n);
@@ -472,7 +461,7 @@ describe("test sealed_report_token program", () => {
     const rejectedTx = await reportTokenContractForAccount.update_block_height_window(BLOCK_HEIGHT_WINDOW);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await reportTokenContractForAdmin.update_block_height_window(BLOCK_HEIGHT_WINDOW);
+    const tx = await reportTokenContractForFreezeListManager.update_block_height_window(BLOCK_HEIGHT_WINDOW);
     await tx.wait();
   });
 
@@ -818,7 +807,7 @@ describe("test sealed_report_token program", () => {
     const [, encryptedAccountRecord] = await tx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
 
-    const updateBlockHeightWindowTx = await reportTokenContractForAdmin.update_block_height_window(1);
+    const updateBlockHeightWindowTx = await reportTokenContractForFreezeListManager.update_block_height_window(1);
     await updateBlockHeightWindowTx.wait();
 
     // The transaction failed because the old root is expired
