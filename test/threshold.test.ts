@@ -6,7 +6,6 @@ import { decryptComplianceRecord } from "../artifacts/js/leo2js/sealed_report_po
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
-  ADMIN_INDEX,
   BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
   SEALED_THRESHOLD_POLICY_ADDRESS,
@@ -14,7 +13,6 @@ import {
   EPOCH,
   EPOCH_INDEX,
   FREEZE_REGISTRY_PROGRAM_INDEX,
-  INVESTIGATOR_INDEX,
   MAX_TREE_DEPTH,
   THRESHOLD,
   THRESHOLD_INDEX,
@@ -24,7 +22,6 @@ import {
   FREEZELIST_MANAGER_ROLE,
   NONE_ROLE,
   MANAGER_ROLE,
-  emptyMultisigCommonParams,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -127,25 +124,15 @@ describe("test sealed_threshold_policy program", () => {
     if (!isInitialized) {
       if (deployerAddress !== adminAddress) {
         // The caller is not the initial admin
-        const rejectedTx = await thresholdContract.initialize(
-          adminAddress,
-          policies.threshold.blockHeightWindow,
-          investigatorAddress,
-        );
+        const rejectedTx = await thresholdContract.initialize(adminAddress, policies.threshold.blockHeightWindow);
         await expect(rejectedTx.wait()).rejects.toThrow();
       }
 
-      const tx = await thresholdContractForAdmin.initialize(
-        adminAddress,
-        policies.threshold.blockHeightWindow,
-        investigatorAddress,
-      );
+      const tx = await thresholdContractForAdmin.initialize(adminAddress, policies.threshold.blockHeightWindow);
       await tx.wait();
 
-      const admin = await thresholdContract.roles(ADMIN_INDEX);
-      expect(admin).toBe(adminAddress);
-      const investigator = await thresholdContract.roles(INVESTIGATOR_INDEX);
-      expect(investigator).toBe(investigatorAddress);
+      const role = await thresholdContract.address_to_role(adminAddress);
+      expect(role).toBe(MANAGER_ROLE);
       const freezeRegistryName = await thresholdContract.freeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
       expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
       const epoch = await thresholdContract.epoch(EPOCH_INDEX);
@@ -153,42 +140,30 @@ describe("test sealed_threshold_policy program", () => {
       const threshold = await thresholdContract.threshold(THRESHOLD_INDEX);
       expect(threshold).toBe(THRESHOLD);
       // It is possible to call to initialize only one time
-      const rejectedTx = await thresholdContractForAdmin.initialize(
-        adminAddress,
-        policies.threshold.blockHeightWindow,
-        investigatorAddress,
-      );
+      const rejectedTx = await thresholdContractForAdmin.initialize(adminAddress, policies.threshold.blockHeightWindow);
       await expect(rejectedTx.wait()).rejects.toThrow();
     }
   });
 
-  test(`test update_admin_address`, async () => {
-    let tx = await thresholdContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
+  test(`test update_role`, async () => {
+    // Manager can assign role
+    let tx = await thresholdContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
     await tx.wait();
-    let adminRole = await thresholdContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(frozenAccount);
+    let role = await thresholdContract.address_to_role(frozenAccount);
+    expect(role).toBe(MANAGER_ROLE);
 
-    tx = await thresholdContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
+    // Manager can remove role
+    tx = await thresholdContractForAdmin.update_role(frozenAccount, NONE_ROLE);
     await tx.wait();
-    adminRole = await thresholdContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(adminAddress);
+    role = await thresholdContract.address_to_role(frozenAccount);
+    expect(role).toBe(NONE_ROLE);
 
-    tx = await thresholdContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
-    await expect(tx.wait()).rejects.toThrow();
-  });
+    // Non manager cannot assign role
+    let rejectedTx = await thresholdContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
 
-  test(`test update_investigator_address`, async () => {
-    let tx = await thresholdContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
-    await tx.wait();
-    let investigatorRole = await thresholdContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(frozenAccount);
-
-    tx = await thresholdContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
-    await tx.wait();
-    investigatorRole = await thresholdContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(investigatorAddress);
-
-    const rejectedTx = await thresholdContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
+    // Manager cannot unassign himself from being a manager
+    rejectedTx = await thresholdContractForAdmin.update_role(adminAddress, NONE_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
@@ -377,7 +352,6 @@ describe("test sealed_threshold_policy program", () => {
       recipientRecord,
       latestBlockHeight,
       senderMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord, encryptedRecipientStateRecord] = await tx.wait();
 
@@ -428,7 +402,6 @@ describe("test sealed_threshold_policy program", () => {
       recipientRecord,
       latestBlockHeight,
       senderMerkleProof,
-      investigatorAddress,
     );
     await expect(tx3.wait()).rejects.toThrow();
   });
@@ -456,7 +429,6 @@ describe("test sealed_threshold_policy program", () => {
       latestBlockHeight2,
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord1, encryptedAccountRecord2] = await transferPrivateTx.wait();
     expect(() => decryptComplianceRecord(complianceRecord1, investigatorPrivKey)).toThrow();
@@ -497,7 +469,6 @@ describe("test sealed_threshold_policy program", () => {
       latestBlockHeight3,
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord2, encryptedAccountRecord3] = await transferPrivateTx.wait();
     accountRecord = decryptToken(
@@ -650,7 +621,6 @@ describe("test sealed_threshold_policy program", () => {
       accountStateRecord,
       await getLatestBlockHeight(),
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -669,7 +639,6 @@ describe("test sealed_threshold_policy program", () => {
       frozenAccountStateRecord,
       await getLatestBlockHeight(),
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -681,7 +650,6 @@ describe("test sealed_threshold_policy program", () => {
         accountStateRecord,
         await getLatestBlockHeight(),
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -693,7 +661,6 @@ describe("test sealed_threshold_policy program", () => {
         accountStateRecord,
         0,
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -704,7 +671,6 @@ describe("test sealed_threshold_policy program", () => {
       accountStateRecord,
       2 ** 32 - 1, // Max u32
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -715,7 +681,6 @@ describe("test sealed_threshold_policy program", () => {
       accountStateRecord,
       latestBlockHeight,
       recipientMerkleProof,
-      investigatorAddress,
     );
 
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
@@ -760,7 +725,6 @@ describe("test sealed_threshold_policy program", () => {
         await getLatestBlockHeight(),
         frozenAccountMerkleProof,
         recipientMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
     // If the recipient is frozen account it's impossible to send tokens
@@ -773,7 +737,6 @@ describe("test sealed_threshold_policy program", () => {
         await getLatestBlockHeight(),
         senderMerkleProof,
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -787,7 +750,6 @@ describe("test sealed_threshold_policy program", () => {
         0,
         senderMerkleProof,
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -800,7 +762,6 @@ describe("test sealed_threshold_policy program", () => {
       2 ** 32 - 1, // Max u32
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -813,7 +774,6 @@ describe("test sealed_threshold_policy program", () => {
       latestBlockHeight,
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
 
@@ -865,7 +825,6 @@ describe("test sealed_threshold_policy program", () => {
         accountStateRecord,
         await getLatestBlockHeight(),
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -877,7 +836,6 @@ describe("test sealed_threshold_policy program", () => {
       accountStateRecord,
       await getLatestBlockHeight(),
       senderMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -890,7 +848,6 @@ describe("test sealed_threshold_policy program", () => {
         accountStateRecord,
         0,
         senderMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -902,7 +859,6 @@ describe("test sealed_threshold_policy program", () => {
       accountStateRecord,
       2 ** 32 - 1, // Max u32
       senderMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -914,7 +870,6 @@ describe("test sealed_threshold_policy program", () => {
       accountStateRecord,
       latestBlockHeight,
       senderMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord, encryptedAccountRecord] = await tx.wait();
 

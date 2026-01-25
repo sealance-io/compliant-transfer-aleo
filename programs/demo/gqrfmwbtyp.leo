@@ -7,10 +7,19 @@ import sealed_timelock_policy.aleo;
 program gqrfmwbtyp.aleo {
     @custom
     async constructor() {
-        if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+        // Only require multisig for upgrades - initial deployment has no checks.
+        if self.edition > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
         }
+    }
+
+    struct ChecksumEdition {
+        checksum: [u8; 32],
+        edition: u16,
     }
     
     // The address that received the Aleo credits in the swap
@@ -18,11 +27,12 @@ program gqrfmwbtyp.aleo {
     // The rate that we will use in case there is no defined rate. 
     const DEFAULT_RATE: u128 = 10u128;
     const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
-    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
 
-    // Admin: can assign roles, update the token rates and upgrade the program
-    const ADMIN_INDEX: u8 = 1u8;
+    const INITIALIZED_INDEX: bool = true;
+    // Indicates whether an address is frozen.
+    mapping initialized: bool => bool;
 
     // Maps a token ID to its exchange rate relative to Aleo credits.
     // Used to calculate how many tokens a user receives per credit.
@@ -30,31 +40,40 @@ program gqrfmwbtyp.aleo {
     mapping token_rates: field => u128;     
     // Maps a role to an address.
     // This program defines only one role: the admin.
-    mapping roles: u8 => address;
+    const NONE_ROLE: u16 = 0u16;
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    mapping address_to_role: address => u16;
 
     // Initializes the admin
     // Can only be called once — ensures the contract has not already been initialized.    
-    // Can be called only by the INITIAL_ADMIN
+    // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     async transition initialize(public admin: address) -> Future {
         return f_initialize(admin, self.caller);
     }
     async function f_initialize(admin: address, caller: address) {
-        let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
+        let is_already_initialized: bool = initialized.get_or_use(INITIALIZED_INDEX, false);
         assert_eq(is_already_initialized, false);
+        
+        // Only the INITIAL_CONFIGURATION_ADDRESS can initialize the contract
+        assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
 
-        assert_eq(caller, INITIAL_ADMIN);
-        roles.set(ADMIN_INDEX, admin);
+        address_to_role.set(admin, MANAGER_ROLE);
     }
 
     // Updates the address assigned to a given role.
-    // Can only be called by the admin.
-    async transition update_role(public new_address: address, role: u8) -> Future {
+    // Can only be called by the current role manager.
+    async transition update_role(public new_address: address, role: u16) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_address);
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
+
+        address_to_role.set(new_address, new_role);
     }
 
     // Updates the exchange rate for a given token.
@@ -63,8 +82,8 @@ program gqrfmwbtyp.aleo {
         return f_update_rate(self.caller, token_id, rate);
     }
     async function f_update_rate(caller: address, token_id: field, rate: u128) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        let role: u16 = address_to_role.get(caller);
+        assert(role & MANAGER_ROLE == MANAGER_ROLE);
 
         token_rates.set(token_id, rate);
     }

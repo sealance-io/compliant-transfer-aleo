@@ -1,12 +1,17 @@
 import token_registry.aleo;
 import sealance_freezelist_registry.aleo;
+import multisig_core.aleo;
 
 program sealed_timelock_policy.aleo {
     @custom
     async constructor() {
-        if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+        // Only require multisig for upgrades - initial deployment has no checks.
+        if self.edition > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
         }
     }
     
@@ -20,20 +25,20 @@ program sealed_timelock_policy.aleo {
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
-    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    // Only this address can initialize the program
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
 
-    // Admin: can assign roles, mint tokens and upgrade the program 
-    const ADMIN_INDEX: u8 = 1u8;
-    // Minter: allowed to mint tokens
-    const MINTER_INDEX: u8 = 3u8;
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
 
     // Mappings
     // Stores the ASCII-encoded name of the freeze registry program.
     // Used by off-chain parties to locate the correct program for generating Merkle proofs.
     mapping freeze_registry_program_name: bool => u128;
-    // Maps a role ID to an address (e.g., 1 = admin, 3 = minter).
-    mapping roles: u8 => address;
+    // Roles can be assigned using bitmasking to allow multiple roles per address
+    const NONE_ROLE: u16 = 0u16;
+    const MINTER_ROLE: u16 = 1u16;
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    mapping address_to_role: address => u16;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -51,13 +56,18 @@ program sealed_timelock_policy.aleo {
         token_id: field
     }
 
+    struct ChecksumEdition {
+        checksum: [u8; 32],
+        edition: u16,
+    }
+
     // -------------------------
     // Called by administrators
     // -------------------------
 
     // Initializes the admin and the freeze_registry_program_name mapping
     // Can only be called once — ensures the contract has not already been initialized.    
-    // Can be called only by the INITIAL_ADMIN
+    // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     // Registers the token and assigns this program as both the token admin and the external authorization party
     async transition initialize(public admin: address) -> Future {
         // Set admin and external_authorization_party to be self.address
@@ -73,11 +83,13 @@ program sealed_timelock_policy.aleo {
         return f_initialize(token_registry_call, admin, self.caller);
     }
     async function f_initialize(token_registry_call: Future, admin: address, caller: address) {
-        let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
-        assert_eq(is_already_initialized, false);
+        // Check if the token has already been initialized
+        let already_initialized: bool = freeze_registry_program_name.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
+        assert_eq(already_initialized, false);
 
-        assert_eq(INITIAL_ADMIN, caller);
-        roles.set(ADMIN_INDEX, admin);
+        address_to_role.set(admin, MANAGER_ROLE);
+
+        assert_eq(INITIAL_CONFIGURATION_ADDRESS, caller);
 
         freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
 
@@ -85,14 +97,19 @@ program sealed_timelock_policy.aleo {
     }
 
     // Updates the address assigned to a given role.
-    // Can only be called by the current admin.
-    async transition update_role(public new_address: address, role: u8) -> Future {
+    // Can only be called by the current role manager.
+    async transition update_role(public new_address: address, role: u16) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_address);
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
+
+        address_to_role.set(new_address, new_role);
     }
 
     // Mints public tokens to the specified recipient and creates a corresponding CompliantToken record.
@@ -122,9 +139,8 @@ program sealed_timelock_policy.aleo {
         token_registry_call: Future,
         caller: address
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let minter_address: address = roles.get_or_use(MINTER_INDEX, ZERO_ADDRESS);
-        assert(admin_address == caller || minter_address == caller);
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MINTER_ROLE == MINTER_ROLE);
 
         token_registry_call.await();
     }
@@ -157,9 +173,8 @@ program sealed_timelock_policy.aleo {
         token_registry_call: Future,
         caller: address
     ) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        let minter_address: address = roles.get_or_use(MINTER_INDEX, ZERO_ADDRESS);
-        assert(admin_address == caller || minter_address == caller);
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MINTER_ROLE == MINTER_ROLE);
 
         token_registry_call.await();
     }

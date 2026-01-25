@@ -5,19 +5,17 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-
 import {
   MAX_TREE_DEPTH,
   SEALED_TIMELOCK_POLICY_ADDRESS,
   fundedAmount,
   policies,
-  ADMIN_INDEX,
-  MINTER_INDEX,
   BLOCK_HEIGHT_WINDOW,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   MANAGER_ROLE,
   FREEZELIST_MANAGER_ROLE,
   NONE_ROLE,
+  MINTER_ROLE,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -133,8 +131,8 @@ describe("test sealed_timelock_policy program", () => {
       const tx = await timelockContractForAdmin.initialize(adminAddress);
       await tx.wait();
 
-      const admin = await timelockContract.roles(ADMIN_INDEX);
-      expect(admin).toBe(adminAddress);
+      const role = await timelockContract.address_to_role(adminAddress);
+      expect(role).toBe(MANAGER_ROLE);
 
       // It is possible to call to initialize only one time
       const rejectedTx = await timelockContractForAdmin.initialize(adminAddress);
@@ -142,15 +140,36 @@ describe("test sealed_timelock_policy program", () => {
     }
   });
 
-  test(`test update_roles`, async () => {
-    const onChainAdmin = await timelockContract.roles(ADMIN_INDEX);
-    expect(onChainAdmin).toBe(adminAddress);
-
-    let tx = await timelockContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
-    await expect(tx.wait()).rejects.toThrow();
-
-    tx = await timelockContractForAdmin.update_role(recipient, MINTER_INDEX);
+  test(`test update_role`, async () => {
+    // Manager can assign role
+    let tx = await timelockContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
     await tx.wait();
+    let role = await timelockContract.address_to_role(frozenAccount);
+    expect(role).toBe(MANAGER_ROLE);
+
+    // Manager can remove role
+    tx = await timelockContractForAdmin.update_role(frozenAccount, NONE_ROLE);
+    await tx.wait();
+    role = await timelockContract.address_to_role(frozenAccount);
+    expect(role).toBe(NONE_ROLE);
+
+    // Non manager cannot assign role
+    let rejectedTx = await timelockContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // Non admin user cannot update minter role
+    rejectedTx = await timelockContractForFrozenAccount.update_role(recipient, MINTER_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // Manager cannot unassign himself from being a manager
+    rejectedTx = await timelockContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // Manager can assign freeze list manager role
+    tx = await timelockContractForAdmin.update_role(recipient, MINTER_ROLE);
+    await tx.wait();
+    role = await timelockContract.address_to_role(recipient);
+    expect(role).toBe(MINTER_ROLE);
   });
 
   test("fund tokens", async () => {
