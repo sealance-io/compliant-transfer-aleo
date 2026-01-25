@@ -623,7 +623,7 @@ describe("test sealed_report_policy program", () => {
     await tx.wait();
     accountRecord = decryptToken((tx as any).transaction.execution.transitions[2].outputs[0].value, accountPrivKey);
 
-    const updateBlockHeightWindowTx = await reportPolicyContractForAdmin.update_block_height_window(1);
+    const updateBlockHeightWindowTx = await reportPolicyContractForFreezeListManager.update_block_height_window(1);
     await updateBlockHeightWindowTx.wait();
 
     // The transaction failed because the old root is expired
