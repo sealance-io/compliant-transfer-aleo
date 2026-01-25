@@ -17,7 +17,6 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 - **/packages/policy-engine-sdk**: TypeScript SDK for generating Merkle proofs and interacting with Aleo compliance policy programs (published as `@sealance-io/policy-engine-aleo`)
 
 - **/programs**: Aleo token programs implementing various compliance policies
-
   - `compliant_token_template.leo`
 
     Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list.
