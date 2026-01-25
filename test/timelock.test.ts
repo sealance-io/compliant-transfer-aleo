@@ -33,12 +33,13 @@ const contract = new BaseContract({ mode });
 
 // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
 // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, _, frozenAccount, account, recipient] = contract.getAccounts();
+const [deployerAddress, adminAddress, _, frozenAccount, account, recipient, minter] = contract.getAccounts();
 const deployerPrivKey = contract.getPrivateKey(deployerAddress);
 const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
 const adminPrivKey = contract.getPrivateKey(adminAddress);
 const accountPrivKey = contract.getPrivateKey(account);
 const recipientPrivKey = contract.getPrivateKey(recipient);
+const minterPrivKey = contract.getPrivateKey(minter);
 
 const tokenRegistryContract = new Token_registryContract({
   mode,
@@ -67,6 +68,10 @@ const timelockContractForRecipient = new Sealed_timelock_policyContract({
 const timelockContractForFrozenAccount = new Sealed_timelock_policyContract({
   mode,
   privateKey: frozenAccountPrivKey,
+});
+const timelockContractForMinter = new Sealed_timelock_policyContract({
+  mode,
+  privateKey: minterPrivKey,
 });
 const merkleTreeContract = new Merkle_treeContract({
   mode,
@@ -159,7 +164,7 @@ describe("test sealed_timelock_policy program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update minter role
-    rejectedTx = await timelockContractForFrozenAccount.update_role(recipient, MINTER_ROLE);
+    rejectedTx = await timelockContractForFrozenAccount.update_role(minter, MINTER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager cannot unassign himself from being a manager
@@ -167,22 +172,22 @@ describe("test sealed_timelock_policy program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Manager can assign freeze list manager role
-    tx = await timelockContractForAdmin.update_role(recipient, MINTER_ROLE);
+    tx = await timelockContractForAdmin.update_role(minter, MINTER_ROLE);
     await tx.wait();
-    role = await timelockContract.address_to_role(recipient);
+    role = await timelockContract.address_to_role(minter);
     expect(role).toBe(MINTER_ROLE);
   });
 
   test("fund tokens", async () => {
-    let mintPublicTx = await timelockContractForAdmin.mint_public(account, amount * 20n, 0);
+    let mintPublicTx = await timelockContractForMinter.mint_public(account, amount * 20n, 0);
     const [encryptedAccountSealedRecord] = await mintPublicTx.wait();
     accountSealedRecord = decryptCompliantToken(encryptedAccountSealedRecord, accountPrivKey);
 
-    mintPublicTx = await timelockContractForAdmin.mint_public(frozenAccount, amount * 20n, 0);
+    mintPublicTx = await timelockContractForMinter.mint_public(frozenAccount, amount * 20n, 0);
     const [encryptedFrozenAccountSealedRecord] = await mintPublicTx.wait();
     frozenAccountSealedRecord = decryptCompliantToken(encryptedFrozenAccountSealedRecord, frozenAccountPrivKey);
 
-    let mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 20n, 0);
+    let mintPrivateTx = await timelockContractForMinter.mint_private(account, amount * 20n, 0);
     await mintPrivateTx.wait();
     accountSealedRecord2 = decryptCompliantToken(
       (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0].value,
@@ -193,7 +198,7 @@ describe("test sealed_timelock_policy program", () => {
       accountPrivKey,
     );
 
-    mintPrivateTx = await timelockContractForAdmin.mint_private(frozenAccount, amount * 20n, 0);
+    mintPrivateTx = await timelockContractForMinter.mint_private(frozenAccount, amount * 20n, 0);
     await mintPrivateTx.wait();
     frozenAccountSealedRecord2 = decryptCompliantToken(
       (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0].value,
@@ -203,12 +208,6 @@ describe("test sealed_timelock_policy program", () => {
       (mintPrivateTx as any).transaction.execution.transitions[0].outputs[0].value,
       frozenAccountPrivKey,
     );
-
-    // recipient is a minter, verify that they can call mint
-    mintPublicTx = await timelockContractForRecipient.mint_public(account, amount * 20n, 0);
-    await mintPublicTx.wait();
-    mintPrivateTx = await timelockContractForRecipient.mint_private(frozenAccount, amount * 20n, 0);
-    await mintPrivateTx.wait();
 
     // frozen account cannot call mint
     const rejectedTx = await timelockContractForFrozenAccount.mint_public(account, amount * 20n, 0);
@@ -383,10 +382,10 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`test transfer_public_as_signer`, async () => {
-    let mintPublicTx = await timelockContractForAdmin.mint_public(account, amount * 20n, 0);
+    let mintPublicTx = await timelockContractForMinter.mint_public(account, amount * 20n, 0);
     await mintPublicTx.wait();
 
-    mintPublicTx = await timelockContractForAdmin.mint_public(account, amount, 0);
+    mintPublicTx = await timelockContractForMinter.mint_public(account, amount, 0);
     const [encryptedAccountSealedRecord] = await mintPublicTx.wait();
     accountSealedRecord = decryptCompliantToken(encryptedAccountSealedRecord, accountPrivKey);
 
@@ -430,9 +429,9 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`test transfer_public_to_priv`, async () => {
-    let mintPublicTx = await timelockContractForAdmin.mint_public(account, amount * 20n, 0);
+    let mintPublicTx = await timelockContractForMinter.mint_public(account, amount * 20n, 0);
 
-    mintPublicTx = await timelockContractForAdmin.mint_public(account, amount, 0);
+    mintPublicTx = await timelockContractForMinter.mint_public(account, amount, 0);
     const [encryptedAccountSealedRecord] = await mintPublicTx.wait();
     accountSealedRecord = decryptCompliantToken(encryptedAccountSealedRecord, accountPrivKey);
 
@@ -519,7 +518,7 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`test transfer_private`, async () => {
-    let mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 20n, 0);
+    let mintPrivateTx = await timelockContractForMinter.mint_private(account, amount * 20n, 0);
     await mintPrivateTx.wait();
     accountSealedRecord = decryptCompliantToken(
       (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0].value,
@@ -530,7 +529,7 @@ describe("test sealed_timelock_policy program", () => {
       accountPrivKey,
     );
 
-    mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 10n, 0);
+    mintPrivateTx = await timelockContractForMinter.mint_private(account, amount * 10n, 0);
     await mintPrivateTx.wait();
     accountSealedRecord2 = decryptCompliantToken(
       (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0].value,
@@ -664,7 +663,7 @@ describe("test sealed_timelock_policy program", () => {
   });
 
   test(`test transfer_priv_to_public`, async () => {
-    let mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 20n, 0);
+    let mintPrivateTx = await timelockContractForMinter.mint_private(account, amount * 20n, 0);
     await mintPrivateTx.wait();
     accountSealedRecord2 = decryptCompliantToken(
       (mintPrivateTx as any).transaction.execution.transitions[1].outputs[0].value,
@@ -675,7 +674,7 @@ describe("test sealed_timelock_policy program", () => {
       accountPrivKey,
     );
 
-    mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount, 0);
+    mintPrivateTx = await timelockContractForMinter.mint_private(account, amount, 0);
     await mintPrivateTx.wait();
 
     accountSealedRecord = decryptCompliantToken(
@@ -792,13 +791,13 @@ describe("test sealed_timelock_policy program", () => {
   test(`test join`, async () => {
     // create new records
     const lockedUntil = Math.floor(Math.random() * 2 ** 32);
-    let mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount, lockedUntil);
+    let mintPrivateTx = await timelockContractForMinter.mint_private(account, amount, lockedUntil);
     const [encryptedLockedSealedRecord] = await mintPrivateTx.wait();
     const lockedAccountSealedRecord = decryptCompliantToken(encryptedLockedSealedRecord, accountPrivKey);
-    mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount * 2n, 0);
+    mintPrivateTx = await timelockContractForMinter.mint_private(account, amount * 2n, 0);
     let [encryptedUnlockedSealedRecord] = await mintPrivateTx.wait();
     const unlockedAccountSealedRecord1 = decryptCompliantToken(encryptedUnlockedSealedRecord, accountPrivKey);
-    mintPrivateTx = await timelockContractForAdmin.mint_private(account, amount, 0);
+    mintPrivateTx = await timelockContractForMinter.mint_private(account, amount, 0);
     [encryptedUnlockedSealedRecord] = await mintPrivateTx.wait();
     const unlockedAccountSealedRecord2 = decryptCompliantToken(encryptedUnlockedSealedRecord, accountPrivKey);
 

@@ -272,7 +272,7 @@ describe("test sealed_report_token program", () => {
     rejectedTx = await reportTokenContractForBurner.mint_private(account, amount * 20n);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await reportTokenContractForAdmin.mint_private(account, amount * 20n);
+    let tx = await reportTokenContractForMinter.mint_private(account, amount * 20n);
     const [encryptedAccountRecord] = await tx.wait();
     accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
     expect(accountRecord.amount).toBe(amount * 20n);
@@ -296,7 +296,7 @@ describe("test sealed_report_token program", () => {
     rejectedTx = await reportTokenContractForBurner.mint_public(account, amount * 20n);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await reportTokenContractForAdmin.mint_public(account, amount * 20n);
+    let tx = await reportTokenContractForMinter.mint_public(account, amount * 20n);
     await tx.wait();
     let balance = await reportTokenContract.balances(account);
     expect(balance).toBe(amount * 20n);
@@ -317,18 +317,18 @@ describe("test sealed_report_token program", () => {
     let rejectedTx = await reportTokenContractForAccount.burn_private(accountRecord, amount);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let mintTx = await reportTokenContractForAdmin.mint_private(adminAddress, amount);
+    let mintTx = await reportTokenContractForMinter.mint_private(adminAddress, amount);
     let [encryptedAdminRecord] = await mintTx.wait();
     let adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
     expect(adminRecord.amount).toBe(amount);
     expect(adminRecord.owner).toBe(adminAddress);
-    let burnTx = await reportTokenContractForAdmin.burn_private(adminRecord, amount);
+    let burnTx = await reportTokenContractForBurner.burn_private(adminRecord, amount);
     [encryptedAdminRecord] = await burnTx.wait();
     adminRecord = decryptToken(encryptedAdminRecord, adminPrivKey);
     expect(adminRecord.amount).toBe(0n);
     expect(adminRecord.owner).toBe(adminAddress);
 
-    mintTx = await reportTokenContractForAdmin.mint_private(burner, amount);
+    mintTx = await reportTokenContractForMinter.mint_private(burner, amount);
     let [encryptedBurnerRecord] = await mintTx.wait();
     let burnerRecord = decryptToken(encryptedBurnerRecord, burnerPrivKey);
     expect(burnerRecord.amount).toBe(amount);
@@ -339,7 +339,7 @@ describe("test sealed_report_token program", () => {
     expect(burnerRecord.amount).toBe(0n);
     expect(burnerRecord.owner).toBe(burner);
 
-    mintTx = await reportTokenContractForAdmin.mint_private(supplyManager, amount);
+    mintTx = await reportTokenContractForMinter.mint_private(supplyManager, amount);
     let [encryptedSupplyManager] = await mintTx.wait();
     let supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
     expect(supplyManagerRecord.amount).toBe(amount);
@@ -361,7 +361,7 @@ describe("test sealed_report_token program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     const previousAccountPublicBalance = await reportTokenContract.balances(account);
-    let tx = await reportTokenContractForAdmin.burn_public(account, amount);
+    let tx = await reportTokenContractForBurner.burn_public(account, amount);
     await tx.wait();
     let balance = await reportTokenContract.balances(account);
     expect(balance).toBe(previousAccountPublicBalance - amount);

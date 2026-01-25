@@ -54,6 +54,8 @@ program gqrfmwbtyp.aleo {
         let is_already_initialized: bool = initialized.get_or_use(INITIALIZED_INDEX, false);
         assert_eq(is_already_initialized, false);
         
+        initialized.set(INITIALIZED_INDEX, true);
+    
         // Only the INITIAL_CONFIGURATION_ADDRESS can initialize the contract
         assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
 
