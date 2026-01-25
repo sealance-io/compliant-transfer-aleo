@@ -23,7 +23,7 @@ This is a monorepo for implementing compliant token transfers on the Aleo blockc
 npm ci
 
 # Install doko-js CLI (required for compiling Leo programs)
-# See docs/doko-installation-guide.md
+npm install -g @sealance-io/dokojs@1.0.1 --ignore-scripts
 ```
 
 **Critical**: This repository uses npm workspaces with a single root `package-lock.json`. Never run `npm install` in workspace directories (`packages/*/`). Always install from the root.
@@ -90,7 +90,7 @@ npm run format:fix --workspace=@sealance-io/policy-engine-aleo
 
 ### SDK Releasing
 
-Uses [Changesets](https://github.com/changesets/changesets) for version management. See `docs/RELEASING.md` for complete documentation.
+Uses [Changesets](https://github.com/changesets/changesets) for version management.
 
 ```bash
 npx changeset              # Add changeset when making SDK changes
@@ -308,6 +308,9 @@ Uses custom fork (`@doko-js/core`, `@doko-js/utils`, `@doko-js/wasm`) for compil
 - **`Fund.ts`**: Credit funding for test accounts
 - **`Token.ts`**, **`Role.ts`**, **`Block.ts`**: Token, role, and block utilities
 - **`Constants.ts`**: MAX_TREE_DEPTH, ZERO_ADDRESS, etc.
+- **`Initalize.ts`**: Initialization helpers
+- **`Multisig.ts`**: Multi-signature utilities
+- **`Upgrade.ts`**: Contract upgrade utilities
 
 ## File Locations
 
@@ -319,7 +322,7 @@ Uses custom fork (`@doko-js/core`, `@doko-js/utils`, `@doko-js/wasm`) for compil
 | `/lib/`                            | Shared libraries                                                                                           |
 | `/artifacts/`                      | Compiled output                                                                                            |
 | `/scripts/`                        | Deployment scripts                                                                                         |
-| `/docs/`                           | `NPM-SECURITY.md`, `RELEASING.md`, `testing-configuration-guide.md`                                        |
+| `/docs/`                           | `NPM-SECURITY.md`, `TESTING.md`, `SECURITY-WORKFLOWS.md`, `DEPENDABOT-STRATEGY.md`                         |
 
 ## Dependency Management & Security
 
@@ -346,4 +349,4 @@ Uses custom fork (`@doko-js/core`, `@doko-js/utils`, `@doko-js/wasm`) for compil
 - **Container auth**: Run `docker login ghcr.io` for ghcr.io images
 - **Tests too slow**: Use devnode mode (default) with `SKIP_EXECUTE_PROOF=true`; increase `CONSENSUS_CHECK_TIMEOUT` for CI
 - **Port 3030 in use**: `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`
-- **Manual devnet**: See `docs/testing-configuration-guide.md`
+- **Manual devnet**: See `docs/TESTING.md`
