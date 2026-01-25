@@ -21,7 +21,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 
     Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list.
 
-  - `multisig_compliant_token_template.leo`
+  - `multisig_compliant_token.leo`
 
     Token program that grants asset issuers access to transaction details. The sender must not be on the sanctions list. The program additionally supports a multisig manager for administering privileged operations.
 
@@ -56,7 +56,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
   - `gqrfmwbtyp.leo`
     Program enabling users to exchange native Aleo tokens for compliant tokens.
 
-  - `multisig_compliant_token_proxy.leo`
+  - `multisig_token_proxy.leo`
 
     Proxy program that enables multisig control of a non-multisig compliant token by accepting multisig requests and forwarding the corresponding management actions to the underlying token program.
 
@@ -66,7 +66,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 
 - **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts.
 - **/test**: TypeScript tests that validate contract functionalities.
-- **/imports**: Shared modules and additional contracts (e.g., token_registry.aleo).
+- **/imports**: Shared Aleo modules (e.g., credits.aleo).
 
 ## Getting Started
 
@@ -171,7 +171,7 @@ ALEO_TEST_IMAGE=custom/image:latest
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
-**For comprehensive testing documentation, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md)**
+**For comprehensive testing documentation, see [docs/TESTING.md](docs/TESTING.md)**
 
 ### Troubleshooting
 
@@ -190,7 +190,7 @@ docker login ghcr.io
 **Tests too slow:**
 Use fast mode by removing `DEVNET=true` from `.env`
 
-For detailed troubleshooting, configuration reference, and manual setup instructions, see [docs/testing-configuration-guide.md](docs/testing-configuration-guide.md).
+For detailed troubleshooting, configuration reference, and manual setup instructions, see [docs/TESTING.md](docs/TESTING.md).
 
 ## Contributing
 
