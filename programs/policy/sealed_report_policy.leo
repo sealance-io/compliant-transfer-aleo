@@ -1,12 +1,17 @@
 import token_registry.aleo;
 import merkle_tree.aleo;
+import multisig_core.aleo;
 
 program sealed_report_policy.aleo {
     @custom
     async constructor() {
-        if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+        // Only require multisig for upgrades - initial deployment has no checks.
+        if self.edition > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
         }
     }
     
@@ -15,12 +20,11 @@ program sealed_report_policy.aleo {
     // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const AUTHORIZED_UNTIL: u32 = 4294967295u32;
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-    
-    // Admin: can assign roles, update the freeze list and upgrade the program
-    const ADMIN_INDEX: u8 = 1u8;
-    // Investigator: receives compliant records with transaction details
-    const INVESTIGATOR_INDEX: u8 = 2u8;
+    // Only this address can initialize the program
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    // This address receives compliance records (can be updated with the contract upgrade)
+    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
+
     // Freeze list manager: can update the freeze list
     const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
@@ -41,8 +45,11 @@ program sealed_report_policy.aleo {
     mapping root_updated_height: bool => u32;
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
-    // Maps a role ID to an address (e.g., 1 = admin, 2 = investigator).
-    mapping roles: u8 => address;
+    
+    const NONE_ROLE: u16 = 0u16;
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+    mapping address_to_role: address => u16;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -62,21 +69,25 @@ program sealed_report_policy.aleo {
         token_id: field
     }
 
-    // Initializes the freeze list, the admin and the investigator.
+    struct ChecksumEdition {
+        checksum: [u8; 32],
+        edition: u16,
+    }
+
+    // Initializes the freeze list, and the admin.
     // Can only be called once — ensures the contract has not already been initialized.
-    // Can be called only by the INITIAL_ADMIN
+    // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
-    async transition initialize(public admin: address, public blocks: u32, public investigator_address: address) -> Future {
-        return f_initialize(admin, self.caller, blocks, investigator_address);
+    async transition initialize(public admin: address, public blocks: u32) -> Future {
+        return f_initialize(admin, self.caller, blocks);
     }
-    async function f_initialize(admin: address, caller: address, blocks: u32, investigator_address: address) {
+    async function f_initialize(admin: address, caller: address, blocks: u32) {
         let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(is_already_initialized, false);
 
-        assert_eq(caller, INITIAL_ADMIN);
-        roles.set(ADMIN_INDEX, admin);
-        roles.set(INVESTIGATOR_INDEX, investigator_address);
+        assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
+        address_to_role.set(admin, MANAGER_ROLE);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
         freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
@@ -98,7 +109,7 @@ program sealed_report_policy.aleo {
     // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
-    // Can only be called by the admin and the freeze list manager.
+    // Can only be called by the freeze list manager.
     async transition update_freeze_list(
         public account: address, 
         public is_frozen: bool, 
@@ -109,11 +120,8 @@ program sealed_report_policy.aleo {
         return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root);
     }
     async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        if(admin_address != caller) {
-            let freeze_list_manager_address: address = roles.get(FREEZE_LIST_MANAGER_INDEX);
-            assert_eq(freeze_list_manager_address, caller);
-        }
+        let role: u16 = address_to_role.get(caller);
+        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
         let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         assert_eq(previous_root, old_root);
@@ -127,9 +135,9 @@ program sealed_report_policy.aleo {
 
         let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
         if (is_frozen) {
-            // Verify that the frozen_index is empty
+            // Verify that the frozen_index is empty.
             assert_eq(current_address_at_index, ZERO_ADDRESS);
-
+            
             // Verify that the frozen index equal or smaller than the last index plus 1
             let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
             assert(last_index + 1u32 >= frozen_index);
@@ -141,7 +149,7 @@ program sealed_report_policy.aleo {
 
             freeze_list_index.set(frozen_index, account);
         } else {
-            // Verify we update the correct frozen_index
+            // Verify that we update the correct frozen_index
             assert_eq(current_address_at_index, account);
             freeze_list_index.set(frozen_index, ZERO_ADDRESS);
         }
@@ -150,14 +158,19 @@ program sealed_report_policy.aleo {
     }
 
     // Updates the address assigned to a given role.
-    // Can only be called by the current admin.
-    async transition update_role(public new_address: address, role: u8) -> Future {
+    // Can only be called by the current role manager.
+    async transition update_role(public new_address: address, role: u16) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_address);
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
+
+        address_to_role.set(new_address, new_role);
     }
 
     // Updates the number of blocks during which the previous root is still considered valid.
@@ -166,8 +179,8 @@ program sealed_report_policy.aleo {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        let role: u16 = address_to_role.get(caller);
+        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
@@ -265,8 +278,7 @@ program sealed_report_policy.aleo {
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
@@ -291,7 +303,7 @@ program sealed_report_policy.aleo {
 
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: self.caller,
             recipient: recipient,
@@ -303,8 +315,7 @@ program sealed_report_policy.aleo {
                 authorization_call,
                 transfer_call.1, 
                 self.caller,
-                root,
-                investigator_address
+                root
             )
         );
     }
@@ -312,8 +323,7 @@ program sealed_report_policy.aleo {
         authorization_call: Future,
         transfer_call: Future,
         sender: address,
-        root: field,
-        investigator_address: address
+        root: field
     ) {
         let is_sender_frozen: bool = freeze_list.get_or_use(sender, false);
         assert_eq(is_sender_frozen, false);
@@ -326,9 +336,6 @@ program sealed_report_policy.aleo {
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();
@@ -343,8 +350,7 @@ program sealed_report_policy.aleo {
         amount: u128,
         input_record: token_registry.aleo/Token,
         sender_merkle_proofs: [MerkleProof;2],
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -373,7 +379,7 @@ program sealed_report_policy.aleo {
         );
 
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -386,8 +392,7 @@ program sealed_report_policy.aleo {
             f_transfer_private(
                 authorization_call.2,
                 transfer_call.2,
-                sender_root,
-                investigator_address 
+                sender_root
             )
         );
     }
@@ -395,8 +400,7 @@ program sealed_report_policy.aleo {
     async function f_transfer_private(
         authorization_call: Future,
         transfer_call: Future,
-        root: field,
-        investigator_address: address
+        root: field
     ) {
         let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
         if (current_root != root) {
@@ -406,9 +410,6 @@ program sealed_report_policy.aleo {
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-        
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();
@@ -422,8 +423,7 @@ program sealed_report_policy.aleo {
         public recipient: address,
         public amount: u128,
         input_record: token_registry.aleo/Token,
-        sender_merkle_proofs: [MerkleProof; 2],
-        public investigator_address: address
+        sender_merkle_proofs: [MerkleProof; 2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -447,7 +447,7 @@ program sealed_report_policy.aleo {
         );
         
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: investigator_address,
+            owner: INVESTIGATOR_ADDRESS,
             amount: amount,
             sender: input_record.owner,
             recipient: recipient,
@@ -461,8 +461,7 @@ program sealed_report_policy.aleo {
                 authorization_call.2, 
                 transfer_call.1, 
                 recipient,
-                root,
-                investigator_address
+                root
             )
         );
     }
@@ -470,8 +469,7 @@ program sealed_report_policy.aleo {
         authorization_call: Future,
         transfer_call: Future,
         recipient: address,
-        root: field,
-        investigator_address: address
+        root: field
     ) {
         let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);
         assert_eq(is_recipient_frozen, false);
@@ -484,9 +482,6 @@ program sealed_report_policy.aleo {
             let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-        
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         authorization_call.await();
         transfer_call.await();

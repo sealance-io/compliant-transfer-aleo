@@ -5,12 +5,12 @@ import { Token_registryContract } from "../artifacts/js/token_registry";
 import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { TREASURE_ADDRESS, fundedAmount, policies, defaultRate, ADMIN_INDEX } from "../lib/Constants";
+import { TREASURE_ADDRESS, fundedAmount, policies, defaultRate, MANAGER_ROLE, MINTER_ROLE } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { registerTokenProgram } from "../lib/Token";
 import { CreditsContract } from "../artifacts/js/credits";
-import { setTokenRegistryRole, updateMinterRole } from "../lib/Role";
+import { setTokenRegistryRole, updateAddressToRole } from "../lib/Role";
 import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";
 import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
@@ -101,7 +101,7 @@ describe("test exchange contract", () => {
 
     await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
     await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-    await updateMinterRole(timelockContractForAdmin, exchangeContract.address());
+    await updateAddressToRole(timelockContractForAdmin, exchangeContract.address(), MINTER_ROLE);
   });
 
   test(`test initialize`, async () => {
@@ -114,8 +114,8 @@ describe("test exchange contract", () => {
     const tx = await exchangeContractForAdmin.initialize(adminAddress);
     await tx.wait();
 
-    const admin = await exchangeContract.roles(ADMIN_INDEX);
-    expect(admin).toBe(adminAddress);
+    const role = await exchangeContract.address_to_role(adminAddress);
+    expect(role).toBe(MANAGER_ROLE);
 
     // It is possible to call to initialize only one time
     const rejectedTx = await exchangeContractForAdmin.initialize(adminAddress);
@@ -123,14 +123,14 @@ describe("test exchange contract", () => {
   });
 
   test(`test update_admin`, async () => {
-    const tx = await exchangeContractForAdmin.update_role(adminAddress, ADMIN_INDEX);
+    const tx = await exchangeContractForAdmin.update_role(adminAddress, MANAGER_ROLE);
     await tx.wait();
 
-    const admin = await exchangeContract.roles(ADMIN_INDEX);
-    expect(admin).toBe(adminAddress);
+    const role = await exchangeContract.address_to_role(adminAddress);
+    expect(role).toBe(MANAGER_ROLE);
 
     // Only the admin can call to this function
-    const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, ADMIN_INDEX);
+    const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, MANAGER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 

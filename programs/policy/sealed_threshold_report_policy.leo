@@ -1,12 +1,17 @@
 import token_registry.aleo;
 import sealance_freezelist_registry.aleo;
+import multisig_core.aleo;
 
 program sealed_threshold_report_policy.aleo {
     @custom
     async constructor() {
-        if (self.edition > 0) {
-            let admin_address: address = roles.get(ADMIN_INDEX);
-            assert_eq(admin_address, self.program_owner);     
+        // Only require multisig for upgrades - initial deployment has no checks.
+        if self.edition > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            assert(signing_complete);
         }
     }
 
@@ -15,16 +20,15 @@ program sealed_threshold_report_policy.aleo {
     const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
     const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
     const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
-    const INITIAL_ADMIN: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    // Only this address can initialize the program
+    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+    // This address receives compliance records (can be updated with the contract upgrade)
+    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
 
     // Info: 1 block per 10 seconds (approx)
     // Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
     const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
 
-    // Admin: manages role assignments, block_height_window updates and upgrade the program 
-    const ADMIN_INDEX: u8 = 1u8;
-    // Investigator: receives compliant records with the transaction details
-    const INVESTIGATOR_INDEX: u8 = 2u8;
     const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
     const EPOCH_INDEX: bool = true;
     const THRESHOLD_INDEX: bool = true;
@@ -43,8 +47,11 @@ program sealed_threshold_report_policy.aleo {
     mapping block_height_window: bool => u32;
     // Tracks which addresses have already generated a TokenComplianceStateRecord.
     mapping owned_state_record: address => bool;
-    // Maps a role ID to an address (e.g., 1 = admin, 2 = investigator).
-    mapping roles: u8 => address;
+
+    // Roles can be assigned using bitmasking to allow multiple roles per address
+    const NONE_ROLE: u16 = 0u16;
+    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+    mapping address_to_role: address => u16;
 
     struct MerkleProof {
         siblings: [field; 16],
@@ -63,26 +70,30 @@ program sealed_threshold_report_policy.aleo {
         token_id: field
     }
 
+    struct ChecksumEdition {
+        checksum: [u8; 32],
+        edition: u16,
+    }
+
     record TokenComplianceStateRecord {
         owner: address,
         cumulative_amount_per_epoch: u128,
         latest_block_height: u32
     }
 
-    // Initializes the admin, the investigator and the the constant mappings used by off-chain parties: freeze_registry_program_name, threshold, epoch.
+    // Initializes the admin, and the the constant mappings used by off-chain parties: freeze_registry_program_name, threshold, epoch.
     // Can only be called once — ensures the contract has not already been initialized.    
-    // Can be called only by the INITIAL_ADMIN
-    async transition initialize(public admin: address, public blocks: u32, public investigator_address: address) -> Future {
-        return f_initialize(admin, self.caller, blocks, investigator_address);
+    // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
+    async transition initialize(public admin: address, public blocks: u32) -> Future {
+        return f_initialize(admin, self.caller, blocks);
     }
-    async function f_initialize(admin: address, caller: address, blocks: u32, investigator_address: address) {
-        let is_already_initialized: bool = roles.contains(ADMIN_INDEX);
-        assert_eq(is_already_initialized, false);
+    async function f_initialize(admin: address, caller: address, blocks: u32) {
+        let already_initialized: bool = freeze_registry_program_name.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
+        assert_eq(already_initialized, false);
 
-        assert_eq(caller, INITIAL_ADMIN);
+        assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
 
-        roles.set(ADMIN_INDEX, admin);
-        roles.set(INVESTIGATOR_INDEX, investigator_address);
+        address_to_role.set(admin, MANAGER_ROLE);
 
         freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
         threshold.set(THRESHOLD_INDEX, THRESHOLD);
@@ -125,8 +136,7 @@ program sealed_threshold_report_policy.aleo {
         amount: u128,
         input_record: token_registry.aleo/Token,
         public estimated_block_height: u32,
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -161,7 +171,7 @@ program sealed_threshold_report_policy.aleo {
 
         let is_above_threshold: bool = amount > THRESHOLD;
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: is_above_threshold ? investigator_address : ZERO_ADDRESS,
+            owner: is_above_threshold ? INVESTIGATOR_ADDRESS : ZERO_ADDRESS,
             amount: is_above_threshold ? amount : 0u128,
             sender: is_above_threshold ? input_record.owner : ZERO_ADDRESS,
             recipient: is_above_threshold ? recipient : ZERO_ADDRESS,
@@ -174,7 +184,6 @@ program sealed_threshold_report_policy.aleo {
             transfer_call.1,
             f_signup_and_transfer_private(
                 input_record.owner,
-                investigator_address,
                 estimated_block_height,
                 verify_sender,
                 verify_recipient,
@@ -184,7 +193,6 @@ program sealed_threshold_report_policy.aleo {
     }
     async function f_signup_and_transfer_private(
         sender: address,  
-        investigator_address: address,
         estimated_block_height: u32,
         verify_sender: Future,
         verify_recipient: Future,  
@@ -198,9 +206,6 @@ program sealed_threshold_report_policy.aleo {
         verify_sender.await();
         verify_recipient.await();
 
-        let role_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(role_address, investigator_address);
-
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
         window = block.height > window 
@@ -212,27 +217,32 @@ program sealed_threshold_report_policy.aleo {
         transfer_call.await();
     }
 
-    // Updates the number of blocks within which an estimated block height is considered valid.
+    // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the admin.
     async transition update_block_height_window(public blocks: u32) -> Future {
         return f_update_block_height_window(blocks, self.caller);
     }
     async function f_update_block_height_window(blocks: u32, caller: address) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
+        let role: u16 = address_to_role.get(caller);
+        assert(role & MANAGER_ROLE == MANAGER_ROLE);
 
         block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
     }
 
     // Updates the address assigned to a given role.
-    // Can only be called by the current admin.
-    async transition update_role(public new_address: address, role: u8) -> Future {
+    // Can only be called by the current role manager.
+    async transition update_role(public new_address: address, role: u16) -> Future {
         return f_update_role(new_address, self.caller, role);
     }
-    async function f_update_role(new_address: address, caller: address, role: u8) {
-        let admin_address: address = roles.get(ADMIN_INDEX);
-        assert_eq(admin_address, caller);
-        roles.set(role, new_address);
+    async function f_update_role(new_address: address, caller: address, new_role: u16) {
+        let current_role: u16 = address_to_role.get(caller);
+        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
+        
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
+
+        address_to_role.set(new_address, new_role);
     }
 
     // -------------------------
@@ -394,8 +404,7 @@ program sealed_threshold_report_policy.aleo {
         public amount: u128,
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_state_record.owner, self.caller);
 
@@ -438,7 +447,7 @@ program sealed_threshold_report_policy.aleo {
         let is_above_threshold: bool = cumulative_amount_per_epoch > THRESHOLD;
         let sender: address = self.caller;
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: is_above_threshold ? investigator_address : ZERO_ADDRESS,
+            owner: is_above_threshold ? INVESTIGATOR_ADDRESS : ZERO_ADDRESS,
             amount: is_above_threshold ? amount : 0u128,
             sender: is_above_threshold ? sender : ZERO_ADDRESS,
             recipient: is_above_threshold ? recipient : ZERO_ADDRESS,
@@ -453,7 +462,6 @@ program sealed_threshold_report_policy.aleo {
                 verify_recipient,
                 authorization_call,
                 transfer_call.1, 
-                investigator_address,
                 estimated_block_height
             )
         );
@@ -463,14 +471,10 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        investigator_address: address,
         estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
@@ -498,8 +502,7 @@ program sealed_threshold_report_policy.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
         sender_merkle_proofs: [MerkleProof;2],
-        recipient_merkle_proofs: [MerkleProof;2],
-        public investigator_address: address
+        recipient_merkle_proofs: [MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -543,7 +546,7 @@ program sealed_threshold_report_policy.aleo {
 
         let is_above_threshold: bool = cumulative_amount_per_epoch > THRESHOLD;
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: is_above_threshold ? investigator_address : ZERO_ADDRESS,
+            owner: is_above_threshold ? INVESTIGATOR_ADDRESS : ZERO_ADDRESS,
             amount: is_above_threshold ? amount : 0u128,
             sender: is_above_threshold ? input_record.owner : ZERO_ADDRESS,
             recipient: is_above_threshold ? recipient : ZERO_ADDRESS,
@@ -559,7 +562,6 @@ program sealed_threshold_report_policy.aleo {
                 verify_recipient,
                 authorization_call.2,
                 transfer_call.2,
-                investigator_address,
                 estimated_block_height
             )
         );
@@ -570,14 +572,10 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient: Future,  
         authorization_call: Future,
         transfer_call: Future,       
-        investigator_address: address,
         estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
-
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
@@ -605,7 +603,6 @@ program sealed_threshold_report_policy.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
         sender_merkle_proofs: [MerkleProof; 2],
-        public investigator_address: address,
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
         
@@ -645,7 +642,7 @@ program sealed_threshold_report_policy.aleo {
 
         let is_above_threshold: bool = cumulative_amount_per_epoch > THRESHOLD;
         let compliance_record: ComplianceRecord = ComplianceRecord {
-            owner: is_above_threshold ? investigator_address : ZERO_ADDRESS,
+            owner: is_above_threshold ? INVESTIGATOR_ADDRESS : ZERO_ADDRESS,
             amount: is_above_threshold ? amount : 0u128,
             sender: is_above_threshold ? input_record.owner : ZERO_ADDRESS,
             recipient: is_above_threshold ? recipient : ZERO_ADDRESS,
@@ -660,7 +657,6 @@ program sealed_threshold_report_policy.aleo {
                 verify_recipient,
                 authorization_call.2, 
                 transfer_call.1, 
-                investigator_address,
                 estimated_block_height
             )
         );
@@ -671,14 +667,10 @@ program sealed_threshold_report_policy.aleo {
         verify_recipient: Future,
         authorization_call: Future,
         transfer_call: Future,
-        investigator_address: address,
         estimated_block_height: u32
     ) {
         verify_sender.await();
         verify_recipient.await();
-        
-        let stored_investigator_address: address = roles.get(INVESTIGATOR_INDEX);
-        assert_eq(stored_investigator_address, investigator_address);
 
         assert(block.height >= estimated_block_height);
         let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
