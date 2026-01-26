@@ -37,11 +37,11 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "patch-package": "^8.0.1",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
     "rimraf": "^6.1.2",
     "testcontainers": "^11.11.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.18"
   }
 }
