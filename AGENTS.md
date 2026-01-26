@@ -1,5 +1,7 @@
 # sealance-io/compliant-transfer-aleo AI Agent Guide
 
+> Last Updated: 2026-01-26
+
 AI agent instructions for this repository. See detailed docs for specific topics.
 
 ## Repository Overview
@@ -65,8 +67,8 @@ npm run format:fix          # Auto-fix formatting
 1. **Node Version**: Requires Node >= 20.0.0 (see `.nvmrc`)
 2. **Leo Version**: Developed with Leo CLI v3.4.0
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
-4. **Sequential Testing**: Tests MUST run sequentially (shared devnet state)
-5. **npm Security**: Always use `--ignore-scripts` flag
+4. **Sequential Testing**: Integration/devnet tests MUST run sequentially (shared devnet state)
+5. **npm Security**: Always use `--ignore-scripts` for installs (`npm ci`, `npm install`); build/publish workflows may run scripts as needed
 6. **Dokojs Patches**: `@doko-js/*` blocked in dependabot - verify against `/patches` before updating
 
 ## CI/CD Status Checks

@@ -79,6 +79,7 @@ npm run test --workspace=@sealance-io/policy-engine-aleo
 ```
 
 Integration tests are in `/test/*.test.ts` (require devnet).
+SDK unit tests can run in parallel; integration/devnet tests must run sequentially.
 
 ## Publishing
 
@@ -104,9 +105,9 @@ npm run publish:npm       # Public npm registry
 
 The `prepublishOnly` script builds automatically before publishing.
 
-## Critical Constraints
+## SDK-Specific Notes
 
-1. **Workspace Rules**: Always install packages from repository root
-2. **Changesets**: Add changeset for any SDK change: `npx changeset`
-3. **ESM**: No CommonJS - use `import`/`export` only
-4. **Formatting**: Run `npm run format:fix` before committing
+- **ESM Only**: No CommonJS - use `import`/`export` only
+- Add changeset for any SDK change: `npx changeset`
+
+See root `/AGENTS.md` for repository-wide constraints.
