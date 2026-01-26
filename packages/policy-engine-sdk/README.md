@@ -4,12 +4,12 @@ SDK for generating Merkle proofs and interacting with Aleo compliance policy pro
 
 ## Features
 
-- 🌲 **Merkle Tree Operations**: Build trees, sort leaves, and compute roots
-- 🔐 **Non-Inclusion Proofs**: Generate proofs for private compliant operations
-- 🌐 **Blockchain Integration**: Fetch freeze lists from Aleo nodes
-- 🔄 **Address Conversion**: Convert between Aleo addresses and field elements
-- 📦 **ESM Only**: Modern ES module package
-- 🚀 **Zero Dependencies** (except @provablehq/sdk and @scure/base)
+- Merkle Tree Operations: Build trees, sort leaves, compute roots
+- Non-Inclusion Proofs: Generate proofs for private compliant operations
+- Blockchain Integration: Fetch freeze lists from Aleo nodes
+- Address Conversion: Convert between Aleo addresses and field elements
+- ESM Only: Modern ES module package
+- Minimal Dependencies: Only `@provablehq/sdk` and `@scure/base`
 
 ## Installation
 
@@ -19,15 +19,11 @@ npm install @sealance-io/policy-engine-aleo
 
 ### GitHub Package Registry Setup
 
-Since this package is published to GitHub's npm registry, you need to configure your `.npmrc`:
-
 ```bash
+# Configure registry
 echo "@sealance-io:registry=https://npm.pkg.github.com" >> .npmrc
-```
 
-Or authenticate with:
-
-```bash
+# Or authenticate
 npm login --scope=@sealance-io --registry=https://npm.pkg.github.com
 ```
 
@@ -36,313 +32,67 @@ npm login --scope=@sealance-io --registry=https://npm.pkg.github.com
 ```typescript
 import { PolicyEngine } from "@sealance-io/policy-engine-aleo";
 
-// Initialize the SDK (defaults to mainnet)
+// 1. Initialize (defaults to mainnet)
 const engine = new PolicyEngine();
+// For testnet: new PolicyEngine({ endpoint: "https://api.explorer.provable.com/v1", network: "testnet" })
+// For devnet: new PolicyEngine({ endpoint: "http://localhost:3030", network: "testnet" })
 
-// Or for public testnet:
-// const engine = new PolicyEngine({
-//   endpoint: "https://api.explorer.provable.com/v1",
-//   network: "testnet",
-// });
-
-// Or for local devnet:
-// const engine = new PolicyEngine({
-//   endpoint: "http://localhost:3030",
-//   network: "testnet",
-// });
-
-// Fetch the freeze list from chain
-const freezeList = await engine.fetchFreezeListFromChain(
-  "sealance_freezelist_registry.aleo"
-);
-
+// 2. Fetch freeze list
+const freezeList = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
 console.log(`Found ${freezeList.addresses.length} frozen addresses`);
-console.log(`Current root: ${freezeList.currentRoot}`);
 
-// Generate non-inclusion proof for an address
+// 3. Generate non-inclusion proof
 const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
   programId: "sealance_freezelist_registry.aleo",
 });
 
-console.log(`Generated proofs with root: ${witness.root}`);
+// 4. Use in Leo transaction
+const tx = await policyContract.transfer_private(recipient, amount, inputRecord, witness.proofs);
 ```
 
-## API Reference
+## API Overview
 
-### PolicyEngine
+### PolicyEngine Methods
 
-Main class for SDK operations.
-
-#### Constructor
-
-```typescript
-new PolicyEngine(config?: PolicyEngineConfig)
-```
-
-**Config Options (all optional):**
-- `endpoint`: Aleo network endpoint (default: `"https://api.explorer.provable.com/v1"`)
-- `network`: Network name (default: `"mainnet"`)
-- `maxTreeDepth`: Maximum depth of Merkle tree (default: `15`)
-- `maxRetries`: Max API retry attempts (default: `5`)
-- `retryDelay`: Delay between retries in ms (default: `2000`)
-- `maxConcurrency`: Max concurrent HTTP requests (default: `10`)
-- `logger`: Custom logger function (default: `defaultLogger`)
-
-#### Methods
-
-##### `fetchCurrentRoot(programId: string): Promise<bigint>`
-
-Fetches only the current Merkle root from the blockchain. This is a lightweight operation that makes a single API call without fetching the entire freeze list or building the Merkle tree. Use this method to validate cached freeze lists by comparing roots.
-
-```typescript
-const currentRoot = await engine.fetchCurrentRoot(
-  "sealance_freezelist_registry.aleo"
-);
-
-// Returns: 123456789n
-
-// Use for cache validation
-if (cache.root !== currentRoot) {
-  // Root changed - re-fetch freeze list
-  const freezeList = await engine.fetchFreezeListFromChain(programId);
-  cache = { addresses: freezeList.addresses, root: currentRoot };
-}
-```
-
-##### `fetchFreezeListFromChain(programId: string): Promise<FreezeListResult>`
-
-Fetches the freeze list from the blockchain by querying the `freeze_list_index` mapping.
-
-```typescript
-const result = await engine.fetchFreezeListFromChain(
-  "sealance_freezelist_registry.aleo"
-);
-
-// Returns:
-// {
-//   addresses: ["aleo1...", "aleo1..."],
-//   lastIndex: 5,
-//   currentRoot: 123456789n
-// }
-```
-
-##### `generateFreezeListNonInclusionProof(address: string, options?: NonInclusionProofOptions): Promise<NonInclusionWitness>`
-
-Generates a non-inclusion proof for private compliant transfers.
-
-```typescript
-const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
-  programId: "sealance_freezelist_registry.aleo",
-  freezeList: [...], // Optional: provide cached freeze list
-});
-
-// Returns:
-// {
-//   proofs: [MerkleProof, MerkleProof],
-//   root: 123456789n,
-//   freezeList: ["aleo1...", ...]
-// }
-```
-
-**Usage with Leo Program:**
-
-```typescript
-// In your application code
-const witness = await engine.generateFreezeListNonInclusionProof(senderAddress);
-
-// Use in Aleo transaction
-const tx = await policyContract.transfer_private(
-  recipient,
-  amount,
-  inputRecord,
-  witness.proofs
-);
-```
-
-##### `buildMerkleTree(addresses: string[]): bigint[]`
-
-Builds a complete Merkle tree from an array of addresses.
-
-```typescript
-const tree = engine.buildMerkleTree(["aleo1...", "aleo1..."]);
-```
-
-##### `getMerkleRoot(addresses: string[]): bigint`
-
-Computes the Merkle root from a list of addresses.
-
-```typescript
-const root = engine.getMerkleRoot(["aleo1...", "aleo1..."]);
-```
-
-##### `getConfig(): Required<PolicyEngineConfig>`
-
-Gets the current PolicyEngine configuration.
-
-```typescript
-const config = engine.getConfig();
-console.log(config.endpoint); // "https://api.explorer.provable.com/v1"
-console.log(config.network);  // "mainnet"
-```
+| Method                                | Description                              |
+| ------------------------------------- | ---------------------------------------- |
+| `fetchCurrentRoot(programId)`         | Lightweight root fetch (1 API call)      |
+| `fetchFreezeListFromChain(programId)` | Fetch full freeze list                   |
+| `generateFreezeListNonInclusionProof(addr, opts)` | Generate non-inclusion proof |
+| `buildMerkleTree(addresses)`          | Build tree from addresses                |
+| `getMerkleRoot(addresses)`            | Compute root from addresses              |
+| `getConfig()`                         | Get current configuration                |
 
 ### Utility Functions
 
-#### Address Conversion
+| Function                  | Description                              |
+| ------------------------- | ---------------------------------------- |
+| `convertAddressToField`   | Address → field element                  |
+| `convertFieldToAddress`   | Field element → address                  |
+| `stringToBigInt`          | ASCII string → BigInt                    |
+| `buildTree`               | Build Merkle tree from leaves            |
+| `generateLeaves`          | Generate sorted/padded leaves            |
+| `getLeafIndices`          | Find leaf indices for address            |
+| `getSiblingPath`          | Generate Merkle proof                    |
+| `trackTransactionStatus`  | Track transaction confirmation           |
 
-```typescript
-import {
-  convertAddressToField,
-  convertFieldToAddress,
-  stringToBigInt
-} from "@sealance-io/policy-engine-aleo";
+See [API.md](./API.md) for complete documentation.
 
-// Convert address to field element
-const field = convertAddressToField("aleo1...");
-console.log(field); // 123456789n
+## Configuration
 
-// Convert field element back to address
-const address = convertFieldToAddress("123456789field");
-console.log(address); // "aleo1..."
-
-// Convert ASCII string to BigInt (for token names, symbols, etc.)
-const nameField = stringToBigInt("MyToken");
-console.log(nameField); // 39473518878318894n
-```
-
-#### Merkle Tree Operations
-
-```typescript
-import {
-  buildTree,
-  generateLeaves,
-  getLeafIndices,
-  getSiblingPath
-} from "@sealance-io/policy-engine-aleo";
-
-// Generate leaves from addresses (sorted and padded)
-const leaves = generateLeaves(["aleo1...", "aleo1..."], 15);
-
-// Build the tree
-const tree = buildTree(leaves);
-
-// Get leaf indices for non-inclusion proof
-const [leftIdx, rightIdx] = getLeafIndices(tree, "aleo1...");
-
-// Get sibling path (Merkle proof)
-const proof = getSiblingPath(tree, leftIdx, 16);
-```
-
-#### Transaction Tracking
-
-```typescript
-import { trackTransactionStatus } from "@sealance-io/policy-engine-aleo";
-
-// Track transaction with default settings (5 minute timeout)
-const status = await trackTransactionStatus(
-  txId,
-  "http://localhost:3030/testnet"
-);
-
-// Track with custom options
-const status = await trackTransactionStatus(
-  txId,
-  "https://api.explorer.provable.com/v1/testnet",
-  {
-    timeout: 600000,        // Overall timeout: 10 minutes
-    pollInterval: 10000,    // Check every 10 seconds
-    fetchTimeout: 30000,    // 30 second timeout per request
-    maxAttempts: 60         // Max 60 polling attempts
-  }
-);
-
-// Check status
-if (status.status === "accepted") {
-  console.log(`Transaction confirmed in block ${status.blockHeight}`);
-} else if (status.status === "rejected") {
-  console.error(`Transaction failed: ${status.error}`);
-}
-```
-
-## Type Definitions
-
-### MerkleProof
-
-```typescript
-interface MerkleProof {
-  siblings: bigint[];
-  leaf_index: number;
-}
-```
-
-### NonInclusionWitness
-
-```typescript
-interface NonInclusionWitness {
-  proofs: [MerkleProof, MerkleProof];
-  root: bigint;
-  freezeList: string[];
-}
-```
-
-### TransactionStatus
-
-```typescript
-interface TransactionStatus {
-  status: 'accepted' | 'rejected' | 'aborted' | 'pending';
-  type: 'execute' | 'deploy' | 'fee';
-  confirmedId: string;
-  unconfirmedId?: string;
-  blockHeight?: number;
-  error?: string;
-}
-```
-
-**Status meanings:**
-- `accepted`: Transaction was successfully executed and included in a block
-- `rejected`: Transaction failed but fee was consumed (type will be 'fee')
-- `aborted`: Both execution and fee processing failed
-- `pending`: Transaction is waiting to be included in a block
-
-### TransactionTrackingOptions
-
-```typescript
-interface TransactionTrackingOptions {
-  maxAttempts?: number;     // Max polling attempts (default: 60)
-  pollInterval?: number;    // Delay between polls in ms (default: 5000)
-  timeout?: number;         // Overall timeout in ms (default: 300000 - 5 minutes)
-  fetchTimeout?: number;    // Per-request timeout in ms (default: 30000)
-  network?: string;         // Network name for logging (optional)
-}
-```
-
-### Logger
-
-```typescript
-type LogLevel = "debug" | "info" | "warn" | "error";
-type Logger = (level: LogLevel, message: string, ...args: unknown[]) => void;
-
-// Built-in loggers
-import { defaultLogger, silentLogger } from "@sealance-io/policy-engine-aleo";
-
-// Use silent logger to suppress all logs
-const engine = new PolicyEngine({ logger: silentLogger });
-
-// Use custom logger
-const customLogger: Logger = (level, message, ...args) => {
-  console.log(`[${level.toUpperCase()}] ${message}`, ...args);
-};
-const engine2 = new PolicyEngine({ logger: customLogger });
-```
-
-## Constants
-
-- `ZERO_ADDRESS`: `"aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc"`
-- Default `maxTreeDepth`: `15`
-- Default `leavesLength`: `16384` (2^14)
+| Option           | Default                                  | Description                    |
+| ---------------- | ---------------------------------------- | ------------------------------ |
+| `endpoint`       | `"https://api.explorer.provable.com/v1"` | Aleo network endpoint          |
+| `network`        | `"mainnet"`                              | Network name                   |
+| `maxTreeDepth`   | `15`                                     | Maximum Merkle tree depth      |
+| `maxRetries`     | `5`                                      | Max API retry attempts         |
+| `retryDelay`     | `2000`                                   | Delay between retries (ms)     |
+| `maxConcurrency` | `10`                                     | Max concurrent HTTP requests   |
+| `logger`         | `defaultLogger`                          | Custom logger function         |
 
 ## Program Compatibility
 
-The SDK is designed to work with any Aleo program that implements the freeze list API. Your program must include these mappings:
+Your Aleo program must include these mappings:
 
 ```leo
 mapping freeze_list_index: u32 => address;
@@ -350,113 +100,47 @@ mapping freeze_list_last_index: bool => u32;
 mapping freeze_list_root: u8 => field;
 ```
 
-**Compatible programs in this repository:**
-- `sealance_freezelist_registry.aleo` - Standalone freeze list registry (reference implementation)
-- `sealed_report_policy.aleo` - Token with transaction reporting
-- `sealed_threshold_report_policy.aleo` - Token with threshold-based reporting
-- `sealed_timelock_policy.aleo` - Token with time-locked transfers
+Compatible programs: `sealance_freezelist_registry.aleo`, `sealed_report_policy.aleo`, `sealed_threshold_report_policy.aleo`, `sealed_timelock_policy.aleo`
 
-**Using multiple programs:**
+## Cache Pattern (Recommended)
 
 ```typescript
-const engine = new PolicyEngine({
-  endpoint: "http://localhost:3030",
-  network: "testnet",
-});
+let cache: { addresses: string[]; root: bigint } | null = null;
 
-// Fetch from different programs
-const registry = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
-const policy = await engine.fetchFreezeListFromChain("custom_compliance_policy.aleo");
+// Validate cache with lightweight root check
+const currentRoot = await engine.fetchCurrentRoot(programId);
+if (!cache || cache.root !== currentRoot) {
+  const result = await engine.fetchFreezeListFromChain(programId);
+  cache = { addresses: result.addresses, root: currentRoot };
+}
 
-// Generate proofs for specific program
-const witness1 = await engine.generateFreezeListNonInclusionProof(address, {
-  programId: "sealance_freezelist_registry.aleo",
-});
-
-const witness2 = await engine.generateFreezeListNonInclusionProof(address, {
-  programId: "custom_compliance_policy.aleo",
+// Use validated cache
+const witness = await engine.generateFreezeListNonInclusionProof(address, {
+  freezeList: cache.addresses,
+  programId,
 });
 ```
 
-## Best Practices
+See `examples/cached-freeze-list.ts` for complete implementation.
 
-1. **Reuse PolicyEngine instances**: Creating a new instance is lightweight, but reusing avoids redundant configuration.
+## Documentation
 
-2. **Cache freeze lists with root validation** (RECOMMENDED): When generating multiple proofs, use `fetchCurrentRoot` to validate your cache with a single lightweight API call:
-
-   ```typescript
-   // Cache structure
-   interface FreezeListCache {
-     addresses: string[];
-     root: bigint;
-     lastFetched: Date;
-   }
-
-   let cache: FreezeListCache | null = null;
-
-   // Before each proof generation:
-   // Fetch ONLY the root (1 API call, no tree building)
-   const currentRoot = await engine.fetchCurrentRoot(programId);
-
-   // Compare cached root with on-chain root
-   if (!cache || cache.root !== currentRoot) {
-     // Root changed - re-fetch freeze list
-     const freezeListResult = await engine.fetchFreezeListFromChain(programId);
-     cache = {
-       addresses: freezeListResult.addresses,
-       root: currentRoot,
-       lastFetched: new Date(),
-     };
-   }
-
-   // Use validated cache
-   const witness = await engine.generateFreezeListNonInclusionProof(address, {
-     freezeList: cache.addresses,
-     programId,
-   });
-   ```
-
-   **Why this pattern?**
-   - Fetches ONLY the root (1 API call) to validate cache
-   - Fetches full freeze list only when root changes
-   - Avoids expensive tree building when cache is valid
-   - Guarantees correctness while minimizing API calls
-   - Ideal for applications generating many proofs
-
-   See `examples/cached-freeze-list.ts` for a complete implementation.
-
-3. **Error Handling**: Always wrap API calls in try-catch blocks:
-   ```typescript
-   try {
-     const witness = await engine.generateFreezeListNonInclusionProof(address);
-   } catch (error) {
-     console.error("Failed to generate witness:", error);
-   }
-   ```
-
-4. **Testing**: Use the same devnet infrastructure as the main repository for consistent results.
+- [API.md](./API.md) - Complete API reference
+- [examples/](./examples/) - Usage examples
+- [CHANGELOG.md](./CHANGELOG.md) - Version history
 
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the package
-npm run build
-
-# Format code
-npm run format:fix
-
-# Clean build artifacts
-npm run clean
+npm run build                # Build package
+npm run test                 # Run tests
+npm run format:fix           # Format code
 ```
 
 ## License
 
-This repository is licensed under the Apache License, Version 2.0.  
-See the [LICENSE](./LICENSE) file for details.
+Apache License, Version 2.0. See [LICENSE](./LICENSE).
 
 ## Support
 
-For issues and questions, please visit the [GitHub repository](https://github.com/sealance-io/compliant-transfer-aleo).
+[GitHub Issues](https://github.com/sealance-io/compliant-transfer-aleo/issues)
