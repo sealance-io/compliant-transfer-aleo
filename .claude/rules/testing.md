@@ -11,5 +11,5 @@ See @docs/TESTING.md for complete testing guide.
 **Critical constraints:**
 
 - Tests run sequentially (shared devnet state)
-- Use devnode mode for fast iteration: `npm test`
-- Use devnet for full validation: `DEVNET=true npm test`
+- Use devnet for stable testing: `DEVNET=true npm test` (current default)
+- Use devnode for fast iteration: `npm test` (experimental, will become default when stable)
