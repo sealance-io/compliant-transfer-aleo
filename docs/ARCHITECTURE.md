@@ -41,20 +41,6 @@ Programs are organized in `/programs` subdirectories:
 
 - **`gqrfmwbtyp.leo`**: Exchange native Aleo tokens for compliant tokens.
 
-## Program Dependencies
-
-```
-token_registry.aleo (base token)
-    ↑
-merkle_tree.aleo (privacy proofs)
-    ↑
-sealance_freezelist_registry.aleo (sanctions)
-    ↑
-sealed_*_policy.aleo (compliance)
-    ↑
-gqrfmwbtyp.aleo (exchange)
-```
-
 ## Compliance Architecture
 
 Programs use **Merkle tree non-inclusion proofs** to privately verify addresses are NOT on the freeze list:
