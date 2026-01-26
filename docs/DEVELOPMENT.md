@@ -27,21 +27,21 @@ npm run build --workspace=@sealance-io/policy-engine-aleo
 
 ## Testing
 
-| Mode        | Command                | Speed | Use Case                    |
-| ----------- | ---------------------- | ----- | --------------------------- |
-| **Devnode** | `npm test`             | Fast  | Local development (default) |
-| **Devnet**  | `DEVNET=true npm test` | Slow  | Pre-deployment, CI          |
+| Mode        | Command                | Speed | Use Case              | Status                        |
+| ----------- | ---------------------- | ----- | --------------------- | ----------------------------- |
+| **Devnet**  | `DEVNET=true npm test` | Slow  | Pre-deployment, CI    | **Current default (stable)**  |
+| **Devnode** | `npm test`             | Fast  | Local rapid iteration | Experimental (future default) |
 
 ```bash
-npm test                                      # Fast devnode mode (default)
+DEVNET=true npm test                          # Full devnet (stable, recommended)
 npm run test:select ./test/merkle_tree.test.ts  # Specific test file
-DEVNET=true npm test                          # Full devnet (slower)
+npm test                                      # Fast devnode mode (experimental)
 USE_TEST_CONTAINERS=0 npm test                # Manual devnet setup
 ALEO_VERBOSITY=4 npm test                     # Verbose logging (0-4)
 ALEO_TEST_IMAGE=custom/aleo:latest npm test   # Custom Docker image
 ```
 
-**Note**: Devnode is experimental, requires Leo from `feat/leo-devnode-final` branch or `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`. For stable testing, use `DEVNET=true`.
+**Note**: Devnet is the current stable default. Devnode is experimental and will become the default when stable. Devnode requires Leo from `feat/leo-devnode-final` branch or `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`.
 
 ## SDK Development
 
@@ -103,6 +103,6 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 ## Common Issues
 
 - **Container auth**: Run `docker login ghcr.io` for ghcr.io images
-- **Tests too slow**: Use devnode mode with `SKIP_EXECUTE_PROOF=true`; increase `CONSENSUS_CHECK_TIMEOUT` for CI
+- **Tests too slow**: Use experimental devnode mode with `SKIP_EXECUTE_PROOF=true`; increase `CONSENSUS_CHECK_TIMEOUT` for CI
 - **Port 3030 in use**: `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`
 - **Manual devnet**: See `docs/TESTING.md`

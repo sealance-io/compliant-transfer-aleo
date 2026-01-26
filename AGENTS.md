@@ -14,6 +14,7 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 - **Policy Engine SDK** (`/packages/policy-engine-sdk`): Published as `@sealance-io/policy-engine-aleo`
 - **Test Suite** (`/test`): Testcontainers + leo devnet
 - **Shared Libraries** (`/lib`): Freeze lists, tokens, deployment, roles, funding
+- **Deployment Scripts** (`/scripts`): Devnet/testnet deployment and configuration
 
 ## Quick Reference
 
@@ -27,8 +28,8 @@ dokojs compile              # Compile Leo programs
 npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
-npm test                    # Fast devnode mode (default)
-DEVNET=true npm test        # Full devnet (slow)
+DEVNET=true npm test        # Full devnet mode (default, stable)
+npm test                    # Fast devnode mode (experimental)
 npm run test:select ./test/merkle_tree.test.ts  # Specific test
 
 # Deploy
@@ -53,14 +54,18 @@ npm run format:fix          # Auto-fix formatting
 
 ## Key Libraries (`/lib`)
 
-| Module          | Purpose                                |
-| --------------- | -------------------------------------- |
-| `FreezeList.ts` | Merkle tree operations                 |
-| `Deploy.ts`     | `deployIfNotDeployed()` utility        |
-| `Fund.ts`       | Credit funding for test accounts       |
-| `Token.ts`      | Token operation utilities              |
-| `Role.ts`       | Role management utilities              |
-| `Constants.ts`  | `MAX_TREE_DEPTH`, `ZERO_ADDRESS`, etc. |
+| Module          | Purpose                                         |
+| --------------- | ----------------------------------------------- |
+| `FreezeList.ts` | Merkle tree operations                          |
+| `Deploy.ts`     | `deployIfNotDeployed()` utility                 |
+| `Fund.ts`       | Credit funding for test accounts                |
+| `Token.ts`      | Token operation utilities                       |
+| `Role.ts`       | Role management utilities                       |
+| `Constants.ts`  | `MAX_TREE_DEPTH`, `ZERO_ADDRESS`, etc.          |
+| `Block.ts`      | Block height queries, `waitBlocks()` utility    |
+| `Initalize.ts`  | `isProgramInitialized()`, `initializeProgram()` |
+| `Multisig.ts`   | Multisig wallet creation and approval           |
+| `Upgrade.ts`    | Program upgrade and checksum verification       |
 
 ## Critical Constraints
 
@@ -101,6 +106,6 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 | Issue            | Solution                                                                     |
 | ---------------- | ---------------------------------------------------------------------------- |
 | Container auth   | `docker login ghcr.io`                                                       |
-| Tests too slow   | Use devnode mode with `SKIP_EXECUTE_PROOF=true`                              |
+| Tests too slow   | Use experimental devnode mode: `npm test` with `SKIP_EXECUTE_PROOF=true`     |
 | Port 3030 in use | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
 | Manual devnet    | See `docs/TESTING.md`                                                        |
