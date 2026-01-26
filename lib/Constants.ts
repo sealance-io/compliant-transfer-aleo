@@ -59,10 +59,6 @@ export const policies: { [key: string]: IPolicy } = {
 };
 
 // Indexes
-export const ADMIN_INDEX = 1;
-export const INVESTIGATOR_INDEX = 2;
-export const MINTER_INDEX = 3;
-export const FREEZE_LIST_MANAGER_INDEX = 4;
 export const CURRENT_FREEZE_LIST_ROOT_INDEX = 1;
 export const PREVIOUS_FREEZE_LIST_ROOT_INDEX = 2;
 export const ROOT_UPDATED_HEIGHT_INDEX = true;
@@ -78,7 +74,6 @@ export const EPOCH = 8640;
 export const NONE_ROLE = 0;
 export const MINTER_ROLE = 1;
 export const BURNER_ROLE = 2;
-export const SUPPLY_MANAGER_ROLE = 3; // Only for the report token
 export const PAUSE_ROLE = 4;
 export const MANAGER_ROLE = 8;
 export const FREEZELIST_MANAGER_ROLE = 16;

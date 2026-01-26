@@ -7,12 +7,10 @@ import { decryptToken } from "../artifacts/js/leo2js/token_registry";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import {
-  ADMIN_INDEX,
   BLOCK_HEIGHT_WINDOW_INDEX,
   SEALED_REPORT_POLICY_ADDRESS,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   FREEZE_LIST_LAST_INDEX,
-  INVESTIGATOR_INDEX,
   MAX_TREE_DEPTH,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
   ZERO_ADDRESS,
@@ -20,7 +18,9 @@ import {
   emptyRoot,
   fundedAmount,
   policies,
-  FREEZE_LIST_MANAGER_INDEX,
+  MANAGER_ROLE,
+  NONE_ROLE,
+  FREEZELIST_MANAGER_ROLE,
 } from "../lib/Constants";
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
@@ -30,6 +30,7 @@ import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
 import type { Token } from "../artifacts/js/types/token_registry";
 import { Account } from "@provablehq/sdk";
 import { isProgramInitialized } from "../lib/Initalize";
+import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -95,6 +96,10 @@ const merkleTreeContract = new Merkle_treeContract({
   mode,
   privateKey: deployerPrivKey,
 });
+const multiSigContract = new Multisig_coreContract({
+  mode,
+  privateKey: deployerPrivKey,
+});
 
 const amount = 10n;
 let root: bigint;
@@ -108,6 +113,7 @@ describe("test sealed_report_policy program", () => {
 
     await deployIfNotDeployed(tokenRegistryContract);
     await deployIfNotDeployed(merkleTreeContract);
+    await deployIfNotDeployed(multiSigContract);
     await deployIfNotDeployed(reportPolicyContract);
 
     await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
@@ -171,35 +177,31 @@ describe("test sealed_report_policy program", () => {
     const isFreezeRegistryInitialized = await isProgramInitialized(reportPolicyContract);
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
-      let rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
+      let rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(
+        frozenAccount,
+        true,
+        1,
+        0n,
+        root,
+      );
       await expect(rejectedTx.wait()).rejects.toThrow();
 
       if (deployerAddress !== adminAddress) {
         // The caller is not the initial admin
-        rejectedTx = await reportPolicyContract.initialize(
-          adminAddress,
-          policies.report.blockHeightWindow,
-          investigatorAddress,
-        );
+        rejectedTx = await reportPolicyContract.initialize(adminAddress, policies.report.blockHeightWindow);
         await expect(rejectedTx.wait()).rejects.toThrow();
       }
 
-      const tx = await reportPolicyContractForAdmin.initialize(
-        adminAddress,
-        policies.report.blockHeightWindow,
-        investigatorAddress,
-      );
+      const tx = await reportPolicyContractForAdmin.initialize(adminAddress, policies.report.blockHeightWindow);
       await tx.wait();
       const isAccountFrozen = await reportPolicyContract.freeze_list(ZERO_ADDRESS);
       const frozenAccountByIndex = await reportPolicyContract.freeze_list_index(0);
       const lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
       const initializedRoot = await reportPolicyContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
       const blockHeightWindow = await reportPolicyContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const admin = await reportPolicyContract.roles(ADMIN_INDEX);
-      const investigator = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
+      const role = await reportPolicyContract.address_to_role(adminAddress);
 
-      expect(admin).toBe(adminAddress);
-      expect(investigator).toBe(investigatorAddress);
+      expect(role).toBe(MANAGER_ROLE);
       expect(isAccountFrozen).toBe(false);
       expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
       expect(lastIndex).toBe(0);
@@ -207,53 +209,41 @@ describe("test sealed_report_policy program", () => {
       expect(blockHeightWindow).toBe(policies.report.blockHeightWindow);
 
       // It is possible to call to initialize only one time
-      rejectedTx = await reportPolicyContractForAdmin.initialize(
-        adminAddress,
-        policies.report.blockHeightWindow,
-        investigatorAddress,
-      );
+      rejectedTx = await reportPolicyContractForAdmin.initialize(adminAddress, policies.report.blockHeightWindow);
       await expect(rejectedTx.wait()).rejects.toThrow();
     }
   });
 
-  test(`test update_admin_address`, async () => {
-    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, ADMIN_INDEX);
+  test(`test update_role`, async () => {
+    // Manager can assign role
+    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
     await tx.wait();
-    let adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(frozenAccount);
+    let role = await reportPolicyContract.address_to_role(frozenAccount);
+    expect(role).toBe(MANAGER_ROLE);
 
-    tx = await reportPolicyContractForFrozenAccount.update_role(adminAddress, ADMIN_INDEX);
+    // Manager can remove role
+    tx = await reportPolicyContractForAdmin.update_role(frozenAccount, NONE_ROLE);
     await tx.wait();
-    adminRole = await reportPolicyContract.roles(ADMIN_INDEX);
-    expect(adminRole).toBe(adminAddress);
+    role = await reportPolicyContract.address_to_role(frozenAccount);
+    expect(role).toBe(NONE_ROLE);
 
-    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, ADMIN_INDEX);
-    await expect(tx.wait()).rejects.toThrow();
-  });
-
-  test(`test update_investigator_address`, async () => {
-    let tx = await reportPolicyContractForAdmin.update_role(frozenAccount, INVESTIGATOR_INDEX);
-    await tx.wait();
-    let investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(frozenAccount);
-
-    tx = await reportPolicyContractForAdmin.update_role(investigatorAddress, INVESTIGATOR_INDEX);
-    await tx.wait();
-    investigatorRole = await reportPolicyContract.roles(INVESTIGATOR_INDEX);
-    expect(investigatorRole).toBe(investigatorAddress);
-
-    const rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, INVESTIGATOR_INDEX);
+    // Non manager cannot assign role
+    let rejectedTx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
     await expect(rejectedTx.wait()).rejects.toThrow();
-  });
 
-  test(`test update_freeze_list_manager`, async () => {
-    let tx = await reportPolicyContractForAdmin.update_role(freezeListManager, FREEZE_LIST_MANAGER_INDEX);
+    // Non admin user cannot update freeze list manager role
+    rejectedTx = await reportPolicyContractForFrozenAccount.update_role(freezeListManager, FREEZELIST_MANAGER_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // Manager cannot unassign himself from being a manager
+    rejectedTx = await reportPolicyContractForAdmin.update_role(adminAddress, NONE_ROLE);
+    await expect(rejectedTx.wait()).rejects.toThrow();
+
+    // Manager can assign freeze list manager role
+    tx = await reportPolicyContractForAdmin.update_role(freezeListManager, FREEZELIST_MANAGER_ROLE);
     await tx.wait();
-    const freezeListManagerRole = await reportPolicyContract.roles(FREEZE_LIST_MANAGER_INDEX);
-    expect(freezeListManagerRole).toBe(freezeListManager);
-
-    tx = await reportPolicyContractForFrozenAccount.update_role(frozenAccount, FREEZE_LIST_MANAGER_INDEX);
-    await expect(tx.wait()).rejects.toThrow();
+    role = await reportPolicyContract.address_to_role(freezeListManager);
+    expect(role).toBe(FREEZELIST_MANAGER_ROLE);
   });
 
   test(`test update_freeze_list`, async () => {
@@ -270,14 +260,26 @@ describe("test sealed_report_policy program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot unfreeze an unfrozen account
-    rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 1, currentRoot, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(
+      frozenAccount,
+      false,
+      1,
+      currentRoot,
+      root,
+    );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot update the root if the previous root is incorrect
-    rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 1, 0n, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(frozenAccount, false, 1, 0n, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let tx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
+    let tx = await reportPolicyContractForFreezeListManager.update_freeze_list(
+      frozenAccount,
+      true,
+      1,
+      currentRoot,
+      root,
+    );
     await tx.wait();
     let isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
     let frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
@@ -288,14 +290,14 @@ describe("test sealed_report_policy program", () => {
     expect(lastIndex).toBe(1);
 
     // Cannot unfreeze an account when the frozen list index is incorrect
-    rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 2, root, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(frozenAccount, false, 2, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot freeze a frozen account
-    rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, true, 1, root, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(frozenAccount, true, 1, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    tx = await reportPolicyContractForAdmin.update_freeze_list(frozenAccount, false, 1, root, root);
+    tx = await reportPolicyContractForFreezeListManager.update_freeze_list(frozenAccount, false, 1, root, root);
     await tx.wait();
     isAccountFrozen = await reportPolicyContract.freeze_list(frozenAccount);
     frozenAccountByIndex = await reportPolicyContract.freeze_list_index(1);
@@ -317,11 +319,11 @@ describe("test sealed_report_policy program", () => {
     expect(lastIndex).toBe(1);
 
     let randomAddress = new Account().address().to_string();
-    tx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
+    tx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await tx.wait();
-    isAccountFrozen = await reportPolicyContractForAdmin.freeze_list(randomAddress);
-    frozenAccountByIndex = await reportPolicyContractForAdmin.freeze_list_index(2);
-    lastIndex = await reportPolicyContractForAdmin.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await reportPolicyContract.freeze_list(randomAddress);
+    frozenAccountByIndex = await reportPolicyContract.freeze_list_index(2);
+    lastIndex = await reportPolicyContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(randomAddress);
@@ -329,11 +331,11 @@ describe("test sealed_report_policy program", () => {
 
     randomAddress = new Account().address().to_string();
     // Cannot freeze an account when the frozen list index is greater than the last index
-    rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 10, root, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 10, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot freeze an account when the frozen list index is already taken
-    rejectedTx = await reportPolicyContractForAdmin.update_freeze_list(randomAddress, true, 2, root, root);
+    rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
@@ -384,7 +386,9 @@ describe("test sealed_report_policy program", () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await reportPolicyContractForAdmin.update_block_height_window(policies.report.blockHeightWindow);
+    const tx = await reportPolicyContractForFreezeListManager.update_block_height_window(
+      policies.report.blockHeightWindow,
+    );
     await tx.wait();
   });
 
@@ -432,7 +436,6 @@ describe("test sealed_report_policy program", () => {
       recipient,
       amount,
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -448,26 +451,15 @@ describe("test sealed_report_policy program", () => {
       recipient,
       amount,
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the recipient is frozen account it's impossible to send tokens
     await expect(
-      reportPolicyContractForAccount.transfer_public_to_priv(
-        frozenAccount,
-        amount,
-        frozenAccountMerkleProof,
-        investigatorAddress,
-      ),
+      reportPolicyContractForAccount.transfer_public_to_priv(frozenAccount, amount, frozenAccountMerkleProof),
     ).rejects.toThrow();
 
-    const tx = await reportPolicyContractForAccount.transfer_public_to_priv(
-      recipient,
-      amount,
-      recipientMerkleProof,
-      investigatorAddress,
-    );
+    const tx = await reportPolicyContractForAccount.transfer_public_to_priv(recipient, amount, recipientMerkleProof);
     const [complianceRecord] = await tx.wait();
     const tokenRecord = (tx as any).transaction.execution.transitions[2].outputs[0].value;
 
@@ -494,7 +486,6 @@ describe("test sealed_report_policy program", () => {
         accountRecord,
         frozenAccountMerkleProof,
         recipientMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
     // If the recipient is frozen account it's impossible to send tokens
@@ -505,7 +496,6 @@ describe("test sealed_report_policy program", () => {
         accountRecord,
         senderMerkleProof,
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -515,7 +505,6 @@ describe("test sealed_report_policy program", () => {
       accountRecord,
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord] = await tx.wait();
 
@@ -551,7 +540,6 @@ describe("test sealed_report_policy program", () => {
         amount,
         frozenAccountRecord,
         frozenAccountMerkleProof,
-        investigatorAddress,
       ),
     ).rejects.toThrow();
 
@@ -561,7 +549,6 @@ describe("test sealed_report_policy program", () => {
       amount,
       accountRecord,
       senderMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
     const tx = await reportPolicyContractForAccount.transfer_priv_to_public(
@@ -569,7 +556,6 @@ describe("test sealed_report_policy program", () => {
       amount,
       accountRecord,
       senderMerkleProof,
-      investigatorAddress,
     );
     const [complianceRecord] = await tx.wait();
 
@@ -609,11 +595,10 @@ describe("test sealed_report_policy program", () => {
       accountRecord,
       emptyTreeSenderMerkleProof,
       emptyTreeRecipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const updateFreezeListTx = await reportPolicyContractForAdmin.update_freeze_list(
+    const updateFreezeListTx = await reportPolicyContractForFreezeListManager.update_freeze_list(
       frozenAccount,
       false,
       1,
@@ -634,12 +619,11 @@ describe("test sealed_report_policy program", () => {
       accountRecord,
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     await tx.wait();
     accountRecord = decryptToken((tx as any).transaction.execution.transitions[2].outputs[0].value, accountPrivKey);
 
-    const updateBlockHeightWindowTx = await reportPolicyContractForAdmin.update_block_height_window(1);
+    const updateBlockHeightWindowTx = await reportPolicyContractForFreezeListManager.update_block_height_window(1);
     await updateBlockHeightWindowTx.wait();
 
     // The transaction failed because the old root is expired
@@ -649,7 +633,6 @@ describe("test sealed_report_policy program", () => {
       accountRecord,
       senderMerkleProof,
       recipientMerkleProof,
-      investigatorAddress,
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
@@ -659,7 +642,6 @@ describe("test sealed_report_policy program", () => {
       accountRecord,
       emptyTreeSenderMerkleProof,
       emptyTreeRecipientMerkleProof,
-      investigatorAddress,
     );
     await tx.wait();
   });

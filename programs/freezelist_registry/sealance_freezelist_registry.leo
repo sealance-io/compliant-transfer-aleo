@@ -111,7 +111,7 @@ program sealance_freezelist_registry.aleo {
     // Requires the previous_root to prevent the admin from unintentionally overwriting updates.
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
-    // Can only be called by the admin and the freeze list manager.
+    // Can only be called by the freeze list manager.
     async transition update_freeze_list(
         public account: address, 
         public is_frozen: bool, 
