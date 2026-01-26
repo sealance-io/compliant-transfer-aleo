@@ -1,6 +1,6 @@
 ---
-globs:
-  - "packages/**"
+paths:
+  - "packages/policy-engine-sdk/**/*"
 ---
 
 # SDK Development

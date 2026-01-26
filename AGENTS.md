@@ -79,30 +79,18 @@ Required for branch protection:
 - `SDK Status` (on-pull-request-main-sdk.yml)
 - `Nightly Status`, `Security Audit Status`, `Release Status`
 
-## Documentation Index
+## Documentation
 
-### Development
+Load the linked file(s) when your task touches that area. Do not assume links are auto-loaded.
 
-- `docs/DEVELOPMENT.md` - Commands, testing, SDK development, deployment
-- `docs/TESTING.md` - Manual devnet setup, test configuration
-- `docs/NPM-SECURITY.md` - npm security model and practices
-
-### Architecture
-
-- `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system
-- `docs/CODE-PATTERNS.md` - Contract interaction, freeze lists, test structure
-
-### SDK
-
-- `packages/policy-engine-sdk/AGENTS.md` - SDK agent guide
-- `packages/policy-engine-sdk/README.md` - Installation and quick start
-- `packages/policy-engine-sdk/API.md` - Complete API reference
-
-### Security & CI
-
-- `docs/SECURITY-WORKFLOWS.md` - GitHub Actions security
-- `docs/DEPENDABOT-STRATEGY.md` - Dependency update policies
-- `.github/dependabot.yml` - Dependabot configuration
+- **Build, deploy, devnet, release, or setup:** `docs/DEVELOPMENT.md` - commands, SDK development, deployment
+- **Testing or CI failures:** `docs/TESTING.md` - manual devnet setup, test configuration
+- **npm install, security policy, or dependency updates:** `docs/NPM-SECURITY.md` - security model and practices
+- **Program structure or compliance flow:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system
+- **Patterns for Leo contracts or tests:** `docs/CODE-PATTERNS.md` - contract interaction, freeze lists, test structure
+- **SDK development tasks:** `packages/policy-engine-sdk/AGENTS.md` - SDK agent guide
+- **SDK usage or API questions:** `packages/policy-engine-sdk/README.md` (quick start) and `packages/policy-engine-sdk/API.md` (API reference)
+- **Security workflows or Dependabot:** `docs/SECURITY-WORKFLOWS.md` (GitHub Actions) and `docs/DEPENDABOT-STRATEGY.md` (update policies)
 
 ## Audits
 

@@ -1,7 +1,7 @@
 ---
-globs:
-  - "programs/**"
-  - "artifacts/**"
+paths:
+  - "programs/**/*"
+  - "artifacts/**/*"
 ---
 
 # Leo Programs

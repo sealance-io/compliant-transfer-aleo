@@ -1,6 +1,6 @@
 ---
-globs:
-  - "test/**"
+paths:
+  - "test/**/*.test.ts"
   - "vitest.*.ts"
 ---
 

@@ -1,6 +1,6 @@
 ---
-globs:
-  - "lib/**"
+paths:
+  - "lib/**/*.ts"
 ---
 
 # Library Utilities
