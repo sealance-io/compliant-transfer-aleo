@@ -1,6 +1,6 @@
 ---
-globs:
-  - "scripts/**"
+paths:
+  - "scripts/**/*.ts"
 ---
 
 # Deployment

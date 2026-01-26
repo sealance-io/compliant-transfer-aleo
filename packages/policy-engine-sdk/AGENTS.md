@@ -65,10 +65,13 @@ import {
 
 ## Documentation
 
-- [README.md](./README.md) - Installation and quick start
-- [API.md](./API.md) - Complete API reference
-- [examples/](./examples/) - Usage examples
-- [CHANGELOG.md](./CHANGELOG.md) - Version history
+Load the linked file(s) when your task touches that area. Do not assume links are auto-loaded.
+
+- **SDK usage or public API surface:** `README.md` (installation, quick start) and `API.md` (complete API reference)
+- **SDK examples or integration guidance:** `examples/` directory
+- **SDK version history or release notes:** `CHANGELOG.md`
+- **Publishing or package registry setup:** See Publishing section below
+- **Repo-wide constraints or shared tooling:** Root `AGENTS.md`
 
 ## Testing
 
