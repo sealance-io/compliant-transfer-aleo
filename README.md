@@ -126,16 +126,16 @@ ALEO_VERBOSITY=4 npm test
 
 ### Testing Modes
 
-| Mode        | Command                | Speed           | Use Case                           | Status       |
-| ----------- | ---------------------- | --------------- | ---------------------------------- | ------------ |
-| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      | **Stable**   |
-| **Devnode** | `npm test`             | Fast (minutes)  | Local development, rapid iteration | Experimental |
+| Mode        | Command                | Speed           | Use Case                           | Status                        |
+| ----------- | ---------------------- | --------------- | ---------------------------------- | ----------------------------- |
+| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      | **Current default (stable)**  |
+| **Devnode** | `npm test`             | Fast (minutes)  | Local development, rapid iteration | Experimental (future default) |
 
-**Devnet mode** (CI default) runs complete consensus simulation with real proofs - use this for stable, production-like testing.
+**Devnet mode** is the current stable default - runs complete consensus simulation with real proofs for production-like testing.
 
-**Devnode mode** skips ZK proof generation for quick feedback during local development.
+**Devnode mode** skips ZK proof generation for quick feedback during local development. It is experimental and will become the default in a future release when stable.
 
-> **Warning: Devnode is Experimental**
+> **Note: Devnode is Experimental**
 >
 > The `devnode` feature is not yet included in Leo v3.4.0. Use the pre-built image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode` or build Leo from the `feat/leo-devnode-final` branch. For stable testing, use devnet mode (`DEVNET=true`).
 

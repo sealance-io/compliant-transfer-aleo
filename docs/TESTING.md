@@ -2,19 +2,19 @@
 
 ## Testing Modes
 
-| Mode        | Command           | Speed | Use Case                         |
-| ----------- | ----------------- | ----- | -------------------------------- |
-| **Devnet**  | `DEVNET=true`     | Slow  | CI, pre-deployment (stable)      |
-| **Devnode** | Default (no flag) | Fast  | Local development (experimental) |
+| Mode        | Command           | Speed | Use Case              | Status                        |
+| ----------- | ----------------- | ----- | --------------------- | ----------------------------- |
+| **Devnet**  | `DEVNET=true`     | Slow  | CI, pre-deployment    | **Current default (stable)**  |
+| **Devnode** | Default (no flag) | Fast  | Local rapid iteration | Experimental (future default) |
 
-> **Devnode requires** Leo from `feat/leo-devnode-final` branch or the image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`. For stable testing, use devnet.
+> **Devnet is currently the recommended mode** for stable testing. Devnode is experimental and will become the default in a future release when stable. Devnode requires Leo from `feat/leo-devnode-final` branch or the image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`.
 
 ## Quick Start
 
 ```bash
 cp .env.example .env
-npm test                    # Fast devnode mode
-DEVNET=true npm test        # Full devnet mode
+DEVNET=true npm test        # Full devnet mode (stable, recommended)
+npm test                    # Fast devnode mode (experimental)
 npm run test:select ./test/your-test.test.ts  # Single test
 ```
 
@@ -59,12 +59,12 @@ npm test
 
 ## Troubleshooting
 
-| Issue                | Solution                                                                     |
-| -------------------- | ---------------------------------------------------------------------------- |
-| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                    |
-| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                        |
-| Tests too slow       | Use devnode: remove `DEVNET=true`, set `SKIP_EXECUTE_PROOF=true`             |
-| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
+| Issue                | Solution                                                                      |
+| -------------------- | ----------------------------------------------------------------------------- |
+| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                     |
+| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                         |
+| Tests too slow       | Use experimental devnode: remove `DEVNET=true`, set `SKIP_EXECUTE_PROOF=true` |
+| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`  |
 
 ## Notes
 
