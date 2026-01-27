@@ -126,10 +126,10 @@ ALEO_VERBOSITY=4 npm test
 
 ### Testing Modes
 
-| Mode        | Command                | Speed           | Use Case                           | Status                        |
-| ----------- | ---------------------- | --------------- | ---------------------------------- | ----------------------------- |
-| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Pre-deployment validation, CI      | **Current default (stable)**  |
-| **Devnode** | `npm test`             | Fast (minutes)  | Local development, rapid iteration | Experimental (future default) |
+| Mode        | Command                 | Speed           | Use Case                           | Status                        |
+| ----------- | ----------------------- | --------------- | ---------------------------------- | ----------------------------- |
+| **Devnet**  | `DEVNET=true npm test`  | Slow (60-90min) | Pre-deployment validation, CI      | **Current default (stable)**  |
+| **Devnode** | `DEVNET=false npm test` | Fast (minutes)  | Local development, rapid iteration | Experimental (future default) |
 
 **Devnet mode** is the current stable default - runs complete consensus simulation with real proofs for production-like testing.
 

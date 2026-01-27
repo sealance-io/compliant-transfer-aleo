@@ -1,340 +1,207 @@
-# Leo/Aleo Program Patterns
+# Leo/Aleo Program Patterns (Authoritative)
 
-> **Scope**: Leo v3.4.0, programs in `/programs`
-> **Status**: Normative
-> **Last Verified**: 2026-01-26
+Status: Normative
+Last verified: 2026-01-26 (commit 6efaf4531c0c49c2138f8f5ce7fdb55d19cffd4f)
+Scope: Leo v3.4.0; Aleo execution model; programs under /programs in this repository.
+External program behavior is treated as assumptions and called out explicitly.
 
-Verified insights from program analysis for AI agents and developers. Protocol-level facts are distinguished from repository conventions.
+This document is authoritative for how this repo's Leo programs are structured and how agents
+should reason about execution, visibility, and compliance logic.
+
+## Normative Keywords
+
+The keywords MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are to be interpreted as in RFC 2119.
+
+## External Dependencies (Assumptions)
+
+This repository depends on external programs and protocol behaviors. These are treated as
+assumptions and must be re-verified when upgrading:
+
+- token*registry.aleo: prehook*_ / transfer\__ API and authorization semantics relied on by
+  programs/policy/sealed_report_policy.leo and programs/policy/sealed_threshold_report_policy.leo.
+- merkle_tree.aleo: verify_non_inclusion returns a root commitment from (account, merkle_proof),
+  as used by programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv.
+- Aleo execution model: async transitions produce Futures and async functions execute on-chain
+  (see Execution Model section).
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **transition** | Leo function that executes off-chain on the user's machine. Declared with `async transition`. Produces a ZKP and optionally a `Future`. |
-| **finalize** | On-chain code block that executes after transition proof verification. Declared as a nested block within an async transition. MUST be used for all mapping writes. |
-| **Future** | Handle returned by an async transition, representing deferred on-chain execution. Passed to `finalize` via `return`. |
-| **record** | Private, encrypted data held by the owner. UTXO-like: consumed and produced by transitions. |
-| **mapping** | Public on-chain key-value storage. Only writable in `finalize` blocks. |
+- async transition: Off-chain execution that produces a ZKP and a Future for on-chain execution.
+- async function: On-chain execution triggered by a Future; performs public checks and writes mappings.
+- Future: A request to execute an async function on-chain; carries only public values and commitments.
+- record: Private (encrypted) asset data stored off-chain by the user; consumed/produced by transitions.
+- mapping: Public on-chain key/value state; writable only in async functions.
+- struct: Transient circuit data; not persisted.
 
-## Execution Model
+## Execution Model (Protocol Assumptions)
 
-Aleo uses a hybrid execution model: off-chain (private) computation + on-chain (public) state commitment.
+This section captures protocol-level behavior that this repo assumes.
 
-### Transition (Off-Chain)
+### Async transition (off-chain)
 
-Declared as `async transition`. Runs on user's local machine, not on the blockchain.
+- MUST run locally (client/SDK).
+- MAY read public on-chain mappings.
+- MUST NOT write mappings directly.
+- MUST produce a ZKP and a Future for any public state change.
 
-- Takes private and public inputs
-- Can read from public on-chain state (mappings)
-- Performs core logic and assertions
-- Can create/consume `record` types (private assets)
-- **MUST NOT** write to mappings directly
+### Async function (on-chain)
 
-**Outputs:**
-1. Zero-Knowledge Proof (ZKP) proving correct execution
-2. `Future` object - a request to make public state changes
+- MUST be triggered by a Future created by a proven transition.
+- MUST only use public values or commitments carried by the Future.
+- MUST perform final authorization/state checks.
+- MUST be the only place where mappings are written.
 
-### Finalize (On-Chain)
+### Lifecycle (informative)
 
-Declared as `finalize` block within an async transition. Runs on Aleo blockchain, executed by validators.
+1. User calls async transition.
+2. Transition runs locally and produces ZKP + Future.
+3. Transaction submitted to Aleo node.
+4. Validators verify ZKP, execute async function, and update mappings.
 
-- Triggered by the `Future` from a proven transition
-- Receives data from the `Future` (not private inputs)
-- Performs final public checks (authorization, state verification)
-- **MUST be used for** all mapping writes - this is its critical function
-- **CANNOT** access private inputs from the original transition
+### Data primitives (protocol)
 
-### Execution Lifecycle
+| Type    | Visibility          | Storage                | Behavior                                          |
+| ------- | ------------------- | ---------------------- | ------------------------------------------------- |
+| record  | Private (encrypted) | Off-chain (user holds) | UTXO-like; consumed/produced by transitions       |
+| mapping | Public              | On-chain               | Key/value store; writable only in async functions |
+| struct  | N/A (transient)     | None                   | Circuit data only; not persisted                  |
 
-```
-1. User calls async transition (client/SDK)
-2. Transition runs locally → generates ZKP + Future
-3. Transaction submitted to Aleo node
-4. Validators verify ZKP → execute finalize block → update mappings
-```
+## Repository-Specific Architecture (Normative)
 
-### Data Primitives
+### Compliance models
 
-| Type | Visibility | Storage | Behavior |
-|------|------------|---------|----------|
-| `record` | Private (encrypted) | Off-chain (user holds) | UTXO-like: consumed/produced by transitions |
-| `mapping` | Public | On-chain | Key-value store; only `finalize` blocks can write |
-| `struct` | N/A (transient) | None | Circuit data only; not persisted |
+| Model             | Programs                                                                                       | Freeze list location                                          | Verification                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------- |
+| Self-contained    | programs/policy/sealed_report_policy.leo, programs/token/sealed_report_token.leo               | Internal mappings                                             | Direct mapping lookups                          |
+| External registry | programs/policy/sealed_timelock_policy.leo, programs/policy/sealed_threshold_report_policy.leo | programs/freezelist_registry/sealance_freezelist_registry.leo | Merkle proofs via verify_non_inclusion_pub/priv |
 
-## Compliance Architecture
+### Freeze list rules
 
-### Two Compliance Models
+- MUST use array-like mappings: freeze_list: address => bool, freeze_list_index: u32 => address.
+- MUST use ZERO_ADDRESS as a sentinel for empty slots; ZERO_ADDRESS MUST NOT be a real frozen entry.
+- MUST initialize freeze_list_last_index, freeze_list, and freeze_list_index in initialize
+  (programs/freezelist_registry/sealance_freezelist_registry.leo::initialize).
+- MUST update freeze_list_last_index when adding entries at last_index + 1
+  (programs/freezelist_registry/sealance_freezelist_registry.leo::update_freeze_list).
+- MUST update root_updated_height when roots change
+  (programs/freezelist_registry/sealance_freezelist_registry.leo::update_freeze_list).
+- MUST enforce the previous_root window in verify_non_inclusion_priv
+  (programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv).
+- Sentinel value is defined in lib/Constants.ts; SDK handling is in lib/FreezeList.ts.
 
-| Model | Programs | Freeze List Location | Verification |
-|-------|----------|---------------------|--------------|
-| Self-Contained | `sealed_report_policy.leo`, `sealed_report_token.leo` | Internal mappings | Direct mapping lookups |
-| External Registry | `sealed_timelock_policy.leo`, `sealed_threshold_report_policy.leo` | `sealance_freezelist_registry.aleo` | Off-chain Merkle proofs via `verify_non_inclusion_pub()` |
+### Block height window (threshold policy)
 
-### Freeze List Implementation
+- Transitions in programs/policy/sealed_threshold_report_policy.leo accept public estimated_block_height.
+- Async functions MUST enforce:
+  - block.height >= estimated_block_height
+  - estimated_block_height >= (block.height - window)
+- These checks appear in f\_\* finalize functions such as f_signup_and_transfer_private in
+  programs/policy/sealed_threshold_report_policy.leo.
 
-- Array-like mappings: `freeze_list: address => bool`, `freeze_list_index: u32 => address`
-- **ZERO_ADDRESS** (`aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc`) serves as sentinel for empty slots
-  - Canonical source: `packages/policy-engine-sdk/src/constants.ts` (exported as `ZERO_ADDRESS`)
-  - Re-exported from `lib/Constants.ts` for test utilities
-- ZERO_ADDRESS **MUST NOT** be used as a real frozen entry - it marks reusable indices
-- SDK sentinel handling: `lib/FreezeList.ts` function `calculateFreezeListUpdate()` finds empty slots via `ZERO_ADDRESS`
+## Authorization and Async Patterns (Normative)
 
-### Block Height Window (Threshold Policy)
+### External authorization order
 
-- User supplies `estimated_block_height: u32` parameter
-- Finalize validates: `(block.height - window) <= estimated_block_height <= block.height`
-- Trade-off: Usability over strict timekeeping; requires off-chain coordination
-- Enforcement: `sealed_threshold_report_policy.leo` finalize blocks (e.g., `finalize_transfer_from_public`)
+For token_registry authorization flows, the following order MUST be preserved:
 
-## Authorization & Async Patterns
+- Transition: prehook*\* is called before transfer*\*.
+- Async function: the Future returned by prehook*\* MUST be awaited before transfer*\*.
 
-### External Authorization Flow
+Example (repo pattern):
 
-**Applies to**: External registry compliance flows (`sealed_timelock_policy.leo`, `sealed_threshold_report_policy.leo`)
+- token_registry.aleo/prehook_public then token_registry.aleo/transfer_public_as_signer
+- Await order in programs/policy/sealed_report_policy.leo::f_transfer_public_as_signer
 
-```
-prehook_public() → transfer_from_public() → finalize: await both futures
-```
+### Multisig architecture
 
-- Prehook establishes authorization (e.g., `sealance_freezelist_registry.aleo/prehook_public`)
-- Transfer executes the operation
-- Finalize awaits futures in order to enforce correctness
-- This call order is **MANDATORY** for authorization guarantees
-- **Enforcement**: Future await ordering in each policy's finalize blocks (e.g., `finalize_transfer_from_public`)
+- Operation registration uses BHP256::hash_to_field on the operation struct.
+- Private operations use BHP256::commit_to_field with a salt to hide payload.
+- Wallet signing ops expire via WalletSigningOp.expires_at_block.
+- Rounds MUST increment when operation content changes to prevent stale signatures.
+- Implementations live in programs/vendor/multisig_core.leo and programs/token/multisig_compliant_token.leo.
 
-### Multisig Architecture
+## Visibility and Cross-Program Calls (Normative)
 
-- Operation registration: Hash operation with `BHP256::hash_to_field(multisig_op)`
-- Private ops: Use `BHP256::commit_to_field(multisig_op, salt)` to hide payload
-- Expiration: `WalletSigningOp.expires_at_block: u32`
-- Rounds: Increment on operation changes; prevents stale signatures
-- Supports both Aleo signers and ECDSA signers
+- Only public values (or public commitments derived from private inputs) can be consumed by
+  an async function or cross-program call.
+- Private inputs remain private unless explicitly committed or revealed.
 
-## Leo Language Essentials
+Example:
 
-| Concept | Key Points | Example Location |
-|---------|------------|------------------|
-| **Future ordering** | `Future.await()` order in finalize enforces execution sequence | `sealed_report_policy.leo` finalize blocks (e.g., `finalize_transfer_from_public`) |
-| **Visibility** | Only `public` values visible to finalize or cross-program calls; private requires public commitments (Merkle roots) | `merkle_tree.leo`, `sealance_freezelist_registry.leo` |
-| **Mapping quirks** | Arrays emulated with index maps; `get_or_use` conflates "unset" with default value | `sealance_freezelist_registry.leo` freeze list mappings, `sealed_report_policy.leo` role mappings |
-| **Hashing** | Poseidon for Merkle tree nodes/leaves; BHP256 for structured data | `merkle_tree.leo` functions `hash_leaf()`, `hash_node()`; `multisig_core.leo` operation hashing |
-| **Upgrades** | `self.edition`/`self.checksum` gate upgrades; multisig core has upgrade kill switch | `compliant_token_template.leo` constructor, `multisig_core.leo` constructor |
+- programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_pub
+  reveals the account publicly.
+- programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv
+  keeps the account private and passes only the Merkle root to the async function.
 
-## Leo/Aleo Limitations & Workarounds
+## Leo/Aleo Platform Limitations (Informative)
 
-Understanding these limitations is essential for working with Leo programs.
+### No dynamic dispatch
 
-### No Dynamic Dispatch
+- Cross-program calls use hardcoded program names; program ids cannot be parameterized.
+- Impact: tight coupling; generic policies across token implementations are not possible.
+- Workaround: proxy pattern (see Design Patterns).
 
-All cross-program calls use hardcoded program names. Cannot parameterize which program to call.
+### No inheritance or traits
 
-```leo
-// Must hardcode every external call
-let call: Future = token_registry.aleo/prehook_public(...);  // Cannot use variable
-```
+- No code sharing between programs; logic is duplicated across policy programs.
+- Example: update*role implementations across sealed*\* policies.
 
-**Impact**: Tight coupling; cannot write generic policies that work with different token implementations.
-**Workaround**: Proxy pattern provides soft indirection (see Design Patterns below).
+### Caller resolution duplication
 
-### No Inheritance or Traits
+- self.caller vs self.signer vs self.address cannot be parameterized.
+- Result: separate transfer\_\* variants for caller vs signer flows.
 
-No code sharing between programs. Common logic must be duplicated.
+### Mapping limitations
 
-**Example**: Three policy programs have identical `update_role()` implementations:
-- `sealed_report_policy.leo` function `update_role()`
-- `sealed_timelock_policy.leo` function `update_role()`
-- `sealed_threshold_report_policy.leo` function `update_role()`
+- No native arrays; use index mappings + sentinel values.
+- No optional types; get_or_use conflates unset with default value.
+- Multi-dimensional keys are hash-composed (e.g., hash(token_id, account)).
 
-**Impact**: Bug fixes MUST be applied to multiple locations.
+## Design Patterns (Informative)
 
-### Code Duplication from Caller Resolution
+### Dual-auth token patterns
 
-Cannot parameterize `self.caller` vs `self.signer` vs `self.address`, requiring separate functions:
+| Aspect          | Integrated                                                    | Separated (Proxy)                                                                     |
+| --------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Files           | programs/token/multisig_compliant_token.leo                   | programs/token/compliant_token_template.leo + programs/proxy/multisig_token_proxy.leo |
+| Auth model      | direct OR multisig                                            | proxy-mediated                                                                        |
+| Deployments     | 1 program                                                     | 2 programs                                                                            |
+| Freeze registry | programs/freezelist_registry/multisig_freezelist_registry.leo | programs/freezelist_registry/sealance_freezelist_registry.leo                         |
+| Standalone      | N/A                                                           | token can be used without proxy                                                       |
 
-- `transfer_public()` - uses `self.caller`
-- `transfer_public_as_signer()` - uses `self.signer` (identical logic otherwise)
+Integrated pattern:
 
-Each policy has multiple near-identical transfer variants (e.g., `transfer_public`, `transfer_public_as_signer`, `transfer_from_public`, `transfer_from_public_as_signer`).
+- address_to_role for direct auth
+- wallet_id_to_role for multisig auth
 
-### Mapping Limitations
+Separated pattern:
 
-**No native arrays**: Emulated with index mappings + sentinel values:
-```leo
-mapping freeze_list_index: u32 => address;    // Acts as array[index]
-mapping freeze_list_last_index: bool => u32;  // Tracks highest index
-const ZERO_ADDRESS = aleo1qqqq...;            // Sentinel for empty slots
-```
-
-**No optional types**: `get_or_use(key, default)` conflates "unset" with default value. This pattern is used extensively throughout all policy programs for mapping access.
-
-**Hash-based multi-dimensional keys**:
-```leo
-mapping balances: field => Balance;  // hash(token_id, account) => Balance
-```
-
-### Cross-Program Visibility
-
-**Rule**: Only `public` values can be passed to external program calls. When calling another program's function, all arguments MUST be declared `public` at the call site.
-
-**Privacy preservation**: The `_priv` suffix on some function names (e.g., `verify_non_inclusion_priv`) is a naming convention indicating the function is designed for private transfer flows, but the actual parameters passed cross-program are still `public` in the Leo type system. Privacy is preserved through the ZKP mechanism - the value is included in the proof but not exposed on-chain.
-
-```leo
-// Arguments passed to external calls are public in Leo's type system
-// The "_priv" suffix indicates this function supports private transfer flows
-sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, proofs);
-```
-
-**Security note**: Values passed to external programs are visible to that program's logic but remain private from on-chain observers if no mapping writes expose them.
-
-## Design Patterns
-
-### Dual-Auth Token Patterns
-
-Two approaches for combining direct address roles + multisig wallet roles:
-
-| Aspect | Integrated | Separated (Proxy) |
-|--------|------------|-------------------|
-| Files | `multisig_compliant_token.leo` | `compliant_token_template.leo` + `multisig_token_proxy.leo` |
-| Auth Model | Either/Or (direct OR multisig) | Proxy-Mediated |
-| Deployments | 1 program | 2 programs |
-| Freeze Registry | `multisig_freezelist_registry.aleo` | `sealance_freezelist_registry.aleo` |
-| Standalone | N/A | Token works independently |
-
-#### Integrated Pattern
-
-Single program with dual role mappings:
-- `address_to_role` - direct address authorization
-- `wallet_id_to_role` - multisig wallet authorization
-
-**Branching logic** (e.g., `f_update_role`):
-```leo
-if (wallet_id != ZERO_ADDRESS) {
-    // MULTISIG PATH: verify wallet has role + signing completed
-} else {
-    // DIRECT PATH: verify caller has role
-}
-```
-
-**Trade-offs**:
-- (+) Single deployment, atomic state
-- (+) Flexible either/or authorization
-- (-) Code duplication: `mint_public` vs `mint_public_multisig` (8 function pairs)
-- (-) Inconsistent structure: some ops dual-path, some separate functions
-
-#### Separated (Proxy) Pattern
-
-Token template (direct auth only) + proxy wrapper (adds multisig layer):
-
-```
-User → multisig_token_proxy.aleo → compliant_token_template.aleo
-```
-
-**Setup requirement**: Proxy program address must be granted roles in token template's `address_to_role`.
-
-**Trade-offs**:
-- (+) Modularity: token works standalone
-- (+) Separation of concerns: easier to audit
-- (-) Two upgrade paths
-- (-) Direct access bypass possible (intentional for hybrid setups)
+- proxy program address MUST be granted roles in token template address_to_role.
+- direct access remains possible by design for hybrid setups.
 
 ### Upgradability
 
-All programs use constructor-based upgrade protection:
+- All programs use constructor-based upgrade protection.
+- Upgrades (edition > 0) require multisig approval using the program's own address as wallet_id.
+- See programs/token/compliant_token_template.leo and programs/vendor/multisig_core.leo.
 
-```leo
-@custom
-async constructor() {
-    if self.edition > 0u16 {
-        // Require multisig approval for upgrades
-        let signing_op_id = BHP256::hash_to_field(ChecksumEdition {
-            checksum: self.checksum,
-            edition: self.edition
-        });
-        let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId {
-            wallet_id: self.address,  // Program's own address as wallet_id
-            signing_op_id: signing_op_id
-        });
-        let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
-        assert(signing_complete);
-    }
-}
-```
+### Bitmasking for roles
 
-**Key points**:
-- Initial deployment (`edition == 0`): No multisig required
-- Upgrades (`edition > 0`): Multisig approval required
-- Uses program's own address (`self.address`) as `wallet_id`
-- Multisig wallet must be set up in `multisig_core.aleo` before upgrades possible
+- Roles are composed via bitwise OR; checks via AND.
+- Constants live in role-related programs and lib/Role.ts for off-chain parity.
 
-### Bitmasking for Roles
+## SDK Integration Points (Normative)
 
-Compound permissions via bitwise operations:
+Off-chain computations MUST match on-chain logic exactly:
 
-```leo
-const MINTER_ROLE: u16 = 1u16;
-const BURNER_ROLE: u16 = 2u16;
-const PAUSE_ROLE: u16 = 4u16;
-const MANAGER_ROLE: u16 = 8u16;
+- Hash inputs: same field ordering, padding, and encoding as on-chain.
+- String encoding: ASCII-packed u128; see packages/policy-engine-sdk/src/conversion.ts.
+- Merkle proofs: use buildTree, generateLeaves, getSiblingPath from
+  packages/policy-engine-sdk/src/merkle-tree.ts.
+- Constants: MAX_TREE_DEPTH and ZERO_ADDRESS in lib/Constants.ts.
 
-// Check permission
-assert(role & MANAGER_ROLE == MANAGER_ROLE);
-
-// Grant multiple roles
-address_to_role.set(addr, MINTER_ROLE | BURNER_ROLE);
-```
-
-## SDK Integration Points
-
-Off-chain code MUST match on-chain exactly:
-
-- **Hash inputs**: Same field ordering, padding, encoding
-- **String encoding**: ASCII-packed `u128` via `stringToBigInt()` (`packages/policy-engine-sdk/src/conversion.ts`)
-- **Merkle proofs**: Use `buildTree()`, `generateLeaves()`, `getSiblingPath()` from `@sealance-io/policy-engine-aleo`
-- **Constants**:
-  - `MAX_TREE_DEPTH = 16` (`lib/Constants.ts`)
-  - `ZERO_ADDRESS` (`packages/policy-engine-sdk/src/constants.ts`, re-exported from `lib/Constants.ts`)
-
-## Rules Summary
-
-Numbered, testable statements for agents:
-
-1. All public state changes MUST occur in `finalize` blocks
-2. Transitions MUST NOT write to mappings directly
-3. Freeze list indices MUST use `ZERO_ADDRESS` sentinel for empty/reusable slots
-4. `ZERO_ADDRESS` MUST NOT be used as a real frozen entry
-5. External authorization flows MUST await futures in correct order (prehook before transfer)
-6. Cross-program function arguments MUST be declared `public` at the call site
-7. Bug fixes in duplicated logic (e.g., `update_role()`) MUST be applied to all policy programs
-8. Off-chain hash computations MUST use identical field ordering as on-chain Leo code
-
-## Verification Checklist
-
-When working with these programs:
-
-- [ ] Hash ordering matches between SDK and Leo (field order in structs)
-- [ ] Merkle path length equals `MAX_TREE_DEPTH` (16)
-- [ ] `ZERO_ADDRESS` used only as sentinel, never as actual frozen address
-- [ ] Future await order correct in finalize blocks (prehook → transfer)
-- [ ] Block height estimates within acceptable window for threshold policy
-- [ ] Role bitmasks use correct constants (`lib/Constants.ts`)
-
-## Security Considerations
-
-- **Mapping default values**: `get_or_use()` cannot distinguish "unset" from "set to default" - design mappings accordingly
-- **Cross-program visibility**: Arguments to external calls are visible to the called program; ensure no secrets are passed
-- **Future ordering**: Incorrect await order can bypass authorization checks
-- **Upgrade protection**: Programs with `edition > 0` require multisig approval; verify multisig wallet is properly configured
-
-## Non-Goals
-
-This document does not cover:
-- General Leo/Aleo tutorials (see External Documentation)
-- Deployment procedures (see `docs/DEVELOPMENT.md`)
-- Test configuration (see `docs/TESTING.md`)
-- SDK API reference (see `packages/policy-engine-sdk/API.md`)
-
-## External Documentation
+## External References (Informative)
 
 - Leo language: https://docs.leo-lang.org/leo
-- Aleo concepts: https://developer.aleo.org/category/fundamentals
+- Aleo fundamentals: https://developer.aleo.org/category/fundamentals
 - snarkVM (hash functions): https://github.com/ProvableHQ/snarkVM
