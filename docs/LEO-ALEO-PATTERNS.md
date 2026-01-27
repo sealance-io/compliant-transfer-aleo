@@ -17,7 +17,7 @@ The keywords MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are to be interpreted a
 This repository depends on external programs and protocol behaviors. These are treated as
 assumptions and must be re-verified when upgrading:
 
-- token*registry.aleo: prehook*_ / transfer\__ API and authorization semantics relied on by
+- token*registry.aleo: prehook*\_ / transfer\_\_ API and authorization semantics relied on by
   programs/policy/sealed_report_policy.leo and programs/policy/sealed_threshold_report_policy.leo.
 - merkle_tree.aleo: verify_non_inclusion returns a root commitment from (account, merkle_proof),
   as used by programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv.
