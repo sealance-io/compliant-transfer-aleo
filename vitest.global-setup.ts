@@ -100,7 +100,7 @@ function validateConfiguration(): void {
   if (errors.length > 0) {
     console.error("❌ Configuration Errors:");
     errors.forEach(error => console.error(`  - ${error}`));
-    console.error("\nSee docs/testing-configuration-guide.md for configuration help");
+    console.error("\nSee docs/TESTING.md for configuration help");
     throw new Error("Invalid test configuration. Fix the errors above and try again.");
   }
 
