@@ -27,18 +27,18 @@ npm run build --workspace=@sealance-io/policy-engine-aleo
 
 ## Testing
 
-| Mode        | Command                | Speed | Use Case              | Status                        |
-| ----------- | ---------------------- | ----- | --------------------- | ----------------------------- |
-| **Devnet**  | `DEVNET=true npm test` | Slow  | Pre-deployment, CI    | **Current default (stable)**  |
-| **Devnode** | `npm test`             | Fast  | Local rapid iteration | Experimental (future default) |
+| Mode        | Command                 | Speed | Use Case              | Status                        |
+| ----------- | ----------------------- | ----- | --------------------- | ----------------------------- |
+| **Devnet**  | `DEVNET=true npm test`  | Slow  | Pre-deployment, CI    | **Current default (stable)**  |
+| **Devnode** | `DEVNET=false npm test` | Fast  | Local rapid iteration | Experimental (future default) |
 
 ```bash
-DEVNET=true npm test                          # Full devnet (stable, recommended)
+DEVNET=true npm test                            # Full devnet (stable, recommended)
 npm run test:select ./test/merkle_tree.test.ts  # Specific test file
-npm test                                      # Fast devnode mode (experimental)
-USE_TEST_CONTAINERS=0 npm test                # Manual devnet setup
-ALEO_VERBOSITY=4 npm test                     # Verbose logging (0-4)
-ALEO_TEST_IMAGE=custom/aleo:latest npm test   # Custom Docker image
+npm test                                        # Fast devnode mode (experimental)
+USE_TEST_CONTAINERS=0 npm test                  # Manual devnet setup
+ALEO_VERBOSITY=4 npm test                       # Verbose logging (0-4)
+ALEO_TEST_IMAGE=custom/aleo:latest npm test     # Custom Docker image
 ```
 
 **Note**: Devnet is the current stable default. Devnode is experimental and will become the default when stable. Devnode requires Leo from `feat/leo-devnode-final` branch or `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`.

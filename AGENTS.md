@@ -29,7 +29,7 @@ npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
 DEVNET=true npm test        # Full devnet mode (default, stable)
-npm test                    # Fast devnode mode (experimental)
+DEVNET=false npm test       # Fast devnode mode (experimental)
 npm run test:select ./test/merkle_tree.test.ts  # Specific test
 
 # Deploy
@@ -104,9 +104,9 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Common Issues
 
-| Issue            | Solution                                                                     |
-| ---------------- | ---------------------------------------------------------------------------- |
-| Container auth   | `docker login ghcr.io`                                                       |
-| Tests too slow   | Use experimental devnode mode: `npm test` with `SKIP_EXECUTE_PROOF=true`     |
-| Port 3030 in use | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
-| Manual devnet    | See `docs/TESTING.md`                                                        |
+| Issue            | Solution                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| Container auth   | `docker login ghcr.io`                                                                |
+| Tests too slow   | Use experimental devnode mode: `npm test` with `DEVNET=false SKIP_EXECUTE_PROOF=true` |
+| Port 3030 in use | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`          |
+| Manual devnet    | See `docs/TESTING.md`                                                                 |
