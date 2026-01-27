@@ -59,12 +59,12 @@ npm test
 
 ## Troubleshooting
 
-| Issue                | Solution                                                                      |
-| -------------------- | ----------------------------------------------------------------------------- |
-| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                     |
-| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                         |
-| Tests too slow       | Use experimental devnode: remove `DEVNET=true`, set `SKIP_EXECUTE_PROOF=true` |
-| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`  |
+| Issue                | Solution                                                                     |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                    |
+| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                        |
+| Tests too slow       | Use experimental devnode: set `DEVNET=false`, set `SKIP_EXECUTE_PROOF=true`  |
+| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
 
 ## Notes
 
