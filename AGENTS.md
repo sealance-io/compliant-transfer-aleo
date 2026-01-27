@@ -92,6 +92,7 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 - **Testing or CI failures:** `docs/TESTING.md` - manual devnet setup, test configuration
 - **npm install, security policy, or dependency updates:** `docs/NPM-SECURITY.md` - security model and practices
 - **Program structure or compliance flow:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system
+- **Leo/Aleo language patterns:** `docs/LEO-ALEO-PATTERNS.md` - execution model, limitations, dual-auth patterns, upgradability
 - **Patterns for Leo contracts or tests:** `docs/CODE-PATTERNS.md` - contract interaction, freeze lists, test structure
 - **SDK development tasks:** `packages/policy-engine-sdk/AGENTS.md` - SDK agent guide
 - **SDK usage or API questions:** `packages/policy-engine-sdk/README.md` (quick start) and `packages/policy-engine-sdk/API.md` (API reference)
