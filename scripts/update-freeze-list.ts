@@ -2,7 +2,7 @@ import { ExecutionMode } from "@doko-js/core";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { BaseContract } from "../contract/base-contract";
 import { calculateFreezeListUpdate, FreezeStatus } from "../lib/FreezeList";
-import { CURRENT_FREEZE_LIST_ROOT_INDEX } from "../lib/Constants";
+import { CURRENT_FREEZE_LIST_ROOT_INDEX, FREEZELIST_MANAGER_ROLE } from "../lib/Constants";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
@@ -26,8 +26,8 @@ const reportPolicyContract = new Sealed_report_policyContract({
     process.exit(1);
   }
 
-  let role = await reportPolicyContract.roles(1);
-  if (adminAddress !== role) {
+  let role = await reportPolicyContract.address_to_role(adminAddress);
+  if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
     console.error(
       "The used account does not have admin permissions. Please check the environment file for the correct account.",
     );
