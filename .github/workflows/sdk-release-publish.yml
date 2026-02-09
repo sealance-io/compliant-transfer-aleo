@@ -279,7 +279,7 @@ jobs:
           echo "::group::Job Results"
           echo "Should publish: $SHOULD_PUBLISH"
           echo "npm publish: $NPM_RESULT"
-          echo "GitHub Packages: $GITHUB_OUTCOME (non-blocking)"
+          echo "GitHub Packages: $GITHUB_RESULT (non-blocking)"
           echo "Release: $RELEASE_RESULT"
           echo "::endgroup::"
 
@@ -295,8 +295,7 @@ jobs:
           fi
 
           # GitHub Packages is NON-BLOCKING - warn but don't fail
-          # Uses 'outcome' to see real result before continue-on-error was applied
-          if [[ "$GITHUB_OUTCOME" != "success" ]]; then
+          if [[ "$GITHUB_RESULT" != "success" ]]; then
             echo "::warning::GitHub Packages publish failed (non-critical) - users can still install from npm"
           fi
 
@@ -306,7 +305,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$GITHUB_OUTCOME" == "success" ]]; then
+          if [[ "$GITHUB_RESULT" == "success" ]]; then
             echo "::notice::Release completed successfully (npm + GitHub Packages + GitHub Release)"
           else
             echo "::notice::Release completed with warnings (npm + GitHub Release succeeded, GitHub Packages failed)"
@@ -314,5 +313,5 @@ jobs:
         env:
           SHOULD_PUBLISH: ${{ needs.check-release.outputs.should_publish }}
           NPM_RESULT: ${{ needs.publish-npm.result }}
-          GITHUB_OUTCOME: ${{ needs.publish-github.outcome }} # outcome gives actual result before continue-on-error
+          GITHUB_RESULT: ${{ needs.publish-github.result }}
           RELEASE_RESULT: ${{ needs.create-release.result }}
