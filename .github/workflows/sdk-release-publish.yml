@@ -89,13 +89,20 @@ jobs:
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
 
-      - name: Validate publish (dry-run)
+      - name: Check if already published
+        id: check-published
         run: |
-          echo "Running publish dry-run to validate package..."
-          npm publish --workspace=@sealance-io/policy-engine-aleo --dry-run
-          echo "Dry-run successful - package is valid for publishing"
+          if npm view "@sealance-io/policy-engine-aleo@${VERSION}" version 2>/dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "Version $VERSION already exists on npm - skipping publish"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          VERSION: ${{ needs.check-release.outputs.version }}
 
       - name: Determine dist-tag
+        if: steps.check-published.outputs.already_published != 'true'
         id: dist-tag
         env:
           VERSION: ${{ needs.check-release.outputs.version }}
@@ -118,6 +125,7 @@ jobs:
           fi
 
       - name: Publish to npm (with retry)
+        if: steps.check-published.outputs.already_published != 'true'
         run: |
           publish_args=(--workspace=@sealance-io/policy-engine-aleo --provenance)
           if [[ "$DIST_TAG" != "latest" ]]; then
@@ -142,24 +150,6 @@ jobs:
           DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
         # NO NODE_AUTH_TOKEN - OIDC handles authentication automatically
         # --provenance generates Sigstore attestation (explicit for reliability)
-
-      - name: Verify npm publish
-        run: |
-          echo "Waiting for npm registry propagation..."
-          sleep 15
-          for attempt in 1 2 3; do
-            echo "Verification attempt $attempt of 3..."
-            if npm view "@sealance-io/policy-engine-aleo@${VERSION}" version 2>/dev/null; then
-              echo "Verified: package v$VERSION is available on npm"
-              exit 0
-            fi
-            echo "Package not yet available, waiting 15s..."
-            sleep 15
-          done
-          echo "::warning::Could not verify package availability (may still be propagating)"
-          # Don't fail - package was published, just slow to propagate
-        env:
-          VERSION: ${{ needs.check-release.outputs.version }}
 
   # Create GitHub Release
   create-release:
