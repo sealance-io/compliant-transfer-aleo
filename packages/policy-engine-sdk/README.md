@@ -17,16 +17,6 @@ SDK for generating Merkle proofs and interacting with Aleo compliance policy pro
 npm install @sealance-io/policy-engine-aleo
 ```
 
-### GitHub Package Registry Setup
-
-```bash
-# Configure registry
-echo "@sealance-io:registry=https://npm.pkg.github.com" >> .npmrc
-
-# Or authenticate
-npm login --scope=@sealance-io --registry=https://npm.pkg.github.com
-```
-
 ## Quick Start
 
 ```typescript

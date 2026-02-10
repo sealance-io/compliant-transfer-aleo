@@ -30,7 +30,7 @@ Releases are managed using [Changesets](https://github.com/changesets/changesets
          ↓
 6. Admin approves deployment (GitHub environment protection)
          ↓
-7. Package published to npm (OIDC) and GitHub Packages
+7. Package published to npm (OIDC with provenance)
          ↓
 8. GitHub Release created automatically
 ```
@@ -239,9 +239,8 @@ When reviewing PRs that modify the SDK:
 3. **Approval Required**: When the release PR is merged, the `sdk-release-publish.yml` workflow runs but pauses for admin approval (GitHub environment protection)
 
 4. **Publish**: After approval:
-   - Package is published to npm.js via OIDC (with provenance and retry logic)
+   - Package is published to npm via OIDC (with provenance and retry logic)
    - Publication is verified by checking npm registry
-   - Package is published to GitHub Packages (non-blocking - failures don't stop the release)
    - GitHub Release is created with tag (idempotent - safe to re-run)
 
 ### Pre-release Versions (Alpha/Beta/RC)
@@ -460,23 +459,6 @@ This is the primary security gate for npm publishing. Configure at:
 - Break-glass workflow provides audited emergency path
 - Bypass would allow silent malicious publishes
 
-### `github-packages` Environment (Secondary)
-
-Less critical since GitHub Packages is non-blocking. Configure at:
-`Repository Settings → Environments → github-packages`
-
-| Setting                 | Value       | Rationale                    |
-| ----------------------- | ----------- | ---------------------------- |
-| **Required reviewers**  | None        | Non-blocking job, low risk   |
-| **Deployment branches** | `main` only | Consistency with npm-publish |
-
-**Why no required reviewers?**
-
-- GitHub Packages is secondary (npm is primary)
-- Publishing is non-blocking (`continue-on-error: true`)
-- Failure just means GitHub Packages is out of sync
-- Adding reviewers would require two approval gates
-
 ### How Approval Works
 
 When the publish workflow runs:
@@ -525,11 +507,9 @@ After release, verify:
    - Check version is correct
    - Check provenance badge appears
 
-2. **GitHub Packages**: https://github.com/sealance-io/compliant-transfer-aleo/packages
+2. **GitHub Releases**: https://github.com/sealance-io/compliant-transfer-aleo/releases
 
-3. **GitHub Releases**: https://github.com/sealance-io/compliant-transfer-aleo/releases
-
-4. **Provenance**: Run `npm audit signatures` in a project using the package
+3. **Provenance**: Run `npm audit signatures` in a project using the package
 
 ---
 
@@ -567,14 +547,6 @@ The workflow is designed to be idempotent. If a re-run is needed:
 - npm publish will fail if package version already exists (expected - means it succeeded previously)
 - GitHub tag/release creation will skip if already exists
 - Check the `Release Status` job for the actual outcome
-
-### GitHub Packages Failed But Release Succeeded
-
-This is expected behavior. GitHub Packages is non-blocking:
-
-- npm is the primary registry - users can install from there
-- Check the warning in the workflow logs for details
-- Manually publish to GitHub Packages later if needed
 
 ---
 
@@ -628,14 +600,6 @@ This ensures pre-releases don't accidentally become the default install.
 
 After publishing, the workflow verifies the package is available on npm by running `npm view`. This catches rare cases where publish appears to succeed but the package isn't immediately available.
 
-### Non-Blocking GitHub Packages
-
-GitHub Packages publishing is non-blocking (`continue-on-error: true`). If it fails:
-
-- The release still succeeds (npm is the primary registry)
-- A warning is logged
-- Users can still install from npm
-
 ### Idempotent Releases
 
 The GitHub Release creation handles re-runs gracefully:
@@ -662,4 +626,4 @@ The publish workflow detects release PRs by checking the source branch name (`ch
 
 ---
 
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-02-10
