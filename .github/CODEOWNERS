@@ -1,0 +1,5 @@
+# Default owner for everything
+* @sealance-io/sealance-engineers
+
+# Security-critical files (explicit for visibility)
+.github/** @sealance-io/sealance-engineers
