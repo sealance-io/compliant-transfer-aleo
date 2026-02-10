@@ -11,7 +11,7 @@ Releases are managed using [Changesets](https://github.com/changesets/changesets
 - Tokenless publishing via OIDC (no npm tokens stored in secrets)
 - Automatic provenance attestation
 - Required reviewer approval before publish
-- Robust publishing with retry logic and verification
+- Robust publishing with retry logic
 - Idempotent releases (safe to re-run workflows)
 - Documented emergency procedures (rollback, deprecate, unpublish)
 
@@ -240,7 +240,6 @@ When reviewing PRs that modify the SDK:
 
 4. **Publish**: After approval:
    - Package is published to npm via OIDC (with provenance and retry logic)
-   - Publication is verified by checking npm registry
    - GitHub Release is created with tag (idempotent - safe to re-run)
 
 ### Pre-release Versions (Alpha/Beta/RC)
@@ -542,10 +541,10 @@ After release, verify:
 
 ### Workflow Re-run After Partial Failure
 
-The workflow is designed to be idempotent. If a re-run is needed:
+The workflow is fully idempotent. If a re-run is needed (e.g., npm published but GitHub Release failed):
 
-- npm publish will fail if package version already exists (expected - means it succeeded previously)
-- GitHub tag/release creation will skip if already exists
+- npm publish checks if the version already exists via `npm view` and skips publishing if so
+- GitHub tag/release creation skips if already exists
 - Check the `Release Status` job for the actual outcome
 
 ---
@@ -569,17 +568,6 @@ npm run release
 
 The release workflow includes several robustness features to handle transient failures:
 
-### Dry-run Validation
-
-Before actual publishing, the workflow runs `npm publish --dry-run` to validate:
-
-- Package contents and structure are correct
-- Version doesn't already exist on the registry
-- Package.json configuration is valid
-- Files included/excluded match expectations
-
-This catches configuration errors early without any risk of publishing a broken package.
-
 ### Retry Logic
 
 npm publish retries up to 3 times with 30-second backoff between attempts. This handles transient network issues or npm registry slowdowns.
@@ -596,17 +584,14 @@ The workflow automatically detects pre-release versions and publishes with appro
 
 This ensures pre-releases don't accidentally become the default install.
 
-### Post-Publish Verification
-
-After publishing, the workflow verifies the package is available on npm by running `npm view`. This catches rare cases where publish appears to succeed but the package isn't immediately available.
-
 ### Idempotent Releases
 
-The GitHub Release creation handles re-runs gracefully:
+Every job handles re-runs gracefully:
 
-- If the tag already exists, it continues without error
-- If the release already exists, it continues without error
-- This allows safe workflow re-runs after partial failures
+- **npm publish**: Checks if the version already exists on the registry before publishing. If it does, the job succeeds without attempting to publish again
+- **GitHub Release**: If the tag or release already exists, it continues without error
+
+This allows safe workflow re-runs after partial failures (e.g., npm published but GitHub Release creation failed).
 
 ### Release Detection
 
