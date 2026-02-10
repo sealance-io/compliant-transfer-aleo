@@ -119,7 +119,7 @@ jobs:
 
       - name: Publish to npm (with retry)
         run: |
-          publish_args=(--workspace=@sealance-io/policy-engine-aleo)
+          publish_args=(--workspace=@sealance-io/policy-engine-aleo --provenance)
           if [[ "$DIST_TAG" != "latest" ]]; then
             publish_args+=(--tag "$DIST_TAG")
             echo "Publishing with dist-tag: $DIST_TAG"
@@ -141,7 +141,7 @@ jobs:
         env:
           DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
         # NO NODE_AUTH_TOKEN - OIDC handles authentication automatically
-        # Provenance attestation is enabled by default with OIDC
+        # --provenance generates Sigstore attestation (explicit for reliability)
 
       - name: Verify npm publish
         run: |
@@ -161,50 +161,9 @@ jobs:
         env:
           VERSION: ${{ needs.check-release.outputs.version }}
 
-  # Publish to GitHub Packages (requires GITHUB_TOKEN, no OIDC support)
-  # Non-blocking: npm is the primary registry, GitHub Packages is secondary
-  publish-github:
-    needs: [check-release, publish-npm]
-    if: needs.check-release.outputs.should_publish == 'true'
-    continue-on-error: true # Don't fail the release if GitHub Packages fails
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: github-packages # Separate environment for GitHub Packages
-    permissions:
-      contents: read
-      packages: write # Required for GitHub Packages
-    defaults:
-      run:
-        shell: bash -eo pipefail {0}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          # cache: "npm"  # Disabled to prevent cache poisoning in release workflow
-          node-version-file: ".nvmrc"
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@sealance-io"
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Build SDK
-        run: npm run build --workspace=@sealance-io/policy-engine-aleo
-
-      - name: Publish to GitHub Packages
-        # zizmor: ignore[use-trusted-publishing] - GitHub Packages uses GITHUB_TOKEN (no OIDC alternative)
-        run: npm publish --workspace=@sealance-io/policy-engine-aleo --registry=https://npm.pkg.github.com
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   # Create GitHub Release
   create-release:
-    needs: [check-release, publish-npm, publish-github]
+    needs: [check-release, publish-npm]
     if: needs.check-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -265,7 +224,7 @@ jobs:
   # Rollup status for tracking
   release-status:
     name: Release Status
-    needs: [check-release, publish-npm, publish-github, create-release]
+    needs: [check-release, publish-npm, create-release]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -279,7 +238,6 @@ jobs:
           echo "::group::Job Results"
           echo "Should publish: $SHOULD_PUBLISH"
           echo "npm publish: $NPM_RESULT"
-          echo "GitHub Packages: $GITHUB_RESULT (non-blocking)"
           echo "Release: $RELEASE_RESULT"
           echo "::endgroup::"
 
@@ -288,15 +246,10 @@ jobs:
             exit 0
           fi
 
-          # npm publish is REQUIRED - this is the primary registry
+          # npm publish is REQUIRED
           if [[ "$NPM_RESULT" != "success" ]]; then
             echo "::error::npm publish failed - release blocked"
             exit 1
-          fi
-
-          # GitHub Packages is NON-BLOCKING - warn but don't fail
-          if [[ "$GITHUB_RESULT" != "success" ]]; then
-            echo "::warning::GitHub Packages publish failed (non-critical) - users can still install from npm"
           fi
 
           # GitHub Release creation is REQUIRED
@@ -305,13 +258,8 @@ jobs:
             exit 1
           fi
 
-          if [[ "$GITHUB_RESULT" == "success" ]]; then
-            echo "::notice::Release completed successfully (npm + GitHub Packages + GitHub Release)"
-          else
-            echo "::notice::Release completed with warnings (npm + GitHub Release succeeded, GitHub Packages failed)"
-          fi
+          echo "::notice::Release completed successfully (npm + GitHub Release)"
         env:
           SHOULD_PUBLISH: ${{ needs.check-release.outputs.should_publish }}
           NPM_RESULT: ${{ needs.publish-npm.result }}
-          GITHUB_RESULT: ${{ needs.publish-github.result }}
           RELEASE_RESULT: ${{ needs.create-release.result }}

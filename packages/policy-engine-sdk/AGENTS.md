@@ -86,25 +86,12 @@ SDK unit tests can run in parallel; integration/devnet tests must run sequential
 
 ## Publishing
 
-Publish to GitHub npm registry and/or public npm registry.
+Published to npm via CI (OIDC trusted publishing with provenance attestation).
 
-**Prerequisites (~/.npmrc):**
-
-```
-# GitHub Package Registry
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
-
-# npm Registry
-//registry.npmjs.org/:_authToken=YOUR_NPM_TOKEN
-```
-
-**Commands (from SDK directory):**
-
-```bash
-cd packages/policy-engine-sdk
-npm run publish:github    # GitHub npm registry
-npm run publish:npm       # Public npm registry
-```
+Automated release flow:
+1. Add changeset (`npx changeset`)
+2. Merge to `main` → version workflow creates release PR
+3. Merge release PR → publish workflow publishes to npm + creates GitHub Release
 
 The `prepublishOnly` script builds automatically before publishing.
 

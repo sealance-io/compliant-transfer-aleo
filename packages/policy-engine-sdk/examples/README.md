@@ -354,8 +354,7 @@ npm install  # Refreshes the symlink
 
 **In Production Applications:**
 - Use published package: `"@sealance-io/policy-engine-aleo": "^0.1.0"`
-- Install from GitHub Packages registry
-- See main README for registry setup
+- Install from npm: `npm install @sealance-io/policy-engine-aleo`
 
 ## License
 
