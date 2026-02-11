@@ -173,6 +173,11 @@ jobs:
           script: |
             const version = process.env.PACKAGE_VERSION;
             const tag = `@sealance-io/policy-engine-aleo@${version}`;
+            const releaseSha = context.payload.pull_request?.merge_commit_sha;
+
+            if (!releaseSha) {
+              throw new Error('Missing pull_request.merge_commit_sha for merged PR release tagging');
+            }
 
             // Create tag (idempotent - handle re-runs gracefully)
             try {
@@ -180,7 +185,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: `refs/tags/${tag}`,
-                sha: context.sha
+                sha: releaseSha
               });
               console.log(`Created tag ${tag}`);
             } catch (e) {
