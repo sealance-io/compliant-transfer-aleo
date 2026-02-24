@@ -15,7 +15,7 @@ version: 2
 # Configuration implements:
 # - Patch and minor version updates only (major versions blocked)
 # - Exact version installation (versioning-strategy: increase)
-# - 7/3-day cooldown (minor/patch) per GitHub recommended defaults
+# - 7/4-day cooldown (minor/patch) per GitHub (close to recommended defaults)
 # - Aggressive grouping (SDK deps excluded for individual review)
 # - Special handling for patched dependencies (@doko-js/*)
 # ============================================================================
@@ -41,7 +41,7 @@ updates:
     cooldown:
       default-days: 7 # Catch-all fallback for any unlisted update types
       semver-minor-days: 7 # 7-day waiting period for minor versions
-      semver-patch-days: 3 # 3-day validation for patches
+      semver-patch-days: 4 # 4-day validation for patches
       include:
         - "*" # Apply cooldown to all dependencies
 
