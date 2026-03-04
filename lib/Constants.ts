@@ -88,8 +88,9 @@ export const MULTISIG_OP_BURN_PRIVATE = 7;
 export const MULTISIG_OP_UPDATE_BLOCK_WINDOW = 3;
 export const MULTISIG_OP_UPDATE_FREEZE_LIST = 4;
 
-// merkle tree
-export const MAX_TREE_DEPTH = 16;
+// Maximum depth of the Merkle tree used in freeze list proofs (matches Leo MAX_TREE_DEPTH).
+// The MerkleProof siblings array has MAX_TREE_DEPTH + 1 elements: [leaf, sibling_1, ..., sibling_depth].
+export const MAX_TREE_DEPTH = 15;
 
 // testing constant
 export const defaultAuthorizedUntil = 4294967295;

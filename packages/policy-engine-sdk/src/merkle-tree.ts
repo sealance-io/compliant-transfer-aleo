@@ -157,20 +157,21 @@ export function getLeafIndices(merkleTree: bigint[], address: string): [number, 
  *
  * @param tree - The complete Merkle tree
  * @param leafIndex - Index of the leaf to generate proof for
- * @param depth - Maximum depth of the tree
+ * @param maxTreeDepth - Maximum depth of the tree (default: 15, matching Leo's MAX_TREE_DEPTH).
+ *   The returned siblings array will have maxTreeDepth + 1 elements.
  * @returns Object containing siblings array and leaf_index
  *
  * @example
  * ```typescript
  * const tree = buildTree(leaves);
- * const proof = getSiblingPath(tree, 0, 15);
- * // proof = { siblings: [0n, 1n, ...], leaf_index: 0 }
+ * const proof = getSiblingPath(tree, 0);
+ * // proof.siblings has 16 elements: [leaf, sibling_1, ..., sibling_15]
  * ```
  */
 export function getSiblingPath(
   tree: bigint[],
   leafIndex: number,
-  depth: number,
+  maxTreeDepth: number = 15,
 ): { siblings: bigint[]; leaf_index: number } {
   let num_leaves = Math.floor((tree.length + 1) / 2);
   const siblingPath: bigint[] = [];
@@ -188,7 +189,8 @@ export function getSiblingPath(
     level++;
   }
 
-  while (level < depth) {
+  // Pad to maxTreeDepth + 1 elements (leaf + depth siblings)
+  while (level < maxTreeDepth + 1) {
     siblingPath.push(0n);
     level++;
   }
