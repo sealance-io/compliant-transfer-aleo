@@ -142,7 +142,7 @@ const tree = buildTree(leaves);
 const [leftIdx, rightIdx] = getLeafIndices(tree, "aleo1...");
 
 // Get sibling path (Merkle proof)
-const proof = getSiblingPath(tree, leftIdx, 16);
+const proof = getSiblingPath(tree, leftIdx, 15);
 ```
 
 ### Transaction Tracking
