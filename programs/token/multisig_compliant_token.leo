@@ -82,8 +82,8 @@ program multisig_compliant_token.aleo {
     const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    // Defines the maximum depth of the Merkle tree used in freeze list proofs.
-    // Trees deeper than this value are not supported.
+    // Maximum depth of the Merkle tree used in freeze list proofs.
+    // The siblings array has MAX_TREE_DEPTH + 1 elements because siblings[0] holds the leaf itself.
     const MAX_TREE_DEPTH: u32 = 15u32;
 
     const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;

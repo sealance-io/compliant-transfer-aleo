@@ -255,8 +255,8 @@ export class PolicyEngine {
     const [leftLeafIndex, rightLeafIndex] = getLeafIndices(tree, address);
 
     // Generate sibling paths
-    const leftProof = getSiblingPath(tree, leftLeafIndex, this.config.maxTreeDepth + 1);
-    const rightProof = getSiblingPath(tree, rightLeafIndex, this.config.maxTreeDepth + 1);
+    const leftProof = getSiblingPath(tree, leftLeafIndex, this.config.maxTreeDepth);
+    const rightProof = getSiblingPath(tree, rightLeafIndex, this.config.maxTreeDepth);
 
     const proofs: [MerkleProof, MerkleProof] = [
       {

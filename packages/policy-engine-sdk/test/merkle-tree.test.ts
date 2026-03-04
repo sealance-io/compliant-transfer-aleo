@@ -144,7 +144,7 @@ describe("merkle_tree lib, getSiblingPath", () => {
     expect(proof).toBeDefined();
     expect(proof.leaf_index).toBe(1);
     expect(proof.siblings).toBeDefined();
-    expect(proof.siblings.length).toBe(15); // Depth 15
+    expect(proof.siblings.length).toBe(16); // maxTreeDepth + 1
     expect(proof.siblings[0]).toBe(2n); // The leaf itself (index 1 = "2field")
     expect(proof.siblings[1]).toBe(1n); // Its sibling (index 0 = "1field")
   });
