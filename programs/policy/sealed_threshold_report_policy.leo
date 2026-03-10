@@ -1,6 +1,7 @@
 import token_registry.aleo;
 import sealance_freezelist_registry.aleo;
 import multisig_core.aleo;
+import merkle_tree.aleo;
 
 program sealed_threshold_report_policy.aleo {
     @custom
@@ -9,7 +10,7 @@ program sealed_threshold_report_policy.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -53,21 +54,11 @@ program sealed_threshold_report_policy.aleo {
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
 
-    struct MerkleProof {
-        siblings: [field; 16],
-        leaf_index: u32
-    }
-
     record ComplianceRecord {
         owner: address,
         amount: u128,
         sender: address,
         recipient: address
-    }
-
-    struct TokenOwner {
-        account: address,
-        token_id: field
     }
 
     struct ChecksumEdition {
@@ -136,7 +127,7 @@ program sealed_threshold_report_policy.aleo {
         amount: u128,
         input_record: token_registry.aleo/Token,
         public estimated_block_height: u32,
-        recipient_merkle_proofs: [MerkleProof;2]
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -267,7 +258,7 @@ program sealed_threshold_report_policy.aleo {
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
-        let owner: TokenOwner = TokenOwner {
+        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
         };
@@ -336,7 +327,7 @@ program sealed_threshold_report_policy.aleo {
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.signer);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
 
-        let owner: TokenOwner = TokenOwner {
+        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
             account: self.signer,
             token_id: TOKEN_ID
         };
@@ -404,14 +395,14 @@ program sealed_threshold_report_policy.aleo {
         public amount: u128,
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
-        recipient_merkle_proofs: [MerkleProof;2]
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_state_record.owner, self.caller);
 
         let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
         let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
         
-        let owner: TokenOwner = TokenOwner {
+        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
         };
@@ -501,8 +492,8 @@ program sealed_threshold_report_policy.aleo {
         input_record: token_registry.aleo/Token,
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
-        sender_merkle_proofs: [MerkleProof;2],
-        recipient_merkle_proofs: [MerkleProof;2]
+        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof;2],
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -602,7 +593,7 @@ program sealed_threshold_report_policy.aleo {
         input_record: token_registry.aleo/Token,
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
-        sender_merkle_proofs: [MerkleProof; 2],
+        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof; 2],
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
         
