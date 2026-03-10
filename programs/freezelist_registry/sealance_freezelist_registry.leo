@@ -8,7 +8,7 @@ program sealance_freezelist_registry.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -176,7 +176,7 @@ program sealance_freezelist_registry.aleo {
     // - If the root matches the previous root: ensures it was updated recently (within the allowed block window).
     // - If the root matches neither: the proof is rejected (invalid).
     // Keeps the account address private.
-    async transition verify_non_inclusion_priv(account: address, merkle_proof: [MerkleProof; 2]) -> Future {
+    async transition verify_non_inclusion_priv(account: address, merkle_proof: [merkle_tree.aleo/MerkleProof; 2]) -> Future {
         let root: field = merkle_tree.aleo/verify_non_inclusion(account, merkle_proof);
         return f_verify_non_inclusion_priv(root);
     }
