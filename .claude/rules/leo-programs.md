@@ -11,7 +11,7 @@ See @docs/ARCHITECTURE.md for program structure and @docs/LEO-ALEO-PATTERNS.md f
 **Build constraints:**
 
 - Compile with `dokojs compile` (not `leo build`)
-- Leo CLI version: 3.4.0
+- Leo CLI version: 3.5.0
 - Never update `@doko-js/*` without checking `/patches`
 
 **Execution model:**

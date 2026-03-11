@@ -11,7 +11,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v3.4.0
+- [Leo](https://github.com/ProvableHQ/leo) CLI v3.5.0
 
 - [Dokojs](https://github.com/venture23-aleo/doko-js) testing framework (using [Sealance fork](https://github.com/sealance-io/dokojs) with fixes not yet released upstream)
 
@@ -137,7 +137,7 @@ ALEO_VERBOSITY=4 npm test
 
 > **Note: Devnode is Experimental**
 >
-> The `devnode` feature is not yet included in Leo v3.4.0. Use the pre-built image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode` or build Leo from the `feat/leo-devnode-final` branch. For stable testing, use devnet mode (`DEVNET=true`).
+> The `devnode` feature is included in Leo v3.5.0 and will become the default soon. For stable testing, use devnet mode (`DEVNET=true`).
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
