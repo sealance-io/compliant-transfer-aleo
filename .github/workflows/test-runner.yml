@@ -65,12 +65,8 @@ jobs:
           cache-dependency-path: "./package-lock.json"
 
       - name: Install dokojs CLI
-        env:
-          NPM_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          npm config set @sealance-io:registry https://npm.pkg.github.com
-          npm config set "//npm.pkg.github.com/:_authToken" "$NPM_TOKEN"
-          npm install -g @sealance-io/dokojs@1.0.2 --ignore-scripts
+          npm install -g @sealance-io/dokojs@1.0.4 --ignore-scripts
           dokojs --version
 
       - run: cp .env.example .env
