@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- [#209](https://github.com/sealance-io/compliant-transfer-aleo/pull/209) [`618c75c`](https://github.com/sealance-io/compliant-transfer-aleo/commit/618c75c170e795fd1a2ab304da8ad03361b4ea07) Thanks [@fullkomnun](https://github.com/fullkomnun)! - **Breaking:** `getSiblingPath` third parameter renamed from `depth` (path length) to `maxTreeDepth` (tree depth, default: 15). Callers passing `16` should now pass `15` or omit the argument. The function internally pads to `maxTreeDepth + 1` elements.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
