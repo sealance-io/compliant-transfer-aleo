@@ -31,14 +31,14 @@
     "test:select": "npm run test --"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "0.5.2",
-    "@changesets/cli": "2.29.8",
+    "@changesets/changelog-github": "0.6.0",
+    "@changesets/cli": "2.30.0",
     "@doko-js/core": "1.0.2",
     "@doko-js/utils": "1.0.0",
     "@doko-js/wasm": "1.0.0",
     "@provablehq/sdk": "0.9.16",
     "@sealance-io/policy-engine-aleo": "workspace:*",
-    "@types/node": "^24.10.14",
+    "@types/node": "^24.11.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "patch-package": "^8.0.1",
