@@ -7,7 +7,7 @@
 | **Devnet**  | `DEVNET=true`     | Slow  | CI, pre-deployment    | **Current default (stable)**  |
 | **Devnode** | Default (no flag) | Fast  | Local rapid iteration | Experimental (future default) |
 
-> **Devnet is currently the recommended mode** for stable testing. Devnode is experimental and will become the default in a future release when stable. Devnode requires Leo from `feat/leo-devnode-final` branch or the image `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`.
+> **Devnet is currently the recommended mode** for stable testing. Devnode is experimental and will become the default soon. 
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ npm run test:select ./test/your-test.test.ts  # Single test
 | `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers    |
 | `ALEO_TEST_IMAGE`     | Auto    | Docker image override |
 
-Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`, Devnet `ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0`
+Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.5.0`, Devnet `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.1`
 
 ### Timing & Logging
 
@@ -50,7 +50,7 @@ Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`, Devnet `g
 export USE_TEST_CONTAINERS=0
 
 # In another terminal:
-docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.4.0-devnode \
+docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v3.5.0 \
   leo devnode start --listener-addr 0.0.0.0:3030 \
   --private-key "$ALEO_PRIVATE_KEY" --verbosity 1
 
