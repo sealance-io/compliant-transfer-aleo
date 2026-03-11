@@ -7,7 +7,7 @@
 | **Devnet**  | `DEVNET=true`     | Slow  | CI, pre-deployment    | **Current default (stable)**  |
 | **Devnode** | Default (no flag) | Fast  | Local rapid iteration | Experimental (future default) |
 
-> **Devnet is currently the recommended mode** for stable testing. Devnode is experimental and will become the default soon. 
+> **Devnet is currently the recommended mode** for stable testing. Devnode is experimental and will become the default soon.
 
 ## Quick Start
 
