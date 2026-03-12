@@ -40,17 +40,13 @@ export async function waitBlocks(blocks: number) {
   }
 }
 
-export async function advanceBlocks(numBlocks: number, privKey?: string): Promise<void> {
+export async function advanceBlocks(numBlocks: number): Promise<void> {
   const networkName = networkConfig.defaultNetwork;
   const endpoint = networkConfig.networks[networkName].endpoint;
-  if (!privKey) {
-    privKey = networkConfig.networks[networkName].accounts[0];
-  }
   const apiUrl = `${endpoint}/testnet/block/create`;
 
   // Call the REST API to advance the ledger by N block.
   const payload = {
-    private_key: privKey,
     num_blocks: numBlocks,
   };
 
