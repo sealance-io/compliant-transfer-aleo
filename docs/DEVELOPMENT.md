@@ -86,14 +86,15 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 
 ## Environment Variables
 
-| Variable                  | Description                 | Default   |
-| ------------------------- | --------------------------- | --------- |
-| `DEVNET`                  | Enable full devnet mode     | `false`   |
-| `USE_TEST_CONTAINERS`     | Use Testcontainers          | `true`    |
-| `SKIP_EXECUTE_PROOF`      | Skip ZK proofs in devnode   | -         |
-| `ALEO_VERBOSITY`          | Logging level (0-4)         | `1`       |
-| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms) | `600000`  |
-| `ALEO_TEST_IMAGE`         | Custom Docker image         | See below |
+| Variable                  | Description                                   | Default   |
+| ------------------------- | --------------------------------------------- | --------- |
+| `DEVNET`                  | Enable full devnet mode                       | `false`   |
+| `USE_TEST_CONTAINERS`     | Use Testcontainers                            | `true`    |
+| `SKIP_EXECUTE_PROOF`      | Skip ZK proofs (devnode only, Leo v3.5.0+)    | `true`    |
+| `SKIP_DEPLOY_CERTIFICATE` | Skip deploy certs (devnode only, Leo v3.5.0+) | `true`    |
+| `ALEO_VERBOSITY`          | Logging level (0-4)                           | `1`       |
+| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms)                   | `600000`  |
+| `ALEO_TEST_IMAGE`         | Custom Docker image                           | See below |
 
 **Default images:**
 
@@ -103,6 +104,6 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 ## Common Issues
 
 - **Container auth**: Run `docker login ghcr.io` for ghcr.io images
-- **Tests too slow**: Stay on devnode and add `SKIP_EXECUTE_PROOF=true`; increase `CONSENSUS_CHECK_TIMEOUT` for CI
+- **Tests too slow**: Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI
 - **Port 3030 in use**: `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`
 - **Manual local Aleo setup**: See `docs/TESTING.md`

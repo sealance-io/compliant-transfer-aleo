@@ -104,9 +104,9 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Common Issues
 
-| Issue                   | Solution                                                                     |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| Container auth          | `docker login ghcr.io`                                                       |
-| Tests too slow          | Stay on devnode and use `SKIP_EXECUTE_PROOF=true npm test`                   |
-| Port 3030 in use        | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
-| Manual local Aleo setup | See `docs/TESTING.md`                                                        |
+| Issue                   | Solution                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| Container auth          | `docker login ghcr.io`                                                             |
+| Tests too slow          | Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI |
+| Port 3030 in use        | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`       |
+| Manual local Aleo setup | See `docs/TESTING.md`                                                              |
