@@ -231,7 +231,29 @@ export async function setup() {
   }
 
   if (!IS_DEVNET) {
-    await advanceBlocks(FIRST_BLOCK);
+    const advanceBlocksTimeout = 120_000;
+    const advanceBlocksInterval = 10_000;
+    const startTime = Date.now();
+    let lastError: unknown;
+
+    while (Date.now() - startTime < advanceBlocksTimeout) {
+      try {
+        await advanceBlocks(FIRST_BLOCK);
+        lastError = undefined;
+        break;
+      } catch (error) {
+        lastError = error;
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        console.log(`[${elapsed}s] advanceBlocks failed, retrying in ${advanceBlocksInterval / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, advanceBlocksInterval));
+      }
+    }
+
+    if (lastError) {
+      throw new Error(
+        `advanceBlocks failed after ${advanceBlocksTimeout / 1000}s: ${lastError instanceof Error ? lastError.message : lastError}`,
+      );
+    }
   }
   await waitForConsensusVersion(TARGET_CONSENSUS_VERSION);
 }
