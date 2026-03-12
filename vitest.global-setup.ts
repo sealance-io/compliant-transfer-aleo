@@ -1,34 +1,13 @@
 import { GenericContainer, StartedTestContainer } from "testcontainers";
 import networkConfig from "./aleo-config";
 import { advanceBlocks } from "./lib/Block";
-
-function parseBooleanEnv(value: string | undefined, defaultValue = true): boolean {
-  if (value === undefined || value === "") {
-    return defaultValue;
-  }
-
-  const stringValue = String(value).toLowerCase().trim();
-
-  // Values that should be interpreted as true
-  if (["true", "t", "yes", "y", "1", "on", "enabled"].includes(stringValue)) {
-    return true;
-  }
-
-  // Values that should be interpreted as false
-  if (["false", "f", "no", "n", "0", "off", "disabled"].includes(stringValue)) {
-    return false;
-  }
-
-  // For any other unexpected values, log a warning and use the default
-  console.warn(`Warning: Unexpected boolean environment value "${value}" - using default (${defaultValue})`);
-  return defaultValue;
-}
+import { parseBooleanEnv } from "./lib/Env";
 
 // This is private to this module and not exposed globally
 let devnetContainer: StartedTestContainer | undefined;
 
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
-const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, true);
+const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, false);
 const DEFAULT_ALEO_IMAGE = IS_DEVNET
   ? "ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.1"
   : "ghcr.io/sealance-io/leo-lang:v3.5.0";
@@ -107,8 +86,8 @@ function validateConfiguration(): void {
   // Helpful hint for slow tests
   if (IS_DEVNET) {
     console.log(
-      "💡 Tip: Using full DEVNET mode. Tests will be slow but realistic. " +
-        "For faster development, use devnode mode (remove DEVNET=true from .env)\n",
+      "💡 Tip: Using full DEVNET mode. Tests will be slower but closer to a full network. " +
+        "For the default local workflow, unset DEVNET or set DEVNET=false.\n",
     );
   }
 }

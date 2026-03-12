@@ -6,11 +6,11 @@ on:
       mode:
         description: "Test mode"
         required: true
-        default: "devnet"
+        default: "devnode"
         type: choice
         options:
-          - devnet
           - devnode
+          - devnet
   pull_request:
     branches:
       - main
@@ -131,10 +131,10 @@ jobs:
           echo "matrix={\"test-file\":$files}" >> "$GITHUB_OUTPUT"
           echo "Discovered test files: $files"
 
-  # Devnet mode: Matrix of jobs for ALL tests (default)
+  # Devnet mode: Matrix of jobs for all tests when explicitly requested
   test-devnet:
     needs: [detect-changes, linter, discover-tests]
-    if: needs.detect-changes.outputs.code == 'true' && inputs.mode != 'devnode'
+    if: needs.detect-changes.outputs.code == 'true' && github.event_name == 'workflow_dispatch' && inputs.mode == 'devnet'
     permissions:
       contents: read
       packages: read # Required for pulling aleo devnet container image from ghcr.io
@@ -149,10 +149,10 @@ jobs:
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Devnode mode: Single job for ALL tests (future default)
+  # Devnode mode: Single job for all tests (default for PRs and manual runs)
   test-devnode:
     needs: [detect-changes, linter]
-    if: needs.detect-changes.outputs.code == 'true' && inputs.mode == 'devnode'
+    if: needs.detect-changes.outputs.code == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'devnode')
     permissions:
       contents: read
       packages: read # Required for pulling aleo devnode container image from ghcr.io
