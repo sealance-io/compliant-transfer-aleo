@@ -579,13 +579,15 @@ describe("test multisig token proxy program", () => {
     });
     await expect(rejectedTx.wait()).rejects.toThrow();
 
+    const initialBalance = await tokenContract.balances(account, 0n);
+
     const tx = await tokenProxyContract.mint_public(account, amount * 20n, {
       wallet_id: minterWalletId,
       salt,
     });
     await tx.wait();
     const balance = await tokenContract.balances(account);
-    expect(balance).toBe(amount * 20n);
+    expect(balance).toBe(initialBalance + amount * 20n);
 
     // It's possible to execute the request only once
     rejectedTx = await tokenProxyContract.mint_public(account, amount * 20n, {
