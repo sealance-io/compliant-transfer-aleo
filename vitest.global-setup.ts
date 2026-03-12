@@ -61,8 +61,8 @@ function validateConfiguration(): void {
   console.log(`Use Testcontainers: ${USE_TEST_CONTAINERS}`);
 
   if (!IS_DEVNET) {
-    const skipProving = parseBooleanEnv(process.env.SKIP_EXECUTE_PROOF, false);
-    const skipCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE, false);
+    const skipProving = parseBooleanEnv(process.env.SKIP_EXECUTE_PROOF, true);
+    const skipCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE, true);
     console.log(`Skip Proving: ${skipProving}`);
     console.log(`Skip Deploy Certificate: ${skipCert}`);
   }

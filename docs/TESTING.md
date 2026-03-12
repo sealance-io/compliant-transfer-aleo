@@ -22,11 +22,11 @@ npm run test:select ./test/your-test.test.ts  # Single test
 
 ### Core
 
-| Variable                  | Default | Description                             |
-| ------------------------- | ------- | --------------------------------------- |
-| `DEVNET`                  | `false` | Enable full devnet mode                 |
-| `SKIP_EXECUTE_PROOF`      | `false` | Skip ZK proofs (devnode only)           |
-| `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deploy certificates (devnode only) |
+| Variable                  | Default | Description                                                            |
+| ------------------------- | ------- | ---------------------------------------------------------------------- |
+| `DEVNET`                  | `false` | Enable full devnet mode                                                |
+| `SKIP_EXECUTE_PROOF`      | `true`  | Skip ZK proofs (devnode only, Leo v3.5.0+). Set `false` to opt out.    |
+| `SKIP_DEPLOY_CERTIFICATE` | `true`  | Skip deploy certs (devnode only, Leo v3.5.0+). Set `false` to opt out. |
 
 ### Container
 
@@ -59,12 +59,12 @@ npm test
 
 ## Troubleshooting
 
-| Issue                | Solution                                                                     |
-| -------------------- | ---------------------------------------------------------------------------- |
-| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                    |
-| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                        |
-| Tests too slow       | Stay on devnode and add `SKIP_EXECUTE_PROOF=true npm test`                   |
-| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
+| Issue                | Solution                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                          |
+| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                              |
+| Tests too slow       | Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI |
+| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`       |
 
 ## Notes
 

@@ -24,7 +24,9 @@ export async function waitBlocks(blocks: number) {
 
   try {
     await advanceBlocks(blocks);
-  } catch {}
+  } catch {
+    // advanceBlocks is devnode-only; ignore errors on devnet
+  }
 
   while (true) {
     const currentHeight = await getLatestBlockHeight();
@@ -52,11 +54,14 @@ export async function advanceBlocks(numBlocks: number, privKey?: string): Promis
     num_blocks: numBlocks,
   };
 
-  await fetch(apiUrl, {
+  const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
+  if (!response.ok) {
+    throw new Error(`advanceBlocks failed: ${response.status} ${response.statusText}`);
+  }
 }
