@@ -27,21 +27,21 @@ npm run build --workspace=@sealance-io/policy-engine-aleo
 
 ## Testing
 
-| Mode        | Command                 | Speed | Use Case              | Status                        |
-| ----------- | ----------------------- | ----- | --------------------- | ----------------------------- |
-| **Devnet**  | `DEVNET=true npm test`  | Slow  | Pre-deployment, CI    | **Current default (stable)**  |
-| **Devnode** | `DEVNET=false npm test` | Fast  | Local rapid iteration | Experimental (future default) |
+| Mode        | Command                | Speed | Use Case            | Status                       |
+| ----------- | ---------------------- | ----- | ------------------- | ---------------------------- |
+| **Devnode** | `npm test`             | Fast  | Local iteration, CI | **Default and recommended**  |
+| **Devnet**  | `DEVNET=true npm test` | Slow  | Nightly, pre-deploy | Supported full-network check |
 
 ```bash
-DEVNET=true npm test                            # Full devnet (stable, recommended)
+npm test                                        # Default devnode mode (recommended)
+DEVNET=true npm test                            # Full devnet mode
 npm run test:select ./test/merkle_tree.test.ts  # Specific test file
-npm test                                        # Fast devnode mode (experimental)
-USE_TEST_CONTAINERS=0 npm test                  # Manual devnet setup
+USE_TEST_CONTAINERS=0 npm test                  # Manual local Aleo setup
 ALEO_VERBOSITY=4 npm test                       # Verbose logging (0-4)
 ALEO_TEST_IMAGE=custom/aleo:latest npm test     # Custom Docker image
 ```
 
-**Note**: Devnet is the current stable default. Devnode is experimental and will become the default soon.
+**Note**: PR CI and local runs now default to devnode. The nightly cron workflow keeps devnet as the default full-network regression job.
 
 ## SDK Development
 
@@ -91,8 +91,8 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 | `DEVNET`                  | Enable full devnet mode     | `false`   |
 | `USE_TEST_CONTAINERS`     | Use Testcontainers          | `true`    |
 | `SKIP_EXECUTE_PROOF`      | Skip ZK proofs in devnode   | -         |
-| `ALEO_VERBOSITY`          | Logging level (0-4)         | `0`       |
-| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms) | -         |
+| `ALEO_VERBOSITY`          | Logging level (0-4)         | `1`       |
+| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms) | `600000`  |
 | `ALEO_TEST_IMAGE`         | Custom Docker image         | See below |
 
 **Default images:**
@@ -103,6 +103,6 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 ## Common Issues
 
 - **Container auth**: Run `docker login ghcr.io` for ghcr.io images
-- **Tests too slow**: Use experimental devnode mode with `SKIP_EXECUTE_PROOF=true`; increase `CONSENSUS_CHECK_TIMEOUT` for CI
+- **Tests too slow**: Stay on devnode and add `SKIP_EXECUTE_PROOF=true`; increase `CONSENSUS_CHECK_TIMEOUT` for CI
 - **Port 3030 in use**: `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`
-- **Manual devnet**: See `docs/TESTING.md`
+- **Manual local Aleo setup**: See `docs/TESTING.md`
