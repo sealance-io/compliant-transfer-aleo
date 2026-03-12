@@ -81,8 +81,8 @@ SDK tests are pure TypeScript (no blockchain required):
 npm run test --workspace=@sealance-io/policy-engine-aleo
 ```
 
-Integration tests are in `/test/*.test.ts` (require devnet).
-SDK unit tests can run in parallel; integration/devnet tests must run sequentially.
+Integration tests are in `/test/*.test.ts` and run against the repo's local Aleo test environment (`devnode` by default, `devnet` when explicitly enabled).
+SDK unit tests can run in parallel; root integration tests must run sequentially.
 
 ## Publishing
 

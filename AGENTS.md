@@ -12,7 +12,7 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 
 - **Leo Programs** (`/programs`): Compliance policy smart contracts
 - **Policy Engine SDK** (`/packages/policy-engine-sdk`): Published as `@sealance-io/policy-engine-aleo`
-- **Test Suite** (`/test`): Testcontainers + leo devnet
+- **Test Suite** (`/test`): Testcontainers + leo devnode/devnet
 - **Shared Libraries** (`/lib`): Freeze lists, tokens, deployment, roles, funding
 - **Deployment Scripts** (`/scripts`): Devnet/testnet deployment and configuration
 
@@ -28,8 +28,8 @@ dokojs compile              # Compile Leo programs
 npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
-DEVNET=true npm test        # Full devnet mode (default, stable)
-DEVNET=false npm test       # Fast devnode mode (experimental)
+npm test                    # Default devnode mode (recommended)
+DEVNET=true npm test        # Full devnet mode
 npm run test:select ./test/merkle_tree.test.ts  # Specific test
 
 # Deploy
@@ -72,7 +72,7 @@ npm run format:fix          # Auto-fix formatting
 1. **Node Version**: Requires Node >= 20.0.0 (see `.nvmrc`)
 2. **Leo Version**: Developed with Leo CLI v3.5.0
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
-4. **Sequential Testing**: Integration/devnet tests MUST run sequentially (shared devnet state)
+4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/devnet)
 5. **npm Security**: Always use `--ignore-scripts` for installs (`npm ci`, `npm install`); build/publish workflows may run scripts as needed
 6. **Dokojs Patches**: `@doko-js/*` blocked in dependabot - verify against `/patches` before updating
 
@@ -89,7 +89,7 @@ Required for branch protection:
 Load the linked file(s) when your task touches that area. Do not assume links are auto-loaded.
 
 - **Build, deploy, devnet, release, or setup:** `docs/DEVELOPMENT.md` - commands, SDK development, deployment
-- **Testing or CI failures:** `docs/TESTING.md` - manual devnet setup, test configuration
+- **Testing or CI failures:** `docs/TESTING.md` - manual local Aleo setup, test configuration
 - **npm install, security policy, or dependency updates:** `docs/NPM-SECURITY.md` - security model and practices
 - **Program structure or compliance flow:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system
 - **Leo/Aleo language patterns:** `docs/LEO-ALEO-PATTERNS.md` - execution model, limitations, dual-auth patterns, upgradability
@@ -104,9 +104,9 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Common Issues
 
-| Issue            | Solution                                                                              |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| Container auth   | `docker login ghcr.io`                                                                |
-| Tests too slow   | Use experimental devnode mode: `npm test` with `DEVNET=false SKIP_EXECUTE_PROOF=true` |
-| Port 3030 in use | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`          |
-| Manual devnet    | See `docs/TESTING.md`                                                                 |
+| Issue                   | Solution                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| Container auth          | `docker login ghcr.io`                                                       |
+| Tests too slow          | Stay on devnode and use `SKIP_EXECUTE_PROOF=true npm test`                   |
+| Port 3030 in use        | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
+| Manual local Aleo setup | See `docs/TESTING.md`                                                        |
