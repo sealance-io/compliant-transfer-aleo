@@ -8,8 +8,9 @@ const execAsync = promisify(exec);
 export async function upgradeProgram(programName: string, privateKey: string) {
   const networkName = networkConfig.defaultNetwork;
   const endpoint = networkConfig.networks[networkName].endpoint;
-  const skipDeploymentCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE);
-  const upgradeCmd = `cd artifacts/leo/${programName} && leo upgrade --broadcast --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName} ${skipDeploymentCert ? "--skip-deploy-certificate" : ""}  --blocks-to-check 20 --max-wait 30`;
+  const skipDeploymentCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE, false);
+  const skipFlag = skipDeploymentCert ? " --skip-deploy-certificate" : "";
+  const upgradeCmd = `cd artifacts/leo/${programName} && leo upgrade --broadcast --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName}${skipFlag} --blocks-to-check 20 --max-wait 30`;
   console.log(upgradeCmd);
   const { stdout } = await execAsync(upgradeCmd);
   if (stdout.includes("Upgrade confirmed!")) {

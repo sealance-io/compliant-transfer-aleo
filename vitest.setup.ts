@@ -1,4 +1,20 @@
 // vitest.setup.ts
+
+// In devnode mode (DEVNET unset or false), default SKIP_EXECUTE_PROOF and
+// SKIP_DEPLOY_CERTIFICATE to "true" for faster iteration (Leo v3.5.0+).
+// Opt out by explicitly setting either to "false".
+import { parseBooleanEnv } from "./lib/Env";
+
+const IS_DEVNET_SETUP = parseBooleanEnv(process.env.DEVNET, false);
+if (!IS_DEVNET_SETUP) {
+  if (process.env.SKIP_EXECUTE_PROOF === undefined || process.env.SKIP_EXECUTE_PROOF === "") {
+    process.env.SKIP_EXECUTE_PROOF = "true";
+  }
+  if (process.env.SKIP_DEPLOY_CERTIFICATE === undefined || process.env.SKIP_DEPLOY_CERTIFICATE === "") {
+    process.env.SKIP_DEPLOY_CERTIFICATE = "true";
+  }
+}
+
 import console from "console";
 import type { SuiteHooks } from "vitest";
 import { beforeAll, beforeEach, afterEach, afterAll } from "vitest";
