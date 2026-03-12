@@ -22,7 +22,7 @@ import { Account } from "@provablehq/sdk";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { initializeProgram } from "../lib/Initalize";
-import { advanceBlocks, waitBlocks } from "../lib/Block";
+import { waitBlocks } from "../lib/Block";
 import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
@@ -210,7 +210,7 @@ describe("test multisig token proxy program", () => {
     [, walletSigningOpIdHash] = await tx.wait();
     privatePendingRequest = await tokenProxyContract.private_pending_requests(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
-    await advanceBlocks(1);
+    await waitBlocks(1);
     // It's possible to initiate this request twice because the previous expired
     tx = await tokenProxyContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
     [, walletSigningOpIdHash] = await tx.wait();
