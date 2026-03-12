@@ -42,7 +42,7 @@ import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Multisig_compliant_tokenContract } from "../artifacts/js/multisig_compliant_token";
 import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
 import { isProgramInitialized } from "../lib/Initalize";
-import { getLatestBlockHeight, waitBlocks } from "../lib/Block";
+import { advanceBlocks, getLatestBlockHeight, waitBlocks } from "../lib/Block";
 import { buildTree, generateLeaves, stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
@@ -340,6 +340,7 @@ describe("test multisig_compliant_token program", () => {
     [, walletSigningOpIdHash] = await tx.wait();
     privatePendingRequest = await tokenContract.private_pending_requests(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
+    await advanceBlocks(1);
     // It's possible to initiate this request twice because the previous expired
     tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
     [, walletSigningOpIdHash] = await tx.wait();

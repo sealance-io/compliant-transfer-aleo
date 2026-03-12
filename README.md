@@ -126,18 +126,16 @@ ALEO_VERBOSITY=4 npm test
 
 ### Testing Modes
 
-| Mode        | Command                 | Speed           | Use Case                           | Status                        |
-| ----------- | ----------------------- | --------------- | ---------------------------------- | ----------------------------- |
-| **Devnet**  | `DEVNET=true npm test`  | Slow (60-90min) | Pre-deployment validation, CI      | **Current default (stable)**  |
-| **Devnode** | `DEVNET=false npm test` | Fast (minutes)  | Local development, rapid iteration | Experimental (future default) |
+| Mode        | Command                | Speed           | Use Case                          | Status                       |
+| ----------- | ---------------------- | --------------- | --------------------------------- | ---------------------------- |
+| **Devnode** | `npm test`             | Fast (minutes)  | Local development, standard CI    | **Default and recommended**  |
+| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Nightly and pre-deployment checks | Supported full-network check |
 
-**Devnet mode** is the current stable default - runs complete consensus simulation with real proofs for production-like testing.
+**Devnode mode** is the default path for local work and regular CI. It gives much faster feedback on Leo v3.5.0 while keeping the same sequential Vitest harness.
 
-**Devnode mode** skips ZK proof generation for quick feedback during local development. It is experimental and will become the default in a future release when stable.
+**Devnet mode** remains supported for slower full-network validation. Nightly CI continues to use it by default to preserve that coverage.
 
-> **Note: Devnode is Experimental**
->
-> The `devnode` feature is included in Leo v3.5.0 and will become the default soon. For stable testing, use devnet mode (`DEVNET=true`).
+> Use `DEVNET=true npm test` when you explicitly want the devnet path.
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
