@@ -1,9 +1,21 @@
 import { ExecutionMode } from "@doko-js/core";
 import { BaseContract } from "../contract/base-contract";
 import networkConfig from "../aleo-config";
+import { parseBooleanEnv } from "./Env";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new BaseContract({ mode });
+const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, false);
+
+class AdvanceBlocksError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "AdvanceBlocksError";
+  }
+}
 
 export async function getLatestBlockHeight() {
   const response = (await fetch(
@@ -22,10 +34,14 @@ export async function waitBlocks(blocks: number) {
   const startHeight = await getLatestBlockHeight();
   const targetHeight = startHeight + blocks;
 
-  try {
-    await advanceBlocks(blocks);
-  } catch {
-    // advanceBlocks is devnode-only; ignore errors on devnet
+  if (!IS_DEVNET) {
+    try {
+      await advanceBlocks(blocks);
+    } catch (error) {
+      if (!isUnsupportedAdvanceBlocksError(error)) {
+        throw error;
+      }
+    }
   }
 
   while (true) {
@@ -58,6 +74,10 @@ export async function advanceBlocks(numBlocks: number): Promise<void> {
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error(`advanceBlocks failed: ${response.status} ${response.statusText}`);
+    throw new AdvanceBlocksError(`advanceBlocks failed: ${response.status} ${response.statusText}`, response.status);
   }
+}
+
+function isUnsupportedAdvanceBlocksError(error: unknown): boolean {
+  return error instanceof AdvanceBlocksError && (error.status === 404 || error.status === 405);
 }
