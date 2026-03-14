@@ -1,9 +1,6 @@
 import multisig_freezelist_registry.aleo;
 import multisig_core.aleo;
 
-// @dev `get_signing_op_id_for_deploy` and `split` transitions are commented out
-// to keep the program under the Aleo size limit. These transitions are UX
-// helpers only and do not affect the core functionality or security of the program.
 program multisig_compliant_token.aleo {
     @custom
     async constructor() {
@@ -138,9 +135,9 @@ program multisig_compliant_token.aleo {
 
     // A helper for calculating a signing_op_id from the program's checksum and edition.
     // By deriving the signing_op_id from both we ensure that downgrades cannot take place.
-    // transition get_signing_op_id_for_deploy(checksum: [u8; 32], edition: u16) -> field {
-    //     return BHP256::hash_to_field(ChecksumEdition { checksum: checksum, edition: edition });
-    // }
+    transition get_signing_op_id_for_deploy(checksum: [u8; 32], edition: u16) -> field {
+        return BHP256::hash_to_field(ChecksumEdition { checksum: checksum, edition: edition });
+    }
 
     // Initializes a new multisig operation.
     // Computes the signing_op_id, registers it with the external multisig wallet,
@@ -1218,21 +1215,21 @@ program multisig_compliant_token.aleo {
 
         return new_token;
     }
-    // transition split(
-    //     private token: Token,
-    //     private amount: u128
-    // ) -> (Token, Token) {
-    //     let new_token_1: Token = Token {
-    //         owner: token.owner,
-    //         amount: amount
-    //     };
-    //     let new_token_2: Token = Token {
-    //         owner: token.owner,
-    //         amount: token.amount - amount
-    //     };
+    transition split(
+        private token: Token,
+        private amount: u128
+    ) -> (Token, Token) {
+        let new_token_1: Token = Token {
+            owner: token.owner,
+            amount: amount
+        };
+        let new_token_2: Token = Token {
+            owner: token.owner,
+            amount: token.amount - amount
+        };
 
-    //     return (new_token_1, new_token_2);
-    // }
+        return (new_token_1, new_token_2);
+    }
 
     // Transfers private tokens from the record owner to a recipient.
     // A ComplianceRecord is emitted for the investigator, who must match the stored investigator role.
@@ -1317,7 +1314,7 @@ program multisig_compliant_token.aleo {
     // Accepts two Merkle proofs representing the neighboring leaves around the missing address.
     // Returns the common Merkle root if the address is proven to be outside the tree.
     // If the tree is not sorted correctly, this function may return incorrect results.
-    inline verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
+    function verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
         let (root1, depth1): (field, u32)= calculate_root_depth_siblings(merkle_proofs[0u32]);
         let (root2, depth2): (field, u32) = calculate_root_depth_siblings(merkle_proofs[1u32]);
 
