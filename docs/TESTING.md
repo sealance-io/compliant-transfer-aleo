@@ -2,19 +2,19 @@
 
 ## Testing Modes
 
-| Mode        | Command           | Speed | Use Case              | Status                        |
-| ----------- | ----------------- | ----- | --------------------- | ----------------------------- |
-| **Devnet**  | `DEVNET=true`     | Slow  | CI, pre-deployment    | **Current default (stable)**  |
-| **Devnode** | Default (no flag) | Fast  | Local rapid iteration | Experimental (future default) |
+| Mode        | Command           | Speed | Use Case            | Status                       |
+| ----------- | ----------------- | ----- | ------------------- | ---------------------------- |
+| **Devnode** | Default (no flag) | Fast  | Local iteration, CI | **Default and recommended**  |
+| **Devnet**  | `DEVNET=true`     | Slow  | Nightly, pre-deploy | Supported full-network check |
 
-> **Devnet is currently the recommended mode** for stable testing. Devnode is experimental and will become the default soon.
+> `npm test` now uses `devnode` by default. Use `DEVNET=true` when you specifically want the slower full-network path.
 
 ## Quick Start
 
 ```bash
 cp .env.example .env
-DEVNET=true npm test        # Full devnet mode (stable, recommended)
-npm test                    # Fast devnode mode (experimental)
+npm test                    # Default devnode mode (recommended)
+DEVNET=true npm test        # Full devnet mode
 npm run test:select ./test/your-test.test.ts  # Single test
 ```
 
@@ -22,11 +22,11 @@ npm run test:select ./test/your-test.test.ts  # Single test
 
 ### Core
 
-| Variable                  | Default | Description                             |
-| ------------------------- | ------- | --------------------------------------- |
-| `DEVNET`                  | `false` | Enable full devnet mode                 |
-| `SKIP_EXECUTE_PROOF`      | `false` | Skip ZK proofs (devnode only)           |
-| `SKIP_DEPLOY_CERTIFICATE` | `false` | Skip deploy certificates (devnode only) |
+| Variable                  | Default | Description                                                            |
+| ------------------------- | ------- | ---------------------------------------------------------------------- |
+| `DEVNET`                  | `false` | Enable full devnet mode                                                |
+| `SKIP_EXECUTE_PROOF`      | `true`  | Skip ZK proofs (devnode only, Leo v3.5.0+). Set `false` to opt out.    |
+| `SKIP_DEPLOY_CERTIFICATE` | `true`  | Skip deploy certs (devnode only, Leo v3.5.0+). Set `false` to opt out. |
 
 ### Container
 
@@ -41,7 +41,7 @@ Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.5.0`, Devnet `ghcr.io/s
 
 | Variable                  | Default  | Description                       |
 | ------------------------- | -------- | --------------------------------- |
-| `CONSENSUS_CHECK_TIMEOUT` | `300000` | Max wait for consensus (ms)       |
+| `CONSENSUS_CHECK_TIMEOUT` | `600000` | Max wait for consensus (ms)       |
 | `ALEO_VERBOSITY`          | `1`      | Log level: 0 (quiet) to 4 (debug) |
 
 ## Manual Setup (Without Testcontainers)
@@ -59,14 +59,15 @@ npm test
 
 ## Troubleshooting
 
-| Issue                | Solution                                                                     |
-| -------------------- | ---------------------------------------------------------------------------- |
-| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                    |
-| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                        |
-| Tests too slow       | Use experimental devnode: set `DEVNET=false`, set `SKIP_EXECUTE_PROOF=true`  |
-| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)` |
+| Issue                | Solution                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                          |
+| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                              |
+| Tests too slow       | Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI |
+| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`       |
 
 ## Notes
 
 - Tests run **sequentially** (shared blockchain state)
+- `devnode` is the default locally and in standard CI runs; nightly CI keeps `devnet` as the default full-network coverage job
 - Devnode/devnet are for **local testing only** - use `npm run deploy:testnet` for public networks

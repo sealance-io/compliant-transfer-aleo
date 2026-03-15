@@ -340,6 +340,7 @@ describe("test multisig_compliant_token program", () => {
     [, walletSigningOpIdHash] = await tx.wait();
     privatePendingRequest = await tokenContract.private_pending_requests(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
+    await waitBlocks(1);
     // It's possible to initiate this request twice because the previous expired
     tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
     [, walletSigningOpIdHash] = await tx.wait();

@@ -210,6 +210,7 @@ describe("test multisig token proxy program", () => {
     [, walletSigningOpIdHash] = await tx.wait();
     privatePendingRequest = await tokenProxyContract.private_pending_requests(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
+    await waitBlocks(1);
     // It's possible to initiate this request twice because the previous expired
     tx = await tokenProxyContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
     [, walletSigningOpIdHash] = await tx.wait();
@@ -578,13 +579,15 @@ describe("test multisig token proxy program", () => {
     });
     await expect(rejectedTx.wait()).rejects.toThrow();
 
+    const initialBalance = await tokenContract.balances(account, 0n);
+
     const tx = await tokenProxyContract.mint_public(account, amount * 20n, {
       wallet_id: minterWalletId,
       salt,
     });
     await tx.wait();
     const balance = await tokenContract.balances(account);
-    expect(balance).toBe(amount * 20n);
+    expect(balance).toBe(initialBalance + amount * 20n);
 
     // It's possible to execute the request only once
     rejectedTx = await tokenProxyContract.mint_public(account, amount * 20n, {
