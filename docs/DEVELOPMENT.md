@@ -41,7 +41,7 @@ ALEO_VERBOSITY=4 npm test                       # Verbose logging (0-4)
 ALEO_TEST_IMAGE=custom/aleo:latest npm test     # Custom Docker image
 ```
 
-**Note**: Devnet is the current stable default. Devnode is experimental and will become the default when stable. Devnode requires Leo from `feat/leo-devnode-final` branch or `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`.
+**Note**: Devnet is the current stable default. Devnode is experimental and will become the default soon.
 
 ## SDK Development
 
@@ -97,8 +97,8 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 
 **Default images:**
 
-- Devnode: `ghcr.io/sealance-io/leo-lang:v3.4.0-devnode`
-- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.4.0-v4.4.0`
+- Devnode: `ghcr.io/sealance-io/leo-lang:v3.5.0`
+- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.1`
 
 ## Common Issues
 

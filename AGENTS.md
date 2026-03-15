@@ -70,7 +70,7 @@ npm run format:fix          # Auto-fix formatting
 ## Critical Constraints
 
 1. **Node Version**: Requires Node >= 20.0.0 (see `.nvmrc`)
-2. **Leo Version**: Developed with Leo CLI v3.4.0
+2. **Leo Version**: Developed with Leo CLI v3.5.0
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
 4. **Sequential Testing**: Integration/devnet tests MUST run sequentially (shared devnet state)
 5. **npm Security**: Always use `--ignore-scripts` for installs (`npm ci`, `npm install`); build/publish workflows may run scripts as needed

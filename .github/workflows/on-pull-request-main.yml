@@ -137,7 +137,7 @@ jobs:
     if: needs.detect-changes.outputs.code == 'true' && inputs.mode != 'devnode'
     permissions:
       contents: read
-      packages: read # Required for installing @sealance-io/dokojs@1.0.1 (github packages)
+      packages: read # Required for pulling aleo devnet container image from ghcr.io
       actions: read # Required for accessing workflow cache (setup-leo-action)
     strategy:
       fail-fast: false
@@ -155,7 +155,7 @@ jobs:
     if: needs.detect-changes.outputs.code == 'true' && inputs.mode == 'devnode'
     permissions:
       contents: read
-      packages: read # Required for installing @sealance-io/dokojs@1.0.1 (github packages)
+      packages: read # Required for pulling aleo devnode container image from ghcr.io
       actions: read # Required for accessing workflow cache (setup-leo-action)
     uses: ./.github/workflows/test-runner.yml
     with:

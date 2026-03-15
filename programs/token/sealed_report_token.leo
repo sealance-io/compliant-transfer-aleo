@@ -8,7 +8,7 @@ program sealed_report_token.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -40,11 +40,6 @@ program sealed_report_token.aleo {
         amount: u128,
         sender: address,
         recipient: address
-    }
-
-    struct MerkleProof {
-        siblings: [field; 16],
-        leaf_index: u32
     }
 
     struct TokenInfo {
@@ -540,7 +535,7 @@ program sealed_report_token.aleo {
     async transition transfer_public_to_private(
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2]
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
@@ -589,7 +584,7 @@ program sealed_report_token.aleo {
         public owner: address,
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2]
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
         
@@ -648,8 +643,8 @@ program sealed_report_token.aleo {
         recipient: address,
         amount: u128,
         input_record: Token,
-        sender_merkle_proofs: [MerkleProof;2],
-        recipient_merkle_proofs: [MerkleProof;2]
+        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof;2],
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, Token, Token, Future) {
         let sender_root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
         let recipient_root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
@@ -694,7 +689,7 @@ program sealed_report_token.aleo {
         public recipient: address,
         public amount: u128,
         input_record: Token,
-        sender_merkle_proofs: [MerkleProof; 2]
+        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof; 2]
     ) -> (ComplianceRecord, Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(input_record.owner, sender_merkle_proofs);
 

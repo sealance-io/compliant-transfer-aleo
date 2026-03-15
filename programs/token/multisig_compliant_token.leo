@@ -8,7 +8,7 @@ program multisig_compliant_token.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -30,6 +30,11 @@ program multisig_compliant_token.aleo {
     record Credentials {
         owner: address,
         freeze_list_root: field,
+    }
+
+    struct MerkleProof {
+        siblings: [field; 16],
+        leaf_index: u32
     }
 
     struct ChecksumEdition {
@@ -123,10 +128,10 @@ program multisig_compliant_token.aleo {
         salt: scalar
     }
 
-    // Stores pending multisig requests, Keyed by hash(WalletSigningOpId) to uniquely identify each operation
-    mapping pending_requests: field => CompliantTokenMultisigOp; // hash(WalletSigningOpId) => CompliantTokenMultisigOp;
-    // Stores confidential pending multisig requests, Keyed by hash(WalletSigningOpId) to a boolean
-    mapping private_pending_requests: field => bool; // hash(WalletSigningOpId) => bool;
+    // Stores pending multisig requests, Keyed by hash(multisig_core.aleo/WalletSigningOpId) to uniquely identify each operation
+    mapping pending_requests: field => CompliantTokenMultisigOp; // hash(multisig_core.aleo/WalletSigningOpId) => CompliantTokenMultisigOp;
+    // Stores confidential pending multisig requests, Keyed by hash(multisig_core.aleo/WalletSigningOpId) to a boolean
+    mapping private_pending_requests: field => bool; // hash(multisig_core.aleo/WalletSigningOpId) => bool;
 
     // A helper for calculating a signing_op_id from the program's checksum and edition.
     // By deriving the signing_op_id from both we ensure that downgrades cannot take place.
@@ -1199,7 +1204,6 @@ program multisig_compliant_token.aleo {
         pause.set(PAUSE_STATUS_INDEX, new_pause_status);
     }
 
-
     transition join(
         private token_1: Token,
         private token_2: Token
@@ -1211,7 +1215,6 @@ program multisig_compliant_token.aleo {
 
         return new_token;
     }
-
     transition split(
         private token: Token,
         private amount: u128
@@ -1311,7 +1314,7 @@ program multisig_compliant_token.aleo {
     // Accepts two Merkle proofs representing the neighboring leaves around the missing address.
     // Returns the common Merkle root if the address is proven to be outside the tree.
     // If the tree is not sorted correctly, this function may return incorrect results.
-    inline verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
+    function verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
         let (root1, depth1): (field, u32)= calculate_root_depth_siblings(merkle_proofs[0u32]);
         let (root2, depth2): (field, u32) = calculate_root_depth_siblings(merkle_proofs[1u32]);
 

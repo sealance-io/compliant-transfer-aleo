@@ -9,7 +9,7 @@ program multisig_freezelist_proxy.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -67,8 +67,8 @@ program multisig_freezelist_proxy.aleo {
         salt: scalar
     }
 
-    // Stores pending multisig requests, Keyed by hash(WalletSigningOpId) to uniquely identify each operation
-    mapping pending_requests: field => FreezeRegistryMultisigOp; // hash(WalletSigningOpId) => FreezeRegistryMultisigOp;
+    // Stores pending multisig requests, Keyed by hash(multisig_core.aleo/WalletSigningOpId) to uniquely identify each operation
+    mapping pending_requests: field => FreezeRegistryMultisigOp; // hash(multisig_core.aleo/WalletSigningOpId) => FreezeRegistryMultisigOp;
 
     // A helper for calculating a signing_op_id from the program's checksum and edition.
     // By deriving the signing_op_id from both we ensure that downgrades cannot take place.

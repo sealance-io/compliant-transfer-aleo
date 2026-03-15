@@ -25,7 +25,7 @@ All actions pinned to commit SHAs:
 | Action                              | SHA        | Version |
 | ----------------------------------- | ---------- | ------- |
 | `actions/checkout`                  | `08eba0b2` | v4.3.0  |
-| `actions/setup-node`                | `49933ea5` | v4.4.0  |
+| `actions/setup-node`                | `49933ea5` | v4.5.1  |
 | `actions/dependency-review-action`  | `3c4e3dcb` | v4.8.2  |
 | `docker/login-action`               | `5e57cd11` | v3.6.0  |
 | `github/codeql-action/upload-sarif` | `45c37351` | v3.31.9 |

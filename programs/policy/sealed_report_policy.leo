@@ -1,6 +1,7 @@
 import token_registry.aleo;
 import merkle_tree.aleo;
 import multisig_core.aleo;
+import merkle_tree.aleo;
 
 program sealed_report_policy.aleo {
     @custom
@@ -9,7 +10,7 @@ program sealed_report_policy.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -51,22 +52,12 @@ program sealed_report_policy.aleo {
     const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     mapping address_to_role: address => u16;
 
-    struct MerkleProof {
-        siblings: [field; 16],
-        leaf_index: u32
-    }
-
     // Compliance record used for the investigator
     record ComplianceRecord {
         owner: address,
         amount: u128,
         sender: address,
         recipient: address
-    }
-
-    struct TokenOwner {
-        account: address,
-        token_id: field
     }
 
     struct ChecksumEdition {
@@ -196,7 +187,7 @@ program sealed_report_policy.aleo {
         public recipient: address,
         public amount: u128
     ) -> Future {
-        let owner: TokenOwner = TokenOwner {
+        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
         };
@@ -236,7 +227,7 @@ program sealed_report_policy.aleo {
         public recipient: address,
         public amount: u128
     ) -> Future {
-        let owner: TokenOwner = TokenOwner {
+        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
             account: self.signer,
             token_id: TOKEN_ID
         };
@@ -278,11 +269,11 @@ program sealed_report_policy.aleo {
     async transition transfer_public_to_priv(
         recipient: address,
         public amount: u128,
-        recipient_merkle_proofs: [MerkleProof;2]
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         let root: field = merkle_tree.aleo/verify_non_inclusion(recipient, recipient_merkle_proofs);
 
-        let owner: TokenOwner = TokenOwner {
+        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
         };
@@ -349,8 +340,8 @@ program sealed_report_policy.aleo {
         recipient: address,
         amount: u128,
         input_record: token_registry.aleo/Token,
-        sender_merkle_proofs: [MerkleProof;2],
-        recipient_merkle_proofs: [MerkleProof;2]
+        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof;2],
+        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
@@ -423,7 +414,7 @@ program sealed_report_policy.aleo {
         public recipient: address,
         public amount: u128,
         input_record: token_registry.aleo/Token,
-        sender_merkle_proofs: [MerkleProof; 2]
+        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof; 2]
     ) -> (ComplianceRecord, token_registry.aleo/Token, Future) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
