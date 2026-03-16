@@ -1,7 +1,6 @@
 import token_registry.aleo;
 import merkle_tree.aleo;
 import multisig_core.aleo;
-import merkle_tree.aleo;
 
 program sealed_report_policy.aleo {
     @custom
