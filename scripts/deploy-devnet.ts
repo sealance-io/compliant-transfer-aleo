@@ -115,8 +115,8 @@ const multiSigContract = new Multisig_coreContract({
   // deploy contracts
   await deployIfNotDeployed(tokenRegistryContract);
   await deployIfNotDeployed(merkleTreeContract);
-  await deployIfNotDeployed(reportPolicyContract);
   await deployIfNotDeployed(multiSigContract);
+  await deployIfNotDeployed(reportPolicyContract);
   await deployIfNotDeployed(freezeRegistryContract);
   await deployIfNotDeployed(multisigFreezeRegistryContract);
   await deployIfNotDeployed(thresholdContract);
