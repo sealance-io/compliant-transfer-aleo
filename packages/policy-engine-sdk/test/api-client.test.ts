@@ -173,23 +173,32 @@ describe("AleoAPIClient", () => {
 
   describe("Retry Logic", () => {
     it("waits between retries", async () => {
-      const startTime = Date.now();
+      const delays: number[] = [];
+      const originalSetTimeout = global.setTimeout;
 
-      global.fetch = vi
-        .fn()
-        .mockRejectedValueOnce(new Error("Error 1"))
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          text: async () => "success",
-        });
+      global.setTimeout = ((callback: () => void, delay: number) => {
+        delays.push(delay);
+        return originalSetTimeout(callback, delay);
+      }) as typeof setTimeout;
 
-      await client.fetchMapping("test.aleo", "mapping_name", "0u32");
+      try {
+        global.fetch = vi
+          .fn()
+          .mockRejectedValueOnce(new Error("Error 1"))
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            text: async () => "success",
+          });
 
-      const elapsed = Date.now() - startTime;
+        await client.fetchMapping("test.aleo", "mapping_name", "0u32");
 
-      // Should have waited at least retryDelay (100ms)
-      expect(elapsed).toBeGreaterThanOrEqual(100);
+        // Should have waited at least retryDelay (100ms)
+        expect(delays.length).toBe(1);
+        expect(delays[0]).toBeGreaterThanOrEqual(100);
+      } finally {
+        global.setTimeout = originalSetTimeout;
+      }
     }, 10000);
 
     it("does not wait on last retry", async () => {
