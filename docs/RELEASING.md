@@ -236,11 +236,13 @@ When reviewing PRs that modify the SDK:
 
 2. **Review & Merge**: Maintainer reviews the version bumps and CHANGELOG updates, then merges
 
-3. **Approval Required**: When the release PR is merged, the `sdk-release-publish.yml` workflow runs but pauses for admin approval (GitHub environment protection)
+3. **Approval Required**: When the release PR is merged, the resulting `push` to `main` triggers `sdk-release-publish.yml`, which then pauses for admin approval (GitHub environment protection)
 
 4. **Publish**: After approval:
    - Package is published to npm via OIDC (with provenance and retry logic)
    - GitHub Release is created with tag (idempotent - safe to re-run)
+
+If the publish workflow itself was broken at merge time, maintainers can run `sdk-release-publish.yml` manually from `main` after the workflow fix lands. The same `npm-publish` environment approval still applies.
 
 ### Pre-release Versions (Alpha/Beta/RC)
 
@@ -533,6 +535,7 @@ After release, verify:
 
 - Verify `npm-publish` environment exists with required reviewers
 - Check the workflow uses `environment: npm-publish`
+- Verify the publish workflow is triggered by `push` to `main` rather than a `pull_request` ref such as `refs/pull/<n>/merge`
 
 ### Provenance Not Generated
 
@@ -546,6 +549,7 @@ The workflow is fully idempotent. If a re-run is needed (e.g., npm published but
 - npm publish checks if the version already exists via `npm view` and skips publishing if so
 - GitHub tag/release creation skips if already exists
 - Check the `Release Status` job for the actual outcome
+- If the original run failed before reaching approval because the workflow itself was misconfigured, use `workflow_dispatch` to run `sdk-release-publish.yml` from `main` after merging the fix
 
 ---
 
@@ -595,7 +599,7 @@ This allows safe workflow re-runs after partial failures (e.g., npm published bu
 
 ### Release Detection
 
-The publish workflow detects release PRs by checking the source branch name (`changeset-release/main`), which is more robust than PR title matching since the branch name is deterministic and set by changesets.
+The publish workflow normally runs on `push` to `main` so it satisfies the environment's `main`-only deployment rule. It then checks which PR is associated with the pushed commit and only publishes if that merged PR came from the `changeset-release/main` branch. For recovery, maintainers can also trigger the workflow manually on `main`; that path still requires the protected environment approval before publishing.
 
 ---
 
@@ -607,8 +611,8 @@ The publish workflow detects release PRs by checking the source branch name (`ch
 4. **Environment protection**: Publishing requires reviewer approval via GitHub environments
 5. **Cache disabled**: Release workflows disable npm caching to prevent cache poisoning attacks
 6. **Fresh downloads**: Dependencies are downloaded fresh from npm registry during releases
-7. **Branch restrictions**: Only workflows on `main` can trigger publishing
+7. **Branch restrictions**: Only workflows running on `main` can trigger publishing or request the protected environment
 
 ---
 
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-03-17
