@@ -182,10 +182,7 @@ describe("merkle_tree lib, getLeafIndices", () => {
     // This tests what happens when the address IS in the tree
     // The function doesn't explicitly handle this - potential edge case
     const targetAddress = "aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px";
-    const addresses = [
-      targetAddress,
-      "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t",
-    ];
+    const addresses = [targetAddress, "aleo1s3ws5tra87fjycnjrwsjcrnw2qxr8jfqqdugnf0xzqqw29q9m5pqem2u4t"];
     const leaves = generateLeaves(addresses, 15);
     const tree = buildTree(leaves);
 
