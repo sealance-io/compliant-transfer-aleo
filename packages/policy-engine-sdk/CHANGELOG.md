@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- [#209](https://github.com/sealance-io/compliant-transfer-aleo/pull/209) [`618c75c`](https://github.com/sealance-io/compliant-transfer-aleo/commit/618c75c170e795fd1a2ab304da8ad03361b4ea07) Thanks [@fullkomnun](https://github.com/fullkomnun)! - **Breaking:** `getSiblingPath` third parameter renamed from `depth` (path length) to `maxTreeDepth` (tree depth, default: 15). Callers passing `16` should now pass `15` or omit the argument. The function internally pads to `maxTreeDepth + 1` elements.
+
+- [#218](https://github.com/sealance-io/compliant-transfer-aleo/pull/218) [`e28641f`](https://github.com/sealance-io/compliant-transfer-aleo/commit/e28641f34672647012b2d9215d59b34318bd1ea0) Thanks [@fullkomnun](https://github.com/fullkomnun)! - **Breaking:** `@provablehq/sdk` moved from `dependencies` to `peerDependencies` (^0.9.14). Consumers must now install `@provablehq/sdk` themselves alongside this package.
+
+### Patch Changes
+
+- [#217](https://github.com/sealance-io/compliant-transfer-aleo/pull/217) [`4adc22a`](https://github.com/sealance-io/compliant-transfer-aleo/commit/4adc22a441c3d34ef45a4cb0cb6e67b16ebd1cfc) Thanks [@fullkomnun](https://github.com/fullkomnun)! - Optimize `getLeafIndices()` by using binary search over the sorted leaf array. This preserves existing behavior for SDK-generated trees while reducing lookup time from O(n) to O(log n).
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
