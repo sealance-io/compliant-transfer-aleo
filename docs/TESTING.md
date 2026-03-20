@@ -30,12 +30,15 @@ npm run test:select ./test/your-test.test.ts  # Single test
 
 ### Container
 
-| Variable              | Default | Description           |
-| --------------------- | ------- | --------------------- |
-| `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers    |
-| `ALEO_TEST_IMAGE`     | Auto    | Docker image override |
+| Variable              | Default | Description                        |
+| --------------------- | ------- | ---------------------------------- |
+| `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers                 |
+| `ALEO_TEST_IMAGE`     | Auto    | Docker image override for the mode |
 
-Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.5.0`, Devnet `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.1`
+Default images: Devnode `ghcr.io/sealance-io/leo-lang:v3.5.0`, Devnet `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.4`
+
+- Devnode override: image must provide `/usr/local/bin/leo`; the test harness injects `leo devnode start ...`
+- Devnet override: image must be compatible with the upstream `ghcr.io/sealance-io/aleo-devnet` entrypoint contract and self-start via `ENTRYPOINT`/`CMD`
 
 ### Timing & Logging
 

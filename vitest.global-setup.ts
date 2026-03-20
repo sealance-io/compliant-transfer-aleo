@@ -1,4 +1,10 @@
-import { GenericContainer, StartedTestContainer } from "testcontainers";
+import { GenericContainer, type ImagePullPolicy, StartedTestContainer } from "testcontainers";
+
+class NeverPullPolicy implements ImagePullPolicy {
+  shouldPull(): boolean {
+    return false;
+  }
+}
 import networkConfig from "./aleo-config";
 import { advanceBlocks } from "./lib/Block";
 import { parseBooleanEnv } from "./lib/Env";
@@ -9,7 +15,7 @@ let devnetContainer: StartedTestContainer | undefined;
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
 const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, false);
 const DEFAULT_ALEO_IMAGE = IS_DEVNET
-  ? "ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.1"
+  ? "ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.4"
   : "ghcr.io/sealance-io/leo-lang:v3.5.0";
 const ALEO_TEST_IMAGE = process.env.ALEO_TEST_IMAGE || DEFAULT_ALEO_IMAGE;
 const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "1";
@@ -18,6 +24,7 @@ const FIRST_BLOCK = parseInt(process.env.FIRST_BLOCK || "20", 10);
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "600000", 10); // 10 minutes default
 const CONSENSUS_CHECK_INTERVAL = parseInt(process.env.CONSENSUS_CHECK_INTERVAL || "5000", 10); // 5 seconds default
 const ALEO_PRIVATE_KEY = process.env.ALEO_PRIVATE_KEY;
+const NEVER_PULL_IMAGE = parseBooleanEnv(process.env.NEVER_PULL_IMAGE, false);
 
 function validateConfiguration(): void {
   const errors: string[] = [];
@@ -49,6 +56,12 @@ function validateConfiguration(): void {
   if (process.env.CONSENSUS_HEIGHT && !IS_DEVNET) {
     warnings.push(
       "CONSENSUS_HEIGHT is set but only applies to devnet mode. This setting will be ignored in devnode mode.",
+    );
+  }
+
+  if (IS_DEVNET && process.env.ALEO_TEST_IMAGE) {
+    warnings.push(
+      "DEVNET mode expects ALEO_TEST_IMAGE to be compatible with the ghcr.io/sealance-io/aleo-devnet entrypoint contract (self-starting via image ENTRYPOINT/CMD).",
     );
   }
 
@@ -181,37 +194,41 @@ export async function setup() {
   // Validate configuration before starting
   validateConfiguration();
 
-  let command = [];
-  if (IS_DEVNET) {
-    command = [
-      "devnet",
-      "--snarkos",
-      "./snarkos",
-      "--yes",
-      "--clear-storage",
-      "--storage",
-      "/data",
-      "--num-clients",
-      "1",
-    ];
-  } else {
-    command = ["devnode", "start", "--socket-addr", "0.0.0.0:3030", "--private-key", ALEO_PRIVATE_KEY!];
-  }
-
   let mappedPort: number = 3030;
   if (USE_TEST_CONTAINERS) {
     // Build environment object with only defined values
     const containerEnv: Record<string, string> = {};
-    // if (ALEO_PRIVATE_KEY) {
-    //   containerEnv.PRIVATE_KEY = ALEO_PRIVATE_KEY;
-    // }
-    if (process.env.CONSENSUS_HEIGHT) {
-      containerEnv.CONSENSUS_HEIGHT = process.env.CONSENSUS_HEIGHT;
+    if (ALEO_PRIVATE_KEY) {
+      containerEnv.PRIVATE_KEY = ALEO_PRIVATE_KEY;
+    }
+    if (process.env.CONSENSUS_VERSION_HEIGHTS) {
+      containerEnv.CONSENSUS_VERSION_HEIGHTS = process.env.CONSENSUS_VERSION_HEIGHTS;
+    }
+    if (process.env.ALEO_VERBOSITY) {
+      containerEnv.VERBOSITY = process.env.ALEO_VERBOSITY;
     }
 
-    let container = new GenericContainer(ALEO_TEST_IMAGE)
-      .withEntrypoint(["/usr/local/bin/leo"])
-      .withCommand([...command, "--verbosity", ALEO_VERBOSITY]);
+    let container = new GenericContainer(ALEO_TEST_IMAGE);
+
+    if (!IS_DEVNET) {
+      // Devnode images only need the Leo CLI; the harness supplies the startup command.
+      container = container
+        .withEntrypoint(["/usr/local/bin/leo"])
+        .withCommand([
+          "devnode",
+          "start",
+          "--socket-addr",
+          "0.0.0.0:3030",
+          "--private-key",
+          ALEO_PRIVATE_KEY!,
+          "--verbosity",
+          ALEO_VERBOSITY,
+        ]);
+    }
+
+    if (NEVER_PULL_IMAGE) {
+      container = container.withPullPolicy(new NeverPullPolicy());
+    }
 
     // Only add environment if we have any variables to set
     if (Object.keys(containerEnv).length > 0) {
