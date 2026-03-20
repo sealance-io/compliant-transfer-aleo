@@ -38,7 +38,7 @@ DEVNET=true npm test                            # Full devnet mode
 npm run test:select ./test/merkle_tree.test.ts  # Specific test file
 USE_TEST_CONTAINERS=0 npm test                  # Manual local Aleo setup
 ALEO_VERBOSITY=4 npm test                       # Verbose logging (0-4)
-ALEO_TEST_IMAGE=custom/aleo:latest npm test     # Custom Docker image
+ALEO_TEST_IMAGE=custom/aleo:latest npm test     # Custom Docker image for the active mode
 ```
 
 **Note**: PR CI and local runs now default to devnode. The nightly cron workflow keeps devnet as the default full-network regression job.
@@ -94,12 +94,17 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 | `SKIP_DEPLOY_CERTIFICATE` | Skip deploy certs (devnode only, Leo v3.5.0+) | `true`    |
 | `ALEO_VERBOSITY`          | Logging level (0-4)                           | `1`       |
 | `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms)                   | `600000`  |
-| `ALEO_TEST_IMAGE`         | Custom Docker image                           | See below |
+| `ALEO_TEST_IMAGE`         | Custom Docker image for the active mode       | See below |
 
 **Default images:**
 
 - Devnode: `ghcr.io/sealance-io/leo-lang:v3.5.0`
-- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.1`
+- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.4`
+
+When overriding `ALEO_TEST_IMAGE`:
+
+- Devnode images only need to provide the Leo CLI at `/usr/local/bin/leo`; the test harness injects `leo devnode start ...`
+- Devnet images must be compatible with the upstream `ghcr.io/sealance-io/aleo-devnet` entrypoint contract and self-start via the image `ENTRYPOINT`/`CMD`
 
 ## Common Issues
 
