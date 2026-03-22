@@ -21,3 +21,7 @@ Context-specific rules load automatically from `.claude/rules/` based on file pa
 - Run `npm run format:fix` before committing
 - No GPL/AGPL licensed dependencies (run `npm run lint:licenses`)
 - Avoid over-engineering - only make requested changes
+
+### Testing
+
+- When running tests, use the `agent` reporter for minimal output: `vitest run --reporter=agent`
