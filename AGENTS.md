@@ -31,6 +31,8 @@ npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 npm test                    # Default devnode mode (recommended)
 DEVNET=true npm test        # Full devnet mode
 npm run test:select ./test/merkle_tree.test.ts  # Specific test
+npm run test:agent          # Vitest with machine-friendly agent reporter
+npm run test:select:agent ./test/merkle_tree.test.ts  # Specific test with agent reporter
 
 # Deploy
 npm run deploy:devnet       # Deploy to devnet
@@ -69,7 +71,7 @@ npm run format:fix          # Auto-fix formatting
 
 ## Critical Constraints
 
-1. **Node Version**: Requires Node >= 20.0.0 (see `.nvmrc`)
+1. **Node Version**: Use Node 20.19.0+ on the 20.x line, or Node 22.12.0+; the repo default in `.nvmrc` is `v24`
 2. **Leo Version**: Developed with Leo CLI v3.5.0
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
 4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/devnet)
@@ -110,3 +112,8 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 | Tests too slow          | Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI |
 | Port 3030 in use        | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`       |
 | Manual local Aleo setup | See `docs/TESTING.md`                                                              |
+
+## Testing Preferences
+
+- When running Vitest directly, prefer the `agent` reporter for minimal machine-friendly output: `vitest run --reporter=agent`
+- Prefer `npm run test:agent` or `npm run test:select:agent` when those scripts fit the task

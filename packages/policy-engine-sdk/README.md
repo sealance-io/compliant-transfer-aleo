@@ -17,6 +17,8 @@ SDK for generating Merkle proofs and interacting with Aleo compliance policy pro
 npm install @sealance-io/policy-engine-aleo
 ```
 
+Requires Node.js 20.0.0 or newer.
+
 ## Quick Start
 
 ```typescript

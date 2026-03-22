@@ -7,6 +7,9 @@
   "private": "true",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "workspaces": [
     "packages/*"
   ],
@@ -28,7 +31,9 @@
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "test": "vitest run",
-    "test:select": "npm run test --"
+    "test:agent": "vitest run --reporter=agent",
+    "test:select": "npm run test --",
+    "test:select:agent": "npm run test:agent --"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",
