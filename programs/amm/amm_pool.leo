@@ -157,6 +157,9 @@ program amm_pool.aleo {
             stable_token_2_balance = balances_after_deposit[1];
             let mint_amount: u128 =  invariant_after_deposit;
 
+            // Validate the full LP mint amount against max_supply
+            assert(token_supply + mint_amount < token_info.max_supply);
+
             let voucher_amount = mint_amount - min_mint_amount;
             vouchers.set(voucher_id, voucher_amount);
             lp_token_reserved = lp_token_reserved.unwrap() + voucher_amount;
@@ -176,6 +179,9 @@ program amm_pool.aleo {
             let balances_after_fee: [u128; 2] = [balances_after_deposit[0] - stable_token_1_fee, balances_after_deposit[1] - stable_token_2_fee];
             let invariant_after_fee: u128 = compute_invariant(balances_after_fee);
             let mint_amount: u128 = token_supply * (invariant_after_fee - invariant_before) / invariant_before;
+
+            // Validate the full LP mint amount against max_supply
+            assert(token_supply + mint_amount < token_info.max_supply);
 
             let voucher_amount = mint_amount - min_mint_amount;
             vouchers.set(voucher_id, voucher_amount);
@@ -503,10 +509,10 @@ program amm_pool.aleo {
     }
     async function finalize_withdraw_admin_fees(caller: address, stable_token_1_amount: u128, stable_token_2_amount: u128, transfer_stable_token_1: Future, transfer_stable_token_2: Future) {
         assert_eq(ADMIN_ADDRESS, caller);
-        let stable_token_1_info = stable_token_1.aleo/token_info.get(true);
-        assert(stable_token_1_info.supply - (stable_token_1_balance.unwrap() + stable_token_1_reserved.unwrap()) >= stable_token_1_amount);        
-        let stable_token_2_info = stable_token_2.aleo/token_info.get(true);
-        assert(stable_token_2_info.supply - (stable_token_2_balance.unwrap() + stable_token_2_reserved.unwrap()) >= stable_token_2_amount);
+        let stable_token_1_pool_balance = stable_token_1.aleo/balances.get(self.address);
+        assert(stable_token_1_pool_balance - (stable_token_1_balance.unwrap() + stable_token_1_reserved.unwrap()) >= stable_token_1_amount);        
+        let stable_token_2_pool_balance = stable_token_2.aleo/balances.get(self.address);
+        assert(stable_token_2_pool_balance - (stable_token_2_balance.unwrap() + stable_token_2_reserved.unwrap()) >= stable_token_2_amount);
 
         transfer_stable_token_1.await();
         transfer_stable_token_2.await();
