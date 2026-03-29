@@ -14,6 +14,17 @@
 export { PolicyEngine } from "./policy-engine.js";
 export { AleoAPIClient } from "./api-client.js";
 export { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "./merkle-tree.js";
+export {
+  DEFAULT_AMM_MATH_CONFIG,
+  computeInvariant,
+  computeOutputTokenBalance,
+  calculateExchangeQuote,
+  calculateExchangeNetOutputAmount,
+  calculateAddLiquidityQuote,
+  calculateAddLiquidityMintAmount,
+  calculateRemoveLiquidityQuote,
+  calculateRemoveLiquidityOutputAmounts,
+} from "./amm-pool.js";
 export { convertAddressToField, convertFieldToAddress, stringToBigInt } from "./conversion.js";
 export { defaultLogger, silentLogger } from "./logger.js";
 export { trackTransactionStatus } from "./transaction-tracker.js";
@@ -30,4 +41,15 @@ export type {
   TransactionType,
   TransactionTrackingOptions,
 } from "./types.js";
+export type {
+  AmmFeesConfig,
+  AmmMathConfig,
+  ResolvedAmmMathConfig,
+  ExchangeQuoteInput,
+  ExchangeQuote,
+  AddLiquidityQuoteInput,
+  AddLiquidityQuote,
+  RemoveLiquidityQuoteInput,
+  RemoveLiquidityQuote,
+} from "./amm-pool.js";
 export type { Logger, LogLevel } from "./logger.js";
