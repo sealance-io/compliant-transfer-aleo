@@ -21,7 +21,7 @@ program amm_pool.aleo {
         edition: u16,
     }
 
-    const MAX_ITERATIONS: u8 = 12u8;
+    const MAX_ITERATIONS: u8 = 9u8;
     const AMPLIFICATION: u128 = 85u128;
     const ANN: u128 = AMPLIFICATION * 2u128; // amplification * number of coins
 
@@ -137,7 +137,7 @@ program amm_pool.aleo {
         let token_supply =  token_info.supply + lp_token_reserved.unwrap();
 
         let balances_before: [u128; 2] = [stable_token_1_balance.unwrap(), stable_token_2_balance.unwrap()];
-        let invariant_before: u128 = token_supply > 0 ? compute_invariant(balances_before) : 0u128; // initial_invariant
+        let invariant_before: u128 = token_supply > 0 ? compute_invariant(balances_before) : 0u128;
 
         let balances_after_deposit: [u128; 2] = [balances_before[0] + stable_token_1_amount, balances_before[1] + stable_token_2_amount];
 
@@ -169,11 +169,11 @@ program amm_pool.aleo {
             // Only account for fees if we are not the first to deposit
             let fee_per_token: u128 = FEE / 2;
             let ideal_balance: u128 = invariant_after_deposit * balances_before[0] / invariant_before;
-            let difference: u128 = ideal_balance > balances_after_deposit[0] ? ideal_balance - balances_after_deposit[0] : balances_after_deposit[0] - ideal_balance;
+            let difference: u128 = absolute_difference(ideal_balance, balances_after_deposit[0]);
             let stable_token_1_fee: u128 = fee_per_token * difference / FEE_DENOMINATOR;
             stable_token_1_balance = balances_after_deposit[0] - stable_token_1_fee * ADMIN_FEE / FEE_DENOMINATOR;
             ideal_balance = invariant_after_deposit * balances_before[1] / invariant_before;
-            difference = ideal_balance > balances_after_deposit[1] ? ideal_balance - balances_after_deposit[1] : balances_after_deposit[1] - ideal_balance;
+            difference = absolute_difference(ideal_balance, balances_after_deposit[1]);
             let stable_token_2_fee: u128 = fee_per_token * difference / FEE_DENOMINATOR;
             stable_token_2_balance = balances_after_deposit[1] - stable_token_2_fee * ADMIN_FEE / FEE_DENOMINATOR;
             let balances_after_fee: [u128; 2] = [balances_after_deposit[0] - stable_token_1_fee, balances_after_deposit[1] - stable_token_2_fee];
@@ -267,7 +267,6 @@ program amm_pool.aleo {
         transfer_stable_token_1.await();
         transfer_stable_token_2.await();
     }
-    
 
     async transition exchange_1_for_2(
         input_amount: u128,
@@ -331,7 +330,7 @@ program amm_pool.aleo {
         transfer_output_token.await();
     }
 
-        async transition exchange_2_for_1(
+    async transition exchange_2_for_1(
         input_amount: u128,
         min_output_amount: u128,
         input_record: stable_token_2.aleo/Token,
@@ -400,17 +399,13 @@ program amm_pool.aleo {
         if(total_balance == 0u128) {
             return 0u128;
         }
-        let invariant: u128 = total_balance; 
+        let invariant: u128 = total_balance;
         for i: u8 in 0u8..MAX_ITERATIONS {
             let product_term: u128 = invariant * invariant / (token_balances[0] * 2 + 1);  // +1 is to prevent /0
             product_term = product_term * invariant / (token_balances[1] * 2 + 1);  // +1 is to prevent /0
             let previous_invariant: u128 = invariant;
-            invariant = (ANN * total_balance + product_term * 2) * invariant / ((ANN - 1) * invariant + 3 * product_term);
-            if(invariant > previous_invariant) {
-                if(invariant - previous_invariant <= 1) {
-                    return invariant;
-                }
-            } else if(previous_invariant - invariant <= 1) {
+            invariant = (ANN * total_balance + product_term * 2) * invariant / ((ANN - 1) * invariant + 3 * product_term + 1);
+            if (absolute_difference(invariant, previous_invariant) <= 1) {
                 return invariant;
             }
         }
@@ -433,11 +428,7 @@ program amm_pool.aleo {
         for k in 0u8..MAX_ITERATIONS {
             let previous_estimate: u128 = new_output_token_balance;
             new_output_token_balance = (new_output_token_balance*new_output_token_balance + product_term) / (2 * new_output_token_balance + sum_term - invariant);
-            if  (new_output_token_balance > previous_estimate) {
-                if(new_output_token_balance - previous_estimate <= 1) {
-                    return new_output_token_balance;
-                }
-            } else if(previous_estimate - new_output_token_balance <= 1) {
+            if(absolute_difference(new_output_token_balance, previous_estimate) <= 1) {
                 return new_output_token_balance;
             }
         }
@@ -516,5 +507,16 @@ program amm_pool.aleo {
 
         transfer_stable_token_1.await();
         transfer_stable_token_2.await();
+    }
+
+    inline absolute_difference(a: u128, b: u128) -> u128 {
+      let diff: i128 = a as i128 - b as i128;
+      let abs_diff: i128 = diff;
+
+      if abs_diff < 0i128 {
+          abs_diff = 0i128 - abs_diff;
+      }
+
+      return abs_diff as u128;
     }
 }

@@ -1,4 +1,4 @@
-const DEFAULT_MAX_ITERATIONS = 12;
+const DEFAULT_MAX_ITERATIONS = 9;
 const DEFAULT_AMPLIFICATION = 85n;
 const MAX_U128 = (1n << 128n) - 1n;
 
@@ -159,7 +159,7 @@ export function computeInvariant(tokenBalances: PoolBalances, config?: AmmMathCo
     const previousInvariant = invariant;
     invariant =
       ((ammConfig.ann * totalBalance + productTerm * 2n) * invariant) /
-      ((ammConfig.ann - 1n) * invariant + 3n * productTerm);
+      ((ammConfig.ann - 1n) * invariant + 3n * productTerm + 1n);
 
     if (absoluteDifference(invariant, previousInvariant) <= 1n) {
       return invariant;
