@@ -39,6 +39,7 @@ npm run deploy:testnet
 ## Architecture
 
 **Leo programs** (`/programs`) are the core — 14 programs across 7 directories:
+
 - `vendor/` — `token_registry.leo` (shared token registry), `multisig_core.leo` (multisig primitives)
 - `core/` — `merkle_tree.leo` (Merkle proof verification)
 - `freezelist_registry/` — On-chain freeze lists with Merkle roots + multisig variant
