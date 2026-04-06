@@ -3,19 +3,24 @@ import sealance_freezelist_registry.aleo;
 import multisig_core.aleo;
 import merkle_tree.aleo;
 
+struct ChecksumEdition {
+    checksum: [u8; 32],
+    edition: u16,
+}
+
 program sealed_timelock_policy.aleo {
     @custom
-    async constructor() {
+    constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
-            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
     }
-    
+
     // token specs
     const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
     const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
@@ -48,22 +53,18 @@ program sealed_timelock_policy.aleo {
         locked_until: u32
     }
 
-    struct ChecksumEdition {
-        checksum: [u8; 32],
-        edition: u16,
-    }
-
     // -------------------------
     // Called by administrators
     // -------------------------
 
     // Initializes the admin and the freeze_registry_program_name mapping
-    // Can only be called once — ensures the contract has not already been initialized.    
+    // Can only be called once — ensures the contract has not already been initialized.
     // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     // Registers the token and assigns this program as both the token admin and the external authorization party
-    async transition initialize(public admin: address) -> Future {
+    fn initialize(public admin: address) -> Final {
+        let caller: address = self.caller;
         // Set admin and external_authorization_party to be self.address
-        let token_registry_call: Future = token_registry.aleo/register_token(
+        let token_registry_call: Final = token_registry.aleo::register_token(
             TOKEN_ID,
             NAME,
             SYMBOL,
@@ -72,47 +73,47 @@ program sealed_timelock_policy.aleo {
             true,
             self.address // external_authorization_party
         );
-        return f_initialize(token_registry_call, admin, self.caller);
-    }
-    async function f_initialize(token_registry_call: Future, admin: address, caller: address) {
-        // Check if the token has already been initialized
-        let already_initialized: bool = freeze_registry_program_name.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
-        assert_eq(already_initialized, false);
+        return final {
+            // Check if the token has already been initialized
+            let already_initialized: bool = freeze_registry_program_name.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
+            assert_eq(already_initialized, false);
 
-        address_to_role.set(admin, MANAGER_ROLE);
+            address_to_role.set(admin, MANAGER_ROLE);
 
-        assert_eq(INITIAL_CONFIGURATION_ADDRESS, caller);
+            assert_eq(INITIAL_CONFIGURATION_ADDRESS, caller);
 
-        freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
+            freeze_registry_program_name.set(FREEZE_REGISTRY_PROGRAM_INDEX, FREEZE_REGISTRY_PROGRAM_NAME);
 
-        token_registry_call.await();
+            token_registry_call.run();
+        };
     }
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
-    async transition update_role(public new_address: address, role: u16) -> Future {
-        return f_update_role(new_address, self.caller, role);
-    }
-    async function f_update_role(new_address: address, caller: address, new_role: u16) {
-        let current_role: u16 = address_to_role.get(caller);
-        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
-        
-        if (caller == new_address) { 
-            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
-        }
+    fn update_role(public new_address: address, role: u16) -> Final {
+        let caller: address = self.caller;
+        return final {
+            let current_role: u16 = address_to_role.get(caller);
+            assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
 
-        address_to_role.set(new_address, new_role);
+            if (caller == new_address) {
+                assert(role & MANAGER_ROLE == MANAGER_ROLE);
+            }
+
+            address_to_role.set(new_address, role);
+        };
     }
 
     // Mints public tokens to the specified recipient and creates a corresponding CompliantToken record.
     // The caller must be the admin or an authorized minter.
     // The CompliantToken will be locked until the specified block height.
-    async transition mint_public(
+    fn mint_public(
         public recipient: address,
         public amount: u128,
         lock_until: u32
-    ) -> (CompliantToken, Future) {
-        let token_registry_call: Future = token_registry.aleo/mint_public(
+    ) -> (CompliantToken, Final) {
+        let caller: address = self.caller;
+        let token_registry_call: Final = token_registry.aleo::mint_public(
             TOKEN_ID,
             recipient,
             amount,
@@ -125,27 +126,24 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
-        return (recipient_compliant_record, finalize_mint_public(token_registry_call, self.caller));
-    }
-    async function finalize_mint_public(
-        token_registry_call: Future,
-        caller: address
-    ) {
-        let current_role: u16 = address_to_role.get(caller);
-        assert(current_role & MINTER_ROLE == MINTER_ROLE);
+        return (recipient_compliant_record, final {
+            let current_role: u16 = address_to_role.get(caller);
+            assert(current_role & MINTER_ROLE == MINTER_ROLE);
 
-        token_registry_call.await();
+            token_registry_call.run();
+        });
     }
 
     // Mints private tokens to the specified recipient and creates a corresponding CompliantToken record.
     // The caller must be the admin or an authorized minter.
     // The CompliantToken will be locked until the specified block height.
-    async transition mint_private(
+    fn mint_private(
         recipient: address,
         public amount: u128,
         lock_until: u32
-    ) -> (CompliantToken, token_registry.aleo/Token, Future) {
-        let token_registry_call: (token_registry.aleo/Token, Future) = token_registry.aleo/mint_private(
+    ) -> (CompliantToken, token_registry.aleo::Token, Final) {
+        let caller: address = self.caller;
+        let token_registry_call: (token_registry.aleo::Token, Final) = token_registry.aleo::mint_private(
             TOKEN_ID,
             recipient,
             amount,
@@ -159,16 +157,12 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
-        return (recipient_compliant_record, token_registry_call.0, finalize_mint_private(token_registry_call.1, self.caller));
-    }
-    async function finalize_mint_private(
-        token_registry_call: Future,
-        caller: address
-    ) {
-        let current_role: u16 = address_to_role.get(caller);
-        assert(current_role & MINTER_ROLE == MINTER_ROLE);
+        return (recipient_compliant_record, token_registry_call.0, final {
+            let current_role: u16 = address_to_role.get(caller);
+            assert(current_role & MINTER_ROLE == MINTER_ROLE);
 
-        token_registry_call.await();
+            token_registry_call.1.run();
+        });
     }
 
     // -------------------------
@@ -180,28 +174,28 @@ program sealed_timelock_policy.aleo {
     // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
     // The user specifies the block height at which the recipient can begin using the received asset.
     // Both sender and recipient must not be frozen in the freeze list.
-    async transition transfer_public(
+    fn transfer_public(
         public recipient: address,
         public amount: u128,
         sealed_token: CompliantToken,
         lock_until: u32,
-    ) -> (CompliantToken, CompliantToken, Future) {
+    ) -> (CompliantToken, CompliantToken, Final) {
         assert_eq(self.caller, sealed_token.owner);
 
-        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
-        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
+        let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
         };
-        let authorization_call: Future = token_registry.aleo/prehook_public(
+        let authorization_call: Final = token_registry.aleo::prehook_public(
             owner,
             amount,
             AUTHORIZED_UNTIL
         );
 
-        let transfer_call: Future = token_registry.aleo/transfer_from_public(
+        let transfer_call: Final = token_registry.aleo::transfer_from_public(
             TOKEN_ID,
             self.caller,
             recipient,
@@ -222,51 +216,44 @@ program sealed_timelock_policy.aleo {
 
         return (
             sender_compliant_record,
-            recipient_compliant_record, 
-            finalize_transfer_public(sealed_token.locked_until, verify_sender, verify_recipient, authorization_call, transfer_call)
+            recipient_compliant_record,
+            final {
+                verify_sender.run();
+                verify_recipient.run();
+
+                authorization_call.run();
+                transfer_call.run();
+
+                assert(sealed_token.locked_until <= block.height);
+            }
             );
-    }
-    async function finalize_transfer_public(
-        locked_until: u32, 
-        verify_sender: Future,
-        verify_recipient: Future,
-        authorization_call: Future,
-        transfer_call: Future
-    ) {
-        verify_sender.await();
-        verify_recipient.await();
-
-        authorization_call.await(); 
-        transfer_call.await();
-
-        assert(locked_until <= block.height);
     }
 
     // Transfers public tokens from the signer to the recipient.
     // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
     // The user specifies the block height at which the recipient can begin using the received asset.
     // Both sender and recipient must not be frozen in the freeze list.
-    async transition transfer_public_as_signer(
+    fn transfer_public_as_signer(
         public recipient: address,
         public amount: u128,
         sealed_token: CompliantToken,
         lock_until: u32
-    ) -> (CompliantToken, CompliantToken, Future) {
-        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.signer);
-        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
+    ) -> (CompliantToken, CompliantToken, Final) {
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.signer);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
-        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
+        let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
             account: self.signer,
             token_id: TOKEN_ID
         };
 
-        let authorization_call: Future = token_registry.aleo/prehook_public(
+        let authorization_call: Final = token_registry.aleo::prehook_public(
             owner,
             amount,
             AUTHORIZED_UNTIL
         );
 
-        let transfer_call: Future = token_registry.aleo/transfer_public_as_signer(
+        let transfer_call: Final = token_registry.aleo::transfer_public_as_signer(
             TOKEN_ID,
             recipient,
             amount
@@ -286,25 +273,17 @@ program sealed_timelock_policy.aleo {
 
         return (
             sender_compliant_record,
-            recipient_compliant_record, 
-            f_transfer_public_as_signer(sealed_token.locked_until, verify_sender, verify_recipient, authorization_call, transfer_call)
+            recipient_compliant_record,
+            final {
+                verify_sender.run();
+                verify_recipient.run();
+
+                authorization_call.run();
+                transfer_call.run();
+
+                assert(sealed_token.locked_until <= block.height);
+            }
         );
-    }
-
-    async function f_transfer_public_as_signer(
-        locked_until: u32,
-        verify_sender: Future,
-        verify_recipient: Future,
-        authorization_call: Future,
-        transfer_call: Future
-    ) {
-        verify_sender.await();
-        verify_recipient.await();
-
-        authorization_call.await();
-        transfer_call.await();
-
-        assert(locked_until <= block.height);
     }
 
     // Transfers public tokens from the caller to a recipient as a private token.
@@ -313,30 +292,30 @@ program sealed_timelock_policy.aleo {
     // The user specifies the block height at which the recipient can begin using the received asset.
     // Both sender and recipient must not be frozen in the freeze list.
     // The recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
-    async transition transfer_public_to_priv(
+    fn transfer_public_to_priv(
         recipient: address,
         public amount: u128,
         sealed_token: CompliantToken,
-        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2],
+        recipient_merkle_proofs: [merkle_tree.aleo::MerkleProof;2],
         lock_until: u32
-    ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
+    ) -> (CompliantToken, CompliantToken, token_registry.aleo::Token, Final) {
         assert_eq(self.caller, sealed_token.owner);
 
-        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(self.caller);
-        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
-        
-        let owner: token_registry.aleo/TokenOwner = token_registry.aleo/TokenOwner {
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.caller);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+
+        let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
             account: self.caller,
             token_id: TOKEN_ID
         };
 
-        let authorization_call: Future = token_registry.aleo/prehook_public(
+        let authorization_call: Final = token_registry.aleo::prehook_public(
             owner,
             amount,
             AUTHORIZED_UNTIL
         );
 
-        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_from_public_to_private(
+        let transfer_call: (token_registry.aleo::Token, Final) = token_registry.aleo::transfer_from_public_to_private(
             TOKEN_ID,
             self.caller,
             recipient,
@@ -359,30 +338,17 @@ program sealed_timelock_policy.aleo {
         return (
             sender_compliant_record,
             recipient_compliant_record,
-            transfer_call.0, 
-            f_transfer_public_to_priv(
-                sealed_token.locked_until,
-                verify_sender,
-                verify_recipient,
-                authorization_call,
-                transfer_call.1, 
-            )
+            transfer_call.0,
+            final {
+                verify_sender.run();
+                verify_recipient.run();
+
+                authorization_call.run();
+                transfer_call.1.run();
+
+                assert(sealed_token.locked_until <= block.height);
+            }
         );
-    }
-    async function f_transfer_public_to_priv(
-        locked_until: u32,
-        verify_sender: Future,
-        verify_recipient: Future,
-        authorization_call: Future,
-        transfer_call: Future
-    ) {
-        verify_sender.await();
-        verify_recipient.await();
-
-        authorization_call.await();
-        transfer_call.await();
-
-        assert(locked_until <= block.height);
     }
 
     // Transfers private tokens from the record owner to a recipient.
@@ -390,117 +356,40 @@ program sealed_timelock_policy.aleo {
     // The user specifies the block height at which the recipient can begin using the received asset.
     // Both sender and recipient must not be frozen in the freeze list.
     // The sender's and recipient's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
-    async transition transfer_private(
+    fn transfer_private(
         recipient: address,
         amount: u128,
         sealed_token: CompliantToken,
-        base_token: token_registry.aleo/Token,
-        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof;2],
-        recipient_merkle_proofs: [merkle_tree.aleo/MerkleProof;2],
+        base_token: token_registry.aleo::Token,
+        sender_merkle_proofs: [merkle_tree.aleo::MerkleProof;2],
+        recipient_merkle_proofs: [merkle_tree.aleo::MerkleProof;2],
         lock_until: u32,
-    ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, token_registry.aleo/Token, Future) {
+    ) -> (CompliantToken, CompliantToken, token_registry.aleo::Token, token_registry.aleo::Token, Final) {
         assert_eq(base_token.token_id, TOKEN_ID);
 
-        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
-        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let authorization_call: (
-            token_registry.aleo/Token, // unauthorized_record
-            token_registry.aleo/Token, // authorized_record
-            Future
-        ) = token_registry.aleo/prehook_private(
-            base_token, 
-            amount, 
+            token_registry.aleo::Token, // unauthorized_record
+            token_registry.aleo::Token, // authorized_record
+            Final
+        ) = token_registry.aleo::prehook_private(
+            base_token,
+            amount,
             AUTHORIZED_UNTIL
         );
 
         let transfer_call: (
-            token_registry.aleo/Token, // sender record - the amount has to be zero. we don't need to return it
-            token_registry.aleo/Token, // recipient record
-            Future
-        ) = token_registry.aleo/transfer_private(
+            token_registry.aleo::Token, // sender record - the amount has to be zero. we don't need to return it
+            token_registry.aleo::Token, // recipient record
+            Final
+        ) = token_registry.aleo::transfer_private(
             recipient,
             amount,
             authorization_call.1,
         );
 
-        let sender_compliant_record: CompliantToken = CompliantToken {
-            owner: sealed_token.owner,
-            amount: sealed_token.amount - amount,
-            locked_until: sealed_token.locked_until
-        };
-
-        let recipient_compliant_record: CompliantToken = CompliantToken {
-            owner: recipient,
-            amount: amount,
-            locked_until: lock_until
-        };
-
-        return (
-            sender_compliant_record,
-            recipient_compliant_record,
-            authorization_call.0, 
-            transfer_call.1, 
-            f_transfer_private(
-                sealed_token.locked_until,
-                verify_sender,
-                verify_recipient,
-                authorization_call.2,
-                transfer_call.2,
-            )
-        );
-    }
-
-    async function f_transfer_private(
-        locked_until: u32,
-        verify_sender: Future,
-        verify_recipient: Future,  
-        authorization_call: Future,
-        transfer_call: Future    
-    ) {
-        verify_sender.await();
-        verify_recipient.await();
-        authorization_call.await();
-        transfer_call.await();
-
-        assert(locked_until <= block.height);
-    }
-
-    // Transfers private tokens from the record owner to a recipient as a public tokens.
-    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
-    // The user specifies the block height at which the recipient can begin using the received asset.
-    // Both sender and recipient must not be frozen in the freeze list.
-    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
-    async transition transfer_priv_to_public(
-        public recipient: address,
-        public amount: u128,
-        sealed_token: CompliantToken,
-        base_token: token_registry.aleo/Token,
-        sender_merkle_proofs: [merkle_tree.aleo/MerkleProof; 2],
-        lock_until: u32,
-    ) -> (CompliantToken, CompliantToken, token_registry.aleo/Token, Future) {
-        assert_eq(base_token.token_id, TOKEN_ID);
-
-        let verify_sender: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
-        let verify_recipient: Future = sealance_freezelist_registry.aleo/verify_non_inclusion_pub(recipient);
-
-        let authorization_call: (
-            token_registry.aleo/Token, // unauthorized_record
-            token_registry.aleo/Token, // authorized_record
-            Future
-        ) = token_registry.aleo/prehook_private(
-            base_token, 
-            amount, 
-            AUTHORIZED_UNTIL
-        );
-
-        // we don't need to return the record because the amount is zero
-        let transfer_call: (token_registry.aleo/Token, Future) = token_registry.aleo/transfer_private_to_public(
-            recipient,
-            amount,
-            authorization_call.1,
-        );
-        
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
@@ -517,40 +406,90 @@ program sealed_timelock_policy.aleo {
             sender_compliant_record,
             recipient_compliant_record,
             authorization_call.0,
-            f_transfer_priv_to_public(
-                sealed_token.locked_until,
-                verify_sender,
-                verify_recipient,
-                authorization_call.2, 
-                transfer_call.1, 
-            )
+            transfer_call.1,
+            final {
+                verify_sender.run();
+                verify_recipient.run();
+                authorization_call.2.run();
+                transfer_call.2.run();
+
+                assert(sealed_token.locked_until <= block.height);
+            }
         );
     }
-    async function f_transfer_priv_to_public(
-        locked_until: u32,
-        verify_sender: Future,
-        verify_recipient: Future,
-        authorization_call: Future,
-        transfer_call: Future
-    ) {
-        verify_sender.await();
-        verify_recipient.await();
 
-        authorization_call.await();
-        transfer_call.await();
+    // Transfers private tokens from the record owner to a recipient as a public tokens.
+    // The user must provide an unlocked CompliantToken with an amount greater than the transferred amount.
+    // The user specifies the block height at which the recipient can begin using the received asset.
+    // Both sender and recipient must not be frozen in the freeze list.
+    // The sender's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
+    fn transfer_priv_to_public(
+        public recipient: address,
+        public amount: u128,
+        sealed_token: CompliantToken,
+        base_token: token_registry.aleo::Token,
+        sender_merkle_proofs: [merkle_tree.aleo::MerkleProof; 2],
+        lock_until: u32,
+    ) -> (CompliantToken, CompliantToken, token_registry.aleo::Token, Final) {
+        assert_eq(base_token.token_id, TOKEN_ID);
 
-        assert(locked_until <= block.height);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
+
+        let authorization_call: (
+            token_registry.aleo::Token, // unauthorized_record
+            token_registry.aleo::Token, // authorized_record
+            Final
+        ) = token_registry.aleo::prehook_private(
+            base_token,
+            amount,
+            AUTHORIZED_UNTIL
+        );
+
+        // we don't need to return the record because the amount is zero
+        let transfer_call: (token_registry.aleo::Token, Final) = token_registry.aleo::transfer_private_to_public(
+            recipient,
+            amount,
+            authorization_call.1,
+        );
+
+        let sender_compliant_record: CompliantToken = CompliantToken {
+            owner: sealed_token.owner,
+            amount: sealed_token.amount - amount,
+            locked_until: sealed_token.locked_until
+        };
+
+        let recipient_compliant_record: CompliantToken = CompliantToken {
+            owner: recipient,
+            amount: amount,
+            locked_until: lock_until
+        };
+
+        return (
+            sender_compliant_record,
+            recipient_compliant_record,
+            authorization_call.0,
+            final {
+                verify_sender.run();
+                verify_recipient.run();
+
+                authorization_call.2.run();
+                transfer_call.1.run();
+
+                assert(sealed_token.locked_until <= block.height);
+            }
+        );
     }
 
     // Joins two CompliantToken records into a single record.
     // The resulting record is locked until the later of the two original lock times.
-    transition join(
+    fn join(
         sealed_token_1: CompliantToken,
         sealed_token_2: CompliantToken,
     ) -> CompliantToken {
 
-        let locked_until: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until 
-            ? sealed_token_1.locked_until 
+        let locked_until: u32 = sealed_token_1.locked_until > sealed_token_2.locked_until
+            ? sealed_token_1.locked_until
             : sealed_token_2.locked_until;
 
         let new_sealed_token: CompliantToken = CompliantToken {

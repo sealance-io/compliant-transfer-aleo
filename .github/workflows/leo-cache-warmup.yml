@@ -36,9 +36,9 @@ jobs:
 
       - name: Setup Leo CLI (Cache Warmup)
         id: setup-leo
-        uses: sealance-io/setup-leo-action@126611b39ce92d063c50da6623f8a0b08bf294dd # v1.0.0
+        uses: sealance-io/setup-leo-action@fc5b31987c0550dea2ef4f5f506fadf574551406 # v1.0.0+leo4 (PR #13)
         with:
-          version: "3.5.0"
+          version: "4.0.0"
           rust-version: "1.92.0"
           enable-cache: true
           cache-save: always # Always save to ensure cache is refreshed
@@ -52,7 +52,7 @@ jobs:
             echo ""
             echo "| Metric | Value |"
             echo "|--------|-------|"
-            echo "| Leo Version | 3.5.0 |"
+            echo "| Leo Version | 4.0.0 |"
             echo "| Rust Version | 1.92.0 |"
             echo "| Cache Hit (Binary) | $CACHE_HIT_BINARY |"
             echo "| Build Time | ${BUILD_TIME_SECONDS}s |"

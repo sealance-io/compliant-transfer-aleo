@@ -1,8 +1,8 @@
 # Leo/Aleo Program Patterns (Authoritative)
 
 Status: Normative
-Last verified: 2026-01-26 (commit 6efaf4531c0c49c2138f8f5ce7fdb55d19cffd4f)
-Scope: Leo v3.5.0; Aleo execution model; programs under /programs in this repository.
+Last verified: 2026-04-06
+Scope: Leo v4.0.0; Aleo execution model; programs under /programs in this repository.
 External program behavior is treated as assumptions and called out explicitly.
 
 This document is authoritative for how this repo's Leo programs are structured and how agents
@@ -17,54 +17,106 @@ The keywords MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are to be interpreted a
 This repository depends on external programs and protocol behaviors. These are treated as
 assumptions and must be re-verified when upgrading:
 
-- token*registry.aleo: prehook*\_ / transfer\_\_ API and authorization semantics relied on by
+- token_registry.aleo: prehook\_\* / transfer\_\* API and authorization semantics relied on by
   programs/policy/sealed_report_policy.leo and programs/policy/sealed_threshold_report_policy.leo.
 - merkle_tree.aleo: verify_non_inclusion returns a root commitment from (account, merkle_proof),
   as used by programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv.
-- Aleo execution model: async transitions produce Futures and async functions execute on-chain
+- Aleo execution model: entry functions produce Proofs + Finals; final blocks execute on-chain
   (see Execution Model section).
 
 ## Glossary
 
-- async transition: Off-chain execution that produces a ZKP and a Future for on-chain execution.
-- async function: On-chain execution triggered by a Future; performs public checks and writes mappings.
-- Future: A request to execute an async function on-chain; carries only public values and commitments.
-- record: Private (encrypted) asset data stored off-chain by the user; consumed/produced by transitions.
-- mapping: Public on-chain key/value state; writable only in async functions.
-- struct: Transient circuit data; not persisted.
+- fn (entry point): Off-chain execution that produces a ZKP and optionally a Final for on-chain execution. Declared inside `program {}`.
+- final block: On-chain execution defined inline within an entry fn; performs public checks and writes mappings.
+- Final: The type returned by an entry fn that has a `final { }` block; represents a request to execute on-chain logic.
+- final fn: A helper function (outside `program {}`) that can access mappings; callable from within `final` blocks.
+- record: Private (encrypted) asset data stored off-chain by the user; consumed/produced by entry fns.
+- mapping: Public on-chain key/value state; writable only in final blocks.
+- struct: Transient circuit data; not persisted. Defined outside `program {}` in Leo v4.
 
 ## Execution Model (Protocol Assumptions)
 
 This section captures protocol-level behavior that this repo assumes.
 
-### Async transition (off-chain)
+### Entry fn (off-chain)
 
 - MUST run locally (client/SDK).
 - MAY read public on-chain mappings.
 - MUST NOT write mappings directly.
-- MUST produce a ZKP and a Future for any public state change.
+- MUST produce a ZKP and a Final for any public state change.
 
-### Async function (on-chain)
+### Final block (on-chain)
 
-- MUST be triggered by a Future created by a proven transition.
-- MUST only use public values or commitments carried by the Future.
+- MUST be triggered by a Final created by a proven entry fn.
+- MUST only use public values or commitments carried by the Final.
 - MUST perform final authorization/state checks.
 - MUST be the only place where mappings are written.
 
 ### Lifecycle (informative)
 
-1. User calls async transition.
-2. Transition runs locally and produces ZKP + Future.
+1. User calls entry fn.
+2. Entry fn runs locally and produces ZKP + Final.
 3. Transaction submitted to Aleo node.
-4. Validators verify ZKP, execute async function, and update mappings.
+4. Validators verify ZKP, execute final block, and update mappings.
 
 ### Data primitives (protocol)
 
-| Type    | Visibility          | Storage                | Behavior                                          |
-| ------- | ------------------- | ---------------------- | ------------------------------------------------- |
-| record  | Private (encrypted) | Off-chain (user holds) | UTXO-like; consumed/produced by transitions       |
-| mapping | Public              | On-chain               | Key/value store; writable only in async functions |
-| struct  | N/A (transient)     | None                   | Circuit data only; not persisted                  |
+| Type    | Visibility          | Storage                | Behavior                                       |
+| ------- | ------------------- | ---------------------- | ---------------------------------------------- |
+| record  | Private (encrypted) | Off-chain (user holds) | UTXO-like; consumed/produced by entry fns      |
+| mapping | Public              | On-chain               | Key/value store; writable only in final blocks |
+| struct  | N/A (transient)     | None                   | Circuit data only; not persisted               |
+
+## Leo v4 Program Structure
+
+In Leo v4, the `program {}` block represents the **public interface** and on-chain state only:
+
+- **Inside `program {}`**: entry `fn`s, `record` types, `mapping` declarations, `const` values, `constructor`
+- **Outside `program {}`**: `struct` types, helper `fn`s (pure computation), `final fn`s (helpers that access mappings), `const` values
+
+### Entry fn patterns
+
+```leo
+// Pure entry fn (no on-chain state change)
+fn join(private token_1: Token, private token_2: Token) -> Token { ... }
+
+// Entry fn with on-chain state change
+fn update_role(public new_address: address, role: u16) -> Final {
+    let caller: address = self.caller;  // capture before final block
+    return final {
+        // on-chain logic; can access mappings
+    };
+}
+
+// Entry fn returning records + Final
+fn mint_private(recipient: address, public amount: u128) -> (Token, Final) {
+    let token: Token = Token { owner: recipient, amount: amount };
+    return (token, final { ... });
+}
+```
+
+### Cross-program calls
+
+Cross-program function calls and mapping access use `::` separator:
+
+```leo
+let (_, fut) = token_registry.aleo::prehook_public(...);
+let root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(...);
+```
+
+Finals from cross-program calls are chained with `.run()`:
+
+```leo
+fn transfer(...) -> Final {
+    let (_, prehook_fut) = token_registry.aleo::prehook_public(...);
+    let (_, transfer_fut) = token_registry.aleo::transfer_public_as_signer(...);
+    return final {
+        prehook_fut.run();
+        transfer_fut.run();
+        // additional on-chain logic
+    };
+}
+```
 
 ## Repository-Specific Architecture (Normative)
 
@@ -91,26 +143,26 @@ This section captures protocol-level behavior that this repo assumes.
 
 ### Block height window (threshold policy)
 
-- Transitions in programs/policy/sealed_threshold_report_policy.leo accept public estimated_block_height.
-- Async functions MUST enforce:
+- Entry fns in programs/policy/sealed_threshold_report_policy.leo accept public estimated_block_height.
+- Final blocks MUST enforce:
   - block.height >= estimated_block_height
   - estimated_block_height >= (block.height - window)
-- These checks appear in f\_\* finalize functions such as f_signup_and_transfer_private in
+- These checks appear in the final blocks of functions such as signup_and_transfer_private in
   programs/policy/sealed_threshold_report_policy.leo.
 
-## Authorization and Async Patterns (Normative)
+## Authorization and Final Patterns (Normative)
 
 ### External authorization order
 
 For token_registry authorization flows, the following order MUST be preserved:
 
-- Transition: prehook*\* is called before transfer*\*.
-- Async function: the Future returned by prehook*\* MUST be awaited before transfer*\*.
+- Entry fn: prehook\_\* is called before transfer\_\*.
+- Final block: the Final returned by prehook\_\* MUST be run before transfer\_\*.
 
 Example (repo pattern):
 
-- token_registry.aleo/prehook_public then token_registry.aleo/transfer_public_as_signer
-- Await order in programs/policy/sealed_report_policy.leo::f_transfer_public_as_signer
+- token_registry.aleo::prehook_public then token_registry.aleo::transfer_public_as_signer
+- Run order in programs/policy/sealed_report_policy.leo::transfer_public_as_signer final block
 
 ### Multisig architecture
 
@@ -123,7 +175,7 @@ Example (repo pattern):
 ## Visibility and Cross-Program Calls (Normative)
 
 - Only public values (or public commitments derived from private inputs) can be consumed by
-  an async function or cross-program call.
+  a final block or cross-program call.
 - Private inputs remain private unless explicitly committed or revealed.
 
 Example:
@@ -131,20 +183,19 @@ Example:
 - programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_pub
   reveals the account publicly.
 - programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv
-  keeps the account private and passes only the Merkle root to the async function.
+  keeps the account private and passes only the Merkle root to the final block.
 
 ## Leo/Aleo Platform Limitations (Informative)
 
-### No dynamic dispatch
+### Dynamic dispatch (new in Leo v4)
 
-- Cross-program calls use hardcoded program names; program ids cannot be parameterized.
-- Impact: tight coupling; generic policies across token implementations are not possible.
-- Workaround: proxy pattern (see Design Patterns).
+- Leo v4 introduces interfaces and dynamic dispatch via `Interface@(target)::method()`.
+- This repo does not yet use dynamic dispatch; cross-program calls remain hardcoded.
 
 ### No inheritance or traits
 
 - No code sharing between programs; logic is duplicated across policy programs.
-- Example: update*role implementations across sealed*\* policies.
+- Example: update_role implementations across sealed\_\* policies.
 
 ### Caller resolution duplication
 
@@ -203,5 +254,6 @@ Off-chain computations MUST match on-chain logic exactly:
 ## External References (Informative)
 
 - Leo language: https://docs.leo-lang.org/leo
+- Leo v4 migration guide: https://docs.leo-lang.org/guides/migration-3-5-to-4-0
 - Aleo fundamentals: https://developer.aleo.org/category/fundamentals
 - snarkVM (hash functions): https://github.com/ProvableHQ/snarkVM

@@ -1,19 +1,24 @@
 import merkle_tree.aleo;
 import multisig_core.aleo;
 
+struct ChecksumEdition {
+    checksum: [u8; 32],
+    edition: u16,
+}
+
 program sealance_freezelist_registry.aleo {
     @custom
-    async constructor() {
+    constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
-            let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
     }
-    
+
     const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
     const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
     // Only this address can deploy the program
@@ -30,11 +35,7 @@ program sealance_freezelist_registry.aleo {
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     const FREEZE_LIST_LAST_INDEX: bool = true;
-    
-    struct ChecksumEdition {
-        checksum: [u8; 32],
-        edition: u16,
-    }
+
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
     // Mimics an array of frozen addresses by storing them at sequential indexes.
@@ -53,49 +54,49 @@ program sealance_freezelist_registry.aleo {
     // Can be called only by the INITIAL_ADMIN
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
-    async transition initialize(public admin: address, public blocks: u32) -> Future {
-        return f_initialize(admin, self.caller, blocks);
-    }
-    async function f_initialize(admin: address, caller: address, blocks: u32) {
-        let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        assert_eq(is_already_initialized, false);
+    fn initialize(public admin: address, public blocks: u32) -> Final {
+        let caller: address = self.caller;
+        return final {
+            let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(is_already_initialized, false);
 
-        assert_eq(caller, DEPLOYER_ADDRESS);
-        address_to_role.set(admin, MANAGER_ROLE);
+            assert_eq(caller, DEPLOYER_ADDRESS);
+            address_to_role.set(admin, MANAGER_ROLE);
 
-        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
-        freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
-        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX,EMPTY_ROOT);
-        freeze_list.set(ZERO_ADDRESS, false);
-        freeze_list_index.set(0u32, ZERO_ADDRESS);
+            block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
+            freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
+            freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX,EMPTY_ROOT);
+            freeze_list.set(ZERO_ADDRESS, false);
+            freeze_list_index.set(0u32, ZERO_ADDRESS);
+        };
     }
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
-    async transition update_role(public new_address: address, role: u16) -> Future {
-        return f_update_role(new_address, self.caller, role);
-    }
-    async function f_update_role(new_address: address, caller: address, new_role: u16) {
-        let current_role: u16 = address_to_role.get(caller);
-        assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
-        
-        if (caller == new_address) { 
-            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
-        }
+    fn update_role(public new_address: address, role: u16) -> Final {
+        let caller: address = self.caller;
+        return final {
+            let current_role: u16 = address_to_role.get(caller);
+            assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
 
-        address_to_role.set(new_address, new_role);
+            if (caller == new_address) {
+                assert(role & MANAGER_ROLE == MANAGER_ROLE);
+            }
+
+            address_to_role.set(new_address, role);
+        };
     }
 
     // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the admin.
-    async transition update_block_height_window(public blocks: u32) -> Future {
-        return f_update_block_height_window(blocks, self.caller);
-    }
-    async function f_update_block_height_window(blocks: u32, caller: address) {
-        let role: u16 = address_to_role.get(caller);
-        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
+    fn update_block_height_window(public blocks: u32) -> Final {
+        let caller: address = self.caller;
+        return final {
+            let role: u16 = address_to_role.get(caller);
+            assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
-        block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
+            block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
+        };
     }
 
     // Freezes or unfreezes an account based on the is_frozen flag (true = freeze, false = unfreeze).
@@ -112,62 +113,61 @@ program sealance_freezelist_registry.aleo {
     // Updates both the freeze_list and freeze_list_index mappings accordingly.
     // Also updates the current Merkle root and stores the previous root for backward compatibility.
     // Can only be called by the freeze list manager.
-    async transition update_freeze_list(
-        public account: address, 
-        public is_frozen: bool, 
-        public frozen_index: u32, 
+    fn update_freeze_list(
+        public account: address,
+        public is_frozen: bool,
+        public frozen_index: u32,
         public previous_root: field,
         public new_root: field
-    ) -> Future {
-        return f_update_freeze_list(account, is_frozen, frozen_index, self.caller, previous_root, new_root);
-    }
-    async function f_update_freeze_list(account: address, is_frozen: bool, frozen_index: u32, caller: address, previous_root: field, new_root: field) {
-        let role: u16 = address_to_role.get(caller);
-        assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
+    ) -> Final {
+        let caller: address = self.caller;
+        return final {
+            let role: u16 = address_to_role.get(caller);
+            assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
-        let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        assert_eq(previous_root, old_root);
-        freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
-        freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
+            let old_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+            assert_eq(previous_root, old_root);
+            freeze_list_root.set(PREVIOUS_FREEZE_LIST_ROOT_INDEX, old_root);
+            freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, new_root);
 
-        // Verify we don't unfreeze an unfrozen account or freeze a frozen account
-        let stored_is_frozen = freeze_list.get_or_use(account, false);
-        assert_neq(is_frozen, stored_is_frozen);
-        freeze_list.set(account, is_frozen);
+            // Verify we don't unfreeze an unfrozen account or freeze a frozen account
+            let stored_is_frozen = freeze_list.get_or_use(account, false);
+            assert_neq(is_frozen, stored_is_frozen);
+            freeze_list.set(account, is_frozen);
 
-        let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
-        if (is_frozen) {
-            // Verify that the frozen_index is empty.
-            assert_eq(current_address_at_index, ZERO_ADDRESS);
-            
-            // Verify that the frozen index equal or smaller than the last index plus 1
-            let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
-            assert(last_index + 1u32 >= frozen_index);
-        
-            // Update the freeze_list_last_index
-            if (last_index < frozen_index) {
-                freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, frozen_index);
+            let current_address_at_index: address = freeze_list_index.get_or_use(frozen_index, ZERO_ADDRESS);
+            if (is_frozen) {
+                // Verify that the frozen_index is empty.
+                assert_eq(current_address_at_index, ZERO_ADDRESS);
+
+                // Verify that the frozen index equal or smaller than the last index plus 1
+                let last_index: u32 = freeze_list_last_index.get(FREEZE_LIST_LAST_INDEX);
+                assert(last_index + 1u32 >= frozen_index);
+
+                // Update the freeze_list_last_index
+                if (last_index < frozen_index) {
+                    freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, frozen_index);
+                }
+
+                freeze_list_index.set(frozen_index, account);
+            } else {
+                // Verify that we update the correct frozen_index
+                assert_eq(current_address_at_index, account);
+                freeze_list_index.set(frozen_index, ZERO_ADDRESS);
             }
 
-            freeze_list_index.set(frozen_index, account);
-        } else {
-            // Verify that we update the correct frozen_index
-            assert_eq(current_address_at_index, account);
-            freeze_list_index.set(frozen_index, ZERO_ADDRESS);
-        }
-
-        root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+        };
     }
 
     // Verifies that an account is not currently frozen.
     // Reads from the freeze_list mapping and asserts that the account is not marked as frozen.
     // This transition reveals the account address publicly.
-    async transition verify_non_inclusion_pub(public account: address) -> Future {
-        return f_verify_non_inclusion_pub(account);
-    }
-    async function f_verify_non_inclusion_pub(account: address) {
-        let is_frozen: bool = freeze_list.get_or_use(account, false);
-        assert_eq(is_frozen, false);
+    fn verify_non_inclusion_pub(public account: address) -> Final {
+        return final {
+            let is_frozen: bool = freeze_list.get_or_use(account, false);
+            assert_eq(is_frozen, false);
+        };
     }
 
     // Verifies that an account is not included in the freeze list Merkle tree.
@@ -176,18 +176,17 @@ program sealance_freezelist_registry.aleo {
     // - If the root matches the previous root: ensures it was updated recently (within the allowed block window).
     // - If the root matches neither: the proof is rejected (invalid).
     // Keeps the account address private.
-    async transition verify_non_inclusion_priv(account: address, merkle_proof: [merkle_tree.aleo/MerkleProof; 2]) -> Future {
-        let root: field = merkle_tree.aleo/verify_non_inclusion(account, merkle_proof);
-        return f_verify_non_inclusion_priv(root);
-    }
-    async function f_verify_non_inclusion_priv(root: field) {
-        let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-        if (current_root != root) {
-            let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-            assert_eq(root, previous_root);
-            let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-            assert(updated_height + window > block.height);
-        }
+    fn verify_non_inclusion_priv(account: address, merkle_proof: [merkle_tree.aleo::MerkleProof; 2]) -> Final {
+        let root: field = merkle_tree.aleo::verify_non_inclusion(account, merkle_proof);
+        return final {
+            let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+            if (current_root != root) {
+                let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+                assert_eq(root, previous_root);
+                let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+                let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                assert(updated_height + window > block.height);
+            }
+        };
     }
 }

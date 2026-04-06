@@ -1,7 +1,7 @@
 // vitest.setup.ts
 
 // In devnode mode (DEVNET unset or false), default SKIP_EXECUTE_PROOF and
-// SKIP_DEPLOY_CERTIFICATE to "true" for faster iteration (Leo v3.5.0+).
+// SKIP_DEPLOY_CERTIFICATE to "true" for faster iteration.
 // Opt out by explicitly setting either to "false".
 import { parseBooleanEnv } from "./lib/Env";
 

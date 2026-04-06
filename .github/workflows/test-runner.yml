@@ -26,7 +26,7 @@ jobs:
       TESTNET_ENDPOINT: "http://localhost:3030"
     permissions:
       contents: read
-      packages: read # Required for installing @sealance-io/dokojs@1.0.2 (github packages)
+      packages: read # Required for installing @sealance-io/dokojs@1.0.6 (github packages)
       actions: read # Required for accessing workflow cache (setup-leo-action)
     timeout-minutes: 240 # Allows slow devnet runs; devnode jobs should finish much faster
     defaults:
@@ -40,9 +40,9 @@ jobs:
 
       - name: Setup Leo CLI
         id: setup-leo
-        uses: sealance-io/setup-leo-action@126611b39ce92d063c50da6623f8a0b08bf294dd # v1.0.0
+        uses: sealance-io/setup-leo-action@fc5b31987c0550dea2ef4f5f506fadf574551406 # v1.0.0+leo4 (PR #13)
         with:
-          version: "3.5.0"
+          version: "4.0.0"
           rust-version: "1.92.0"
           enable-cache: true
           cache-save: ${{ github.ref == 'refs/heads/main' && 'always' || 'never' }}
@@ -66,7 +66,7 @@ jobs:
 
       - name: Install dokojs CLI
         run: |
-          npm install -g @sealance-io/dokojs@1.0.4 --ignore-scripts
+          npm install -g @sealance-io/dokojs@1.0.6 --ignore-scripts
           dokojs --version
 
       - run: cp .env.example .env
