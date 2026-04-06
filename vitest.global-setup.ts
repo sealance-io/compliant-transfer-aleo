@@ -15,8 +15,8 @@ let devnetContainer: StartedTestContainer | undefined;
 const USE_TEST_CONTAINERS = parseBooleanEnv(process.env.USE_TEST_CONTAINERS, true);
 const IS_DEVNET = parseBooleanEnv(process.env.DEVNET, false);
 const DEFAULT_ALEO_IMAGE = IS_DEVNET
-  ? "ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.4"
-  : "ghcr.io/sealance-io/leo-lang:v3.5.0";
+  ? "ghcr.io/sealance-io/aleo-devnet:v4.0.0-v4.6.0"
+  : "ghcr.io/sealance-io/leo-lang:v4.0.0";
 const ALEO_TEST_IMAGE = process.env.ALEO_TEST_IMAGE || DEFAULT_ALEO_IMAGE;
 const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "1";
 const TARGET_CONSENSUS_VERSION = parseInt(process.env.CONSENSUS_VERSION || "13", 10);

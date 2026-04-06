@@ -11,7 +11,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v3.5.0
+- [Leo](https://github.com/ProvableHQ/leo) CLI v4.0.0
 
 - [Dokojs](https://github.com/venture23-aleo/doko-js) testing framework (using [Sealance fork](https://github.com/sealance-io/dokojs) with fixes not yet released upstream)
 
@@ -86,7 +86,7 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
    **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.
 
 2. **Install doko-js CLI**
-   `npm install -g @sealance-io/dokojs@1.0.4 --ignore-scripts`
+   `npm install -g @sealance-io/dokojs@1.0.6 --ignore-scripts`
 
 3. **Build the Contracts**
    ```bash
@@ -131,7 +131,7 @@ ALEO_VERBOSITY=4 npm test
 | **Devnode** | `npm test`             | Fast (minutes)  | Local development, standard CI    | **Default and recommended**  |
 | **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Nightly and pre-deployment checks | Supported full-network check |
 
-**Devnode mode** is the default path for local work and regular CI. It gives much faster feedback on Leo v3.5.0 while keeping the same sequential Vitest harness.
+**Devnode mode** is the default path for local work and regular CI. It gives much faster feedback while keeping the same sequential Vitest harness.
 
 **Devnet mode** remains supported for slower full-network validation. Nightly CI continues to use it by default to preserve that coverage.
 

@@ -9,7 +9,7 @@ Commands and workflows for developing in this repository.
 npm ci --ignore-scripts
 
 # Install doko-js CLI (required for compiling Leo programs)
-npm install -g @sealance-io/dokojs@1.0.1 --ignore-scripts
+npm install -g @sealance-io/dokojs@1.0.6 --ignore-scripts
 ```
 
 **Critical**: Uses npm workspaces with a single root `package-lock.json`. Never run `npm install` in workspace directories (`packages/*/`).
@@ -86,20 +86,20 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 
 ## Environment Variables
 
-| Variable                  | Description                                   | Default   |
-| ------------------------- | --------------------------------------------- | --------- |
-| `DEVNET`                  | Enable full devnet mode                       | `false`   |
-| `USE_TEST_CONTAINERS`     | Use Testcontainers                            | `true`    |
-| `SKIP_EXECUTE_PROOF`      | Skip ZK proofs (devnode only, Leo v3.5.0+)    | `true`    |
-| `SKIP_DEPLOY_CERTIFICATE` | Skip deploy certs (devnode only, Leo v3.5.0+) | `true`    |
-| `ALEO_VERBOSITY`          | Logging level (0-4)                           | `1`       |
-| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms)                   | `600000`  |
-| `ALEO_TEST_IMAGE`         | Custom Docker image for the active mode       | See below |
+| Variable                  | Description                             | Default   |
+| ------------------------- | --------------------------------------- | --------- |
+| `DEVNET`                  | Enable full devnet mode                 | `false`   |
+| `USE_TEST_CONTAINERS`     | Use Testcontainers                      | `true`    |
+| `SKIP_EXECUTE_PROOF`      | Skip ZK proofs (devnode only)           | `true`    |
+| `SKIP_DEPLOY_CERTIFICATE` | Skip deploy certs (devnode only)        | `true`    |
+| `ALEO_VERBOSITY`          | Logging level (0-4)                     | `1`       |
+| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms)             | `600000`  |
+| `ALEO_TEST_IMAGE`         | Custom Docker image for the active mode | See below |
 
 **Default images:**
 
-- Devnode: `ghcr.io/sealance-io/leo-lang:v3.5.0`
-- Devnet: `ghcr.io/sealance-io/aleo-devnet:v3.5.0-v4.5.4`
+- Devnode: `ghcr.io/sealance-io/leo-lang:v4.0.0`
+- Devnet: `ghcr.io/sealance-io/aleo-devnet:v4.0.0-v4.6.0`
 
 When overriding `ALEO_TEST_IMAGE`:
 
