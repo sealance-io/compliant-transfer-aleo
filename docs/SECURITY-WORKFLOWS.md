@@ -30,7 +30,7 @@ All actions pinned to commit SHAs:
 | `docker/login-action`               | `5e57cd11` | v3.6.0  |
 | `github/codeql-action/upload-sarif` | `45c37351` | v3.31.9 |
 | `zizmorcore/zizmor-action`          | `e673c391` | v0.2.0  |
-| `sealance-io/setup-leo-action`      | `b30e4cc5` | v0.1.0  |
+| `sealance-io/setup-leo-action`      | `126611b3` | v1.0.0  |
 
 ### 3. Container Image Pinning
 
