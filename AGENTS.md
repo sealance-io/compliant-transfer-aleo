@@ -21,7 +21,7 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 ```bash
 # Setup
 npm ci --ignore-scripts
-npm install -g @sealance-io/dokojs@1.0.6 --ignore-scripts
+npm install -g @sealance-io/dokojs@1.0.7 --ignore-scripts
 
 # Build
 dokojs compile              # Compile Leo programs
