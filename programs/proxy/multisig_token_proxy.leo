@@ -169,7 +169,7 @@ program multisig_token_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -204,7 +204,7 @@ program multisig_token_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let compliant_token_template_call: Final = compliant_token_template.aleo::update_role(new_address, role);
 
@@ -242,7 +242,7 @@ program multisig_token_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let compliant_token_template_call: Final = compliant_token_template.aleo::mint_public(recipient, amount);
 
@@ -277,7 +277,7 @@ program multisig_token_proxy.aleo {
             amount: amount
         };
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let compliant_token_template_call: (compliant_token_template.aleo::ComplianceRecord, compliant_token_template.aleo::Token, Final) = compliant_token_template.aleo::mint_private(recipient, amount);
 
@@ -313,7 +313,7 @@ program multisig_token_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let compliant_token_template_call: Final = compliant_token_template.aleo::burn_public(owner, amount);
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -345,7 +345,7 @@ program multisig_token_proxy.aleo {
             amount: amount
         };
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let compliant_token_template_call: (compliant_token_template.aleo::ComplianceRecord, compliant_token_template.aleo::Token, Final) = compliant_token_template.aleo::burn_private(input_record, amount);
 
@@ -377,7 +377,7 @@ program multisig_token_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let compliant_token_template_call: Final = compliant_token_template.aleo::set_pause_status(pause_status);
 
         return final {

@@ -273,7 +273,7 @@ program multisig_compliant_token.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let caller: address = self.caller;
         return final {
@@ -314,7 +314,7 @@ program multisig_compliant_token.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let caller: address = self.caller;
         return final {
@@ -466,7 +466,7 @@ program multisig_compliant_token.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -533,19 +533,19 @@ program multisig_compliant_token.aleo {
             let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
             assert_eq(is_paused, false);
 
-            let token = token_info.get(TOKEN_INFO_INDEX);
+            let token_metadata = token_info.get(TOKEN_INFO_INDEX);
 
             // Check that the token supply + amount <= max_supply
-            let new_supply: u128 = token.supply + amount;
-            assert(new_supply <= token.max_supply);
+            let new_supply: u128 = token_metadata.supply + amount;
+            assert(new_supply <= token_metadata.max_supply);
 
             // Update the token supply
             let new_metadata: TokenInfo = TokenInfo {
-                name: token.name,
-                symbol: token.symbol,
-                decimals: token.decimals,
+                name: token_metadata.name,
+                symbol: token_metadata.symbol,
+                decimals: token_metadata.decimals,
                 supply: new_supply,
-                max_supply: token.max_supply,
+                max_supply: token_metadata.max_supply,
             };
             token_info.set(TOKEN_INFO_INDEX, new_metadata);
         });
@@ -579,7 +579,7 @@ program multisig_compliant_token.aleo {
             amount: amount
         };
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let caller: address = self.caller;
         return (compliance_record, token, final {
@@ -595,19 +595,19 @@ program multisig_compliant_token.aleo {
             let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
             assert_eq(is_paused, false);
 
-            let token = token_info.get(TOKEN_INFO_INDEX);
+            let token_metadata = token_info.get(TOKEN_INFO_INDEX);
 
             // Check that the token supply + amount <= max_supply
-            let new_supply: u128 = token.supply + amount;
-            assert(new_supply <= token.max_supply);
+            let new_supply: u128 = token_metadata.supply + amount;
+            assert(new_supply <= token_metadata.max_supply);
 
             // Update the token supply
             let new_metadata: TokenInfo = TokenInfo {
-                name: token.name,
-                symbol: token.symbol,
-                decimals: token.decimals,
+                name: token_metadata.name,
+                symbol: token_metadata.symbol,
+                decimals: token_metadata.decimals,
                 supply: new_supply,
-                max_supply: token.max_supply,
+                max_supply: token_metadata.max_supply,
             };
             token_info.set(TOKEN_INFO_INDEX, new_metadata);
         });
@@ -664,7 +664,7 @@ program multisig_compliant_token.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -766,7 +766,7 @@ program multisig_compliant_token.aleo {
             amount: amount
         };
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let caller: address = self.caller;
         return (compliance_record, output_record, final {
@@ -1120,7 +1120,7 @@ program multisig_compliant_token.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
         return final {
             if (multisig_common_params.wallet_id != ZERO_ADDRESS) {

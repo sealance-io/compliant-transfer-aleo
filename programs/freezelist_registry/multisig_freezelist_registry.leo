@@ -162,7 +162,7 @@ program multisig_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
 
         return final {
@@ -207,7 +207,7 @@ program multisig_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
 
         return final {
@@ -251,7 +251,7 @@ program multisig_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
 
         return final {
@@ -311,7 +311,7 @@ program multisig_freezelist_registry.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
         let caller: address = self.caller;
 
         return final {
