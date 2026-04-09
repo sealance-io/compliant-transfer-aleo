@@ -24,7 +24,7 @@ fn calculate_hash_for_leaves(sibling1: field, sibling2: field, indexbit: u32) ->
 // Iteratively hashes the sibling path based on the leaf index to reconstruct the root.
 // Stops when a zero field is encountered in the siblings array, indicating the end of the valid path.
 // Returns the calculated root and the actual depth reached.
-fn calculate_root_depth_siblings(merkle_proof: MerkleProof) -> (public field, public u32) {
+fn calculate_root_depth_siblings(merkle_proof: MerkleProof) -> (field, u32) {
     let root: field = calculate_hash_for_leaves(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
     for i: u32 in 2u32..MAX_TREE_DEPTH + 1u32 {
         if (merkle_proof.siblings[i] == 0field) {

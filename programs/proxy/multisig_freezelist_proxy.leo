@@ -136,7 +136,7 @@ program multisig_freezelist_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -174,7 +174,7 @@ program multisig_freezelist_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let freezelist_registry_call: Final = sealance_freezelist_registry.aleo::update_role(new_address, role);
 
@@ -210,7 +210,7 @@ program multisig_freezelist_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let freezelist_registry_call: Final = sealance_freezelist_registry.aleo::update_block_height_window(blocks);
 
@@ -265,7 +265,7 @@ program multisig_freezelist_proxy.aleo {
             salt: multisig_common_params.salt
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
-        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash_fn(multisig_common_params.wallet_id, signing_op_id);
+        let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
         let freezelist_registry_call: Final = sealance_freezelist_registry.aleo::update_freeze_list(
             account,

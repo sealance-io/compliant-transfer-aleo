@@ -277,19 +277,19 @@ program sealed_report_token.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
 
-            let token = token_info.get(TOKEN_INFO_INDEX);
+            let token_metadata = token_info.get(TOKEN_INFO_INDEX);
 
             // Check that the token supply + amount <= max_supply
-            let new_supply: u128 = token.supply + amount;
-            assert(new_supply <= token.max_supply);
+            let new_supply: u128 = token_metadata.supply + amount;
+            assert(new_supply <= token_metadata.max_supply);
 
             // Update the token supply
             let new_info: TokenInfo = TokenInfo {
-                name: token.name,
-                symbol: token.symbol,
-                decimals: token.decimals,
+                name: token_metadata.name,
+                symbol: token_metadata.symbol,
+                decimals: token_metadata.decimals,
                 supply: new_supply,
-                max_supply: token.max_supply,
+                max_supply: token_metadata.max_supply,
             };
             token_info.set(TOKEN_INFO_INDEX, new_info);
         });

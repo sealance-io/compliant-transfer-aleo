@@ -279,33 +279,33 @@ program token_registry.aleo {
 
     return (token, final {
       // Check that the token exists, and that the caller has permission to mint
-      let token: TokenMetadata = registered_tokens.get(token_id);
-      let is_admin: bool = caller == token.admin;
+      let token_metadata: TokenMetadata = registered_tokens.get(token_id);
+      let is_admin: bool = caller == token_metadata.admin;
       if (!is_admin) {
         let role: u8 = roles.get(role_owner_hash);
         assert(role == MINTER_ROLE || role == SUPPLY_MANAGER_ROLE);
       }
 
       // Check that the token supply + amount <= max_supply
-      let new_supply: u128 = token.supply + amount;
-      assert(new_supply <= token.max_supply);
+      let new_supply: u128 = token_metadata.supply + amount;
+      assert(new_supply <= token_metadata.max_supply);
 
       // Check that whether the token is authorized or not matches the authorized parameter
-      let authorization_required: bool = token.external_authorization_required;
+      let authorization_required: bool = token_metadata.external_authorization_required;
       assert_eq(authorization_required, external_authorization_required);
       assert(authorized_until == 0u32 || !authorization_required);
 
       // Update the token supply
       let new_metadata: TokenMetadata = TokenMetadata {
         token_id: token_id,
-        name: token.name,
-        symbol: token.symbol,
-        decimals: token.decimals,
+        name: token_metadata.name,
+        symbol: token_metadata.symbol,
+        decimals: token_metadata.decimals,
         supply: new_supply,
-        max_supply: token.max_supply,
-        admin: token.admin,
-        external_authorization_required: token.external_authorization_required,
-        external_authorization_party: token.external_authorization_party
+        max_supply: token_metadata.max_supply,
+        admin: token_metadata.admin,
+        external_authorization_required: token_metadata.external_authorization_required,
+        external_authorization_party: token_metadata.external_authorization_party
       };
       registered_tokens.set(token_id, new_metadata);
     });
@@ -369,7 +369,6 @@ program token_registry.aleo {
             authorized_until: authorized_balance.authorized_until
           };
           authorized_balances.set(balance_key, new_authorized_balance);
-          return; // Done burning
         } else {
           authorized_balances.set(balance_key, Balance {
             token_id: token_owner.token_id,
@@ -378,9 +377,7 @@ program token_registry.aleo {
             authorized_until: authorized_balance.authorized_until
           });
           let left_to_burn: u128 = amount - authorized_balance.balance;
-          if (left_to_burn == 0u128) {
-            return; // Done burning
-          } else {
+          if(left_to_burn != 0u128) {
             // Burn remainder from locked balance
             let locked_balance: Balance = balances.get(balance_key);
             let new_locked_balance: Balance = Balance {
@@ -791,13 +788,11 @@ program token_registry.aleo {
     let caller: address = self.caller;
     return (token, final {
       // Check that the transfer record's authorization matches the token's external_authorization_required
-      let token: TokenMetadata = registered_tokens.get(token_id);
-      assert_eq(token.external_authorization_required, external_authorization_required);
-
+      let token_metadata: TokenMetadata = registered_tokens.get(token_id);
+      assert_eq(token_metadata.external_authorization_required, external_authorization_required);
       // Get stored balances for the owner
       let balance: Balance = authorized_balances.get(sender_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
-      let token_metadata: TokenMetadata = registered_tokens.get(token_id);
       assert(block.height <= balance.authorized_until || !token_metadata.external_authorization_required);
       // Update the balance
       let new_balance: Balance = Balance {
@@ -841,8 +836,8 @@ program token_registry.aleo {
 
     return (token, final {
       // Check that the transfer record's authorization matches the token's external_authorization_required
-      let token: TokenMetadata = registered_tokens.get(token_id);
-      assert_eq(token.external_authorization_required, external_authorization_required);
+      let token_metadata: TokenMetadata = registered_tokens.get(token_id);
+      assert_eq(token_metadata.external_authorization_required, external_authorization_required);
 
       // Check that the spender is authorized to spend the amount
       let current_allowance: u128 = allowances.get(allowance_key);
@@ -852,7 +847,6 @@ program token_registry.aleo {
       // Check that the owner has enough authorized balance
       let balance: Balance = authorized_balances.get(owner_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
-      let token_metadata: TokenMetadata = registered_tokens.get(token_id);
       assert(block.height <= balance.authorized_until || !token_metadata.external_authorization_required);
       // Update the balance for the owner
       let new_balance: Balance = Balance {

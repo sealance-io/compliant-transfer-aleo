@@ -214,6 +214,8 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
+        let locked_until = sealed_token.locked_until;
+
         return (
             sender_compliant_record,
             recipient_compliant_record,
@@ -224,7 +226,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.run();
                 transfer_call.run();
 
-                assert(sealed_token.locked_until <= block.height);
+                assert(locked_until <= block.height);
             }
             );
     }
@@ -271,6 +273,8 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
+        let locked_until = sealed_token.locked_until;
+
         return (
             sender_compliant_record,
             recipient_compliant_record,
@@ -281,7 +285,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.run();
                 transfer_call.run();
 
-                assert(sealed_token.locked_until <= block.height);
+                assert(locked_until <= block.height);
             }
         );
     }
@@ -335,6 +339,8 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
+        let locked_until = sealed_token.locked_until;
+
         return (
             sender_compliant_record,
             recipient_compliant_record,
@@ -346,7 +352,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.run();
                 transfer_call.1.run();
 
-                assert(sealed_token.locked_until <= block.height);
+                assert(locked_until <= block.height);
             }
         );
     }
@@ -402,6 +408,8 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
+        let locked_until = sealed_token.locked_until;
+
         return (
             sender_compliant_record,
             recipient_compliant_record,
@@ -413,7 +421,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.2.run();
                 transfer_call.2.run();
 
-                assert(sealed_token.locked_until <= block.height);
+                assert(locked_until <= block.height);
             }
         );
     }
@@ -465,6 +473,8 @@ program sealed_timelock_policy.aleo {
             locked_until: lock_until
         };
 
+        let locked_until = sealed_token.locked_until;
+
         return (
             sender_compliant_record,
             recipient_compliant_record,
@@ -476,7 +486,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.2.run();
                 transfer_call.1.run();
 
-                assert(sealed_token.locked_until <= block.height);
+                assert(locked_until <= block.height);
             }
         );
     }

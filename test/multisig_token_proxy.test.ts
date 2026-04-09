@@ -477,8 +477,7 @@ describe("test multisig token proxy program", () => {
       salt,
     });
     await tx.wait();
-    console.log((tx as any).transaction.execution.transitions[0].outputs);
-    accountRecord = decryptToken((tx as any).transaction.execution.transitions[0].outputs[1].value, accountPrivKey);
+    accountRecord = decryptToken((tx as any).transaction.execution.transitions[1].outputs[1].value, accountPrivKey);
     console.log({ accountRecord });
     expect(accountRecord.amount).toBe(amount * 20n);
     expect(accountRecord.owner).toBe(account);
@@ -520,9 +519,8 @@ describe("test multisig token proxy program", () => {
       salt,
     });
     await tx.wait();
-    console.log((tx as any).transaction.execution.transitions[0].outputs);
     frozenAccountRecord = decryptToken(
-      (tx as any).transaction.execution.transitions[0].outputs[1].value,
+      (tx as any).transaction.execution.transitions[1].outputs[1].value,
       frozenAccountPrivKey,
     );
     expect(frozenAccountRecord.amount).toBe(amount * 20n);
@@ -745,9 +743,8 @@ describe("test multisig token proxy program", () => {
       salt,
     });
     await burnTx.wait();
-    console.log((burnTx as any).transaction.execution.transitions[0].outputs);
 
-    accountRecord = decryptToken((burnTx as any).transaction.execution.transitions[0].outputs[1].value, accountPrivKey);
+    accountRecord = decryptToken((burnTx as any).transaction.execution.transitions[1].outputs[1].value, accountPrivKey);
     expect(accountRecord.amount).toBe(accountRecordBalanceBefore - amount);
     expect(accountRecord.owner).toBe(account);
 
