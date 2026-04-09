@@ -9,7 +9,7 @@ Commands and workflows for developing in this repository.
 npm ci --ignore-scripts
 
 # Install doko-js CLI (required for compiling Leo programs)
-npm install -g @sealance-io/dokojs@1.0.7 --ignore-scripts
+npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 ```
 
 **Critical**: Uses npm workspaces with a single root `package-lock.json`. Never run `npm install` in workspace directories (`packages/*/`).
