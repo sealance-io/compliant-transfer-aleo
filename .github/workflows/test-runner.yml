@@ -102,7 +102,7 @@ jobs:
           DEVNET: ${{ inputs.mode == 'devnet' }}
           SKIP_EXECUTE_PROOF: ${{ inputs.mode == 'devnode' }}
           SKIP_DEPLOY_CERTIFICATE: ${{ inputs.mode == 'devnode' }}
-          CONSENSUS_VERSION: 13
-          CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11,12"
+          CONSENSUS_VERSION: 14
+          CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11,12,13"
           CONSENSUS_CHECK_TIMEOUT: ${{ inputs.mode == 'devnet' && '1500000' || '300000' }}
-          DEBUG: "testcontainers*"
+          DEBUG: "testcontainers:containers"
