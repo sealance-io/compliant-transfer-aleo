@@ -60,7 +60,7 @@ npm run deploy:testnet
 
 - **npm security**: Always `--ignore-scripts` for install/ci commands
 - **Workspace**: Install packages from repo root only, never in subdirectories
-- **Leo version**: v4.0.0 — compile with `dokojs compile`, not `leo build`
+- **Leo version**: v4.0.1 — compile with `dokojs compile`, not `leo build`
 - **dokojs patches**: `@doko-js/*` is patched locally — verify against `/patches` before updating
 - **Node**: v24 (see `.nvmrc`); v20.19.0+ or v22.12.0+ also work
 

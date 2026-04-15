@@ -72,7 +72,7 @@ npm run format:fix          # Auto-fix formatting
 ## Critical Constraints
 
 1. **Node Version**: Use Node 20.19.0+ on the 20.x line, or Node 22.12.0+; the repo default in `.nvmrc` is `v24`
-2. **Leo Version**: Developed with Leo CLI v4.0.0
+2. **Leo Version**: Developed with Leo CLI v4.0.1
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
 4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/devnet)
 5. **npm Security**: Always use `--ignore-scripts` for installs (`npm ci`, `npm install`); build/publish workflows may run scripts as needed

@@ -38,7 +38,7 @@ jobs:
         id: setup-leo
         uses: sealance-io/setup-leo-action@4491779e127672f9c8a251258e06f366f3f9f0bf # v1.1.0
         with:
-          version: "4.0.0"
+          version: "4.0.1"
           rust-version: "1.92.0"
           enable-cache: true
           cache-save: always # Always save to ensure cache is refreshed
