@@ -22,15 +22,16 @@ Job-level permissions: `contents: read` (standard), `security-events: write` (SA
 
 All actions pinned to commit SHAs:
 
-| Action                              | SHA        | Version |
-| ----------------------------------- | ---------- | ------- |
-| `actions/checkout`                  | `08eba0b2` | v4.3.0  |
-| `actions/setup-node`                | `49933ea5` | v4.5.1  |
-| `actions/dependency-review-action`  | `3c4e3dcb` | v4.8.2  |
-| `docker/login-action`               | `5e57cd11` | v3.6.0  |
-| `github/codeql-action/upload-sarif` | `45c37351` | v3.31.9 |
-| `zizmorcore/zizmor-action`          | `e673c391` | v0.2.0  |
-| `sealance-io/setup-leo-action`      | `126611b3` | v1.0.0  |
+| Action                             | SHA        | Version |
+| ---------------------------------- | ---------- | ------- |
+| `actions/checkout`                 | `8e8c483d` | v6.0.1  |
+| `actions/create-github-app-token`  | `f8d387b6` | v3.0.0  |
+| `actions/dependency-review-action` | `3c4e3dcb` | v4.8.2  |
+| `actions/github-script`            | `ed597411` | v8.0.0  |
+| `actions/setup-node`               | `6044e13b` | v6.2.0  |
+| `changesets/action`                | `e0145edc` | v1.5.3  |
+| `sealance-io/setup-leo-action`     | `4491779e` | v1.1.0  |
+| `zizmorcore/zizmor-action`         | `e639db99` | v0.3.0  |
 
 ### 3. Container Image Pinning
 
@@ -76,13 +77,12 @@ Blocked licenses: GPL-2.0, GPL-3.0, AGPL (incompatible with Apache-2.0).
 
 ## Action Trust Levels
 
-| Action                         | Publisher | Trust    |
-| ------------------------------ | --------- | -------- |
-| `actions/*`                    | GitHub    | High     |
-| `github/codeql-action`         | GitHub    | High     |
-| `docker/login-action`          | Docker    | High     |
-| `zizmorcore/zizmor-action`     | Zizmor    | Medium   |
-| `sealance-io/setup-leo-action` | Sealance  | Internal |
+| Action                         | Publisher  | Trust    |
+| ------------------------------ | ---------- | -------- |
+| `actions/*`                    | GitHub     | High     |
+| `changesets/action`            | Changesets | Medium   |
+| `zizmorcore/zizmor-action`     | Zizmor     | Medium   |
+| `sealance-io/setup-leo-action` | Sealance   | Internal |
 
 ## Security Review Checklist
 
