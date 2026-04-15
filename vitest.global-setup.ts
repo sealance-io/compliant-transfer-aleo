@@ -18,7 +18,7 @@ const DEFAULT_ALEO_IMAGE = IS_DEVNET
   ? "ghcr.io/sealance-io/aleo-devnet:v4.0.1-v4.6.0"
   : "ghcr.io/sealance-io/leo-lang:v4.0.1";
 const ALEO_TEST_IMAGE = process.env.ALEO_TEST_IMAGE || DEFAULT_ALEO_IMAGE;
-const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "1";
+const ALEO_VERBOSITY = process.env.ALEO_VERBOSITY || "0";
 const TARGET_CONSENSUS_VERSION = parseInt(process.env.CONSENSUS_VERSION || "14", 10);
 const FIRST_BLOCK = parseInt(process.env.FIRST_BLOCK || "20", 10);
 const CONSENSUS_CHECK_TIMEOUT = parseInt(process.env.CONSENSUS_CHECK_TIMEOUT || "600000", 10); // 10 minutes default
