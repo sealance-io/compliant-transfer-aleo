@@ -24,7 +24,7 @@ Releases are managed using [Changesets](https://github.com/changesets/changesets
          ↓
 3. PR merged to main
          ↓
-4. Versioning workflow creates "Version Packages" PR
+4. Versioning workflow creates "Version Packages" PR (authored by sealance-public-signer[bot], so pull_request CI runs normally)
          ↓
 5. Maintainer reviews and merges release PR
          ↓
@@ -460,6 +460,28 @@ This is the primary security gate for npm publishing. Configure at:
 - Break-glass workflow provides audited emergency path
 - Bypass would allow silent malicious publishes
 
+### `release-automation` Environment (Versioning)
+
+Used by the `version` job in `sdk-release-version.yml` to access the GitHub App private key. Configure at:
+`Repository Settings → Environments → release-automation`
+
+| Setting                 | Value       | Rationale                                                                                             |
+| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| **Required reviewers**  | None        | Job runs automatically on every push to `main`                                                        |
+| **Deployment branches** | `main` only | Prevents other workflows or refs from accessing the environment secret unless they also run on `main` |
+
+**Secrets stored here:**
+
+| Name                                     | Value              |
+| ---------------------------------------- | ------------------ |
+| `SEALANCE_PUBLIC_SIGNER_APP_PRIVATE_KEY` | GitHub App PEM key |
+
+The `SEALANCE_PUBLIC_SIGNER_APP_ID` app identifier is stored as an org-level Actions _variable_ (not a secret) and is accessible without declaring this environment.
+
+**Why a GitHub App instead of `GITHUB_TOKEN`?**
+
+Release PRs created with `GITHUB_TOKEN` do not trigger `pull_request` CI workflows (GitHub suppresses events created by the built-in token). The `sealance-public-signer` app token creates the PR as a distinct bot identity, which allows CI to run on the release PR normally.
+
 ### How Approval Works
 
 When the publish workflow runs:
@@ -521,6 +543,10 @@ After release, verify:
 - Ensure changesets exist in `.changeset/` (not just README.md)
 - Check `sdk-release-version.yml` workflow ran successfully
 - Verify paths filter includes your changes
+- Verify the `release-automation` environment exists and has no required reviewers (a required-reviewer gate blocks automated jobs)
+- Verify the `release-automation` environment deployment branch rule allows `main`
+- Verify `SEALANCE_PUBLIC_SIGNER_APP_ID` is set as an org-level Actions variable
+- Verify `SEALANCE_PUBLIC_SIGNER_APP_PRIVATE_KEY` is set as a secret in the `release-automation` environment
 
 ### OIDC Publish Failed (404)
 

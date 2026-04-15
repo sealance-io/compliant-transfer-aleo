@@ -25,15 +25,26 @@ jobs:
   version:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: release-automation
     permissions:
-      contents: write # Create release PR commits
-      pull-requests: write # Create/update release PR
+      contents: read # Checkout clone only; app token handles all writes
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        with:
+          app-id: ${{ vars.SEALANCE_PUBLIC_SIGNER_APP_ID }}
+          private-key: ${{ secrets.SEALANCE_PUBLIC_SIGNER_APP_PRIVATE_KEY }}
+          repositories: compliant-transfer-aleo
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -49,4 +60,4 @@ jobs:
           title: "chore(release): version packages"
           commit: "chore(release): version packages"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
