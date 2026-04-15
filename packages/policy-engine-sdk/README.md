@@ -14,10 +14,12 @@ SDK for generating Merkle proofs and interacting with Aleo compliance policy pro
 ## Installation
 
 ```bash
-npm install @sealance-io/policy-engine-aleo
+npm install @sealance-io/policy-engine-aleo @provablehq/sdk
 ```
 
 Requires Node.js 20.0.0 or newer.
+
+`@provablehq/sdk` is a peer dependency, so consumer applications must install it alongside `@sealance-io/policy-engine-aleo`.
 
 ## Quick Start
 

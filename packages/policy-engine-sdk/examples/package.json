@@ -9,7 +9,7 @@
     "verify-tx": "tsx verify-non-inclusion-transaction.ts"
   },
   "dependencies": {
-    "@provablehq/sdk": "^0.9.14",
+    "@provablehq/sdk": "^0.10.2",
     "@sealance-io/policy-engine-aleo": "file:.."
   },
   "devDependencies": {

@@ -27,7 +27,7 @@ Before running the examples, ensure you have:
 
    # Install example dependencies
    cd examples
-   npm install
+   npm install --ignore-scripts
    ```
 
    **How the file dependency works:**
@@ -271,7 +271,7 @@ This utility is reusable for any Aleo transaction tracking needs in your applica
 ### Common Issues
 
 **"Cannot find module '@provablehq/sdk'"**
-- Run `npm install` in the examples directory
+- Run `npm install --ignore-scripts` in the examples directory
 
 **"Account has insufficient balance"**
 - Ensure your account has Aleo credits for transaction fees
@@ -354,7 +354,7 @@ npm install  # Refreshes the symlink
 
 **In Production Applications:**
 - Use published package: `"@sealance-io/policy-engine-aleo": "^0.1.0"`
-- Install from npm: `npm install @sealance-io/policy-engine-aleo`
+- Install from npm: `npm install @sealance-io/policy-engine-aleo @provablehq/sdk`
 
 ## License
 
