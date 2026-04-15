@@ -41,7 +41,7 @@
     "@doko-js/core": "1.0.2",
     "@doko-js/utils": "1.0.0",
     "@doko-js/wasm": "1.0.0",
-    "@provablehq/sdk": "0.9.18",
+    "@provablehq/sdk": "0.10.1",
     "@sealance-io/policy-engine-aleo": "workspace:*",
     "@types/node": "^24.12.0",
     "cross-env": "^10.1.0",
