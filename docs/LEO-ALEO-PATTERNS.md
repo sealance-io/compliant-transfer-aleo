@@ -2,7 +2,7 @@
 
 Status: Normative
 Last verified: 2026-04-06
-Scope: Leo v4.0.0; Aleo execution model; programs under /programs in this repository.
+Scope: Leo v4.0.1; Aleo execution model; programs under /programs in this repository.
 External program behavior is treated as assumptions and called out explicitly.
 
 This document is authoritative for how this repo's Leo programs are structured and how agents

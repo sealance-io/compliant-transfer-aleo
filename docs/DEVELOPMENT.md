@@ -98,8 +98,8 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 
 **Default images:**
 
-- Devnode: `ghcr.io/sealance-io/leo-lang:v4.0.0`
-- Devnet: `ghcr.io/sealance-io/aleo-devnet:v4.0.0-v4.6.0`
+- Devnode: `ghcr.io/sealance-io/leo-lang:v4.0.1`
+- Devnet: `ghcr.io/sealance-io/aleo-devnet:v4.0.1-v4.6.0`
 
 When overriding `ALEO_TEST_IMAGE`:
 

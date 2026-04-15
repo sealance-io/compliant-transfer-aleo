@@ -35,7 +35,7 @@ npm run test:select ./test/your-test.test.ts  # Single test
 | `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers                 |
 | `ALEO_TEST_IMAGE`     | Auto    | Docker image override for the mode |
 
-Default images: Devnode `ghcr.io/sealance-io/leo-lang:v4.0.0`, Devnet `ghcr.io/sealance-io/aleo-devnet:v4.0.0-v4.6.0`
+Default images: Devnode `ghcr.io/sealance-io/leo-lang:v4.0.1`, Devnet `ghcr.io/sealance-io/aleo-devnet:v4.0.1-v4.6.0`
 
 - Devnode override: image must provide `/usr/local/bin/leo`; the test harness injects `leo devnode start ...`
 - Devnet override: image must be compatible with the upstream `ghcr.io/sealance-io/aleo-devnet` entrypoint contract and self-start via `ENTRYPOINT`/`CMD`
@@ -53,7 +53,7 @@ Default images: Devnode `ghcr.io/sealance-io/leo-lang:v4.0.0`, Devnet `ghcr.io/s
 export USE_TEST_CONTAINERS=0
 
 # In another terminal:
-docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v4.0.0 \
+docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v4.0.1 \
   leo devnode start --listener-addr 0.0.0.0:3030 \
   --private-key "$ALEO_PRIVATE_KEY" --verbosity 1
 
