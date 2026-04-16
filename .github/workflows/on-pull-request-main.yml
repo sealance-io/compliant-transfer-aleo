@@ -30,14 +30,14 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: write # Required for comment-summary-in-pr
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6.0.1
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # ratchet:actions/dependency-review-action@v4.8.2
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
         with:
-          fail-on-severity: high
-          license-check: false # TODO: check licenses
+          config-file: ./.github/dependency-review-config.yml
 
   # Detect if code changed (skip tests for doc-only PRs)
   # NOTE: This replaces `paths-ignore: ["**/*.md"]` at the workflow level.
@@ -55,7 +55,7 @@ jobs:
       run:
         shell: bash -eo pipefail {0}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6.0.1
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -87,10 +87,10 @@ jobs:
       run:
         shell: bash -eo pipefail {0}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6.0.1
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # ratchet:actions/setup-node@v6.2.0
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           cache: "npm"
           node-version-file: ".nvmrc"
@@ -99,8 +99,6 @@ jobs:
         run: npx lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https
       - name: Install dependencies
         run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
-      - name: Check for vulnerabilities (production only)
-        run: npm audit --audit-level=high --omit=dev
       - name: Run postinstall
         run: npm run postinstall
       - name: Run prettier
@@ -119,7 +117,7 @@ jobs:
       run:
         shell: bash -eo pipefail {0}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6.0.1
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
       - name: Discover test files
@@ -133,7 +131,7 @@ jobs:
 
   # Devnet mode: Matrix of jobs for all tests when explicitly requested
   test-devnet:
-    needs: [detect-changes, linter, discover-tests]
+    needs: [dependency-review, detect-changes, linter, discover-tests]
     if: needs.detect-changes.outputs.code == 'true' && github.event_name == 'workflow_dispatch' && inputs.mode == 'devnet'
     permissions:
       contents: read
@@ -151,7 +149,7 @@ jobs:
 
   # Devnode mode: Single job for all tests (default for PRs and manual runs)
   test-devnode:
-    needs: [detect-changes, linter]
+    needs: [dependency-review, detect-changes, linter]
     if: needs.detect-changes.outputs.code == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'devnode')
     permissions:
       contents: read

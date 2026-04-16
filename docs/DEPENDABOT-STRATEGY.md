@@ -87,7 +87,7 @@ Dependabot is one layer in defense-in-depth:
 
 1. **Install** - `npm ci --ignore-scripts` (deterministic, safe)
 2. **Validate** - `lockfile-lint` (registry sources, HTTPS)
-3. **Scan** - `npm audit` (known vulnerabilities)
+3. **Gate** - `dependency-review-action` (PR diff, high+ vulnerabilities)
 4. **Update** - Dependabot (automated with cooldowns)
 5. **Review** - Human approval before merge
 6. **Audit** - `zizmor` (weekly workflow security)

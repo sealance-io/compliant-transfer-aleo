@@ -20,14 +20,14 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: write # Required for comment-summary-in-pr
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
         with:
-          fail-on-severity: high
-          license-check: false # TODO: check licenses
+          config-file: ./.github/dependency-review-config.yml
 
   # Detect if SDK code changed (skip for non-SDK or docs-only changes)
   # NOTE: This replaces workflow-level `paths` filter. Equivalent to:
@@ -102,14 +102,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
 
-      - name: Check for vulnerabilities (production only)
-        run: npm audit --audit-level=high --omit=dev
-
       - name: Run prettier
         run: npm run format --workspace=@sealance-io/policy-engine-aleo
 
   test:
-    needs: [detect-changes, linter]
+    needs: [dependency-review, detect-changes, linter]
     if: needs.detect-changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15

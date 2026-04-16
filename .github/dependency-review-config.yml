@@ -1,0 +1,25 @@
+# Dependency Review Action configuration
+# https://github.com/actions/dependency-review-action
+#
+# Shared by: on-pull-request-main.yml, on-pull-request-main-sdk.yml
+# Centralizes config to prevent drift between PR workflows.
+
+# Block PRs that introduce high or critical vulnerabilities
+fail-on-severity: high
+
+# Check all dependency scopes (action default is runtime only)
+fail-on-scopes:
+  - runtime
+  - development
+  - unknown
+
+# License checking deferred — manual check available via `npm run lint:licenses`
+license-check: false
+
+# Post vulnerability summary as a PR comment for developer visibility
+# Requires pull-requests: write on the dependency-review job
+# Best-effort: silently skipped on fork PRs where GITHUB_TOKEN is read-only
+comment-summary-in-pr: always
+
+# Disable OpenSSF Scorecard — not used; v4.9.0 skips the API call entirely when false
+show-openssf-scorecard: false

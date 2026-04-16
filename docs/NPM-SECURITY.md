@@ -36,7 +36,7 @@ Validates: npm registry only, HTTPS enforcement, SHA-512 integrity hashes.
 
 | Environment | Command                            | Threshold |
 | ----------- | ---------------------------------- | --------- |
-| CI          | `npm audit --audit-level=high`     | High+     |
+| CI (PR)     | `dependency-review-action`         | High+     |
 | Local       | `npm audit --audit-level=moderate` | Moderate+ |
 
 ## CI Workflow
@@ -44,18 +44,17 @@ Validates: npm registry only, HTTPS enforcement, SHA-512 integrity hashes.
 ```yaml
 - run: npx lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https
 - run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
-- run: npm audit --audit-level=high
 - run: npm run postinstall
 ```
 
 ## Attack Prevention
 
-| Attack                 | Prevention                                    |
-| ---------------------- | --------------------------------------------- |
-| Malicious post-install | `--ignore-scripts` blocks automatic execution |
-| Lockfile poisoning     | `lockfile-lint` validates registry URLs       |
-| Dependency confusion   | Lockfile validation + registry restrictions   |
-| Compromised update     | Lockfile pinning + `npm audit` + PR review    |
+| Attack                 | Prevention                                                |
+| ---------------------- | --------------------------------------------------------- |
+| Malicious post-install | `--ignore-scripts` blocks automatic execution             |
+| Lockfile poisoning     | `lockfile-lint` validates registry URLs                   |
+| Dependency confusion   | Lockfile validation + registry restrictions               |
+| Compromised update     | Lockfile pinning + `dependency-review-action` + PR review |
 
 ## Dependabot Cooldowns
 
@@ -69,17 +68,17 @@ Security updates bypass all cooldowns. See `.github/dependabot.yml` and `docs/DE
 
 ## Tooling Status
 
-| Tool                       | Purpose                    | Status  |
-| -------------------------- | -------------------------- | ------- |
-| `npm ci`                   | Deterministic installation | Active  |
-| `--ignore-scripts`         | Block post-install scripts | Active  |
-| `lockfile-lint`            | Lockfile validation        | Active  |
-| `npm audit`                | Vulnerability scanning     | Active  |
-| `dependency-review-action` | PR vuln + license gating   | Active  |
-| `zizmor`                   | Workflow security          | Active  |
-| Dependabot                 | Automated updates          | Active  |
-| npm provenance             | Build attestations         | Planned |
-| OIDC publishing            | Token-less publishing      | Planned |
+| Tool                       | Purpose                    | Status     |
+| -------------------------- | -------------------------- | ---------- |
+| `npm ci`                   | Deterministic installation | Active     |
+| `--ignore-scripts`         | Block post-install scripts | Active     |
+| `lockfile-lint`            | Lockfile validation        | Active     |
+| `npm audit`                | Vulnerability scanning     | Local only |
+| `dependency-review-action` | PR vulnerability gating    | Active     |
+| `zizmor`                   | Workflow security          | Active     |
+| Dependabot                 | Automated updates          | Active     |
+| npm provenance             | Build attestations         | Planned    |
+| OIDC publishing            | Token-less publishing      | Planned    |
 
 ## Incident Response
 
