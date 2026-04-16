@@ -16,7 +16,7 @@ All workflows pass zizmor audits (regular, pedantic, auditor modes). Weekly scan
 permissions: {} # workflow-level default
 ```
 
-Job-level permissions: `contents: read` (standard), `security-events: write` (SARIF upload), `packages: read` (GHCR pulls).
+Job-level permissions: `contents: read` (standard), `security-events: write` (SARIF upload), `packages: read` (GHCR pulls), `pull-requests: write` (dependency-review PR comment).
 
 ### 2. Action Pinning
 
@@ -26,7 +26,7 @@ All actions pinned to commit SHAs:
 | ---------------------------------- | ---------- | ------- |
 | `actions/checkout`                 | `8e8c483d` | v6.0.1  |
 | `actions/create-github-app-token`  | `f8d387b6` | v3.0.0  |
-| `actions/dependency-review-action` | `3c4e3dcb` | v4.8.2  |
+| `actions/dependency-review-action` | `2031cfc0` | v4.9.0  |
 | `actions/github-script`            | `ed597411` | v8.0.0  |
 | `actions/setup-node`               | `6044e13b` | v6.2.0  |
 | `changesets/action`                | `e0145edc` | v1.5.3  |
@@ -68,12 +68,12 @@ concurrency:
 
 ### 9. Dependency Scanning
 
-| Tool                       | Scope         | When          |
-| -------------------------- | ------------- | ------------- |
-| `npm audit`                | Full lockfile | After install |
-| `dependency-review-action` | PR diff only  | PR gate       |
+| Tool                       | Scope         | When       |
+| -------------------------- | ------------- | ---------- |
+| `dependency-review-action` | PR diff only  | PR gate    |
+| `npm audit`                | Full lockfile | Local only |
 
-Blocked licenses: GPL-2.0, GPL-3.0, AGPL (incompatible with Apache-2.0).
+Blocked licenses: GPL-2.0, GPL-3.0, AGPL (checked manually via `npm run lint:licenses`; dependency-review license checking planned).
 
 ## Action Trust Levels
 
