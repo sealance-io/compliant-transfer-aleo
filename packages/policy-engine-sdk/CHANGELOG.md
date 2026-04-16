@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- [#235](https://github.com/sealance-io/compliant-transfer-aleo/pull/235) [`7e545c5`](https://github.com/sealance-io/compliant-transfer-aleo/commit/7e545c57c40042dcc703b90bb5c8559b65a1b9f6) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update the SDK peer dependency to require `@provablehq/sdk@^0.10.2` and align local examples with the same version.
+
 ## 0.2.0
 
 ### Minor Changes
