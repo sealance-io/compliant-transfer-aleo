@@ -85,9 +85,38 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Package version: $VERSION"
 
+  # Audit runtime dependencies before publish approval
+  # Runs before the environment gate so maintainers see the result first
+  audit-runtime:
+    needs: check-release
+    if: needs.check-release.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          # cache: "npm"  # Disabled — consistent with publish-npm security stance
+          node-version-file: ".nvmrc"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Audit runtime dependencies
+        run: npm audit --workspace=@sealance-io/policy-engine-aleo --omit=dev --omit=peer --audit-level=high
+
   # Publish to npm registry using OIDC (no token required)
   publish-npm:
-    needs: check-release
+    needs: [check-release, audit-runtime]
     if: needs.check-release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -243,7 +272,7 @@ jobs:
   # Rollup status for tracking
   release-status:
     name: Release Status
-    needs: [check-release, publish-npm, create-release]
+    needs: [check-release, audit-runtime, publish-npm, create-release]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -256,6 +285,7 @@ jobs:
         run: |
           echo "::group::Job Results"
           echo "Should publish: $SHOULD_PUBLISH"
+          echo "Runtime audit: $AUDIT_RESULT"
           echo "npm publish: $NPM_RESULT"
           echo "Release: $RELEASE_RESULT"
           echo "::endgroup::"
@@ -263,6 +293,12 @@ jobs:
           if [[ "$SHOULD_PUBLISH" != "true" ]]; then
             echo "::notice::Not a release PR - skipped publishing"
             exit 0
+          fi
+
+          # Runtime audit must pass
+          if [[ "$AUDIT_RESULT" != "success" ]]; then
+            echo "::error::Runtime dependency audit failed - check for vulnerabilities in SDK dependencies"
+            exit 1
           fi
 
           # npm publish is REQUIRED
@@ -280,5 +316,6 @@ jobs:
           echo "::notice::Release completed successfully (npm + GitHub Release)"
         env:
           SHOULD_PUBLISH: ${{ needs.check-release.outputs.should_publish }}
+          AUDIT_RESULT: ${{ needs.audit-runtime.result }}
           NPM_RESULT: ${{ needs.publish-npm.result }}
           RELEASE_RESULT: ${{ needs.create-release.result }}
