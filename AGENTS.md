@@ -20,8 +20,10 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 
 ```bash
 # Setup
-npm ci --ignore-scripts
-npm install -g @sealance-io/dokojs@1.0.7 --ignore-scripts
+npm run lint:lockfile
+npm ci --ignore-scripts --allow-git=none
+npm run postinstall
+npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 
 # Build
 dokojs compile              # Compile Leo programs
@@ -75,7 +77,7 @@ npm run format:fix          # Auto-fix formatting
 2. **Leo Version**: Developed with Leo CLI v4.0.1
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
 4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/devnet)
-5. **npm Security**: Always use `--ignore-scripts` for installs (`npm ci`, `npm install`); build/publish workflows may run scripts as needed
+5. **npm Security**: Always use `--ignore-scripts` for installs; use `--allow-git=none` with `npm ci`. Build/publish workflows may run scripts as needed
 6. **Dokojs Patches**: `@doko-js/*` blocked in dependabot - verify against `/patches` before updating
 
 ## CI/CD Status Checks

@@ -6,7 +6,9 @@ Commands and workflows for developing in this repository.
 
 ```bash
 # Install from repository root (uses npm workspaces)
-npm ci --ignore-scripts
+npm run lint:lockfile
+npm ci --ignore-scripts --allow-git=none
+npm run postinstall
 
 # Install doko-js CLI (required for compiling Leo programs)
 npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts

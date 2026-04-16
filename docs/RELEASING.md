@@ -353,7 +353,9 @@ git clone https://github.com/sealance-io/compliant-transfer-aleo.git
 cd compliant-transfer-aleo
 
 # 2. Install and build
-npm ci
+npm run lint:lockfile
+npm ci --ignore-scripts --allow-git=none
+npm run postinstall
 npm run build --workspace=@sealance-io/policy-engine-aleo
 
 # 3. Login to npm (requires 2FA)

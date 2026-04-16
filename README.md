@@ -79,8 +79,10 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
    # Navigate to repository root
    cd compliant-transfer-aleo
 
-   # Install all dependencies (root + SDK workspace)
-   npm ci --ignore-scripts
+   # Validate lockfile, install all dependencies, then apply committed patches
+   npm run lint:lockfile
+   npm ci --ignore-scripts --allow-git=none
+   npm run postinstall
    ```
 
    **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.

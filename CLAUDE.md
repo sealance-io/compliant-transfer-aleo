@@ -10,7 +10,9 @@ Monorepo for compliant token transfers on the Aleo blockchain. Leo programs (sma
 
 ```bash
 # Setup
-npm ci --ignore-scripts                              # ALWAYS use --ignore-scripts
+npm run lint:lockfile                                # Explicit lockfile validation
+npm ci --ignore-scripts --allow-git=none            # ALWAYS use --ignore-scripts
+npm run postinstall                                 # Apply committed patches explicitly
 npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 
 # Build
@@ -58,7 +60,7 @@ npm run deploy:testnet
 
 ## Constraints
 
-- **npm security**: Always `--ignore-scripts` for install/ci commands
+- **npm security**: Always `--ignore-scripts` for install/ci commands and use `--allow-git=none` with `npm ci`
 - **Workspace**: Install packages from repo root only, never in subdirectories
 - **Leo version**: v4.0.1 — compile with `dokojs compile`, not `leo build`
 - **dokojs patches**: `@doko-js/*` is patched locally — verify against `/patches` before updating
