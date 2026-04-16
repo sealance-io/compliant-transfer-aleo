@@ -236,13 +236,15 @@ When reviewing PRs that modify the SDK:
 
 2. **Review & Merge**: Maintainer reviews the version bumps and CHANGELOG updates, then merges
 
-3. **Approval Required**: When the release PR is merged, the resulting `push` to `main` triggers `sdk-release-publish.yml`, which then pauses for admin approval (GitHub environment protection)
+3. **Audit + Approval**: When the release PR is merged, the resulting `push` to `main` triggers `sdk-release-publish.yml`:
+   - Runtime dependency audit runs automatically (blocks on high/critical vulns in `@scure/base` tree)
+   - If audit passes, workflow pauses for admin approval (GitHub environment protection)
 
 4. **Publish**: After approval:
    - Package is published to npm via OIDC (with provenance and retry logic)
    - GitHub Release is created with tag (idempotent - safe to re-run)
 
-If the publish workflow itself was broken at merge time, maintainers can run `sdk-release-publish.yml` manually from `main` after the workflow fix lands. The same `npm-publish` environment approval still applies.
+If the audit blocks a release, fix the vulnerable dependency, merge to main, then manually dispatch `sdk-release-publish.yml`. If the publish workflow itself was broken at merge time, the same manual dispatch path applies. The `npm-publish` environment approval still applies in both cases.
 
 ### Pre-release Versions (Alpha/Beta/RC)
 

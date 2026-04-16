@@ -34,10 +34,11 @@ Validates: npm registry only, HTTPS enforcement, SHA-512 integrity hashes.
 
 ### 4. Vulnerability Scanning
 
-| Environment | Command                            | Threshold |
-| ----------- | ---------------------------------- | --------- |
-| CI (PR)     | `dependency-review-action`         | High+     |
-| Local       | `npm audit --audit-level=moderate` | Moderate+ |
+| Environment  | Command                                    | Threshold |
+| ------------ | ------------------------------------------ | --------- |
+| CI (PR)      | `dependency-review-action`                 | High+     |
+| CI (publish) | `npm audit` (SDK workspace, omit dev+peer) | High+     |
+| Local        | `npm audit --audit-level=moderate`         | Moderate+ |
 
 ## CI Workflow
 
@@ -68,17 +69,17 @@ Security updates bypass all cooldowns. See `.github/dependabot.yml` and `docs/DE
 
 ## Tooling Status
 
-| Tool                       | Purpose                    | Status     |
-| -------------------------- | -------------------------- | ---------- |
-| `npm ci`                   | Deterministic installation | Active     |
-| `--ignore-scripts`         | Block post-install scripts | Active     |
-| `lockfile-lint`            | Lockfile validation        | Active     |
-| `npm audit`                | Vulnerability scanning     | Local only |
-| `dependency-review-action` | PR vulnerability gating    | Active     |
-| `zizmor`                   | Workflow security          | Active     |
-| Dependabot                 | Automated updates          | Active     |
-| npm provenance             | Build attestations         | Planned    |
-| OIDC publishing            | Token-less publishing      | Planned    |
+| Tool                       | Purpose                    | Status               |
+| -------------------------- | -------------------------- | -------------------- |
+| `npm ci`                   | Deterministic installation | Active               |
+| `--ignore-scripts`         | Block post-install scripts | Active               |
+| `lockfile-lint`            | Lockfile validation        | Active               |
+| `npm audit`                | Vulnerability scanning     | Publish gate + local |
+| `dependency-review-action` | PR vulnerability gating    | Active               |
+| `zizmor`                   | Workflow security          | Active               |
+| Dependabot                 | Automated updates          | Active               |
+| npm provenance             | Build attestations         | Planned              |
+| OIDC publishing            | Token-less publishing      | Planned              |
 
 ## Incident Response
 

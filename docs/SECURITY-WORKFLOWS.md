@@ -68,10 +68,11 @@ concurrency:
 
 ### 9. Dependency Scanning
 
-| Tool                       | Scope         | When       |
-| -------------------------- | ------------- | ---------- |
-| `dependency-review-action` | PR diff only  | PR gate    |
-| `npm audit`                | Full lockfile | Local only |
+| Tool                                       | Scope             | When         |
+| ------------------------------------------ | ----------------- | ------------ |
+| `dependency-review-action`                 | PR diff only      | PR gate      |
+| `npm audit` (SDK workspace, omit dev+peer) | Runtime deps only | Publish gate |
+| `npm audit`                                | Full lockfile     | Local only   |
 
 Blocked licenses: GPL-2.0, GPL-3.0, AGPL (checked manually via `npm run lint:licenses`; dependency-review license checking planned).
 
