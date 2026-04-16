@@ -24,14 +24,14 @@ All actions pinned to commit SHAs:
 
 | Action                             | SHA        | Version |
 | ---------------------------------- | ---------- | ------- |
-| `actions/checkout`                 | `8e8c483d` | v6.0.1  |
+| `actions/checkout`                 | `de0fac2e` | v6.0.2  |
 | `actions/create-github-app-token`  | `f8d387b6` | v3.0.0  |
 | `actions/dependency-review-action` | `2031cfc0` | v4.9.0  |
 | `actions/github-script`            | `ed597411` | v8.0.0  |
-| `actions/setup-node`               | `6044e13b` | v6.2.0  |
-| `changesets/action`                | `e0145edc` | v1.5.3  |
+| `actions/setup-node`               | `53b83947` | v6.3.0  |
+| `changesets/action`                | `6a0a831f` | v1.7.0  |
 | `sealance-io/setup-leo-action`     | `4491779e` | v1.1.0  |
-| `zizmorcore/zizmor-action`         | `e639db99` | v0.3.0  |
+| `zizmorcore/zizmor-action`         | `71321a20` | v0.5.2  |
 
 ### 3. Container Image Pinning
 
