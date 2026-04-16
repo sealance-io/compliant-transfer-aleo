@@ -4,8 +4,9 @@
 # The root workspace manages all dependencies for both the root package and
 # the @sealance-io/policy-engine-aleo SDK in packages/policy-engine-sdk.
 #
-# Security note: This project uses lockfile-lint and npm ci with --ignore-scripts
-# for supply chain attack prevention. See docs/NPM-SECURITY.md for details.
+# Security note: This project uses a committed lockfile validator and npm ci
+# with --ignore-scripts --allow-git=none for supply chain attack prevention.
+# See docs/NPM-SECURITY.md for details.
 
 version: 2
 

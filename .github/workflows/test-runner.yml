@@ -74,7 +74,7 @@ jobs:
       # Note: Lockfile validation happens in caller workflow's linter job
       # Not duplicated here to avoid running with GITHUB_TOKEN in environment
       - name: Install dependencies
-        run: npm ci --prefer-offline --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
 
       - name: Run postinstall
         run: npm run postinstall

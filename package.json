@@ -17,7 +17,7 @@
     "test": "test"
   },
   "scripts": {
-    "preinstall": "npx lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https",
+    "lint:lockfile": "node scripts/validate-lockfile.mjs",
     "postinstall": "patch-package",
     "changeset": "changeset",
     "version": "changeset version",

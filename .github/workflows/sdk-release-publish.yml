@@ -109,7 +109,7 @@ jobs:
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm ci --ignore-scripts --allow-git=none --no-audit --no-fund
 
       - name: Audit runtime dependencies
         run: npm audit --workspace=@sealance-io/policy-engine-aleo --omit=dev --omit=peer --audit-level=high
@@ -141,7 +141,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm ci --ignore-scripts --allow-git=none --no-audit --no-fund
 
       - name: Build SDK
         run: npm run build --workspace=@sealance-io/policy-engine-aleo
