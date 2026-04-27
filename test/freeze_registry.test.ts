@@ -19,7 +19,7 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
-import { Account } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { isProgramInitialized } from "../lib/Initalize";
 import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
@@ -223,7 +223,7 @@ describe("test freeze registry program", () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let randomAddress = new Account().address().to_string();
+    let randomAddress = safeAddress();
     let tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await tx.wait();
     isAccountFrozen = await freezeRegistryContract.freeze_list(randomAddress);
@@ -234,7 +234,7 @@ describe("test freeze registry program", () => {
     expect(frozenAccountByIndex).toBe(randomAddress);
     expect(lastIndex).toBe(2);
 
-    randomAddress = new Account().address().to_string();
+    randomAddress = safeAddress();
     // Cannot freeze an account when the frozen list index is greater than the last index
     rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
       randomAddress,

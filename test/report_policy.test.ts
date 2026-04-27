@@ -28,7 +28,7 @@ import { deployIfNotDeployed } from "../lib/Deploy";
 import { registerTokenProgram } from "../lib/Token";
 import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
 import type { Token } from "../artifacts/js/types/token_registry";
-import { Account } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { isProgramInitialized } from "../lib/Initalize";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 
@@ -318,7 +318,7 @@ describe("test sealed_report_policy program", () => {
     expect(frozenAccountByIndex).toBe(frozenAccount);
     expect(lastIndex).toBe(1);
 
-    let randomAddress = new Account().address().to_string();
+    let randomAddress = safeAddress();
     tx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await tx.wait();
     isAccountFrozen = await reportPolicyContract.freeze_list(randomAddress);
@@ -329,7 +329,7 @@ describe("test sealed_report_policy program", () => {
     expect(frozenAccountByIndex).toBe(randomAddress);
     expect(lastIndex).toBe(2);
 
-    randomAddress = new Account().address().to_string();
+    randomAddress = safeAddress();
     // Cannot freeze an account when the frozen list index is greater than the last index
     rejectedTx = await reportPolicyContractForFreezeListManager.update_freeze_list(randomAddress, true, 10, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();

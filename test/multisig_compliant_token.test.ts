@@ -31,7 +31,8 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Account, AleoNetworkClient } from "@provablehq/sdk";
+import { AleoNetworkClient } from "@provablehq/sdk";
+import { safeAddress, safeAccount } from "./utils/Accounts";
 import { decryptToken } from "../artifacts/js/leo2js/multisig_compliant_token";
 import { Token } from "../artifacts/js/types/multisig_compliant_token";
 import { Credentials } from "../artifacts/js/types/multisig_compliant_token";
@@ -137,10 +138,10 @@ const multiSigContract = new Multisig_coreContract({
   privateKey: deployerPrivKey,
 });
 
-const managerWalletId = new Account().address().to_string();
-const pauseWalletId = new Account().address().to_string();
-const minterWalletId = new Account().address().to_string();
-const burnerWalletId = new Account().address().to_string();
+const managerWalletId = safeAddress();
+const pauseWalletId = safeAddress();
+const minterWalletId = safeAddress();
+const burnerWalletId = safeAddress();
 
 const amount = 10n;
 let root: bigint;
@@ -577,7 +578,7 @@ describe("test multisig_compliant_token program", () => {
     role = await tokenContract.address_to_role(adminAddress);
     expect(role).toBe(MANAGER_ROLE);
 
-    const randomAddress = new Account().address().to_string();
+    const randomAddress = safeAddress();
     const randomRole = [MANAGER_ROLE, BURNER_ROLE, MINTER_ROLE, PAUSE_ROLE, MINTER_ROLE + BURNER_ROLE][
       Math.floor(Math.random() * 5)
     ];
@@ -723,7 +724,7 @@ describe("test multisig_compliant_token program", () => {
     let tokenInfo = await tokenContract.token_info(true);
     const supply = tokenInfo.supply;
 
-    const randomAccount = new Account();
+    const randomAccount = safeAccount();
     const randomPrivKey = randomAccount.privateKey().to_string();
     const randomAddress = randomAccount.address().to_string();
     const salt = BigInt(Math.floor(Math.random() * 100000));
@@ -853,7 +854,7 @@ describe("test multisig_compliant_token program", () => {
     let tokenInfo = await tokenContract.token_info(true);
     const supply = tokenInfo.supply;
 
-    const randomAddress = new Account().address().to_string();
+    const randomAddress = safeAddress();
     const salt = BigInt(Math.floor(Math.random() * 100000));
     const multisigOp = {
       op: MULTISIG_OP_MINT_PUBLIC,
@@ -1408,7 +1409,7 @@ describe("test multisig_compliant_token program", () => {
     // It's impossible to get the credentials record with an invalid merkle proof
     await expect(tokenContractForFrozenAccount.get_credentials(frozenAccountMerkleProof)).rejects.toThrow();
 
-    const randomAddress = new Account().address().to_string();
+    const randomAddress = safeAddress();
     const leaves = generateLeaves([randomAddress]);
     const tree = buildTree(leaves);
     const senderLeafIndices = getLeafIndices(tree, account);
@@ -1758,7 +1759,7 @@ describe("test multisig_compliant_token program", () => {
   });
 
   test(`test expired multisig requests`, async () => {
-    const randomWalletId = new Account().address().to_string();
+    const randomWalletId = safeAddress();
     await createWallet(randomWalletId, 1, [deployerAddress, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
     const updateWalletTx = await tokenContractForAdmin.update_wallet_id_role(
       randomWalletId,

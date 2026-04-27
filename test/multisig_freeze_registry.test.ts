@@ -27,7 +27,7 @@ import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
 import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
-import { Account } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { isProgramInitialized } from "../lib/Initalize";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
@@ -70,8 +70,8 @@ const multiSigContract = new Multisig_coreContract({
   privateKey: deployerPrivKey,
 });
 
-const managerWalletId = new Account().address().to_string();
-const freezeListManagerWalletId = new Account().address().to_string();
+const managerWalletId = safeAddress();
+const freezeListManagerWalletId = safeAddress();
 
 let root: bigint;
 
@@ -566,7 +566,7 @@ describe("test multisig freeze registry program", () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let randomAddress = new Account().address().to_string();
+    let randomAddress = safeAddress();
     let tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
       randomAddress,
       true,
@@ -584,7 +584,7 @@ describe("test multisig freeze registry program", () => {
     expect(frozenAccountByIndex).toBe(randomAddress);
     expect(lastIndex).toBe(2);
 
-    randomAddress = new Account().address().to_string();
+    randomAddress = safeAddress();
     // Cannot freeze an account when the frozen list index is greater than the last index
     rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
       randomAddress,
@@ -606,7 +606,7 @@ describe("test multisig freeze registry program", () => {
     );
     await expect(rejectedTx.wait()).rejects.toThrow();
 
-    randomAddress = new Account().address().to_string();
+    randomAddress = safeAddress();
 
     // Even though the caller is a freeze list manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
@@ -679,17 +679,10 @@ describe("test multisig freeze registry program", () => {
     await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await freezeRegistryContract.update_freeze_list(
-      new Account().address().to_string(),
-      true,
-      3,
-      root,
-      root,
-      {
-        wallet_id: freezeListManagerWalletId,
-        salt,
-      },
-    );
+    rejectedTx = await freezeRegistryContract.update_freeze_list(safeAddress(), true, 3, root, root, {
+      wallet_id: freezeListManagerWalletId,
+      salt,
+    });
     await expect(rejectedTx.wait()).rejects.toThrow();
     // If the is_frozen doesn't match the is_frozen in the request the transaction will fail
     rejectedTx = await freezeRegistryContract.update_freeze_list(randomAddress, false, 3, root, root, {
@@ -910,7 +903,7 @@ describe("test multisig freeze registry program", () => {
   });
 
   test(`test expired multisig requests`, async () => {
-    const randomWalletId = new Account().address().to_string();
+    const randomWalletId = safeAddress();
     await createWallet(randomWalletId, 1, [deployerAddress, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
     const updateWalletTx = await freezeRegistryContractForAdmin.update_wallet_id_role(
       randomWalletId,

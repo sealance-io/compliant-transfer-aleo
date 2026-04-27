@@ -18,7 +18,7 @@ import {
 } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Account } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { initializeProgram } from "../lib/Initalize";
@@ -84,10 +84,10 @@ const tokenProxyContractForFrozenAccount = new Multisig_token_proxyContract({
   mode,
   privateKey: frozenAccountPrivKey,
 });
-const managerWalletId = new Account().address().to_string();
-const pauseWalletId = new Account().address().to_string();
-const minterWalletId = new Account().address().to_string();
-const burnerWalletId = new Account().address().to_string();
+const managerWalletId = safeAddress();
+const pauseWalletId = safeAddress();
+const minterWalletId = safeAddress();
+const burnerWalletId = safeAddress();
 
 const amount = 10n;
 
@@ -337,7 +337,7 @@ describe("test multisig token proxy program", () => {
   });
 
   test(`test update_role`, async () => {
-    const randomAddress = new Account().address().to_string();
+    const randomAddress = safeAddress();
     const randomRole = [MANAGER_ROLE, BURNER_ROLE, MINTER_ROLE, PAUSE_ROLE, MINTER_ROLE + BURNER_ROLE][
       Math.floor(Math.random() * 5)
     ];
