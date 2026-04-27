@@ -19,7 +19,7 @@ import {
 } from "../lib/Constants";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Account } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
 import { Multisig_coreContract } from "../artifacts/js/multisig_core";
 import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
@@ -64,8 +64,8 @@ const freezeRegistryProxyContractForAdmin = new Multisig_freezelist_proxyContrac
   privateKey: adminPrivKey,
 });
 
-const managerWalletId = new Account().address().to_string();
-const freezeListManagerWalletId = new Account().address().to_string();
+const managerWalletId = safeAddress();
+const freezeListManagerWalletId = safeAddress();
 
 const root = 1n;
 
@@ -382,7 +382,7 @@ describe("test multisig_freezelist_proxy program", () => {
   test(`test update_freeze_list`, async () => {
     const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
     const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-    const randomAddress = new Account().address().to_string();
+    const randomAddress = safeAddress();
 
     const salt = BigInt(Math.floor(Math.random() * 100000));
     const multisigOp = {
@@ -449,7 +449,7 @@ describe("test multisig_freezelist_proxy program", () => {
 
     // If the address doesn't match the address in the request the transaction will fail
     rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      new Account().address().to_string(),
+      safeAddress(),
       true,
       multisigOp.frozen_index,
       currentRoot,

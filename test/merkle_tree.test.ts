@@ -9,8 +9,7 @@ import {
   convertFieldToAddress,
   generateLeaves,
 } from "@sealance-io/policy-engine-aleo";
-import { Account } from "@provablehq/sdk";
-import { generateAddressesParallel } from "./utils/Accounts";
+import { generateAddressesParallel, safeAddress } from "./utils/Accounts";
 
 const mode = ExecutionMode.SnarkExecute;
 const contract = new Merkle_treeContract({ mode });
@@ -25,7 +24,7 @@ describe("merkle_tree program tests", () => {
     const size = 2 ** depth;
     const addresses = Array(size)
       .fill(null)
-      .map(() => new Account().address().to_string());
+      .map(() => safeAddress());
     const sortedAddresses = addresses
       .map(addr => ({
         address: addr,
@@ -41,7 +40,7 @@ describe("merkle_tree program tests", () => {
     // Generate a new address that's guaranteed to be larger than the smallest and smaller than the largest
     let newAddress = smallestAddress;
     while (convertAddressToField(newAddress) <= smallestField || convertAddressToField(newAddress) >= largestField) {
-      newAddress = new Account().address().to_string();
+      newAddress = safeAddress();
     }
 
     sortedAddresses[0] = {
@@ -51,7 +50,7 @@ describe("merkle_tree program tests", () => {
     // Generate a new address that's guaranteed to be larger than the smallest and smaller than the largest
     newAddress = largestAddress;
     while (convertAddressToField(newAddress) <= smallestField || convertAddressToField(newAddress) >= largestField) {
-      newAddress = new Account().address().to_string();
+      newAddress = safeAddress();
     }
     sortedAddresses[size - 1] = {
       address: newAddress,
@@ -99,7 +98,7 @@ describe("merkle_tree program tests", () => {
     // Generate a new address that's guaranteed to be larger than the smallest
     let newAddress = smallestAddress;
     while (convertAddressToField(newAddress) <= sortedAddresses[0].field) {
-      newAddress = new Account().address().to_string();
+      newAddress = safeAddress();
     }
 
     sortedAddresses[0] = {
@@ -110,7 +109,7 @@ describe("merkle_tree program tests", () => {
     // Generate a new address that's guaranteed to be smaller than the largest
     newAddress = largestAddress;
     while (convertAddressToField(newAddress) >= sortedAddresses[size - 1].field) {
-      newAddress = new Account().address().to_string();
+      newAddress = safeAddress();
     }
 
     sortedAddresses[size - 1] = {
@@ -152,7 +151,7 @@ describe("merkle_tree program tests", () => {
     const sortedAddresses = generateLeaves(addresses, depth);
     const tree = buildTree(sortedAddresses);
 
-    const checkedAddress = new Account().address().to_string();
+    const checkedAddress = safeAddress();
     const [leftLeafIndex, rightLeafIndex] = getLeafIndices(tree, checkedAddress);
 
     const merkleProof0 = getSiblingPath(tree, leftLeafIndex, MAX_TREE_DEPTH);
@@ -178,7 +177,7 @@ describe("merkle_tree program tests", () => {
     const sortedAddresses = generateLeaves(addresses, depth);
     const tree = buildTree(sortedAddresses);
 
-    const checkedAddress = new Account().address().to_string();
+    const checkedAddress = safeAddress();
     const [leftLeafIndex, rightLeafIndex] = getLeafIndices(tree, checkedAddress);
 
     const merkleProof0 = getSiblingPath(tree, leftLeafIndex, MAX_TREE_DEPTH);

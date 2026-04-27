@@ -1,5 +1,41 @@
 import { Worker } from "worker_threads";
 import os from "os";
+import { Account } from "@provablehq/sdk";
+
+// Leo CLI parses arguments with these suffixes as typed literals, causing it to
+// reject valid Aleo addresses. Listed longest-first so the most-specific suffix
+// matches first. Reachability from the bech32 charset (excludes '1','b','i','o'):
+//   Reachable:   u8 (~1/1 024), u32 (~1/32 768), u64 (~1/32 768), scalar (~1/32^6)
+//   Unreachable: u16, u128 (need '1')  |  i-types, field (need 'i')  |  group (needs 'o')
+// Unreachable types are included for defense-in-depth.
+const LEO_TYPE_SUFFIXES = [
+  // unsigned integers
+  "u128", "u64", "u32", "u16", "u8",
+  // signed integers
+  "i128", "i64", "i32", "i16", "i8",
+  // other primitive types
+  "scalar", "field", "group",
+];
+
+function hasDangerousSuffix(address: string): boolean {
+  return LEO_TYPE_SUFFIXES.some(s => address.endsWith(s));
+}
+
+export function safeAddress(): string {
+  let addr: string;
+  do {
+    addr = new Account().address().to_string();
+  } while (hasDangerousSuffix(addr));
+  return addr;
+}
+
+export function safeAccount(): Account {
+  let account: Account;
+  do {
+    account = new Account();
+  } while (hasDangerousSuffix(account.address().to_string()));
+  return account;
+}
 
 export async function generateAddressesParallel(
   totalCount: number,
@@ -13,16 +49,23 @@ export async function generateAddressesParallel(
   // Use inline worker code to avoid file resolution issues
   const workerCode = `
     const { workerData, parentPort } = require('worker_threads');
-    
+
     // Dynamic import for ESM module
     (async () => {
       const { Account } = await import('@provablehq/sdk');
-      
+
+      const DANGEROUS = ['u128','u64','u32','u16','u8','i128','i64','i32','i16','i8','scalar','field','group'];
+      function isSafe(addr) {
+        return !DANGEROUS.some(s => addr.endsWith(s));
+      }
+
       const addresses = [];
-      for (let i = 0; i < workerData.count; i++) {
-        const account = new Account();
-        addresses.push(account.address().to_string());
-        
+      while (addresses.length < workerData.count) {
+        const addr = new Account().address().to_string();
+        if (!isSafe(addr)) continue;
+        addresses.push(addr);
+
+        const i = addresses.length;
         if (i % 100 === 0) {
           parentPort.postMessage({
             type: 'progress',
@@ -31,7 +74,7 @@ export async function generateAddressesParallel(
           });
         }
       }
-      
+
       parentPort.postMessage({
         type: 'complete',
         addresses

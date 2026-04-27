@@ -19,7 +19,8 @@ import {
 import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
-import { Account, AleoNetworkClient } from "@provablehq/sdk";
+import { AleoNetworkClient } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { decryptToken } from "../artifacts/js/leo2js/compliant_token_template";
 import { Token } from "../artifacts/js/types/compliant_token_template";
 import { Credentials } from "../artifacts/js/types/compliant_token_template";
@@ -677,7 +678,7 @@ describe("test compliant token program", () => {
     // It's impossible to get the credentials record with an invalid merkle proof
     await expect(tokenContractForFrozenAccount.get_credentials(frozenAccountMerkleProof)).rejects.toThrow();
 
-    const randomAddress = new Account().address().to_string();
+    const randomAddress = safeAddress();
     const leaves = generateLeaves([randomAddress]);
     const tree = buildTree(leaves);
     const senderLeafIndices = getLeafIndices(tree, account);

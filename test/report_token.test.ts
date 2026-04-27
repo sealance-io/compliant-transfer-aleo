@@ -23,7 +23,7 @@ import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
 import { fundWithCredits } from "../lib/Fund";
 import { deployIfNotDeployed } from "../lib/Deploy";
 import { buildTree, generateLeaves, stringToBigInt } from "@sealance-io/policy-engine-aleo";
-import { Account } from "@provablehq/sdk";
+import { safeAddress } from "./utils/Accounts";
 import { Sealed_report_tokenContract } from "../artifacts/js/sealed_report_token";
 import { decryptToken } from "../artifacts/js/leo2js/sealed_report_token";
 import { Token } from "../artifacts/js/types/sealed_report_token";
@@ -436,7 +436,7 @@ describe("test sealed_report_token program", () => {
     expect(frozenAccountByIndex).toBe(frozenAccount);
     expect(lastIndex).toBe(1);
 
-    let randomAddress = new Account().address().to_string();
+    let randomAddress = safeAddress();
     tx = await reportTokenContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
     await tx.wait();
     isAccountFrozen = await reportTokenContractForAdmin.freeze_list(randomAddress);
@@ -447,7 +447,7 @@ describe("test sealed_report_token program", () => {
     expect(frozenAccountByIndex).toBe(randomAddress);
     expect(lastIndex).toBe(2);
 
-    randomAddress = new Account().address().to_string();
+    randomAddress = safeAddress();
     // Cannot freeze an account when the frozen list index is greater than the last index
     rejectedTx = await reportTokenContractForFreezeListManager.update_freeze_list(randomAddress, true, 10, root, root);
     await expect(rejectedTx.wait()).rejects.toThrow();
