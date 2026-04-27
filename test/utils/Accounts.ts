@@ -10,11 +10,21 @@ import { Account } from "@provablehq/sdk";
 // Unreachable types are included for defense-in-depth.
 const LEO_TYPE_SUFFIXES = [
   // unsigned integers
-  "u128", "u64", "u32", "u16", "u8",
+  "u128",
+  "u64",
+  "u32",
+  "u16",
+  "u8",
   // signed integers
-  "i128", "i64", "i32", "i16", "i8",
+  "i128",
+  "i64",
+  "i32",
+  "i16",
+  "i8",
   // other primitive types
-  "scalar", "field", "group",
+  "scalar",
+  "field",
+  "group",
 ];
 
 function hasDangerousSuffix(address: string): boolean {
