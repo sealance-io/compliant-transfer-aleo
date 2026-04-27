@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",
-    "@changesets/cli": "2.30.0",
+    "@changesets/cli": "2.31.0",
     "@doko-js/core": "1.0.2",
     "@doko-js/utils": "1.0.0",
     "@doko-js/wasm": "1.0.0",
@@ -52,6 +52,6 @@
     "testcontainers": "^11.14.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   }
 }
