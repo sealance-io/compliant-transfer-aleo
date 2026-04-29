@@ -42,7 +42,7 @@
     "privacy"
   ],
   "dependencies": {
-    "@scure/base": "^2.0.0"
+    "@scure/base": "^2.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
