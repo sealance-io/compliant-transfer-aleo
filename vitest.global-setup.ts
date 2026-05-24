@@ -1,4 +1,4 @@
-import { GenericContainer, type ImagePullPolicy, StartedTestContainer } from "testcontainers";
+import { GenericContainer, Wait, type ImagePullPolicy, type StartedTestContainer } from "testcontainers";
 
 class NeverPullPolicy implements ImagePullPolicy {
   shouldPull(): boolean {
@@ -240,6 +240,8 @@ export async function setup() {
         container: 3030,
         host: 3030,
       })
+      // Keep the repo-owned API/consensus readiness loops below as the source of truth.
+      .withWaitStrategy(Wait.forListeningPorts())
       .withStartupTimeout(600_000) // 10 minutes timeout
       .start();
 
