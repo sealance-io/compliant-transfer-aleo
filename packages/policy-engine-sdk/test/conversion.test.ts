@@ -211,23 +211,30 @@ describe("Aleo Address ↔ Field Conversion Tests", () => {
 
   describe("Internal Error Handling", () => {
     it("handles errors during bech32m encoding gracefully", async () => {
-      // This test covers the catch block in convertFieldToAddress
-      // We'll mock the bech32m module to throw an error during encoding
-
-      const { bech32m } = await import("@scure/base");
-      const originalEncode = bech32m.encode;
-
-      // Mock bech32m.encode to throw an error
-      bech32m.encode = vi.fn().mockImplementation(() => {
-        throw new Error("Encoding failed");
+      // This test covers the catch block in convertFieldToAddress.
+      // Since @scure/base v2.2.0 freezes its exported codecs, we mock the
+      // module so bech32m.encode throws, instead of mutating the frozen export.
+      vi.resetModules();
+      vi.doMock("@scure/base", async importOriginal => {
+        const actual = await importOriginal<typeof import("@scure/base")>();
+        return {
+          ...actual,
+          bech32m: {
+            ...actual.bech32m,
+            encode: vi.fn().mockImplementation(() => {
+              throw new Error("Encoding failed");
+            }),
+          },
+        };
       });
 
       try {
+        const { convertFieldToAddress } = await import("../src/conversion.js");
         // This should trigger the catch block
         expect(() => convertFieldToAddress("123field")).toThrow("Invalid field value: Encoding failed");
       } finally {
-        // Restore original implementation
-        bech32m.encode = originalEncode;
+        vi.doUnmock("@scure/base");
+        vi.resetModules();
       }
     });
   });
