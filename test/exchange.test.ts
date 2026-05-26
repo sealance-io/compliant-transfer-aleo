@@ -1,208 +1,272 @@
-import { ExecutionMode } from "@doko-js/core";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
+import { type SignableNamedAccount } from "@lionden/config";
+import { Leo } from "../typechain/BaseContract.js";
+import { createGqrfmwbtyp } from "../typechain/Gqrfmwbtyp.js";
+import { asTimelockCompliantTokenRecord, createSealedTimelockPolicy } from "../typechain/SealedTimelockPolicy.js";
+import { asTokenRegistryRecord, createTokenRegistry } from "../typechain/TokenRegistry.js";
+import { asSigner, fieldLiteral } from "../lib/LiondenAdapters.js";
+import {
+  defaultRate,
+  fundedAmount,
+  MANAGER_ROLE,
+  MINTER_ROLE,
+  policies,
+  SETUP_TIMEOUT_MS,
+  TREASURE_ADDRESS,
+  amount,
+} from "../lib/Constants.js";
+import { fundWithCredits } from "../lib/Fund.js";
+import { registerTokenProgram } from "../lib/Token.js";
 
-import { BaseContract } from "../contract/base-contract";
-import { Token_registryContract } from "../artifacts/js/token_registry";
-import { decryptToken } from "../artifacts/js/leo2js/token_registry";
-import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { TREASURE_ADDRESS, fundedAmount, policies, defaultRate, MANAGER_ROLE, MINTER_ROLE } from "../lib/Constants";
-import { fundWithCredits } from "../lib/Fund";
-import { deployIfNotDeployed } from "../lib/Deploy";
-import { registerTokenProgram } from "../lib/Token";
-import { CreditsContract } from "../artifacts/js/credits";
-import { setTokenRegistryRole, updateAddressToRole } from "../lib/Role";
-import { decryptCompliantToken } from "../artifacts/js/leo2js/sealed_timelock_policy";
-import { GqrfmwbtypContract } from "../artifacts/js/gqrfmwbtyp";
-import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
-import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
-import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
-import { initializeProgram } from "../lib/Initalize";
-import { Multisig_coreContract } from "../artifacts/js/multisig_core";
+const EXCHANGE_PROGRAM_ADDRESS = "aleo1m7halk64v66ntlsxpny8zl67hslkdpgxewsa3apfzymteelzgsqs5hrqj9";
 
-const mode = ExecutionMode.SnarkExecute;
-const contract = new BaseContract({ mode });
+const exchangeProgramAddress = Leo.address(EXCHANGE_PROGRAM_ADDRESS);
+const reportTokenId = fieldLiteral(policies.report.tokenId);
+const thresholdTokenId = fieldLiteral(policies.threshold.tokenId);
+const timelockTokenId = fieldLiteral(policies.timelock.tokenId);
 
-// This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-// THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, investigatorAddress, _, account] = contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const adminPrivKey = contract.getPrivateKey(adminAddress);
-const accountPrivKey = contract.getPrivateKey(account);
+interface ExchangeFixture {
+  readonly ctx: TestContext;
+  readonly deployer: SignableNamedAccount;
+  readonly admin: SignableNamedAccount;
+  readonly account: SignableNamedAccount;
+  readonly tokenRegistry: ReturnType<typeof createTokenRegistry>;
+  readonly timelock: ReturnType<typeof createSealedTimelockPolicy>;
+  readonly exchange: ReturnType<typeof createGqrfmwbtyp>;
+}
 
-const creditsContract = new CreditsContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const tokenRegistryContract = new Token_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContract = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const reportPolicyContract = new Sealed_report_policyContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const thresholdContract = new Sealed_threshold_report_policyContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const timelockContract = new Sealed_timelock_policyContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const timelockContractForAdmin = new Sealed_timelock_policyContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const merkleTreeContract = new Merkle_treeContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const exchangeContract = new GqrfmwbtypContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const exchangeContractForAdmin = new GqrfmwbtypContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const exchangeContractForAccount = new GqrfmwbtypContract({
-  mode,
-  privateKey: accountPrivKey,
-});
-const multiSigContract = new Multisig_coreContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
+async function deployFixture() {
+  const ctx = await setup();
 
-const amount = 10n;
+  try {
+    const deployer = ctx.named.signer("deployer");
+    const admin = ctx.named.signer("admin");
+    const account = ctx.named.signer("account");
 
-describe("test exchange contract", () => {
-  beforeAll(async () => {
-    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-    await fundWithCredits(deployerPrivKey, account, fundedAmount);
+    await fundWithCredits(ctx, admin.address, fundedAmount, deployer);
+    await fundWithCredits(ctx, account.address, fundedAmount, deployer);
 
-    await deployIfNotDeployed(tokenRegistryContract);
-    await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(multiSigContract);
-    await deployIfNotDeployed(reportPolicyContract);
-    await deployIfNotDeployed(freezeRegistryContract);
-    await deployIfNotDeployed(thresholdContract);
-    await deployIfNotDeployed(timelockContract);
-    await deployIfNotDeployed(exchangeContract);
+    const tokenRegistry = createTokenRegistry().connect(ctx.lre);
+    const timelock = createSealedTimelockPolicy().connect(ctx.lre);
+    const exchange = createGqrfmwbtyp().connect(ctx.lre);
 
-    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.report);
-    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
-
-    await initializeProgram(timelockContractForAdmin, [adminAddress]);
-
-    await setTokenRegistryRole(adminPrivKey, policies.report.tokenId, exchangeContract.address(), 1);
-    await setTokenRegistryRole(adminPrivKey, policies.threshold.tokenId, exchangeContract.address(), 1);
-    await updateAddressToRole(timelockContractForAdmin, exchangeContract.address(), MINTER_ROLE);
-  });
-
-  test(`test initialize`, async () => {
-    if (deployerAddress !== adminAddress) {
-      // The caller is not the initial admin
-      const rejectedTx = await exchangeContract.initialize(adminAddress);
-      await expect(rejectedTx.wait()).rejects.toThrow();
+    for (const program of [
+      "token_registry",
+      "merkle_tree",
+      "multisig_core",
+      "sealed_report_policy",
+      "sealance_freezelist_registry",
+      "sealed_threshold_report_policy",
+      "sealed_timelock_policy",
+      "gqrfmwbtyp",
+    ]) {
+      await ctx.deploy(program, { noCompile: true });
     }
 
-    const tx = await exchangeContractForAdmin.initialize(adminAddress);
-    await tx.wait();
+    await registerTokenProgram(tokenRegistry, deployer, admin, policies.report);
+    await registerTokenProgram(tokenRegistry, deployer, admin, policies.threshold);
 
-    const role = await exchangeContract.address_to_role(adminAddress);
+    await timelock.initialize.accepted({ admin }, asSigner(admin));
+
+    await tokenRegistry.set_role.accepted(
+      {
+        token_id: reportTokenId,
+        account: exchangeProgramAddress,
+        role: 1,
+      },
+      asSigner(admin),
+    );
+    await tokenRegistry.set_role.accepted(
+      {
+        token_id: thresholdTokenId,
+        account: exchangeProgramAddress,
+        role: 1,
+      },
+      asSigner(admin),
+    );
+    await timelock.update_role.accepted(
+      {
+        new_address: exchangeProgramAddress,
+        role: MINTER_ROLE,
+      },
+      asSigner(admin),
+    );
+
+    return {
+      ctx,
+      deployer,
+      admin,
+      account,
+      tokenRegistry,
+      timelock,
+      exchange,
+    } satisfies ExchangeFixture;
+  } catch (error) {
+    await ctx.teardown();
+    throw error;
+  }
+}
+
+let state: ExchangeFixture | undefined;
+
+beforeAll(async () => {
+  state = await loadFixture(deployFixture);
+}, SETUP_TIMEOUT_MS);
+
+afterAll(async () => {
+  if (state) {
+    await state.ctx.teardown();
+  } else {
+    clearFixtures();
+  }
+});
+
+describe("test exchange contract", () => {
+  test("test initialize", async () => {
+    const fixture = state!;
+
+    if (fixture.deployer.address !== fixture.admin.address) {
+      // The caller is not the initial admin
+      await fixture.exchange.initialize.rejected({ admin: fixture.admin }, asSigner(fixture.deployer));
+    }
+
+    await fixture.exchange.initialize.accepted({ admin: fixture.admin }, asSigner(fixture.admin));
+
+    const role = await fixture.exchange.getAddress_to_role(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
-    const initialized = await exchangeContract.initialized(true);
+    const initialized = await fixture.exchange.getInitialized(true);
     expect(initialized).toBe(true);
 
     // It is possible to call to initialize only one time
-    const rejectedTx = await exchangeContractForAdmin.initialize(adminAddress);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.exchange.initialize.rejected({ admin: fixture.admin }, asSigner(fixture.admin));
   });
 
-  test(`test update_admin`, async () => {
-    const tx = await exchangeContractForAdmin.update_role(adminAddress, MANAGER_ROLE);
-    await tx.wait();
+  test("test update_admin", async () => {
+    const fixture = state!;
 
-    const role = await exchangeContract.address_to_role(adminAddress);
+    await fixture.exchange.update_role.accepted(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
+
+    const role = await fixture.exchange.getAddress_to_role(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
     // Only the admin can call to this function
-    const rejectedTx = await exchangeContractForAccount.update_role(adminAddress, MANAGER_ROLE);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.exchange.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+      },
+      asSigner(fixture.account),
+    );
   });
 
-  test(`test update_rate`, async () => {
+  test("test update_rate", async () => {
+    const fixture = state!;
+
     // Only the admin account can call to this function
-    const rejectedTx = await exchangeContractForAccount.update_rate(policies.report.tokenId, defaultRate);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.exchange.update_rate.rejected(
+      {
+        token_id: reportTokenId,
+        rate: defaultRate,
+      },
+      asSigner(fixture.account),
+    );
 
-    const tx = await exchangeContractForAdmin.update_rate(policies.report.tokenId, defaultRate);
-    await tx.wait();
+    await fixture.exchange.update_rate.accepted(
+      {
+        token_id: reportTokenId,
+        rate: defaultRate,
+      },
+      asSigner(fixture.admin),
+    );
 
-    const rate = await exchangeContract.token_rates(policies.report.tokenId, 0n);
+    const rate = await fixture.exchange.getToken_rates(reportTokenId);
     expect(rate).toBe(defaultRate);
   });
 
-  test(`test exchange_token`, async () => {
-    // transaction with wrong rate will fail
-    const rejectedTx = await exchangeContractForAccount.exchange_token(
-      policies.report.tokenId,
-      amount,
-      defaultRate + 1n,
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
+  test("test exchange_token", async () => {
+    const fixture = state!;
 
-    let treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-    let tx = await exchangeContractForAccount.exchange_token(policies.report.tokenId, amount, defaultRate);
-    await tx.wait();
-    let treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    // transaction with wrong rate will fail
+    await fixture.exchange.exchange_token.rejected(
+      {
+        token_id: reportTokenId,
+        amount,
+        rate: defaultRate + 1n,
+      },
+      asSigner(fixture.account),
+    );
+
+    let treasureBalanceBefore = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
+    let exchangeToken = await fixture.exchange.exchange_token.accepted(
+      {
+        token_id: reportTokenId,
+        amount,
+        rate: defaultRate,
+      },
+      asSigner(fixture.account),
+    );
+    let treasureBalanceAfter = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
     expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
-    const tokenRecord = decryptToken((tx as any).transaction.execution.transitions[1].outputs[0], accountPrivKey);
-    expect(tokenRecord.owner).toBe(account);
-    expect(tokenRecord.token_id).toBe(policies.report.tokenId);
+    const tokenRecord = await exchangeToken.outputs
+      .match(asTokenRegistryRecord.output.from("mint_private", 0))
+      .decrypt(fixture.account);
+    expect(tokenRecord.owner).toBe(fixture.account.address);
+    expect(tokenRecord.token_id).toBe(reportTokenId);
     expect(tokenRecord.amount).toBe(amount * 10n);
 
     treasureBalanceBefore = treasureBalanceAfter;
-    tx = await exchangeContractForAccount.exchange_token(policies.threshold.tokenId, amount, defaultRate);
-    await tx.wait();
-    treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
+    exchangeToken = await fixture.exchange.exchange_token.accepted(
+      {
+        token_id: thresholdTokenId,
+        amount,
+        rate: defaultRate,
+      },
+      asSigner(fixture.account),
+    );
+    treasureBalanceAfter = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
     expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
-    const thresholdTokenRecord = decryptToken(
-      (tx as any).transaction.execution.transitions[1].outputs[0],
-      accountPrivKey,
-    );
-    expect(thresholdTokenRecord.owner).toBe(account);
-    expect(thresholdTokenRecord.token_id).toBe(policies.threshold.tokenId);
+    const thresholdTokenRecord = await exchangeToken.outputs
+      .match(asTokenRegistryRecord.output.from("mint_private", 0))
+      .decrypt(fixture.account);
+    expect(thresholdTokenRecord.owner).toBe(fixture.account.address);
+    expect(thresholdTokenRecord.token_id).toBe(thresholdTokenId);
     expect(thresholdTokenRecord.amount).toBe(amount * 10n);
   });
 
-  test(`test exchange_timelock_token`, async () => {
-    const treasureBalanceBefore = await creditsContract.account(TREASURE_ADDRESS, 0n);
-    const tx = await exchangeContractForAccount.exchange_timelock_token(amount, defaultRate);
-    await tx.wait();
-    const treasureBalanceAfter = await creditsContract.account(TREASURE_ADDRESS, 0n);
+  test("test exchange_timelock_token", async () => {
+    const fixture = state!;
+
+    const treasureBalanceBefore = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
+    const exchangeTimelock = await fixture.exchange.exchange_timelock_token.accepted(
+      {
+        amount,
+        rate: defaultRate,
+      },
+      asSigner(fixture.account),
+    );
+    const treasureBalanceAfter = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
     expect(treasureBalanceBefore + amount).toBe(treasureBalanceAfter);
 
-    const timelockTokenRecord = decryptToken(
-      (tx as any).transaction.execution.transitions[1].outputs[0],
-      accountPrivKey,
-    );
-    expect(timelockTokenRecord.owner).toBe(account);
-    expect(timelockTokenRecord.token_id).toBe(policies.timelock.tokenId);
+    const timelockTokenRecord = await exchangeTimelock.outputs[1]
+      .match(asTokenRegistryRecord.output.from("mint_private", 0))
+      .decrypt(fixture.account);
+    expect(timelockTokenRecord.owner).toBe(fixture.account.address);
+    expect(timelockTokenRecord.token_id).toBe(timelockTokenId);
     expect(timelockTokenRecord.amount).toBe(amount * 10n);
 
-    const compliantTokenRecord = decryptCompliantToken(
-      (tx as any).transaction.execution.transitions[2].outputs[0],
-      accountPrivKey,
-    );
-    expect(compliantTokenRecord.owner).toBe(account);
+    const compliantTokenRecord = await exchangeTimelock.outputs[0]
+      .match(asTimelockCompliantTokenRecord.output.from("mint_private", 0))
+      .decrypt(fixture.account);
+    expect(compliantTokenRecord.owner).toBe(fixture.account.address);
     expect(compliantTokenRecord.amount).toBe(amount * 10n);
     expect(compliantTokenRecord.locked_until).toBe(0);
   });

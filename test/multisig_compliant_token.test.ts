@@ -1,1719 +1,2484 @@
-import { ExecutionMode } from "@doko-js/core";
-
-import { BaseContract } from "../contract/base-contract";
-
+import { AleoNetworkClient } from "@provablehq/sdk";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
+import { type SignableNamedAccount } from "@lionden/config";
+import {
+  buildTree,
+  generateLeaves,
+  getLeafIndices,
+  getSiblingPath,
+  stringToBigInt,
+} from "@sealance-io/policy-engine-aleo";
 import {
   BLOCK_HEIGHT_WINDOW,
-  BLOCK_HEIGHT_WINDOW_INDEX,
   BURNER_ROLE,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
-  FREEZE_LIST_LAST_INDEX,
-  MINTER_ROLE,
-  NONE_ROLE,
-  PAUSE_ROLE,
-  MANAGER_ROLE,
   FREEZELIST_MANAGER_ROLE,
-  ZERO_ADDRESS,
-  fundedAmount,
-  MAX_TREE_DEPTH,
-  emptyMultisigCommonParams,
-  MULTISIG_OP_UPDATE_WALLET_ROLE,
+  MANAGER_ROLE,
   MAX_BLOCK_HEIGHT,
-  MULTISIG_OP_UPDATE_ROLE,
+  MAX_TREE_DEPTH,
+  MINTER_ROLE,
+  MULTISIG_OP_BURN_PRIVATE,
+  MULTISIG_OP_BURN_PUBLIC,
   MULTISIG_OP_MINT_PRIVATE,
   MULTISIG_OP_MINT_PUBLIC,
-  MULTISIG_OP_BURN_PUBLIC,
   MULTISIG_OP_SET_PAUSE_STATUS,
-  MULTISIG_OP_BURN_PRIVATE,
-  emptyRoot,
+  MULTISIG_OP_UPDATE_ROLE,
+  MULTISIG_OP_UPDATE_WALLET_ROLE,
+  NONE_ROLE,
+  PAUSE_ROLE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
-} from "../lib/Constants";
-import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
-import { fundWithCredits } from "../lib/Fund";
-import { deployIfNotDeployed } from "../lib/Deploy";
-import { AleoNetworkClient } from "@provablehq/sdk";
-import { safeAddress, safeAccount } from "./utils/Accounts";
-import { decryptToken } from "../artifacts/js/leo2js/multisig_compliant_token";
-import { Token } from "../artifacts/js/types/multisig_compliant_token";
-import { Credentials } from "../artifacts/js/types/multisig_compliant_token";
-import { decryptCredentials } from "../artifacts/js/leo2js/multisig_compliant_token";
-import { decryptComplianceRecord } from "../artifacts/js/leo2js/multisig_compliant_token";
+  emptyRoot,
+  fundedAmount,
+  emptyMultisigCommonParams,
+  zeroAddress,
+  emptyRootField,
+  SETUP_TIMEOUT_MS,
+  maxSupply,
+  amount,
+} from "../lib/Constants.js";
+import { fundWithCredits } from "../lib/Fund.js";
+import { addressLiteral, asSigner, fieldLiteral, scalarLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
+import { Leo } from "../typechain/BaseContract.js";
+import {
+  createMultisigCompliantToken,
+  decryptComplianceRecord,
+  TokenInfo,
+  type Credentials,
+  type MerkleProof,
+  type Token,
+} from "../typechain/MultisigCompliantToken.js";
+import { createMultisigCore } from "../typechain/MultisigCore.js";
+import { createMultisigFreezelistRegistry } from "../typechain/MultisigFreezelistRegistry.js";
+import { safeAccount, safeAddress } from "./utils/Accounts.js";
+import { getLatestBlockHeight, waitBlocks } from "../lib/Block.js";
+import { approveRequest, createWallet, initializeMultisig, multisigCommonParams, randomSalt } from "../lib/Multisig.js";
 
-import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-import { Multisig_compliant_tokenContract } from "../artifacts/js/multisig_compliant_token";
-import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
-import { isProgramInitialized } from "../lib/Initalize";
-import { getLatestBlockHeight, waitBlocks } from "../lib/Block";
-import { buildTree, generateLeaves, stringToBigInt } from "@sealance-io/policy-engine-aleo";
-import { Multisig_coreContract } from "../artifacts/js/multisig_core";
-import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
+const tokenName = stringToBigInt("Stable Token");
+const tokenSymbol = stringToBigInt("STABLE_TOKEN");
 
-const mode = ExecutionMode.SnarkExecute;
-const contract = new BaseContract({ mode });
+const managerWalletId = Leo.address(safeAddress());
+const pauseWalletId = Leo.address(safeAddress());
+const minterWalletId = Leo.address(safeAddress());
+const burnerWalletId = Leo.address(safeAddress());
 
-// This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-// THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [
-  deployerAddress,
-  adminAddress,
-  investigatorAddress,
-  frozenAccount,
-  account,
-  recipient,
-  minter,
-  burner,
-  supplyManager,
-  spender,
-  ,
-  pauser,
-  signer1,
-  signer2,
-] = contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
-const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
-const adminPrivKey = contract.getPrivateKey(adminAddress);
-const accountPrivKey = contract.getPrivateKey(account);
-const recipientPrivKey = contract.getPrivateKey(recipient);
-const minterPrivKey = contract.getPrivateKey(minter);
-const burnerPrivKey = contract.getPrivateKey(burner);
-const supplyManagerPrivKey = contract.getPrivateKey(supplyManager);
-const spenderPrivKey = contract.getPrivateKey(spender);
-const pauserPrivateKey = contract.getPrivateKey(pauser);
+interface MultisigCompliantTokenFixture {
+  readonly ctx: TestContext;
+  readonly deployer: SignableNamedAccount;
+  readonly admin: SignableNamedAccount;
+  readonly investigator: SignableNamedAccount;
+  readonly frozenAccount: SignableNamedAccount;
+  readonly account: SignableNamedAccount;
+  readonly recipient: SignableNamedAccount;
+  readonly minter: SignableNamedAccount;
+  readonly burner: SignableNamedAccount;
+  readonly supplyManager: SignableNamedAccount;
+  readonly spender: SignableNamedAccount;
+  readonly pauser: SignableNamedAccount;
+  readonly signer1: SignableNamedAccount;
+  readonly signer2: SignableNamedAccount;
+  readonly token: ReturnType<typeof createMultisigCompliantToken>;
+  readonly freezeRegistry: ReturnType<typeof createMultisigFreezelistRegistry>;
+  readonly multisig: ReturnType<typeof createMultisigCore>;
+  readonly managerWalletId: ReturnType<typeof Leo.address>;
+  readonly pauseWalletId: ReturnType<typeof Leo.address>;
+  readonly minterWalletId: ReturnType<typeof Leo.address>;
+  readonly burnerWalletId: ReturnType<typeof Leo.address>;
+  readonly rootField: ReturnType<typeof fieldLiteral>;
+  readonly senderMerkleProof: MerkleProof[];
+  readonly frozenAccountMerkleProof: MerkleProof[];
+  accountRecord?: Token;
+  frozenAccountRecord?: Token;
+  credentials?: Credentials;
+  privateAccountBalance: bigint;
+  startBlock: number;
+}
 
-const tokenContract = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const tokenContractForAdmin = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: adminPrivKey,
-});
+async function initMultisigOp(
+  fixture: MultisigCompliantTokenFixture,
+  walletId: ReturnType<typeof Leo.address>,
+  multisigOp: {
+    op: number;
+    user: ReturnType<typeof Leo.address>;
+    pause_status: boolean;
+    amount: bigint;
+    role: number;
+    salt: ReturnType<typeof scalarLiteral>;
+  },
+  blockExpiration: number,
+) {
+  const tx = await fixture.token.init_multisig_op.accepted(
+    {
+      wallet_id: walletId,
+      multisig_op: multisigOp,
+      block_expiration: blockExpiration,
+    },
+    asSigner(fixture.deployer),
+  );
 
-const tokenContractForAccount = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: accountPrivKey,
-});
-const tokenContractForMinter = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: minterPrivKey,
-});
-const tokenContractForBurner = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: burnerPrivKey,
-});
-const tokenContractForSupplyManager = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: supplyManagerPrivKey,
-});
-const tokenContractForSpender = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: spenderPrivKey,
-});
-const tokenContractForFrozenAccount = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: frozenAccountPrivKey,
-});
-const tokenContractForPauser = new Multisig_compliant_tokenContract({
-  mode,
-  privateKey: pauserPrivateKey,
-});
+  return {
+    signingOpId: await tx.outputs[0].decrypt(fixture.deployer),
+    walletSigningOpIdHash: await tx.outputs[1].decrypt(fixture.deployer),
+  };
+}
 
-const freezeRegistryContract = new Multisig_freezelist_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContractForAdmin = new Multisig_freezelist_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
+async function initPrivateMultisigOp(
+  fixture: MultisigCompliantTokenFixture,
+  walletId: ReturnType<typeof Leo.address>,
+  multisigOp: {
+    op: number;
+    user: ReturnType<typeof Leo.address>;
+    amount: bigint;
+  },
+  salt: bigint,
+  blockExpiration: number,
+) {
+  const tx = await fixture.token.init_private_multisig_op.accepted(
+    {
+      wallet_id: walletId,
+      multisig_op: multisigOp,
+      salt: scalarLiteral(salt),
+      block_expiration: blockExpiration,
+    },
+    asSigner(fixture.deployer),
+  );
 
-const merkleTreeContract = new Merkle_treeContract({
-  mode,
-  privateKey: deployerPrivKey,
+  return {
+    signingOpId: await tx.outputs[0].decrypt(fixture.deployer),
+    walletSigningOpIdHash: await tx.outputs[1].decrypt(fixture.deployer),
+  };
+}
+
+async function deployFixture() {
+  const ctx = await setup();
+
+  try {
+    const deployer = ctx.named.signer("deployer");
+    const admin = ctx.named.signer("admin");
+    const investigator = ctx.named.signer("investigator");
+    const frozenAccount = ctx.named.signer("frozenAccount");
+    const account = ctx.named.signer("account");
+    const recipient = ctx.named.signer("recipient");
+    const minter = ctx.named.signer("minter");
+    const burner = ctx.named.signer("burner");
+    const supplyManager = ctx.named.signer("supplyManager");
+    const spender = ctx.named.signer("spender");
+    const pauser = ctx.named.signer("pauser");
+    const signer1 = ctx.named.signer("signer1");
+    const signer2 = ctx.named.signer("signer2");
+
+    for (const signer of [
+      admin,
+      frozenAccount,
+      account,
+      minter,
+      burner,
+      supplyManager,
+      spender,
+      pauser,
+      signer1,
+      signer2,
+    ]) {
+      await fundWithCredits(ctx, signer.address, fundedAmount, deployer);
+    }
+
+    const token = createMultisigCompliantToken().connect(ctx.lre);
+    const freezeRegistry = createMultisigFreezelistRegistry().connect(ctx.lre);
+    const multisig = createMultisigCore().connect(ctx.lre);
+
+    for (const program of [
+      "merkle_tree",
+      "multisig_core",
+      "multisig_freezelist_registry",
+      "multisig_compliant_token",
+    ]) {
+      await ctx.deploy(program, { noCompile: true });
+    }
+
+    await initializeMultisig(multisig, deployer);
+
+    const aleoSigners = [signer1, signer2, zeroAddress, zeroAddress] as const;
+    await createWallet(multisig, deployer, managerWalletId, aleoSigners);
+    await createWallet(multisig, deployer, pauseWalletId, aleoSigners);
+    await createWallet(multisig, deployer, minterWalletId, aleoSigners);
+    await createWallet(multisig, deployer, burnerWalletId, aleoSigners);
+
+    const leaves = generateLeaves([frozenAccount.address]);
+    const tree = buildTree(leaves);
+    const root = tree[tree.length - 1]!;
+    const rootField = fieldLiteral(root);
+    const senderLeafIndices = getLeafIndices(tree, account.address);
+    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount.address);
+    const senderMerkleProof = [
+      toMerkleProof(getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH)),
+    ];
+    const frozenAccountMerkleProof = [
+      toMerkleProof(getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH)),
+    ];
+
+    const isFreezeRegistryInitialized =
+      (await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+    if (!isFreezeRegistryInitialized) {
+      await freezeRegistry.initialize.accepted(
+        {
+          admin: admin,
+          blocks: BLOCK_HEIGHT_WINDOW,
+          manager_wallet_id: zeroAddress,
+        },
+        asSigner(admin),
+      );
+    }
+
+    const role = (await freezeRegistry.getAddress_to_role(admin)) as number;
+    if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
+      await freezeRegistry.update_role.accepted(
+        {
+          new_address: admin,
+          role: MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+          multisig_common_params: emptyMultisigCommonParams,
+        },
+        asSigner(admin),
+      );
+    }
+
+    const isAccountFrozen = (await freezeRegistry.getFreeze_list(frozenAccount)) === true;
+    if (!isAccountFrozen) {
+      await freezeRegistry.update_freeze_list.accepted(
+        {
+          account: frozenAccount,
+          is_frozen: true,
+          frozen_index: 1,
+          previous_root: emptyRootField,
+          new_root: rootField,
+          multisig_common_params: emptyMultisigCommonParams,
+        },
+        asSigner(admin),
+      );
+    }
+
+    return {
+      ctx,
+      deployer,
+      admin,
+      investigator,
+      frozenAccount,
+      account,
+      recipient,
+      minter,
+      burner,
+      supplyManager,
+      spender,
+      pauser,
+      signer1,
+      signer2,
+      token,
+      freezeRegistry,
+      multisig,
+      managerWalletId,
+      pauseWalletId,
+      minterWalletId,
+      burnerWalletId,
+      rootField,
+      senderMerkleProof,
+      frozenAccountMerkleProof,
+      privateAccountBalance: 0n,
+      startBlock: 0,
+    } satisfies MultisigCompliantTokenFixture;
+  } catch (error) {
+    await ctx.teardown();
+    throw error;
+  }
+}
+
+let state: MultisigCompliantTokenFixture | undefined;
+
+beforeAll(async () => {
+  state = await loadFixture(deployFixture);
+}, SETUP_TIMEOUT_MS);
+
+afterAll(async () => {
+  if (state) {
+    await state.ctx.teardown();
+  } else {
+    clearFixtures();
+  }
 });
-
-const multiSigContract = new Multisig_coreContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-
-const managerWalletId = safeAddress();
-const pauseWalletId = safeAddress();
-const minterWalletId = safeAddress();
-const burnerWalletId = safeAddress();
-
-const amount = 10n;
-let root: bigint;
 
 describe("test multisig_compliant_token program", () => {
-  beforeAll(async () => {
-    // Deploy the multisig programs
-    await deployIfNotDeployed(multiSigContract);
-    // Create the wallets
-    await initializeMultisig();
-    await createWallet(managerWalletId);
-    await createWallet(pauseWalletId);
-    await createWallet(minterWalletId);
-    await createWallet(burnerWalletId);
+  test("test initialize", async () => {
+    const fixture = state!;
 
-    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-    await fundWithCredits(deployerPrivKey, account, fundedAmount);
+    // The admin or the wallet ID manager has to be non zero
+    await fixture.freezeRegistry.initialize.rejected(
+      {
+        admin: zeroAddress,
+        blocks: BLOCK_HEIGHT_WINDOW,
+        manager_wallet_id: zeroAddress,
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await fundWithCredits(deployerPrivKey, minter, fundedAmount);
-    await fundWithCredits(deployerPrivKey, supplyManager, fundedAmount);
-    await fundWithCredits(deployerPrivKey, burner, fundedAmount);
-    await fundWithCredits(deployerPrivKey, spender, fundedAmount);
-    await fundWithCredits(deployerPrivKey, pauser, fundedAmount);
-
-    await fundWithCredits(deployerPrivKey, signer1, fundedAmount);
-    await fundWithCredits(deployerPrivKey, signer2, fundedAmount);
-
-    await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(freezeRegistryContract);
-    await deployIfNotDeployed(tokenContract);
-  });
-
-  let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
-  test(`generate merkle proofs`, async () => {
-    const leaves = generateLeaves([frozenAccount]);
-    const tree = buildTree(leaves);
-    root = tree[tree.length - 1];
-    const senderLeafIndices = getLeafIndices(tree, account);
-    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
-    senderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
-    ];
-    frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH),
-    ];
-  });
-
-  test(`test initialize `, async () => {
-    const isTokenInitialized = await isProgramInitialized(tokenContract);
-    if (!isTokenInitialized) {
-      const name = stringToBigInt("Stable Token");
-      const symbol = stringToBigInt("STABLE_TOKEN");
-      const decimals = 6;
-      const maxSupply = 1000_000000000000n;
-
-      // The admin or the wallet ID manager has to be non zero
-      let rejectedTx = await freezeRegistryContract.initialize(ZERO_ADDRESS, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS);
-      await expect(rejectedTx.wait()).rejects.toThrow();
-
-      const tx = await tokenContractForAdmin.initialize(
-        name,
-        symbol,
-        decimals,
-        maxSupply,
-        adminAddress,
-        managerWalletId,
+    if ((await fixture.token.getToken_info(true)) === null) {
+      await fixture.token.initialize.accepted(
+        {
+          name: tokenName,
+          symbol: tokenSymbol,
+          decimals,
+          max_supply: maxSupply,
+          admin: fixture.admin,
+          manager_wallet_id: fixture.managerWalletId,
+        },
+        asSigner(fixture.admin),
       );
-      await tx.wait();
-      const tokenInfo = await tokenContract.token_info(true);
+
+      const tokenInfo = (await fixture.token.getToken_info(true)) as TokenInfo;
       expect(tokenInfo.supply).toBe(0n);
       expect(tokenInfo.decimals).toBe(decimals);
       expect(tokenInfo.max_supply).toBe(maxSupply);
-      expect(tokenInfo.name).toBe(name);
-      expect(tokenInfo.symbol).toBe(symbol);
-      const role = await tokenContract.address_to_role(adminAddress);
+      expect(tokenInfo.name).toBe(tokenName);
+      expect(tokenInfo.symbol).toBe(tokenSymbol);
+      const role = await fixture.token.getAddress_to_role(fixture.admin);
       expect(role).toBe(MANAGER_ROLE);
-      const pauseStatus = await tokenContract.pause(true);
+      const pauseStatus = await fixture.token.getPause(true);
       expect(pauseStatus).toBe(false);
 
       // It is possible to call to initialize only one time
-      rejectedTx = await tokenContractForAdmin.initialize(
-        name,
-        symbol,
-        decimals,
-        maxSupply,
-        adminAddress,
-        managerWalletId,
+      await fixture.token.initialize.rejected(
+        {
+          name: tokenName,
+          symbol: tokenSymbol,
+          decimals,
+          max_supply: maxSupply,
+          admin: fixture.admin,
+          manager_wallet_id: fixture.managerWalletId,
+        },
+        asSigner(fixture.admin),
       );
-      await expect(rejectedTx.wait()).rejects.toThrow();
-    }
-
-    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
-    if (!isFreezeRegistryInitialized) {
-      const tx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS);
-      await tx.wait();
-    }
-
-    const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
-    if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      let tx = await freezeRegistryContractForAdmin.update_role(
-        adminAddress,
-        MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
-        emptyMultisigCommonParams,
-      );
-      await tx.wait();
-      const role = await freezeRegistryContract.address_to_role(adminAddress);
-      expect(role).toBe(MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
-    }
-
-    const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
-    if (!isAccountFrozen) {
-      const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      let tx = await freezeRegistryContractForAdmin.update_freeze_list(
-        frozenAccount,
-        true,
-        1,
-        currentRoot,
-        root,
-        emptyMultisigCommonParams,
-      );
-      await tx.wait();
-      let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
-      let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
-      let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-
-      expect(isAccountFrozen).toBe(true);
-      expect(frozenAccountByIndex).toBe(frozenAccount);
-      expect(lastIndex).toBe(1);
     }
   });
 
-  test(`test init_multisig_op`, async () => {
-    let salt = BigInt(Math.floor(Math.random() * 100000));
+  test("test init_multisig_op", async () => {
+    const fixture = state!;
+
+    let salt = randomSalt();
     const multisigOp = {
       op: 0,
-      user: ZERO_ADDRESS,
+      user: zeroAddress,
       pause_status: false,
       amount: 0n,
       role: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let tx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [, walletSigningOpIdHash] = await tx.wait();
-    let pendingRequest = await tokenContract.pending_requests(walletSigningOpIdHash);
-    expect(pendingRequest.op).toBe(0);
-    expect(pendingRequest.user).toBe(ZERO_ADDRESS);
-    expect(pendingRequest.pause_status).toBe(false);
-    expect(pendingRequest.role).toBe(0);
-    expect(pendingRequest.amount).toBe(0n);
-    expect(pendingRequest.salt).toBe(salt);
+    let { walletSigningOpIdHash } = await initMultisigOp(
+      fixture,
+      fixture.managerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
+    );
+    let pendingRequest = await fixture.token.getPending_requests(walletSigningOpIdHash);
+    expect(pendingRequest?.op).toBe(0);
+    expect(pendingRequest?.user).toBe(zeroAddress);
+    expect(pendingRequest?.pause_status).toBe(false);
+    expect(pendingRequest?.role).toBe(0);
+    expect(pendingRequest?.amount).toBe(0n);
+    expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
 
     // It's impossible to initiate a request twice
-    const rejectedTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.init_multisig_op.rejected(
+      {
+        wallet_id: fixture.managerWalletId,
+        multisig_op: multisigOp,
+        block_expiration: MAX_BLOCK_HEIGHT,
+      },
+      asSigner(fixture.deployer),
+    );
 
-    salt = BigInt(Math.floor(Math.random() * 100000));
-    multisigOp.salt = salt;
-    tx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, 1);
-    [, walletSigningOpIdHash] = await tx.wait();
-    pendingRequest = await tokenContract.pending_requests(walletSigningOpIdHash);
-    expect(pendingRequest.salt).toBe(salt);
-    await waitBlocks(1);
+    salt = randomSalt();
+    multisigOp.salt = scalarLiteral(salt);
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, 1));
+    pendingRequest = await fixture.token.getPending_requests(walletSigningOpIdHash);
+    expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
+    await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
-    tx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [, walletSigningOpIdHash] = await tx.wait();
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    expect(walletSigningOpIdHash).toBeDefined();
   });
 
-  test(`test init_private_multisig_op`, async () => {
-    let salt = BigInt(Math.floor(Math.random() * 100000));
+  test("test init_private_multisig_op", async () => {
+    const fixture = state!;
+
+    let salt = randomSalt();
     const privMultisigOp = {
       op: 0,
-      user: ZERO_ADDRESS,
+      user: zeroAddress,
       amount: 0n,
     };
 
-    let tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
-    let [, walletSigningOpIdHash] = await tx.wait();
-    let privatePendingRequest = await tokenContract.private_pending_requests(walletSigningOpIdHash);
-    expect(privatePendingRequest).toBe(true);
-
-    // It's impossible to initiate a request twice
-    const rejectedTx = await tokenContract.init_private_multisig_op(
-      managerWalletId,
+    let { walletSigningOpIdHash } = await initPrivateMultisigOp(
+      fixture,
+      fixture.managerWalletId,
       privMultisigOp,
       salt,
       MAX_BLOCK_HEIGHT,
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    salt = BigInt(Math.floor(Math.random() * 100000));
-    tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, 1);
-    [, walletSigningOpIdHash] = await tx.wait();
-    privatePendingRequest = await tokenContract.private_pending_requests(walletSigningOpIdHash);
+    let privatePendingRequest = await fixture.token.getPrivate_pending_requests(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
-    await waitBlocks(1);
+
+    // It's impossible to initiate a request twice
+    await fixture.token.init_private_multisig_op.rejected(
+      {
+        wallet_id: fixture.managerWalletId,
+        multisig_op: privMultisigOp,
+        salt: scalarLiteral(salt),
+        block_expiration: MAX_BLOCK_HEIGHT,
+      },
+      asSigner(fixture.deployer),
+    );
+
+    salt = randomSalt();
+    ({ walletSigningOpIdHash } = await initPrivateMultisigOp(
+      fixture,
+      fixture.managerWalletId,
+      privMultisigOp,
+      salt,
+      1,
+    ));
+    privatePendingRequest = await fixture.token.getPrivate_pending_requests(walletSigningOpIdHash);
+    expect(privatePendingRequest).toBe(true);
+    await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
-    tx = await tokenContract.init_private_multisig_op(managerWalletId, privMultisigOp, salt, MAX_BLOCK_HEIGHT);
-    [, walletSigningOpIdHash] = await tx.wait();
+    ({ walletSigningOpIdHash } = await initPrivateMultisigOp(
+      fixture,
+      fixture.managerWalletId,
+      privMultisigOp,
+      salt,
+      MAX_BLOCK_HEIGHT,
+    ));
+    expect(walletSigningOpIdHash).toBeDefined();
   });
 
-  test(`test update_wallet_id_role`, async () => {
-    // Non manager address can't update the wallet_id without multisig approval
-    let rejectedTx = await tokenContract.update_wallet_id_role(
-      managerWalletId,
-      MULTISIG_OP_UPDATE_WALLET_ROLE,
-      emptyMultisigCommonParams,
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
+  test("test update_wallet_id_role", async () => {
+    const fixture = state!;
 
-    let tx = await tokenContractForAdmin.update_wallet_id_role(
-      managerWalletId,
-      MANAGER_ROLE,
-      emptyMultisigCommonParams,
+    // Non manager address can't update the wallet_id without multisig approval
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.managerWalletId,
+        role: MULTISIG_OP_UPDATE_WALLET_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.deployer),
     );
-    await tx.wait();
-    let role = await tokenContract.wallet_id_to_role(managerWalletId);
+
+    await fixture.token.update_wallet_id_role.accepted(
+      {
+        target_wallet_id: fixture.managerWalletId,
+        role: MANAGER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    let role = await fixture.token.getWallet_id_to_role(fixture.managerWalletId);
     expect(role).toBe(MANAGER_ROLE);
 
     // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
-    rejectedTx = await tokenContractForAdmin.update_wallet_id_role(managerWalletId, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt: 0n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.managerWalletId,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
+      },
+      asSigner(fixture.admin),
+    );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
-    rejectedTx = await tokenContractForAdmin.update_wallet_id_role(managerWalletId, MANAGER_ROLE, {
-      wallet_id: ZERO_ADDRESS,
-      salt: 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.managerWalletId,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
+      },
+      asSigner(fixture.admin),
+    );
 
-    let salt = BigInt(Math.floor(Math.random() * 100000));
+    let salt = randomSalt();
     let multisigOp = {
       op: MULTISIG_OP_UPDATE_WALLET_ROLE,
-      user: pauseWalletId,
+      user: fixture.pauseWalletId,
       pause_status: false,
       amount: 0n,
       role: PAUSE_ROLE,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(managerWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
-      wallet_id: managerWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await tokenContract.update_wallet_id_role(minterWalletId, PAUSE_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.minterWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the role doesn't match the role in the request the transaction will fail
-    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    tx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await tx.wait();
-    role = await tokenContract.wallet_id_to_role(pauseWalletId);
+    await fixture.token.update_wallet_id_role.accepted(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    role = await fixture.token.getWallet_id_to_role(fixture.pauseWalletId);
     expect(role).toBe(PAUSE_ROLE);
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(pauseWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.pauseWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContract.update_wallet_id_role(pauseWalletId, PAUSE_ROLE, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.pauseWalletId,
+        role: PAUSE_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    salt = BigInt(Math.floor(Math.random() * 100000));
+    salt = randomSalt();
     multisigOp = {
       op: MULTISIG_OP_UPDATE_WALLET_ROLE,
-      user: minterWalletId,
+      user: fixture.minterWalletId,
       pause_status: false,
       amount: 0n,
       role: MINTER_ROLE,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
-    tx = await tokenContract.update_wallet_id_role(minterWalletId, MINTER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await tx.wait();
-    role = await tokenContract.wallet_id_to_role(minterWalletId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
+    await fixture.token.update_wallet_id_role.accepted(
+      {
+        target_wallet_id: fixture.minterWalletId,
+        role: MINTER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    role = await fixture.token.getWallet_id_to_role(fixture.minterWalletId);
     expect(role).toBe(MINTER_ROLE);
 
-    salt = BigInt(Math.floor(Math.random() * 100000));
+    salt = randomSalt();
     multisigOp = {
       op: MULTISIG_OP_UPDATE_WALLET_ROLE,
-      user: burnerWalletId,
+      user: fixture.burnerWalletId,
       pause_status: false,
       amount: 0n,
       role: BURNER_ROLE,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
-    tx = await tokenContract.update_wallet_id_role(burnerWalletId, BURNER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await tx.wait();
-    role = await tokenContract.wallet_id_to_role(burnerWalletId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
+    await fixture.token.update_wallet_id_role.accepted(
+      {
+        target_wallet_id: fixture.burnerWalletId,
+        role: BURNER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    role = await fixture.token.getWallet_id_to_role(fixture.burnerWalletId);
     expect(role).toBe(BURNER_ROLE);
   });
 
-  test(`test update_role`, async () => {
+  test("test update_role", async () => {
+    const fixture = state!;
+
     // Manager can assign role
-    let tx = await tokenContractForAdmin.update_role(frozenAccount, MANAGER_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    let role = await tokenContract.address_to_role(frozenAccount);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.frozenAccount,
+        role: MANAGER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    let role = await fixture.token.getAddress_to_role(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
-    tx = await tokenContractForAdmin.update_role(frozenAccount, NONE_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(frozenAccount);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.frozenAccount,
+        role: NONE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
-    let rejectedTx = await tokenContractForFrozenAccount.update_role(
-      frozenAccount,
-      MANAGER_ROLE,
-      emptyMultisigCommonParams,
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.frozenAccount,
+        role: MANAGER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.frozenAccount),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update minter role
-    rejectedTx = await tokenContractForAccount.update_role(minter, MINTER_ROLE, emptyMultisigCommonParams);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.minter,
+        role: MINTER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.account),
+    );
 
     // Non admin user cannot update burner role
-    rejectedTx = await tokenContractForAccount.update_role(burner, BURNER_ROLE, emptyMultisigCommonParams);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.burner,
+        role: BURNER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.account),
+    );
 
     // Non admin user cannot update supply manager role
-    rejectedTx = await tokenContractForAccount.update_role(
-      supplyManager,
-      MINTER_ROLE + BURNER_ROLE,
-      emptyMultisigCommonParams,
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.supplyManager,
+        role: MINTER_ROLE + BURNER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Non admin user cannot update none role
-    rejectedTx = await tokenContractForAccount.update_role(account, NONE_ROLE, emptyMultisigCommonParams);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.account,
+        role: NONE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.account),
+    );
 
     // Non admin user cannot update pause role
-    rejectedTx = await tokenContractForAccount.update_role(account, PAUSE_ROLE, emptyMultisigCommonParams);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.account,
+        role: PAUSE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.account),
+    );
 
     // Manager cannot unassign himself from being a manager
-    rejectedTx = await tokenContractForAdmin.update_role(adminAddress, NONE_ROLE, emptyMultisigCommonParams);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: NONE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
 
     // Manager can assign minter, burner, manager, pauser and supply manager roles
-    tx = await tokenContractForAdmin.update_role(minter, MINTER_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(minter);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.minter,
+        role: MINTER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.minter);
     expect(role).toBe(MINTER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(burner, BURNER_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(burner);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.burner,
+        role: BURNER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.burner);
     expect(role).toBe(BURNER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(supplyManager, MINTER_ROLE + BURNER_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(supplyManager);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.supplyManager,
+        role: MINTER_ROLE + BURNER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(account, NONE_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(account);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.account,
+        role: NONE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.account);
     expect(role).toBe(NONE_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(pauser, PAUSE_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(pauser);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.pauser,
+        role: PAUSE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.pauser);
     expect(role).toBe(PAUSE_ROLE);
 
-    tx = await tokenContractForAdmin.update_role(adminAddress, MANAGER_ROLE, emptyMultisigCommonParams);
-    await tx.wait();
-    role = await tokenContract.address_to_role(adminAddress);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.token.getAddress_to_role(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
-    const randomAddress = safeAddress();
+    const randomAddress = addressLiteral(safeAddress());
     const randomRole = [MANAGER_ROLE, BURNER_ROLE, MINTER_ROLE, PAUSE_ROLE, MINTER_ROLE + BURNER_ROLE][
       Math.floor(Math.random() * 5)
-    ];
+    ]!;
 
     // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
-    rejectedTx = await tokenContractForAdmin.update_role(randomAddress, randomRole, {
-      wallet_id: managerWalletId,
-      salt: 0n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
+      },
+      asSigner(fixture.admin),
+    );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
-    rejectedTx = await tokenContractForAdmin.update_role(randomAddress, randomRole, {
-      wallet_id: ZERO_ADDRESS,
-      salt: 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
+      },
+      asSigner(fixture.admin),
+    );
 
-    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const salt = randomSalt();
     const multisigOp = {
       op: MULTISIG_OP_UPDATE_ROLE,
       user: randomAddress,
       pause_status: false,
       amount: 0n,
       role: randomRole,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(managerWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
-      wallet_id: managerWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await tokenContract.update_role(deployerAddress, randomRole, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: fixture.deployer,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the role doesn't match the role in the request the transaction will fail
-    rejectedTx = await tokenContract.update_role(randomAddress, randomRole + 1, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole + 1,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    tx = await tokenContract.update_role(randomAddress, randomRole, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await tx.wait();
-    role = await tokenContract.address_to_role(randomAddress);
+    await fixture.token.update_role.accepted(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    role = await fixture.token.getAddress_to_role(randomAddress);
     expect(role).toBe(randomRole);
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(pauseWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.pauseWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContract.update_role(randomAddress, randomRole, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.update_role.rejected(
+      {
+        new_address: randomAddress,
+        role: randomRole,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
-  let accountRecord: Token;
-  let frozenAccountRecord: Token;
-  let privateAccountBalance = 0n;
-  let startBlock = 0;
-  test(`test mint_private`, async () => {
-    startBlock = await getLatestBlockHeight();
+  test("test mint_private", async () => {
+    const fixture = state!;
 
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+    fixture.startBlock = await getLatestBlockHeight(fixture.ctx);
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
 
     // a regular user cannot mint private assets
-    let rejectedTx = await tokenContractForAccount.mint_private(account, amount * 20n);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private.rejected(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.account),
+    );
     // a burner cannot mint private assets
-    rejectedTx = await tokenContractForBurner.mint_private(account, amount * 20n);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private.rejected(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.burner),
+    );
     // an admin cannot mint private assets
-    rejectedTx = await tokenContractForAdmin.mint_private(account, amount * 20n);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private.rejected(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.admin),
+    );
 
-    let tx = await tokenContractForMinter.mint_private(frozenAccount, amount * 20n);
-    const [, encryptedFrozenAccountRecord] = await tx.wait();
-    frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
-    expect(frozenAccountRecord.amount).toBe(amount * 20n);
-    expect(frozenAccountRecord.owner).toBe(frozenAccount);
+    let tx = await fixture.token.mint_private.accepted(
+      {
+        recipient: fixture.frozenAccount,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.minter),
+    );
+    fixture.frozenAccountRecord = await tx.outputs[1].decrypt(fixture.frozenAccount);
+    expect(fixture.frozenAccountRecord.amount).toBe(amount * 20n);
+    expect(fixture.frozenAccountRecord.owner).toBe(fixture.frozenAccount.address);
 
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount * 20n);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount * 20n);
 
-    tx = await tokenContractForSupplyManager.mint_private(account, amount * 20n);
-    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-    expect(accountRecord.amount).toBe(amount * 20n);
-    expect(accountRecord.owner).toBe(account);
+    tx = await fixture.token.mint_private.accepted(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.supplyManager),
+    );
+    fixture.accountRecord = await tx.outputs[1].decrypt(fixture.account);
+    expect(fixture.accountRecord.amount).toBe(amount * 20n);
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
 
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount * 40n);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount * 40n);
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount * 20n);
-    expect(decryptedComplianceRecord.sender).toBe(ZERO_ADDRESS);
-    expect(decryptedComplianceRecord.recipient).toBe(account);
+    const complianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount * 20n);
+    expect(complianceRecord.sender).toBe(zeroAddress);
+    expect(complianceRecord.recipient).toBe(fixture.account.address);
 
-    privateAccountBalance += amount * 20n;
+    fixture.privateAccountBalance += amount * 20n;
   });
 
-  test(`test mint_private_multisig`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+  test("test mint_private_multisig", async () => {
+    const fixture = state!;
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
 
     const randomAccount = safeAccount();
     const randomPrivKey = randomAccount.privateKey().to_string();
-    const randomAddress = randomAccount.address().to_string();
-    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const randomAddress = addressLiteral(randomAccount.address().to_string());
+    const salt = randomSalt();
     const privMultisigOp = {
       op: MULTISIG_OP_MINT_PRIVATE,
       user: randomAddress,
-      amount: amount,
+      amount,
     };
 
-    let initMultiSigTx = await tokenContract.init_private_multisig_op(
-      minterWalletId,
+    let { signingOpId } = await initPrivateMultisigOp(
+      fixture,
+      fixture.minterWalletId,
       privMultisigOp,
       salt,
       MAX_BLOCK_HEIGHT,
     );
-    let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(minterWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.minterWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await tokenContract.mint_private_multisig(deployerAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: fixture.deployer,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the amount doesn't match the amount in the request the transaction will fail
-    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount + 1n, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount: amount + 1n,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    const tx = await tokenContract.mint_private_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await tx.wait();
-    const [complianceRandomRecord, encryptedRandomRecord] = await tx.wait();
-    const randomAccountRecord = decryptToken(encryptedRandomRecord, randomPrivKey);
+    const tx = await fixture.token.mint_private_multisig.accepted(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    const randomAccountRecord = await tx.outputs[1].decrypt(randomPrivKey);
     expect(randomAccountRecord.amount).toBe(amount);
     expect(randomAccountRecord.owner).toBe(randomAddress);
 
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount);
 
-    const decryptedRandomComplianceRecord = decryptComplianceRecord(complianceRandomRecord, investigatorPrivKey);
-    expect(decryptedRandomComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedRandomComplianceRecord.amount).toBe(amount);
-    expect(decryptedRandomComplianceRecord.sender).toBe(ZERO_ADDRESS);
-    expect(decryptedRandomComplianceRecord.recipient).toBe(randomAddress);
+    const complianceRandomRecord = await tx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRandomRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRandomRecord.amount).toBe(amount);
+    expect(complianceRandomRecord.sender).toBe(zeroAddress);
+    expect(complianceRandomRecord.recipient).toBe(randomAddress);
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await tokenContract.init_private_multisig_op(
-      managerWalletId,
+    ({ signingOpId } = await initPrivateMultisigOp(
+      fixture,
+      fixture.managerWalletId,
       privMultisigOp,
       salt,
       MAX_BLOCK_HEIGHT,
-    );
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    ));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContract.mint_private_multisig(randomAddress, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
-  test(`test mint_public`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+  test("test mint_public", async () => {
+    const fixture = state!;
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
 
     // a regular user cannot mint public assets
-    let rejectedTx = await tokenContractForAccount.mint_public(account, amount * 20n);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public.rejected(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.account),
+    );
     // a burner cannot mint public assets
-    rejectedTx = await tokenContractForBurner.mint_public(account, amount * 20n);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public.rejected(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.burner),
+    );
     // an admin cannot mint public assets
-    rejectedTx = await tokenContractForAdmin.mint_public(account, amount * 20n);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public.rejected(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.admin),
+    );
 
-    let tx = await tokenContractForMinter.mint_public(frozenAccount, amount * 20n);
-    await tx.wait();
-    let balance = await tokenContract.balances(frozenAccount);
+    await fixture.token.mint_public.accepted(
+      {
+        recipient: fixture.frozenAccount,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.minter),
+    );
+    let balance = (await fixture.token.getBalances(fixture.frozenAccount)) ?? 0n;
     expect(balance).toBe(amount * 20n);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount * 20n);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount * 20n);
 
-    tx = await tokenContractForSupplyManager.mint_public(account, amount * 20n);
-    await tx.wait();
-    balance = await tokenContract.balances(account);
+    await fixture.token.mint_public.accepted(
+      {
+        recipient: fixture.account,
+        amount: amount * 20n,
+      },
+      asSigner(fixture.supplyManager),
+    );
+    balance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
     expect(balance).toBe(amount * 20n);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount * 40n);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount * 40n);
   });
 
-  test(`test mint_public_multisig`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+  test("test mint_public_multisig", async () => {
+    const fixture = state!;
 
-    const randomAddress = safeAddress();
-    const salt = BigInt(Math.floor(Math.random() * 100000));
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
+
+    const randomAddress = addressLiteral(safeAddress());
+    const salt = randomSalt();
     const multisigOp = {
       op: MULTISIG_OP_MINT_PUBLIC,
       user: randomAddress,
       pause_status: false,
-      amount: amount,
+      amount,
       role: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await tokenContract.init_multisig_op(minterWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.minterWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(minterWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.minterWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await tokenContract.mint_public_multisig(deployerAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: fixture.deployer,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the amount doesn't match the amount in the request the transaction will fail
-    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount + 1n, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount: amount + 1n,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    const tx = await tokenContract.mint_public_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await tx.wait();
-    const balance = await tokenContract.balances(randomAddress);
+    await fixture.token.mint_public_multisig.accepted(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    const balance = (await fixture.token.getBalances(randomAddress)) ?? 0n;
     expect(balance).toBe(amount);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount);
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
-      wallet_id: minterWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContract.mint_public_multisig(randomAddress, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: randomAddress,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
-  test(`test burn_public`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+  test("test burn_public", async () => {
+    const fixture = state!;
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
 
     // A regular user cannot burn public assets
-    let rejectedTx = await tokenContractForAccount.burn_public(account, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public.rejected(
+      {
+        owner: fixture.account,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
 
     // A minter user cannot burn public assets
-    rejectedTx = await tokenContractForMinter.burn_public(account, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public.rejected(
+      {
+        owner: fixture.account,
+        amount,
+      },
+      asSigner(fixture.minter),
+    );
 
-    rejectedTx = await tokenContractForAdmin.burn_public(account, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public.rejected(
+      {
+        owner: fixture.account,
+        amount,
+      },
+      asSigner(fixture.admin),
+    );
 
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-    let tx = await tokenContractForBurner.burn_public(account, amount);
-    await tx.wait();
-    tokenInfo = await tokenContract.token_info(true);
-    expect(supply - tokenInfo.supply).toBe(amount);
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    await fixture.token.burn_public.accepted(
+      {
+        owner: fixture.account,
+        amount,
+      },
+      asSigner(fixture.burner),
+    );
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(supply - tokenInfo!.supply).toBe(amount);
 
-    tx = await tokenContractForSupplyManager.burn_public(account, amount);
-    await tx.wait();
-    tokenInfo = await tokenContract.token_info(true);
-    expect(supply - tokenInfo.supply).toBe(amount * 2n);
+    await fixture.token.burn_public.accepted(
+      {
+        owner: fixture.account,
+        amount,
+      },
+      asSigner(fixture.supplyManager),
+    );
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(supply - tokenInfo!.supply).toBe(amount * 2n);
 
-    let balance = await tokenContract.balances(account);
+    const balance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
     expect(balance).toBe(previousAccountPublicBalance - amount * 2n);
   });
 
-  test(`test burn_public_multisig`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-    const salt = BigInt(Math.floor(Math.random() * 100000));
+  test("test burn_public_multisig", async () => {
+    const fixture = state!;
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const salt = randomSalt();
     const multisigOp = {
       op: MULTISIG_OP_BURN_PUBLIC,
-      user: account,
+      user: addressLiteral(fixture.account),
       pause_status: false,
-      amount: amount,
+      amount,
       role: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await tokenContract.init_multisig_op(burnerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.burnerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.account,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(burnerWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.burnerWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.account,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
-      wallet_id: burnerWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.account,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await tokenContract.burn_public_multisig(frozenAccount, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.frozenAccount,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the amount doesn't match the amount in the request the transaction will fail
-    rejectedTx = await tokenContract.burn_public_multisig(account, amount + 1n, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.account,
+        amount: amount + 1n,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    const tx = await tokenContract.burn_public_multisig(account, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await tx.wait();
-    tokenInfo = await tokenContract.token_info(true);
-    expect(supply - tokenInfo.supply).toBe(amount);
-    const balance = await tokenContract.balances(account);
+    await fixture.token.burn_public_multisig.accepted(
+      {
+        owner: fixture.account,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(supply - tokenInfo!.supply).toBe(amount);
+    const balance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
     expect(balance).toBe(previousAccountPublicBalance - amount);
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.account,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContract.burn_public_multisig(account, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: fixture.account,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
-  test(`test burn_private`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+  test("test burn_private", async () => {
+    const fixture = state!;
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
 
     // A user that doesn't have a burner role cannot burn private assets
-    let rejectedTx = await tokenContractForAccount.burn_private(accountRecord, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
 
-    let mintTx = await tokenContractForMinter.mint_private(burner, amount);
-    let [, encryptedAdminRecord] = await mintTx.wait();
-    let adminRecord = decryptToken(encryptedAdminRecord, burnerPrivKey);
-    expect(adminRecord.amount).toBe(amount);
-    expect(adminRecord.owner).toBe(burner);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount);
+    let mintTx = await fixture.token.mint_private.accepted(
+      {
+        recipient: fixture.burner,
+        amount,
+      },
+      asSigner(fixture.minter),
+    );
+    let burnerRecord = await mintTx.outputs[1].decrypt(fixture.burner);
+    expect(burnerRecord.amount).toBe(amount);
+    expect(burnerRecord.owner).toBe(fixture.burner.address);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount);
 
-    let burnTx = await tokenContractForBurner.burn_private(adminRecord, amount);
-    let [complianceRecordFromBurning, encryptedAdminRecordFromBurning] = await burnTx.wait();
-    adminRecord = decryptToken(encryptedAdminRecordFromBurning, burnerPrivKey);
-    expect(adminRecord.amount).toBe(0n);
-    expect(adminRecord.owner).toBe(burner);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(supply).toBe(tokenInfo.supply);
+    let burnTx = await fixture.token.burn_private.accepted(
+      {
+        input_record: burnerRecord,
+        amount,
+      },
+      asSigner(fixture.burner),
+    );
+    burnerRecord = await burnTx.outputs[1].decrypt(fixture.burner);
+    expect(burnerRecord.amount).toBe(0n);
+    expect(burnerRecord.owner).toBe(fixture.burner.address);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(supply).toBe(tokenInfo!.supply);
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecordFromBurning, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(burner);
-    expect(decryptedComplianceRecord.recipient).toBe(ZERO_ADDRESS);
+    const complianceRecord = await burnTx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.burner.address);
+    expect(complianceRecord.recipient).toBe(zeroAddress);
 
     // check that MINTER_ROLE+BURNER_ROLE can burn private assets
-    mintTx = await tokenContractForMinter.mint_private(supplyManager, amount);
-    let [, encryptedSupplyManager] = await mintTx.wait();
-    let supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
+    mintTx = await fixture.token.mint_private.accepted(
+      {
+        recipient: fixture.supplyManager,
+        amount,
+      },
+      asSigner(fixture.minter),
+    );
+    let supplyManagerRecord = await mintTx.outputs[1].decrypt(fixture.supplyManager);
     expect(supplyManagerRecord.amount).toBe(amount);
-    expect(supplyManagerRecord.owner).toBe(supplyManager);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(tokenInfo.supply - supply).toBe(amount);
+    expect(supplyManagerRecord.owner).toBe(fixture.supplyManager.address);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(tokenInfo!.supply - supply).toBe(amount);
 
-    burnTx = await tokenContractForSupplyManager.burn_private(supplyManagerRecord, amount);
-    [, encryptedSupplyManager] = await burnTx.wait();
-    supplyManagerRecord = decryptToken(encryptedSupplyManager, supplyManagerPrivKey);
+    burnTx = await fixture.token.burn_private.accepted(
+      {
+        input_record: supplyManagerRecord,
+        amount,
+      },
+      asSigner(fixture.supplyManager),
+    );
+    supplyManagerRecord = await burnTx.outputs[1].decrypt(fixture.supplyManager);
     expect(supplyManagerRecord.amount).toBe(0n);
-    expect(supplyManagerRecord.owner).toBe(supplyManager);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(supply).toBe(tokenInfo.supply);
+    expect(supplyManagerRecord.owner).toBe(fixture.supplyManager.address);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(supply).toBe(tokenInfo!.supply);
   });
 
-  test(`test burn_private_multisig`, async () => {
-    let tokenInfo = await tokenContract.token_info(true);
-    const supply = tokenInfo.supply;
+  test("test burn_private_multisig", async () => {
+    const fixture = state!;
+
+    let tokenInfo = await fixture.token.getToken_info(true);
+    const supply = tokenInfo!.supply;
 
     // check multisig support
-    const salt = BigInt(Math.floor(Math.random() * 100000));
+    const salt = randomSalt();
     const privMultisigOp = {
       op: MULTISIG_OP_BURN_PRIVATE,
-      user: account,
-      amount: amount,
+      user: addressLiteral(fixture.account),
+      amount,
     };
 
-    let initMultiSigTx = await tokenContract.init_private_multisig_op(
-      burnerWalletId,
+    let { signingOpId } = await initPrivateMultisigOp(
+      fixture,
+      fixture.burnerWalletId,
       privMultisigOp,
       salt,
       MAX_BLOCK_HEIGHT,
     );
-    let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
 
-    await approveRequest(burnerWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.burnerWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
-      wallet_id: burnerWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt + 1n),
+      },
+      asSigner(fixture.account),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await tokenContractForFrozenAccount.burn_private_multisig(frozenAccountRecord, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.frozenAccountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.frozenAccount),
+    );
 
     // If the amount doesn't match the amount in the request the transaction will fail
-    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount - 1n, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount: amount - 1n,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
 
-    const accountRecordBalanceBefore = accountRecord.amount;
-    const burnTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    const [, encryptedAccountRecord] = await burnTx.wait();
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-    expect(accountRecord.amount).toBe(accountRecordBalanceBefore - amount);
-    expect(accountRecord.owner).toBe(account);
-    tokenInfo = await tokenContract.token_info(true);
-    expect(supply - tokenInfo.supply).toBe(amount);
-    privateAccountBalance -= amount;
+    const accountRecordBalanceBefore = fixture.accountRecord!.amount;
+    const burnTx = await fixture.token.burn_private_multisig.accepted(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
+    fixture.accountRecord = await burnTx.outputs[1].decrypt(fixture.account);
+    expect(fixture.accountRecord.amount).toBe(accountRecordBalanceBefore - amount);
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    tokenInfo = await fixture.token.getToken_info(true);
+    expect(supply - tokenInfo!.supply).toBe(amount);
+    fixture.privateAccountBalance -= amount;
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
-      wallet_id: burnerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
 
-    initMultiSigTx = await tokenContract.init_private_multisig_op(
-      managerWalletId,
+    ({ signingOpId } = await initPrivateMultisigOp(
+      fixture,
+      fixture.managerWalletId,
       privMultisigOp,
       salt,
       MAX_BLOCK_HEIGHT,
-    );
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    ));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContractForAccount.burn_private_multisig(accountRecord, amount, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
   });
 
-  test(`test transfer_public`, async () => {
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-    const previousRecipientPublicBalance = await tokenContract.balances(recipient, 0n);
+  test("test transfer_public", async () => {
+    const fixture = state!;
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
 
     // If the sender is frozen account it's IMPOSSIBLE to send tokens
-    let rejectedTx = await tokenContractForFrozenAccount.transfer_public(recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    // If the recipient is frozen account it's IMPOSSIBLE to send tokens
-    rejectedTx = await tokenContractForAccount.transfer_public(frozenAccount, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    let tx = await tokenContractForAccount.transfer_public(recipient, amount);
-    await tx.wait();
-
-    const accountPublicBalance = await tokenContract.balances(account);
-    const recipientPublicBalance = await tokenContract.balances(recipient);
-    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
-    expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
-  });
-
-  test(`test transfer_public_as_signer`, async () => {
-    // If the sender is frozen account it's impossible to send tokens
-    let rejectedTx = await tokenContractForFrozenAccount.transfer_public_as_signer(recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    // If the recipient is frozen account it's IMPOSSIBLE to send tokens
-    rejectedTx = await tokenContractForAccount.transfer_public(frozenAccount, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-    const previousRecipientPublicBalance = await tokenContract.balances(recipient, 0n);
-
-    const tx = await tokenContractForAccount.transfer_public_as_signer(recipient, amount);
-    await tx.wait();
-
-    const accountPublicBalance = await tokenContract.balances(account);
-    const recipientPublicBalance = await tokenContract.balances(recipient);
-    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
-    expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
-  });
-
-  test(`test transfer_from_public`, async () => {
-    // If the sender didn't approve the spender the transaction will fail
-    let rejectedTx = await tokenContractForSpender.transfer_from_public(account, recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    let approveTx = await tokenContractForAccount.approve_public(spender, amount);
-    await approveTx.wait();
-    let unapproveTx = await tokenContractForAccount.unapprove_public(spender, amount);
-    await unapproveTx.wait();
-
-    // If the sender approve and then unapprove the spender the transaction will fail
-    rejectedTx = await tokenContractForSpender.transfer_from_public(account, recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    // approve the spender
-    approveTx = await tokenContractForAccount.approve_public(spender, amount);
-    await approveTx.wait();
-    approveTx = await tokenContractForFrozenAccount.approve_public(spender, amount);
-    await approveTx.wait();
-
-    // If the sender is frozen account it's impossible to send tokens
-    rejectedTx = await tokenContractForSpender.transfer_from_public(frozenAccount, recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    // If the recipient is frozen account it's impossible to send tokens
-    rejectedTx = await tokenContractForSpender.transfer_from_public(account, frozenAccount, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-    const previousRecipientPublicBalance = await tokenContract.balances(recipient, 0n);
-
-    const tx = await tokenContractForSpender.transfer_from_public(account, recipient, amount);
-    await tx.wait();
-
-    const accountPublicBalance = await tokenContract.balances(account);
-    const recipientPublicBalance = await tokenContract.balances(recipient);
-    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
-    expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
-  });
-
-  test(`test transfer_from_public_to_private`, async () => {
-    // If the sender didn't approve the spender the transaction will fail
-    let rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(account, recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    let approveTx = await tokenContractForAccount.approve_public(spender, amount);
-    await approveTx.wait();
-    let unapproveTx = await tokenContractForAccount.unapprove_public(spender, amount);
-    await unapproveTx.wait();
-
-    // If the sender approve and then unapprove the spender the transaction will fail
-    rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(account, recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    // approve the spender
-    approveTx = await tokenContractForAccount.approve_public(spender, amount);
-    await approveTx.wait();
-    approveTx = await tokenContractForFrozenAccount.approve_public(spender, amount);
-    await approveTx.wait();
-
-    // If the sender is frozen account it's impossible to send tokens
-    rejectedTx = await tokenContractForSpender.transfer_from_public_to_private(frozenAccount, recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-
-    const tx = await tokenContractForSpender.transfer_from_public_to_private(account, recipient, amount);
-    const [complianceRecord, encryptedRecipientRecord] = await tx.wait();
-    const recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
-    expect(recipientRecord.owner).toBe(recipient);
-    expect(recipientRecord.amount).toBe(amount);
-
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
-
-    const accountPublicBalance = await tokenContract.balances(account);
-    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
-  });
-
-  test(`test transfer_public_to_priv`, async () => {
-    // If the sender is frozen account it's impossible to send tokens
-    let rejectedTx = await tokenContractForFrozenAccount.transfer_public_to_private(recipient, amount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const previousAccountPublicBalance = await tokenContract.balances(account);
-
-    const tx = await tokenContractForAccount.transfer_public_to_private(recipient, amount);
-    const [complianceRecord, tokenRecord] = await tx.wait();
-    const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
-    expect(recipientRecord.owner).toBe(recipient);
-    expect(recipientRecord.amount).toBe(amount);
-
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
-
-    const accountPublicBalance = await tokenContract.balances(account);
-    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
-  });
-
-  test(`test transfer_private`, async () => {
-    // If the sender is frozen account it's impossible to send tokens
-    await expect(
-      tokenContractForFrozenAccount.transfer_private(recipient, amount, accountRecord, frozenAccountMerkleProof),
-    ).rejects.toThrow();
-
-    const tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
-    privateAccountBalance -= amount;
-    const [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord] = await tx.wait();
-
-    const previousAmount = accountRecord.amount;
-    accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
-    const recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
-    expect(recipientRecord.owner).toBe(recipient);
-    expect(recipientRecord.amount).toBe(amount);
-
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
-  });
-
-  test(`test transfer_priv_to_public`, async () => {
-    // If the sender is frozen account it's impossible to send tokens
-    await expect(
-      tokenContractForFrozenAccount.transfer_private_to_public(
-        recipient,
+    await fixture.token.transfer_public.rejected(
+      {
+        recipient: fixture.recipient,
         amount,
-        frozenAccountRecord,
-        frozenAccountMerkleProof,
-      ),
-    ).rejects.toThrow();
-
-    // If the recipient is frozen account it's impossible to send tokens
-    let rejectedTx = await tokenContractForAccount.transfer_private_to_public(
-      frozenAccount,
-      amount,
-      accountRecord,
-      senderMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const previousRecipientPublicBalance = await tokenContract.balances(recipient, 0n);
-
-    const tx = await tokenContractForAccount.transfer_private_to_public(
-      recipient,
-      amount,
-      accountRecord,
-      senderMerkleProof,
+    // If the recipient is frozen account it's IMPOSSIBLE to send tokens
+    await fixture.token.transfer_public.rejected(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+      },
+      asSigner(fixture.account),
     );
-    privateAccountBalance -= amount;
-    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
 
-    const previousAmount = accountRecord.amount;
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
+    await fixture.token.transfer_public.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
-
-    const recipientPublicBalance = await tokenContract.balances(recipient);
+    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
 
-  let credentials: Credentials;
-  test(`test get_credentials`, async () => {
+  test("test transfer_public_as_signer", async () => {
+    const fixture = state!;
+
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.token.transfer_public_as_signer.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    // If the recipient is frozen account it's IMPOSSIBLE to send tokens
+    await fixture.token.transfer_public.rejected(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+
+    await fixture.token.transfer_public_as_signer.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
+    expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
+  });
+
+  test("test transfer_from_public", async () => {
+    const fixture = state!;
+
+    // If the sender didn't approve the spender the transaction will fail
+    await fixture.token.transfer_from_public.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+    await fixture.token.unapprove_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    // If the sender approve and then unapprove the spender the transaction will fail
+    await fixture.token.transfer_from_public.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    // approve the spender
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.token.transfer_from_public.rejected(
+      {
+        sender: fixture.frozenAccount,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    // If the recipient is frozen account it's impossible to send tokens
+    await fixture.token.transfer_from_public.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.frozenAccount,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+
+    await fixture.token.transfer_from_public.accepted(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
+    expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
+  });
+
+  test("test transfer_from_public_to_private", async () => {
+    const fixture = state!;
+
+    // If the sender didn't approve the spender the transaction will fail
+    await fixture.token.transfer_from_public_to_private.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+    await fixture.token.unapprove_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    // If the sender approve and then unapprove the spender the transaction will fail
+    await fixture.token.transfer_from_public_to_private.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    // approve the spender
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.token.transfer_from_public_to_private.rejected(
+      {
+        sender: fixture.frozenAccount,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+
+    const tx = await fixture.token.transfer_from_public_to_private.accepted(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+    const recipientRecord = await tx.outputs[1].decrypt(fixture.recipient);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
+    expect(recipientRecord.amount).toBe(amount);
+
+    const complianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.account.address);
+    expect(complianceRecord.recipient).toBe(fixture.recipient.address);
+
+    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
+  });
+
+  test("test transfer_public_to_private", async () => {
+    const fixture = state!;
+
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.token.transfer_public_to_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+
+    const tx = await fixture.token.transfer_public_to_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+    const recipientRecord = await tx.outputs[1].decrypt(fixture.recipient);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
+    expect(recipientRecord.amount).toBe(amount);
+
+    const complianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.account.address);
+    expect(complianceRecord.recipient).toBe(fixture.recipient.address);
+
+    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
+  });
+
+  test("test transfer_private", async () => {
+    const fixture = state!;
+
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.token.transfer_private.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.frozenAccountRecord!,
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    const tx = await fixture.token.transfer_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+    fixture.privateAccountBalance -= amount;
+
+    const previousAmount = fixture.accountRecord!.amount;
+    fixture.accountRecord = await tx.outputs[1].decrypt(fixture.account);
+    const recipientRecord = await tx.outputs[2].decrypt(fixture.recipient);
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountRecord.amount).toBe(previousAmount - amount);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
+    expect(recipientRecord.amount).toBe(amount);
+
+    const complianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.account.address);
+    expect(complianceRecord.recipient).toBe(fixture.recipient.address);
+  });
+
+  test("test transfer_priv_to_public", async () => {
+    const fixture = state!;
+
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.token.transfer_private_to_public.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.frozenAccountRecord!,
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    // If the recipient is frozen account it's impossible to send tokens
+    await fixture.token.transfer_private_to_public.rejected(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+
+    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+
+    const tx = await fixture.token.transfer_private_to_public.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+    fixture.privateAccountBalance -= amount;
+
+    const previousAmount = fixture.accountRecord!.amount;
+    fixture.accountRecord = await tx.outputs[1].decrypt(fixture.account);
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountRecord.amount).toBe(previousAmount - amount);
+
+    const complianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.account.address);
+    expect(complianceRecord.recipient).toBe(fixture.recipient.address);
+
+    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
+  });
+
+  test("test get_credentials", async () => {
+    const fixture = state!;
+
     // It's impossible to get the credentials record with an invalid merkle proof
-    await expect(tokenContractForFrozenAccount.get_credentials(frozenAccountMerkleProof)).rejects.toThrow();
+    await fixture.token.get_credentials.failsLocally(
+      {
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
+    );
 
     const randomAddress = safeAddress();
     const leaves = generateLeaves([randomAddress]);
     const tree = buildTree(leaves);
-    const senderLeafIndices = getLeafIndices(tree, account);
+    const senderLeafIndices = getLeafIndices(tree, fixture.account.address);
     const IncorrectSenderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
+      toMerkleProof(getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH)),
     ];
 
     // If the root doesn't match the on-chain root the transaction will be rejected
-    const rejectedTx = await tokenContractForAccount.get_credentials(IncorrectSenderMerkleProof);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.get_credentials.rejected(
+      {
+        sender_merkle_proofs: IncorrectSenderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
-    const tx = await tokenContractForAccount.get_credentials(senderMerkleProof);
-    const [encryptedTicket] = await tx.wait();
-    credentials = await decryptCredentials(encryptedTicket, accountPrivKey);
-    expect(credentials.owner).toBe(account);
-    expect(credentials.freeze_list_root).toBe(root);
+    const tx = await fixture.token.get_credentials.accepted(
+      {
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+    fixture.credentials = await tx.outputs.decrypt(fixture.account);
+    expect(fixture.credentials.owner).toBe(fixture.account.address);
+    expect(fixture.credentials.freeze_list_root).toBe(fixture.rootField);
   });
 
-  test(`test transfer with credentials`, async () => {
-    let transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
-      recipient,
-      amount,
-      accountRecord,
-      credentials,
+  test("test transfer with credentials", async () => {
+    const fixture = state!;
+    const fakeRootField = fieldLiteral(1n);
+
+    let transferPrivateTx = await fixture.token.transfer_private_with_creds.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        credentials: fixture.credentials!,
+      },
+      asSigner(fixture.account),
     );
-    privateAccountBalance -= amount;
-    let [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
-      await transferPrivateTx.wait();
-    credentials = await decryptCredentials(encryptedCredRecord, accountPrivKey);
-    expect(credentials.owner).toBe(account);
-    expect(credentials.freeze_list_root).toBe(root);
-    let previousAmount = accountRecord.amount;
-    accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
-    let recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
-    expect(recipientRecord.owner).toBe(recipient);
+    fixture.privateAccountBalance -= amount;
+    let complianceRecord = await transferPrivateTx.outputs[0].decrypt(fixture.investigator);
+    let encryptedSenderRecord = await transferPrivateTx.outputs[1].decrypt(fixture.account);
+    let encryptedRecipientRecord = await transferPrivateTx.outputs[2].decrypt(fixture.recipient);
+    let encryptedCredRecord = await transferPrivateTx.outputs[3].decrypt(fixture.account);
+    fixture.credentials = encryptedCredRecord;
+    expect(fixture.credentials.owner).toBe(fixture.account.address);
+    expect(fixture.credentials.freeze_list_root).toBe(fixture.rootField);
+    let previousAmount = fixture.accountRecord!.amount;
+    fixture.accountRecord = encryptedSenderRecord;
+    let recipientRecord = encryptedRecipientRecord;
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountRecord.amount).toBe(previousAmount - amount);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
     expect(recipientRecord.amount).toBe(amount);
 
-    let decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.account.address);
+    expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
     // Update the root to make the old credentials expired
-    let updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
-      frozenAccount,
-      false,
-      1,
-      root,
-      1n, // fake root
-      emptyMultisigCommonParams,
+    await fixture.freezeRegistry.update_freeze_list.accepted(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: false,
+        frozen_index: 1,
+        previous_root: fixture.rootField,
+        new_root: fakeRootField,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
     );
-    await updateFreezeListTx.wait();
-    let updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
-      1,
-      emptyMultisigCommonParams,
+    await fixture.freezeRegistry.update_block_height_window.accepted(
+      {
+        blocks: 1,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
     );
-    await updateBlockHeightWindowTx.wait();
 
-    let rejectedTransferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
-      recipient,
-      amount,
-      accountRecord,
-      credentials,
+    await fixture.token.transfer_private_with_creds.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        credentials: fixture.credentials!,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTransferPrivateTx.wait()).rejects.toThrow();
 
     // bring back the old root
-    updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
-      frozenAccount,
-      true,
-      1,
-      1n,
-      root,
-      emptyMultisigCommonParams,
+    await fixture.freezeRegistry.update_freeze_list.accepted(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: true,
+        frozen_index: 1,
+        previous_root: fakeRootField,
+        new_root: fixture.rootField,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
     );
-    await updateFreezeListTx.wait();
-    updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
-      BLOCK_HEIGHT_WINDOW,
-      emptyMultisigCommonParams,
+    await fixture.freezeRegistry.update_block_height_window.accepted(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
     );
-    await updateBlockHeightWindowTx.wait();
 
-    transferPrivateTx = await tokenContractForAccount.transfer_private_with_creds(
-      recipient,
-      amount,
-      accountRecord,
-      credentials,
+    transferPrivateTx = await fixture.token.transfer_private_with_creds.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        credentials: fixture.credentials!,
+      },
+      asSigner(fixture.account),
     );
-    privateAccountBalance -= amount;
-    [complianceRecord, encryptedSenderRecord, encryptedRecipientRecord, encryptedCredRecord] =
-      await transferPrivateTx.wait();
-    credentials = await decryptCredentials(encryptedCredRecord, accountPrivKey);
-    expect(credentials.owner).toBe(account);
-    expect(credentials.freeze_list_root).toBe(root);
-    previousAmount = accountRecord.amount;
-    accountRecord = decryptToken(encryptedSenderRecord, accountPrivKey);
-    recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
-    expect(recipientRecord.owner).toBe(recipient);
+    fixture.privateAccountBalance -= amount;
+    complianceRecord = await transferPrivateTx.outputs[0].decrypt(fixture.investigator);
+    encryptedSenderRecord = await transferPrivateTx.outputs[1].decrypt(fixture.account);
+    encryptedRecipientRecord = await transferPrivateTx.outputs[2].decrypt(fixture.recipient);
+    encryptedCredRecord = await transferPrivateTx.outputs[3].decrypt(fixture.account);
+    fixture.credentials = encryptedCredRecord;
+    expect(fixture.credentials.owner).toBe(fixture.account.address);
+    expect(fixture.credentials.freeze_list_root).toBe(fixture.rootField);
+    previousAmount = fixture.accountRecord!.amount;
+    fixture.accountRecord = encryptedSenderRecord;
+    recipientRecord = encryptedRecipientRecord;
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountRecord.amount).toBe(previousAmount - amount);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
     expect(recipientRecord.amount).toBe(amount);
 
-    decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
-    expect(decryptedComplianceRecord.amount).toBe(amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    expect(complianceRecord.owner).toBe(fixture.investigator.address);
+    expect(complianceRecord.amount).toBe(amount);
+    expect(complianceRecord.sender).toBe(fixture.account.address);
+    expect(complianceRecord.recipient).toBe(fixture.recipient.address);
   });
 
-  test(`test pausing the contract`, async () => {
-    // Only the pauser can pause the program
-    let rejectedTx = await tokenContractForAdmin.set_pause_status(true, emptyMultisigCommonParams);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+  test("test pausing the contract", async () => {
+    const fixture = state!;
 
-    let approveTx = await tokenContractForAccount.approve_public(spender, amount);
-    await approveTx.wait();
+    // Only the pauser can pause the program
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+
+    await fixture.token.approve_public.accepted(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
 
     // pause the contract
-    let pauseTx = await tokenContractForPauser.set_pause_status(true, emptyMultisigCommonParams);
-    await pauseTx.wait();
-    let pauseStatus = await tokenContract.pause(true);
+    await fixture.token.set_pause_status.accepted(
+      {
+        pause_status: true,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.pauser),
+    );
+    let pauseStatus = await fixture.token.getPause(true);
     expect(pauseStatus).toBe(true);
 
     // verify that all the functionalities are paused
-    const mintTx = await tokenContractForMinter.mint_public(recipient, amount);
-    await expect(mintTx.wait()).rejects.toThrow();
-
-    const mintPrivateTx = await tokenContractForMinter.mint_private(recipient, amount);
-    await expect(mintPrivateTx.wait()).rejects.toThrow();
-
-    const burnTx = await tokenContractForBurner.burn_public(recipient, amount);
-    await expect(burnTx.wait()).rejects.toThrow();
-
-    let publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
-    await expect(publicTx.wait()).rejects.toThrow();
-
-    const publicAsSignerTx = await tokenContractForAccount.transfer_public_as_signer(recipient, amount);
-    await expect(publicAsSignerTx.wait()).rejects.toThrow();
-
-    approveTx = await tokenContractForAccount.approve_public(spender, amount);
-    await expect(approveTx.wait()).rejects.toThrow();
-
-    const unapproveTx = await tokenContractForAccount.unapprove_public(spender, amount);
-    await expect(unapproveTx.wait()).rejects.toThrow();
-
-    const fromPublicTx = await tokenContractForSpender.transfer_from_public(account, recipient, amount);
-    await expect(fromPublicTx.wait()).rejects.toThrow();
-
-    const fromPublicToPrivateTx = await tokenContractForSpender.transfer_from_public_to_private(
-      account,
-      recipient,
-      amount,
+    await fixture.token.mint_public.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.minter),
     );
-    await expect(fromPublicToPrivateTx.wait()).rejects.toThrow();
 
-    const publicToPrivate = await tokenContractForAccount.transfer_public_to_private(recipient, amount);
-    await expect(publicToPrivate.wait()).rejects.toThrow();
-
-    const privateTx = await tokenContractForAccount.transfer_private(
-      recipient,
-      amount,
-      accountRecord,
-      senderMerkleProof,
+    await fixture.token.mint_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.minter),
     );
-    await expect(privateTx.wait()).rejects.toThrow();
 
-    const privateToPublic = await tokenContractForAccount.transfer_private_to_public(
-      recipient,
-      amount,
-      accountRecord,
-      senderMerkleProof,
+    await fixture.token.burn_public.rejected(
+      {
+        owner: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.burner),
     );
-    await expect(privateToPublic.wait()).rejects.toThrow();
 
-    let privateWithTicketTx = await tokenContractForAccount.transfer_private_with_creds(
-      recipient,
-      amount,
-      accountRecord,
-      credentials,
+    await fixture.token.transfer_public.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
     );
-    await expect(privateWithTicketTx.wait()).rejects.toThrow();
+
+    await fixture.token.transfer_public_as_signer.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.token.approve_public.rejected(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.token.unapprove_public.rejected(
+      {
+        spender: fixture.spender,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.token.transfer_from_public.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    await fixture.token.transfer_from_public_to_private.rejected(
+      {
+        sender: fixture.account,
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.spender),
+    );
+
+    await fixture.token.transfer_public_to_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.token.transfer_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.token.transfer_private_to_public.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.token.transfer_private_with_creds.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        credentials: fixture.credentials!,
+      },
+      asSigner(fixture.account),
+    );
 
     // unpause the contract
-    pauseTx = await tokenContractForPauser.set_pause_status(false, emptyMultisigCommonParams);
-    await pauseTx.wait();
-    pauseStatus = await tokenContract.pause(true);
+    await fixture.token.set_pause_status.accepted(
+      {
+        pause_status: false,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.pauser),
+    );
+    pauseStatus = await fixture.token.getPause(true);
     expect(pauseStatus).toBe(false);
 
     //verify that the functionalities are back (one is enough)
-    publicTx = await tokenContractForAccount.transfer_public(recipient, amount);
-    await publicTx.wait();
+    await fixture.token.transfer_public.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
 
     // Even though the caller is a pauser, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
-    rejectedTx = await tokenContractForBurner.set_pause_status(true, {
-      wallet_id: managerWalletId,
-      salt: 0n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
+      },
+      asSigner(fixture.burner),
+    );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
-    rejectedTx = await tokenContractForBurner.set_pause_status(true, {
-      wallet_id: ZERO_ADDRESS,
-      salt: 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
+      },
+      asSigner(fixture.burner),
+    );
 
-    let salt = BigInt(Math.floor(Math.random() * 100000));
+    let salt = randomSalt();
     const multisigOp = {
       op: MULTISIG_OP_SET_PAUSE_STATUS,
-      user: ZERO_ADDRESS,
+      user: zeroAddress,
       pause_status: true,
       amount: 0n,
       role: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    rejectedTx = await tokenContract.set_pause_status(true, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(pauseWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.pauseWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await tokenContract.set_pause_status(true, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await tokenContract.set_pause_status(true, {
-      wallet_id: pauseWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the pause status doesn't match the pause status in the request the transaction will fail
-    rejectedTx = await tokenContract.set_pause_status(false, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: false,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    let tx = await tokenContract.set_pause_status(true, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await tx.wait();
-    pauseStatus = await tokenContract.pause(true);
+    await fixture.token.set_pause_status.accepted(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    pauseStatus = await fixture.token.getPause(true);
     expect(pauseStatus).toBe(true);
 
     // It's possible to execute the request only once
-    rejectedTx = await tokenContract.set_pause_status(true, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await tokenContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await tokenContract.set_pause_status(true, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: true,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    salt = BigInt(Math.floor(Math.random() * 100000));
+    salt = randomSalt();
     multisigOp.pause_status = false;
-    multisigOp.salt = salt;
+    multisigOp.salt = scalarLiteral(salt);
 
-    initMultiSigTx = await tokenContract.init_multisig_op(pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(pauseWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.pauseWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.pauseWalletId, signingOpId);
 
-    tx = await tokenContract.set_pause_status(false, {
-      wallet_id: pauseWalletId,
-      salt,
-    });
-    await tx.wait();
-    pauseStatus = await tokenContract.pause(true);
+    await fixture.token.set_pause_status.accepted(
+      {
+        pause_status: false,
+        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    pauseStatus = await fixture.token.getPause(true);
     expect(pauseStatus).toBe(false);
   });
 
-  test(`calculate private balance`, async () => {
-    const networkClient = new AleoNetworkClient(contract.config.network.endpoint);
-    const latestBlockHeight = await getLatestBlockHeight();
+  test("calculate private balance", async () => {
+    const fixture = state!;
+    const networkClient = new AleoNetworkClient(fixture.ctx.connection.endpoint);
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
     let calculatedAccountBalance = 0n;
     let calculatedBurnerBalance = 0n;
-    while (latestBlockHeight > startBlock) {
-      const endBlock = Math.min(startBlock + 50, latestBlockHeight);
-      const blockRange = await networkClient.getBlockRange(startBlock, endBlock);
-      startBlock += 50;
+    while (latestBlockHeight > fixture.startBlock) {
+      const endBlock = Math.min(fixture.startBlock + 50, latestBlockHeight);
+      const blockRange = await networkClient.getBlockRange(fixture.startBlock, endBlock);
+      fixture.startBlock += 50;
       for (const block of blockRange) {
         if (!block.transactions || block.transactions.length === 0) {
           // Skip empty blocks
@@ -1721,32 +2486,35 @@ describe("test multisig_compliant_token program", () => {
         }
         for (const tx of block.transactions) {
           if (!tx.transaction?.execution?.transitions) continue;
-          for (const transition of tx.transaction?.execution?.transitions ?? []) {
+          for (const transition of tx.transaction.execution.transitions ?? []) {
             if (
               transition.program === "multisig_compliant_token.aleo" &&
               transition.outputs &&
               transition.outputs[0].type === "record"
             ) {
               try {
-                const complianceRecord = transition.outputs[0].value;
-                const { recipient, sender, amount } = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
+                const complianceRecord = await decryptComplianceRecord(
+                  transition.outputs[0].value,
+                  fixture.investigator.privateKey,
+                );
+                const { recipient, sender, amount: transferredAmount } = complianceRecord;
                 if (
-                  sender === account &&
+                  sender === fixture.account.address &&
                   !["transfer_from_public_to_private", "transfer_public_to_private"].includes(transition.function)
                 ) {
-                  calculatedAccountBalance -= amount;
+                  calculatedAccountBalance -= transferredAmount;
                 }
-                if (recipient === account && transition.function !== "transfer_private_to_public") {
-                  calculatedAccountBalance += amount;
+                if (recipient === fixture.account.address && transition.function !== "transfer_private_to_public") {
+                  calculatedAccountBalance += transferredAmount;
                 }
                 if (
-                  sender === burner &&
+                  sender === fixture.burner.address &&
                   !["transfer_from_public_to_private", "transfer_public_to_private"].includes(transition.function)
                 ) {
-                  calculatedBurnerBalance -= amount;
+                  calculatedBurnerBalance -= transferredAmount;
                 }
-                if (recipient === burner && transition.function !== "transfer_private_to_public") {
-                  calculatedBurnerBalance += amount;
+                if (recipient === fixture.burner.address && transition.function !== "transfer_private_to_public") {
+                  calculatedBurnerBalance += transferredAmount;
                 }
               } catch {}
             }
@@ -1754,153 +2522,214 @@ describe("test multisig_compliant_token program", () => {
         }
       }
     }
-    expect(calculatedAccountBalance).toBe(privateAccountBalance);
+    expect(calculatedAccountBalance).toBe(fixture.privateAccountBalance);
     expect(calculatedBurnerBalance).toBe(0n);
   });
 
-  test(`test expired multisig requests`, async () => {
-    const randomWalletId = safeAddress();
-    await createWallet(randomWalletId, 1, [deployerAddress, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
-    const updateWalletTx = await tokenContractForAdmin.update_wallet_id_role(
+  test("test expired multisig requests", async () => {
+    const fixture = state!;
+
+    const randomWalletId = addressLiteral(safeAddress());
+    await createWallet(
+      fixture.multisig,
+      fixture.deployer,
       randomWalletId,
-      MANAGER_ROLE + MINTER_ROLE + BURNER_ROLE + PAUSE_ROLE,
-      emptyMultisigCommonParams,
+      [fixture.deployer, zeroAddress, zeroAddress, zeroAddress],
+      1,
     );
-    await updateWalletTx.wait();
-    const salt = BigInt(Math.floor(Math.random() * 100000));
+    await fixture.token.update_wallet_id_role.accepted(
+      {
+        target_wallet_id: randomWalletId,
+        role: MANAGER_ROLE + MINTER_ROLE + BURNER_ROLE + PAUSE_ROLE,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    const salt = randomSalt();
     const multisigOp = {
       op: MULTISIG_OP_UPDATE_WALLET_ROLE,
-      user: ZERO_ADDRESS,
+      user: zeroAddress,
       pause_status: false,
       amount: 0n,
       role: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
-    let initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
-    let [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updateWalletIdTX = await tokenContract.update_wallet_id_role(ZERO_ADDRESS, 0, {
-      salt,
-      wallet_id: randomWalletId,
-    });
-    await expect(updateWalletIdTX.wait()).rejects.toThrow();
+    let { walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1);
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: zeroAddress,
+        role: 0,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     multisigOp.op = MULTISIG_OP_UPDATE_ROLE;
-    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
-    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updateRoleTX = await tokenContract.update_role(ZERO_ADDRESS, 0, { salt, wallet_id: randomWalletId });
-    await expect(updateRoleTX.wait()).rejects.toThrow();
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1));
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.update_role.rejected(
+      {
+        new_address: zeroAddress,
+        role: 0,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     multisigOp.op = MULTISIG_OP_MINT_PUBLIC;
-    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
-    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updateMintPublicTX = await tokenContract.mint_public_multisig(ZERO_ADDRESS, 0n, {
-      salt,
-      wallet_id: randomWalletId,
-    });
-    await expect(updateMintPublicTX.wait()).rejects.toThrow();
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1));
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.mint_public_multisig.rejected(
+      {
+        recipient: zeroAddress,
+        amount: 0n,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     multisigOp.op = MULTISIG_OP_BURN_PUBLIC;
-    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
-    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updateBurnPublicTX = await tokenContract.burn_public_multisig(ZERO_ADDRESS, 0n, {
-      salt,
-      wallet_id: randomWalletId,
-    });
-    await expect(updateBurnPublicTX.wait()).rejects.toThrow();
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1));
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.burn_public_multisig.rejected(
+      {
+        owner: zeroAddress,
+        amount: 0n,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     multisigOp.op = MULTISIG_OP_SET_PAUSE_STATUS;
-    initMultiSigTx = await tokenContract.init_multisig_op(randomWalletId, multisigOp, 1);
-    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updatePausePublicTX = await tokenContract.set_pause_status(false, { salt, wallet_id: randomWalletId });
-    await expect(updatePausePublicTX.wait()).rejects.toThrow();
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1));
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.set_pause_status.rejected(
+      {
+        pause_status: false,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     const privMultisigOp = {
       op: MULTISIG_OP_MINT_PRIVATE,
       amount: 1n,
-      user: account,
+      user: addressLiteral(fixture.account),
     };
-    initMultiSigTx = await tokenContract.init_private_multisig_op(randomWalletId, privMultisigOp, salt, 1);
-    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updateMintPrivateTX = await tokenContract.mint_private_multisig(account, 1n, {
-      salt,
-      wallet_id: randomWalletId,
-    });
-    await expect(updateMintPrivateTX.wait()).rejects.toThrow();
+    ({ walletSigningOpIdHash } = await initPrivateMultisigOp(fixture, randomWalletId, privMultisigOp, salt, 1));
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.mint_private_multisig.rejected(
+      {
+        recipient: fixture.account,
+        amount: 1n,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     privMultisigOp.op = MULTISIG_OP_BURN_PRIVATE;
-    initMultiSigTx = await tokenContract.init_private_multisig_op(randomWalletId, privMultisigOp, salt, 1);
-    [, wallet_signing_op_id_hash] = await initMultiSigTx.wait();
-    await multiSigContract.completed_signing_ops(wallet_signing_op_id_hash);
-    await waitBlocks(1);
-    const updateBurnPrivateTX = await tokenContractForAccount.burn_private_multisig(accountRecord, 1n, {
-      salt,
-      wallet_id: randomWalletId,
-    });
-    await expect(updateBurnPrivateTX.wait()).rejects.toThrow();
+    ({ walletSigningOpIdHash } = await initPrivateMultisigOp(fixture, randomWalletId, privMultisigOp, salt, 1));
+    await waitBlocks(fixture.ctx, 1);
+    await fixture.token.burn_private_multisig.rejected(
+      {
+        input_record: fixture.accountRecord!,
+        amount: 1n,
+        multisig_common_params: multisigCommonParams(randomWalletId, salt),
+      },
+      asSigner(fixture.account),
+    );
   });
 
-  test(`test old root support`, async () => {
+  test("test old root support", async () => {
+    const fixture = state!;
+
     const leaves = generateLeaves([]);
     const tree = buildTree(leaves);
     expect(tree[tree.length - 1]).toBe(emptyRoot);
 
-    const senderLeafIndices = getLeafIndices(tree, account);
+    console.log("test old root support 0");
+    const senderLeafIndices = getLeafIndices(tree, fixture.account.address);
     const emptyTreeSenderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
+      toMerkleProof(getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH)),
     ];
+    console.log("test old root support 1");
+
     // The transaction failed because the root is mismatch
-    let rejectedTx = await tokenContractForAccount.transfer_private(
-      recipient,
-      amount,
-      accountRecord,
-      emptyTreeSenderMerkleProof,
+    await fixture.token.transfer_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: emptyTreeSenderMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    console.log("test old root support 2");
 
-    const updateFreezeListTx = await freezeRegistryContractForAdmin.update_freeze_list(
-      frozenAccount,
-      false,
-      1,
-      root,
-      emptyRoot, // fake root
-      emptyMultisigCommonParams,
+    await fixture.freezeRegistry.update_freeze_list.accepted(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: false,
+        frozen_index: 1,
+        previous_root: fixture.rootField,
+        new_root: emptyRootField,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
     );
-    await updateFreezeListTx.wait();
+    console.log("test old root support 3");
 
-    const newRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const oldRoot = await freezeRegistryContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-    expect(oldRoot).toBe(root);
-    expect(newRoot).toBe(emptyRoot);
+    const newRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await fixture.freezeRegistry.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    expect(oldRoot).toBe(fixture.rootField);
+    expect(newRoot).toBe(emptyRootField);
 
     // The transaction succeed because the old root is match
-    let tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
-    const [, encryptedAccountRecord] = await tx.wait();
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-
-    const updateBlockHeightWindowTx = await freezeRegistryContractForAdmin.update_block_height_window(
-      1,
-      emptyMultisigCommonParams,
+    let tx = await fixture.token.transfer_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    await updateBlockHeightWindowTx.wait();
+    fixture.accountRecord = await tx.outputs[1].decrypt(fixture.account);
+    console.log("test old root support 4");
+
+    await fixture.freezeRegistry.update_block_height_window.accepted(
+      {
+        blocks: 1,
+        multisig_common_params: emptyMultisigCommonParams,
+      },
+      asSigner(fixture.admin),
+    );
+    console.log("test old root support 5");
 
     // The transaction failed because the old root is expired
-    rejectedTx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, senderMerkleProof);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.token.transfer_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+    console.log("test old root support 6");
 
-    tx = await tokenContractForAccount.transfer_private(recipient, amount, accountRecord, emptyTreeSenderMerkleProof);
-    await tx.wait();
+    tx = await fixture.token.transfer_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        sender_merkle_proofs: emptyTreeSenderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
+    await tx.outputs[1].decrypt(fixture.account);
+    console.log("test old root support 7");
   });
 });

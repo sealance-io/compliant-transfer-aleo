@@ -14,6 +14,6 @@
     "isolatedModules": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["lib/**/*", "contract/**/*", "artifacts/js/**/*", "scripts/**/*", "test/**/*", "*.ts"],
+  "include": ["lib/**/*", "scripts/**/*", "test/**/*", "*.ts"],
   "exclude": ["node_modules"]
 }

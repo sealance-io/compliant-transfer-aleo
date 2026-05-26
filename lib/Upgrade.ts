@@ -1,22 +1,22 @@
-import { exec } from "child_process";
-import { promisify } from "util";
 import networkConfig from "../aleo-config";
-import { parseBooleanEnv } from "./Env";
-
-const execAsync = promisify(exec);
+import { runLiondenTask } from "../lionden-compat/core";
 
 export async function upgradeProgram(programName: string, privateKey: string) {
   const networkName = networkConfig.defaultNetwork;
-  const endpoint = networkConfig.networks[networkName].endpoint;
-  const skipDeploymentCert = parseBooleanEnv(process.env.SKIP_DEPLOY_CERTIFICATE, false);
-  const skipFlag = skipDeploymentCert ? " --skip-deploy-certificate" : "";
-  const upgradeCmd = `cd artifacts/leo/${programName} && leo upgrade --broadcast --private-key ${privateKey} --yes --endpoint ${endpoint} --network ${networkName}${skipFlag} --blocks-to-check 20 --max-wait 30`;
-  console.log(upgradeCmd);
-  const { stdout } = await execAsync(upgradeCmd);
-  if (stdout.includes("Upgrade confirmed!")) {
+  void privateKey;
+
+  try {
+    await runLiondenTask("upgrade", {
+      program: programName,
+      network: networkName,
+    });
     return true;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log(error.message);
+    }
+    return false;
   }
-  return false;
 }
 
 export async function getProgramEdition(programName: string): Promise<number> {

@@ -1,4 +1,4 @@
-import { ExecutionMode } from "@doko-js/core";
+import { ExecutionMode } from "../lionden-compat/core";
 import { BaseContract } from "../contract/base-contract";
 import { upgradeProgram } from "../lib/Upgrade";
 

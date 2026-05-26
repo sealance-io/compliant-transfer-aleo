@@ -1,16 +1,18 @@
-import { CreditsContract } from "../artifacts/js/credits";
-import { mode } from "./Constants";
+import type { SignableNamedAccount } from "@lionden/config";
+import type { DeploymentContext } from "@lionden/plugin-deploy";
+import { type TestContext } from "@lionden/testing";
 
-export async function fundWithCredits(funderPrivKey: string, account: string, amount: bigint) {
-  const creditsContract = new CreditsContract({
-    mode,
-    privateKey: funderPrivKey,
-  });
-  // Fund account if he doesn't have sufficient balance - essential for the local deployment
-  const balance = await creditsContract.account(account, 0n);
+export async function fundWithCredits(
+  ctx: TestContext | DeploymentContext,
+  account: string,
+  amount: bigint,
+  signer: SignableNamedAccount,
+) {
+  const balance = await ctx.connection.getBalance(account);
   if (balance < amount) {
-    // TODO: check and err if funder has insuffcient funds to make sure error is clear
-    const tx = await creditsContract.transfer_public(account, amount - balance);
-    await tx.wait();
+    const missingAmount = amount - balance;
+    await ctx.execute("credits.aleo", "transfer_public", [account, `${missingAmount}u64`], {
+      signer,
+    });
   }
 }
