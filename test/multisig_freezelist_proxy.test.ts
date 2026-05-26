@@ -1,636 +1,766 @@
-import { ExecutionMode } from "@doko-js/core";
-import { BaseContract } from "../contract/base-contract";
-import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
+import { type SignableNamedAccount } from "@lionden/config";
+
 import {
   BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
+  FREEZE_LIST_LAST_INDEX,
   FREEZELIST_MANAGER_ROLE,
   MANAGER_ROLE,
-  ZERO_ADDRESS,
-  fundedAmount,
-  emptyMultisigCommonParams,
+  MAX_BLOCK_HEIGHT,
+  MULTISIG_OP_UPDATE_BLOCK_WINDOW,
+  MULTISIG_OP_UPDATE_FREEZE_LIST,
   MULTISIG_OP_UPDATE_ROLE,
   MULTISIG_OP_UPDATE_WALLET_ROLE,
-  MULTISIG_OP_UPDATE_FREEZE_LIST,
-  MULTISIG_OP_UPDATE_BLOCK_WINDOW,
-  MAX_BLOCK_HEIGHT,
-  FREEZE_LIST_LAST_INDEX,
-} from "../lib/Constants";
-import { fundWithCredits } from "../lib/Fund";
-import { deployIfNotDeployed } from "../lib/Deploy";
-import { safeAddress } from "./utils/Accounts";
-import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
-import { Multisig_coreContract } from "../artifacts/js/multisig_core";
-import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
-import { waitBlocks } from "../lib/Block";
-import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
-import { Multisig_freezelist_proxyContract } from "../artifacts/js/multisig_freezelist_proxy";
-import { updateAddressToRole } from "../lib/Role";
+  emptyMultisigCommonParams,
+  fundedAmount,
+  zeroAddress,
+  SETUP_TIMEOUT_MS,
+} from "../lib/Constants.js";
+import { waitBlocks } from "../lib/Block.js";
+import { fundWithCredits } from "../lib/Fund.js";
+import { addressLiteral, asSigner, fieldLiteral, scalarLiteral } from "../lib/LiondenAdapters.js";
+import { approveRequest, createWallet, initializeMultisig, multisigCommonParams, randomSalt } from "../lib/Multisig.js";
+import { Leo, LeoField } from "../typechain/BaseContract.js";
+import { createMultisigCore } from "../typechain/MultisigCore.js";
+import { createMultisigFreezelistProxy, type FreezeRegistryMultisigOp } from "../typechain/MultisigFreezelistProxy.js";
+import { createSealanceFreezelistRegistry } from "../typechain/SealanceFreezelistRegistry.js";
+import { safeAddress } from "./utils/Accounts.js";
+import { Address } from "@provablehq/sdk";
 
-const mode = ExecutionMode.SnarkExecute;
-const contract = new BaseContract({ mode });
+const managerWalletId = Leo.address(safeAddress());
+const freezeListManagerWalletId = Leo.address(safeAddress());
+const proxyProgramAddress = Address.fromProgramId("multisig_freezelist_proxy.aleo").to_string();
+const rootField = fieldLiteral(1n);
 
-// This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-// THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, , frozenAccount, , , , , , , freezeListManager, , signer1, signer2] =
-  contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const adminPrivKey = contract.getPrivateKey(adminAddress);
+interface MultisigFreezelistProxyFixture {
+  readonly ctx: TestContext;
+  readonly deployer: SignableNamedAccount;
+  readonly admin: SignableNamedAccount;
+  readonly frozenAccount: SignableNamedAccount;
+  readonly freezeListManager: SignableNamedAccount;
+  readonly signer1: SignableNamedAccount;
+  readonly signer2: SignableNamedAccount;
+  readonly multisig: ReturnType<typeof createMultisigCore>;
+  readonly freezeRegistry: ReturnType<typeof createSealanceFreezelistRegistry>;
+  readonly proxy: ReturnType<typeof createMultisigFreezelistProxy>;
+  readonly managerWalletId: ReturnType<typeof Leo.address>;
+  readonly freezeListManagerWalletId: ReturnType<typeof Leo.address>;
+}
 
-const freezeRegistryContract = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const merkleTreeContract = new Merkle_treeContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const multiSigContract = new Multisig_coreContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
+async function initMultisigOp(
+  fixture: MultisigFreezelistProxyFixture,
+  walletId: ReturnType<typeof Leo.address>,
+  multisigOp: FreezeRegistryMultisigOp,
+  blockExpiration: number,
+) {
+  const tx = await fixture.proxy.init_multisig_op.accepted(
+    {
+      wallet_id: walletId,
+      multisig_op: multisigOp,
+      block_expiration: blockExpiration,
+    },
+    asSigner(fixture.deployer),
+  );
 
-const freezeRegistryProxyContract = new Multisig_freezelist_proxyContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryProxyContractForAdmin = new Multisig_freezelist_proxyContract({
-  mode,
-  privateKey: adminPrivKey,
-});
+  return {
+    signingOpId: await tx.outputs[0].decrypt(fixture.deployer),
+    walletSigningOpIdHash: await tx.outputs[1].decrypt(fixture.deployer),
+  };
+}
 
-const managerWalletId = safeAddress();
-const freezeListManagerWalletId = safeAddress();
+async function deployFixture() {
+  const ctx = await setup();
 
-const root = 1n;
+  try {
+    const deployer = ctx.named.signer("deployer");
+    const admin = ctx.named.signer("admin");
+    const frozenAccount = ctx.named.signer("frozenAccount");
+    const freezeListManager = ctx.named.signer("freezeListManager");
+    const signer1 = ctx.named.signer("signer1");
+    const signer2 = ctx.named.signer("signer2");
+
+    for (const signer of [admin, frozenAccount, freezeListManager, signer1, signer2]) {
+      await fundWithCredits(ctx, signer.address, fundedAmount, deployer);
+    }
+
+    const multisig = createMultisigCore().connect(ctx.lre);
+    const freezeRegistry = createSealanceFreezelistRegistry().connect(ctx.lre);
+    const proxy = createMultisigFreezelistProxy().connect(ctx.lre);
+
+    for (const program of [
+      "multisig_core",
+      "merkle_tree",
+      "sealance_freezelist_registry",
+      "multisig_freezelist_proxy",
+    ]) {
+      await ctx.deploy(program, { noCompile: true });
+    }
+
+    await initializeMultisig(multisig, deployer);
+
+    const aleoSigners = [signer1, signer2, zeroAddress, zeroAddress] as const;
+    await createWallet(multisig, deployer, managerWalletId, aleoSigners);
+    await createWallet(multisig, deployer, freezeListManagerWalletId, aleoSigners);
+
+    await freezeRegistry.initialize.accepted(
+      {
+        admin,
+        blocks: BLOCK_HEIGHT_WINDOW,
+      },
+      asSigner(deployer),
+    );
+    await freezeRegistry.update_role.accepted(
+      {
+        new_address: proxyProgramAddress,
+        role: MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+      },
+      asSigner(admin),
+    );
+
+    return {
+      ctx,
+      deployer,
+      admin,
+      frozenAccount,
+      freezeListManager,
+      signer1,
+      signer2,
+      multisig,
+      freezeRegistry,
+      proxy,
+      managerWalletId,
+      freezeListManagerWalletId,
+    } satisfies MultisigFreezelistProxyFixture;
+  } catch (error) {
+    await ctx.teardown();
+    throw error;
+  }
+}
+
+let state: MultisigFreezelistProxyFixture | undefined;
+
+beforeAll(async () => {
+  state = await loadFixture(deployFixture);
+}, SETUP_TIMEOUT_MS);
+
+afterAll(async () => {
+  if (state) {
+    await state.ctx.teardown();
+  } else {
+    clearFixtures();
+  }
+});
 
 describe("test multisig_freezelist_proxy program", () => {
-  beforeAll(async () => {
-    // Deploy the multisig programs
-    await deployIfNotDeployed(multiSigContract);
-    // Create the wallets
-    await initializeMultisig();
-    await createWallet(managerWalletId);
-    await createWallet(freezeListManagerWalletId);
-
-    await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(freezeRegistryContract);
-    await deployIfNotDeployed(freezeRegistryProxyContract);
-
-    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-    await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
-    await fundWithCredits(deployerPrivKey, signer1, fundedAmount);
-    await fundWithCredits(deployerPrivKey, signer2, fundedAmount);
-
-    await initializeProgram(freezeRegistryContract, [adminAddress, BLOCK_HEIGHT_WINDOW]);
-    await updateAddressToRole(
-      freezeRegistryContractForAdmin,
-      freezeRegistryProxyContract.address(),
-      MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
-    );
-  });
-
   test(`test initialize`, async () => {
-    const isProxyInitialized = await isProgramInitialized(freezeRegistryProxyContract);
-    if (!isProxyInitialized) {
-      // Cannot update freeze list before initialization
-      let rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-        frozenAccount,
-        true,
-        1,
-        0n,
-        root,
-        emptyMultisigCommonParams,
-      );
-      await expect(rejectedTx.wait()).rejects.toThrow();
+    const fixture = state!;
+    const isProxyInitialized = (await fixture.proxy.getInitialized(true)) === true;
 
-      if (deployerAddress !== adminAddress) {
+    if (!isProxyInitialized) {
+      const currentRoot = (await fixture.freezeRegistry.getFreeze_list_root(
+        CURRENT_FREEZE_LIST_ROOT_INDEX,
+      )) as LeoField;
+      // Cannot update freeze list before initialization
+      await fixture.proxy.update_freeze_list.rejected(
+        {
+          account: fixture.frozenAccount,
+          is_frozen: true,
+          frozen_index: 1,
+          previous_root: currentRoot,
+          new_root: rootField,
+          multisig_common_params: emptyMultisigCommonParams,
+        },
+        asSigner(fixture.deployer),
+      );
+
+      if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
-        rejectedTx = await freezeRegistryProxyContract.initialize(managerWalletId);
-        await expect(rejectedTx.wait()).rejects.toThrow();
+        await fixture.proxy.initialize.rejected(
+          {
+            manager_wallet_id: fixture.managerWalletId,
+          },
+          asSigner(fixture.deployer),
+        );
       }
 
       // The wallet ID manager has to be non zero
-      rejectedTx = await freezeRegistryProxyContractForAdmin.initialize(ZERO_ADDRESS);
-      await expect(rejectedTx.wait()).rejects.toThrow();
+      await fixture.proxy.initialize.rejected(
+        {
+          manager_wallet_id: zeroAddress,
+        },
+        asSigner(fixture.admin),
+      );
 
-      const tx = await freezeRegistryProxyContractForAdmin.initialize(managerWalletId);
-      await tx.wait();
-      const role = await freezeRegistryProxyContractForAdmin.wallet_id_to_role(managerWalletId);
+      await fixture.proxy.initialize.accepted(
+        {
+          manager_wallet_id: fixture.managerWalletId,
+        },
+        asSigner(fixture.admin),
+      );
+      const role = await fixture.proxy.getWallet_id_to_role(fixture.managerWalletId);
       expect(role).toBe(MANAGER_ROLE);
     }
 
     // It is possible to call to initialize only one time
-    const rejectedTx = await freezeRegistryProxyContractForAdmin.initialize(managerWalletId);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.initialize.rejected(
+      {
+        manager_wallet_id: fixture.managerWalletId,
+      },
+      asSigner(fixture.admin),
+    );
   });
 
   test(`test init_multi_sig`, async () => {
-    let salt = BigInt(Math.floor(Math.random() * 100000));
-    const multisigOp = {
+    const fixture = state!;
+
+    let salt = randomSalt();
+    let multisigOp: FreezeRegistryMultisigOp = {
       op: 0,
-      user: ZERO_ADDRESS,
+      user: zeroAddress,
       is_frozen: false,
       frozen_index: 0,
-      previous_root: 0n,
-      new_root: 0n,
+      previous_root: fieldLiteral(0n),
+      new_root: fieldLiteral(0n),
       role: 0,
       blocks: 0,
-      salt: salt,
+      salt: scalarLiteral(salt),
     };
 
-    let tx = await freezeRegistryProxyContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    let [, walletSigningOpIdHash] = await tx.wait();
-    let pendingRequest = await freezeRegistryProxyContract.pending_requests(walletSigningOpIdHash);
-    expect(pendingRequest.op).toBe(0);
-    expect(pendingRequest.user).toBe(ZERO_ADDRESS);
-    expect(pendingRequest.is_frozen).toBe(false);
-    expect(pendingRequest.frozen_index).toBe(0);
-    expect(pendingRequest.previous_root).toBe(0n);
-    expect(pendingRequest.new_root).toBe(0n);
-    expect(pendingRequest.role).toBe(0);
-    expect(pendingRequest.blocks).toBe(0);
-    expect(pendingRequest.salt).toBe(salt);
-
-    // It's impossible to initiate a request twice
-    const rejectedTx = await freezeRegistryProxyContract.init_multisig_op(
-      managerWalletId,
+    let { walletSigningOpIdHash } = await initMultisigOp(
+      fixture,
+      fixture.managerWalletId,
       multisigOp,
       MAX_BLOCK_HEIGHT,
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    let pendingRequest = await fixture.proxy.getPending_requests(walletSigningOpIdHash);
+    expect(pendingRequest?.op).toBe(0);
+    expect(pendingRequest?.user).toBe(zeroAddress);
+    expect(pendingRequest?.is_frozen).toBe(false);
+    expect(pendingRequest?.frozen_index).toBe(0);
+    expect(pendingRequest?.previous_root).toBe(fieldLiteral(0n));
+    expect(pendingRequest?.new_root).toBe(fieldLiteral(0n));
+    expect(pendingRequest?.role).toBe(0);
+    expect(pendingRequest?.blocks).toBe(0);
+    expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
 
-    salt = BigInt(Math.floor(Math.random() * 100000));
-    multisigOp.salt = salt;
-    tx = await freezeRegistryProxyContract.init_multisig_op(managerWalletId, multisigOp, 1);
-    [, walletSigningOpIdHash] = await tx.wait();
-    pendingRequest = await freezeRegistryProxyContract.pending_requests(walletSigningOpIdHash);
-    expect(pendingRequest.salt).toBe(salt);
-    await waitBlocks(1);
+    // It's impossible to initiate a request twice
+    await fixture.proxy.init_multisig_op.rejected(
+      {
+        wallet_id: fixture.managerWalletId,
+        multisig_op: multisigOp,
+        block_expiration: MAX_BLOCK_HEIGHT,
+      },
+      asSigner(fixture.deployer),
+    );
+
+    salt = randomSalt();
+    multisigOp = {
+      ...multisigOp,
+      salt: scalarLiteral(salt),
+    };
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, 1));
+    pendingRequest = await fixture.proxy.getPending_requests(walletSigningOpIdHash);
+    expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
+    await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
-    tx = await freezeRegistryProxyContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [, walletSigningOpIdHash] = await tx.wait();
+    ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
   });
 
   test(`test update_wallet_id_role`, async () => {
-    const salt = BigInt(Math.floor(Math.random() * 100000));
-    const multisigOp = {
+    const fixture = state!;
+    const salt = randomSalt();
+    const multisigOp: FreezeRegistryMultisigOp = {
       op: MULTISIG_OP_UPDATE_WALLET_ROLE,
-      user: freezeListManagerWalletId,
+      user: fixture.freezeListManagerWalletId,
       is_frozen: false,
       frozen_index: 0,
-      previous_root: 0n,
-      new_root: 0n,
+      previous_root: fieldLiteral(0n),
+      new_root: fieldLiteral(0n),
       role: FREEZELIST_MANAGER_ROLE,
       blocks: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(
-      managerWalletId,
-      multisigOp,
-      MAX_BLOCK_HEIGHT,
-    );
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(
-      freezeListManagerWalletId,
-      FREEZELIST_MANAGER_ROLE,
+    await fixture.proxy.update_wallet_id_role.rejected(
       {
-        wallet_id: managerWalletId,
-        salt,
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    await approveRequest(managerWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(
-      freezeListManagerWalletId,
-      FREEZELIST_MANAGER_ROLE,
+    await fixture.proxy.update_wallet_id_role.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(
-      freezeListManagerWalletId,
-      FREEZELIST_MANAGER_ROLE,
+    await fixture.proxy.update_wallet_id_role.rejected(
       {
-        wallet_id: managerWalletId,
-        salt: salt + 1n,
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(freezeListManager, FREEZELIST_MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_wallet_id_role.rejected(
+      {
+        target_wallet_id: fixture.freezeListManager,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the role doesn't match the role in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(freezeListManagerWalletId, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const tx = await freezeRegistryProxyContract.update_wallet_id_role(
-      freezeListManagerWalletId,
-      FREEZELIST_MANAGER_ROLE,
+    await fixture.proxy.update_wallet_id_role.rejected(
       {
-        wallet_id: managerWalletId,
-        salt,
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await tx.wait();
-    const role = await freezeRegistryProxyContract.wallet_id_to_role(freezeListManagerWalletId);
+
+    await fixture.proxy.update_wallet_id_role.accepted(
+      {
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    const role = await fixture.proxy.getWallet_id_to_role(fixture.freezeListManagerWalletId);
     expect(role).toBe(FREEZELIST_MANAGER_ROLE);
 
     // It's possible to execute the request only once
-    rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(
-      freezeListManagerWalletId,
-      FREEZELIST_MANAGER_ROLE,
+    await fixture.proxy.update_wallet_id_role.rejected(
       {
-        wallet_id: managerWalletId,
-        salt,
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(
-      freezeListManagerWalletId,
-      multisigOp,
-      MAX_BLOCK_HEIGHT,
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.freezeListManagerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(
+      fixture.ctx,
+      [fixture.signer1, fixture.signer2],
+      fixture.freezeListManagerWalletId,
+      signingOpId,
     );
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(freezeListManagerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_wallet_id_role(
-      freezeListManagerWalletId,
-      FREEZELIST_MANAGER_ROLE,
+    await fixture.proxy.update_wallet_id_role.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        target_wallet_id: fixture.freezeListManagerWalletId,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
-  test(`test multisig support in update_role`, async () => {
-    const salt = BigInt(Math.floor(Math.random() * 100000));
-    const multisigOp = {
+  test(`test update_role`, async () => {
+    const fixture = state!;
+    const salt = randomSalt();
+    const multisigOp: FreezeRegistryMultisigOp = {
       op: MULTISIG_OP_UPDATE_ROLE,
-      user: adminAddress,
+      user: fixture.admin,
       is_frozen: false,
       frozen_index: 0,
-      previous_root: 0n,
-      new_root: 0n,
+      previous_root: fieldLiteral(0n),
+      new_root: fieldLiteral(0n),
       role: MANAGER_ROLE,
       blocks: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(
-      managerWalletId,
-      multisigOp,
-      MAX_BLOCK_HEIGHT,
-    );
-    let [signingOpId] = await initMultiSigTx.wait();
+    let { signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await freezeRegistryProxyContract.update_role(adminAddress, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(managerWalletId, signingOpId);
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_role(adminAddress, MANAGER_ROLE, {
-      wallet_id: freezeListManagerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_role(adminAddress, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_role(deployerAddress, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.deployer,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the role doesn't match the role in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_role(adminAddress, FREEZELIST_MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: FREEZELIST_MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    const tx = await freezeRegistryProxyContract.update_role(adminAddress, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await tx.wait();
-    const role = await freezeRegistryContract.address_to_role(adminAddress);
+    await fixture.proxy.update_role.accepted(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    const role = await fixture.freezeRegistry.getAddress_to_role(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
     // It's possible to execute the request only once
-    rejectedTx = await freezeRegistryProxyContract.update_role(adminAddress, MANAGER_ROLE, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(
-      freezeListManagerWalletId,
-      multisigOp,
-      MAX_BLOCK_HEIGHT,
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
     );
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(freezeListManagerWalletId, signingOpId);
+
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.freezeListManagerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(
+      fixture.ctx,
+      [fixture.signer1, fixture.signer2],
+      fixture.freezeListManagerWalletId,
+      signingOpId,
+    );
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_role(adminAddress, MANAGER_ROLE, {
-      wallet_id: freezeListManagerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: MANAGER_ROLE,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
   test(`test update_freeze_list`, async () => {
-    const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    const fixture = state!;
+    const currentRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
     const randomAddress = safeAddress();
 
-    const salt = BigInt(Math.floor(Math.random() * 100000));
-    const multisigOp = {
+    const salt = randomSalt();
+    let multisigOp: FreezeRegistryMultisigOp = {
       op: MULTISIG_OP_UPDATE_FREEZE_LIST,
-      user: randomAddress,
+      user: addressLiteral(randomAddress),
       is_frozen: true,
-      frozen_index: lastIndex + 1,
-      previous_root: currentRoot,
-      new_root: root,
+      frozen_index: (lastIndex ?? 0) + 1,
+      previous_root: currentRoot!,
+      new_root: rootField,
       role: 0,
       blocks: 0,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(
-      freezeListManagerWalletId,
+    let { signingOpId } = await initMultisigOp(
+      fixture,
+      fixture.freezeListManagerWalletId,
       multisigOp,
       MAX_BLOCK_HEIGHT,
     );
-    let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    await approveRequest(freezeListManagerWalletId, signingOpId);
-    // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
-      {
-        wallet_id: managerWalletId,
-        salt,
-      },
+    await approveRequest(
+      fixture.ctx,
+      [fixture.signer1, fixture.signer2],
+      fixture.freezeListManagerWalletId,
+      signingOpId,
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    // If the wallet_id is incorrect the transaction will fail
+    await fixture.proxy.update_freeze_list.rejected(
+      {
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt: salt + 1n,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt + 1n),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the address doesn't match the address in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      safeAddress(),
-      true,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(safeAddress()),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
     // If the is_frozen doesn't match the is_frozen in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      false,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: false,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
     // If the frozen_index doesn't match the frozen_index in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index - 1,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index - 1,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
     // If the previous_root doesn't match the previous_root in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      0n,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: fieldLiteral(0n),
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
     // If the new_root doesn't match the new_root in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      root,
-      0n,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: rootField,
+        new_root: fieldLiteral(0n),
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.accepted(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await tx.wait();
-    const isFrozen = await freezeRegistryContract.freeze_list(randomAddress);
+    const isFrozen = await fixture.freezeRegistry.getFreeze_list(addressLiteral(randomAddress));
     expect(isFrozen).toBe(true);
 
     // It's possible to execute the request only once
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(
-      randomAddress,
-      true,
-      multisigOp.frozen_index,
-      currentRoot,
-      root,
+    await fixture.proxy.update_freeze_list.rejected(
       {
-        wallet_id: freezeListManagerWalletId,
-        salt,
+        account: addressLiteral(randomAddress),
+        is_frozen: true,
+        frozen_index: multisigOp.frozen_index,
+        previous_root: currentRoot!,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       },
+      asSigner(fixture.deployer),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    multisigOp.is_frozen = false;
-    multisigOp.previous_root = root;
-    initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    multisigOp = {
+      ...multisigOp,
+      is_frozen: false,
+      previous_root: rootField,
+    };
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_freeze_list(randomAddress, false, 3, root, root, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_freeze_list.rejected(
+      {
+        account: addressLiteral(randomAddress),
+        is_frozen: false,
+        frozen_index: 3,
+        previous_root: rootField,
+        new_root: rootField,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
   test(`test update_block_height_window`, async () => {
-    const salt = BigInt(Math.floor(Math.random() * 100000));
-    const multisigOp = {
+    const fixture = state!;
+    const salt = randomSalt();
+    const multisigOp: FreezeRegistryMultisigOp = {
       op: MULTISIG_OP_UPDATE_BLOCK_WINDOW,
-      user: ZERO_ADDRESS,
+      user: zeroAddress,
       is_frozen: false,
       frozen_index: 0,
-      previous_root: 0n,
-      new_root: 0n,
+      previous_root: fieldLiteral(0n),
+      new_root: fieldLiteral(0n),
       role: 0,
       blocks: BLOCK_HEIGHT_WINDOW,
-      salt,
+      salt: scalarLiteral(salt),
     };
 
-    let initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(
-      freezeListManagerWalletId,
+    let { signingOpId } = await initMultisigOp(
+      fixture,
+      fixture.freezeListManagerWalletId,
       multisigOp,
       MAX_BLOCK_HEIGHT,
     );
-    let [signingOpId] = await initMultiSigTx.wait();
 
     // If the request wasn't approved yet the transaction will fail
-    let rejectedTx = await freezeRegistryProxyContract.update_block_height_window(BLOCK_HEIGHT_WINDOW, {
-      wallet_id: freezeListManagerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_block_height_window.rejected(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    await approveRequest(freezeListManagerWalletId, signingOpId);
+    await approveRequest(
+      fixture.ctx,
+      [fixture.signer1, fixture.signer2],
+      fixture.freezeListManagerWalletId,
+      signingOpId,
+    );
 
     // If the wallet_id is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_block_height_window(BLOCK_HEIGHT_WINDOW, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_block_height_window.rejected(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the salt is incorrect the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_block_height_window(BLOCK_HEIGHT_WINDOW, {
-      wallet_id: freezeListManagerWalletId,
-      salt: salt + 1n,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_block_height_window.rejected(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt + 1n),
+      },
+      asSigner(fixture.deployer),
+    );
 
     // If the block height window doesn't match the block height window in the request the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_block_height_window(0, {
-      wallet_id: freezeListManagerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_block_height_window.rejected(
+      {
+        blocks: 0,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    const tx = await freezeRegistryProxyContract.update_block_height_window(BLOCK_HEIGHT_WINDOW, {
-      wallet_id: freezeListManagerWalletId,
-      salt,
-    });
-    await tx.wait();
-    const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    await fixture.proxy.update_block_height_window.accepted(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
+    const blockHeightWindow = await fixture.freezeRegistry.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
     expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
 
     // It's possible to execute the request only once
-    rejectedTx = await freezeRegistryProxyContract.update_block_height_window(BLOCK_HEIGHT_WINDOW, {
-      wallet_id: freezeListManagerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_block_height_window.rejected(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
 
-    initMultiSigTx = await freezeRegistryProxyContract.init_multisig_op(managerWalletId, multisigOp, MAX_BLOCK_HEIGHT);
-    [signingOpId] = await initMultiSigTx.wait();
-    await approveRequest(managerWalletId, signingOpId);
+    ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
-    rejectedTx = await freezeRegistryProxyContract.update_block_height_window(BLOCK_HEIGHT_WINDOW, {
-      wallet_id: managerWalletId,
-      salt,
-    });
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.proxy.update_block_height_window.rejected(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
+      },
+      asSigner(fixture.deployer),
+    );
   });
 });

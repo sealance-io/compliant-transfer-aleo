@@ -1,905 +1,1116 @@
-import { ExecutionMode } from "@doko-js/core";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
+import { type SignableNamedAccount } from "@lionden/config";
+import { Address } from "@provablehq/sdk";
+import { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "@sealance-io/policy-engine-aleo";
 
-import { BaseContract } from "../contract/base-contract";
-import { Token_registryContract } from "../artifacts/js/token_registry";
-import { decryptComplianceRecord } from "../artifacts/js/leo2js/sealed_report_policy";
-import { decryptToken } from "../artifacts/js/leo2js/token_registry";
-import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import {
   BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
-  SEALED_THRESHOLD_POLICY_ADDRESS,
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   EPOCH,
   EPOCH_INDEX,
   FREEZE_REGISTRY_PROGRAM_INDEX,
+  FREEZELIST_MANAGER_ROLE,
+  MANAGER_ROLE,
   MAX_TREE_DEPTH,
+  NONE_ROLE,
+  SETUP_TIMEOUT_MS,
   THRESHOLD,
   THRESHOLD_INDEX,
   defaultAuthorizedUntil,
   fundedAmount,
   policies,
-  FREEZELIST_MANAGER_ROLE,
-  NONE_ROLE,
-  MANAGER_ROLE,
-} from "../lib/Constants";
-import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
-import { fundWithCredits } from "../lib/Fund";
-import { deployIfNotDeployed } from "../lib/Deploy";
-import { registerTokenProgram } from "../lib/Token";
-import { decryptTokenComplianceStateRecord } from "../artifacts/js/leo2js/sealed_threshold_report_policy";
-import { getLatestBlockHeight } from "../lib/Block";
-import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
-import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
-import { buildTree, generateLeaves, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
-import type { Token } from "../artifacts/js/types/token_registry";
-import type { TokenComplianceStateRecord } from "../artifacts/js/types/sealed_threshold_report_policy";
-import { initializeProgram, isProgramInitialized } from "../lib/Initalize";
-import { Multisig_coreContract } from "../artifacts/js/multisig_core";
-
-const mode = ExecutionMode.SnarkExecute;
-const contract = new BaseContract({ mode });
+} from "../lib/Constants.js";
+import { getLatestBlockHeight } from "../lib/Block.js";
+import { fundWithCredits } from "../lib/Fund.js";
+import { addressLiteral, asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
+import { registerTokenProgram } from "../lib/Token.js";
+import type { MerkleProof } from "../typechain/MerkleTree.js";
+import {
+  createSealedThresholdReportPolicy,
+  TokenRegistry_Token,
+  type TokenComplianceStateRecord,
+} from "../typechain/SealedThresholdReportPolicy.js";
+import { createSealanceFreezelistRegistry } from "../typechain/SealanceFreezelistRegistry.js";
+import { createTokenRegistry, type Token } from "../typechain/TokenRegistry.js";
 
 const { tokenId } = policies.threshold;
-// This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-// THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, investigatorAddress, frozenAccount, account, recipient] = contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const investigatorPrivKey = contract.getPrivateKey(investigatorAddress);
-const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
-const adminPrivKey = contract.getPrivateKey(adminAddress);
-const accountPrivKey = contract.getPrivateKey(account);
-const recipientPrivKey = contract.getPrivateKey(recipient);
-
-const tokenRegistryContract = new Token_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const tokenRegistryContractForAdmin = new Token_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const tokenRegistryContractForAccount = new Token_registryContract({
-  mode,
-  privateKey: accountPrivKey,
-});
-const thresholdContract = new Sealed_threshold_report_policyContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const thresholdContractForAdmin = new Sealed_threshold_report_policyContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const thresholdContractForAccount = new Sealed_threshold_report_policyContract({
-  mode,
-  privateKey: accountPrivKey,
-});
-const thresholdContractForFrozenAccount = new Sealed_threshold_report_policyContract({
-  mode,
-  privateKey: frozenAccountPrivKey,
-});
-const thresholdContractForRecipient = new Sealed_threshold_report_policyContract({
-  mode,
-  privateKey: recipientPrivKey,
-});
-
-const merkleTreeContract = new Merkle_treeContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContract = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const multiSigContract = new Multisig_coreContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-
+const tokenIdField = fieldLiteral(tokenId);
 const amount = 1n;
-let root: bigint;
+
+interface ThresholdFixture {
+  readonly ctx: TestContext;
+  readonly deployer: SignableNamedAccount;
+  readonly admin: SignableNamedAccount;
+  readonly investigator: SignableNamedAccount;
+  readonly frozenAccount: SignableNamedAccount;
+  readonly account: SignableNamedAccount;
+  readonly recipient: SignableNamedAccount;
+  readonly tokenRegistry: ReturnType<typeof createTokenRegistry>;
+  readonly thresholdPolicy: ReturnType<typeof createSealedThresholdReportPolicy>;
+  readonly freezeRegistry: ReturnType<typeof createSealanceFreezelistRegistry>;
+  readonly rootField: ReturnType<typeof fieldLiteral>;
+  readonly senderMerkleProof: MerkleProof[];
+  readonly recipientMerkleProof: MerkleProof[];
+  readonly frozenAccountMerkleProof: MerkleProof[];
+  accountRecord: Token;
+  frozenAccountRecord: Token;
+  accountStateRecord?: TokenComplianceStateRecord;
+  frozenAccountStateRecord?: TokenComplianceStateRecord;
+}
+
+async function deployFixture() {
+  const ctx = await setup();
+
+  try {
+    const deployer = ctx.named.signer("deployer");
+    const admin = ctx.named.signer("admin");
+    const investigator = ctx.named.signer("investigator");
+    const frozenAccount = ctx.named.signer("frozenAccount");
+    const account = ctx.named.signer("account");
+    const recipient = ctx.named.signer("recipient");
+
+    for (const signer of [admin, frozenAccount, account, recipient]) {
+      await fundWithCredits(ctx, signer.address, fundedAmount, deployer);
+    }
+
+    const tokenRegistry = createTokenRegistry().connect(ctx.lre);
+    const thresholdPolicy = createSealedThresholdReportPolicy().connect(ctx.lre);
+    const freezeRegistry = createSealanceFreezelistRegistry().connect(ctx.lre);
+
+    for (const program of [
+      "token_registry",
+      "merkle_tree",
+      "multisig_core",
+      "sealance_freezelist_registry",
+      "sealed_threshold_report_policy",
+    ]) {
+      await ctx.deploy(program, {});
+    }
+
+    await registerTokenProgram(tokenRegistry, deployer, admin, policies.threshold);
+
+    const leaves = generateLeaves([frozenAccount.address]);
+    const tree = buildTree(leaves);
+    const root = tree[tree.length - 1]!;
+    const rootField = fieldLiteral(root);
+    const senderLeafIndices = getLeafIndices(tree, account.address);
+    const recipientLeafIndices = getLeafIndices(tree, recipient.address);
+    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount.address);
+
+    const isFreezeRegistryInitialized =
+      (await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+    if (!isFreezeRegistryInitialized) {
+      await freezeRegistry.initialize.accepted(
+        {
+          admin: admin,
+          blocks: BLOCK_HEIGHT_WINDOW,
+        },
+        asSigner(deployer),
+      );
+    }
+
+    const role = (await freezeRegistry.getAddress_to_role(admin)) as number;
+    if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
+      await freezeRegistry.update_role.accepted(
+        {
+          new_address: admin,
+          role: MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+        },
+        asSigner(admin),
+      );
+    }
+
+    const isAccountFrozen = await freezeRegistry.getFreeze_list(frozenAccount);
+    if (!isAccountFrozen) {
+      const currentRoot = await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      await freezeRegistry.update_freeze_list.accepted(
+        {
+          account: frozenAccount,
+          is_frozen: true,
+          frozen_index: 1,
+          previous_root: currentRoot!,
+          new_root: rootField,
+        },
+        asSigner(admin),
+      );
+    }
+
+    await freezeRegistry.update_block_height_window.accepted(
+      {
+        blocks: 300,
+      },
+      asSigner(admin),
+    );
+
+    await tokenRegistry.mint_public.accepted(
+      {
+        token_id: tokenIdField,
+        recipient: account,
+        amount: amount * 20n + THRESHOLD,
+        authorized_until: defaultAuthorizedUntil,
+      },
+      asSigner(admin),
+    );
+    await tokenRegistry.mint_public.accepted(
+      {
+        token_id: tokenIdField,
+        recipient: frozenAccount,
+        amount: amount * 20n + THRESHOLD,
+        authorized_until: defaultAuthorizedUntil,
+      },
+      asSigner(admin),
+    );
+
+    let mintPrivateTx = await tokenRegistry.mint_private.accepted(
+      {
+        token_id: tokenIdField,
+        recipient: account,
+        amount: amount * 20n + THRESHOLD,
+        external_authorization_required: true,
+        authorized_until: 0,
+      },
+      asSigner(admin),
+    );
+    const accountRecord = await mintPrivateTx.outputs.decrypt(account);
+
+    mintPrivateTx = await tokenRegistry.mint_private.accepted(
+      {
+        token_id: tokenIdField,
+        recipient: frozenAccount,
+        amount: amount * 20n + THRESHOLD,
+        external_authorization_required: true,
+        authorized_until: 0,
+      },
+      asSigner(admin),
+    );
+    const frozenAccountRecord = await mintPrivateTx.outputs.decrypt(frozenAccount);
+
+    return {
+      ctx,
+      deployer,
+      admin,
+      investigator,
+      frozenAccount,
+      account,
+      recipient,
+      tokenRegistry,
+      thresholdPolicy,
+      freezeRegistry,
+      rootField,
+      senderMerkleProof: [
+        toMerkleProof(getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH)),
+        toMerkleProof(getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH)),
+      ],
+      recipientMerkleProof: [
+        toMerkleProof(getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_DEPTH)),
+        toMerkleProof(getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_DEPTH)),
+      ],
+      frozenAccountMerkleProof: [
+        toMerkleProof(getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH)),
+        toMerkleProof(getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH)),
+      ],
+      accountRecord,
+      frozenAccountRecord,
+    } satisfies ThresholdFixture;
+  } catch (error) {
+    await ctx.teardown();
+    throw error;
+  }
+}
+
+let state: ThresholdFixture | undefined;
+
+beforeAll(async () => {
+  state = await loadFixture(deployFixture);
+}, SETUP_TIMEOUT_MS);
+
+afterAll(async () => {
+  if (state) {
+    await state.ctx.teardown();
+  } else {
+    clearFixtures();
+  }
+});
 
 describe("test sealed_threshold_policy program", () => {
-  beforeAll(async () => {
-    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-    await fundWithCredits(deployerPrivKey, account, fundedAmount);
-    await fundWithCredits(deployerPrivKey, recipient, fundedAmount);
-
-    await deployIfNotDeployed(multiSigContract);
-    await deployIfNotDeployed(tokenRegistryContract);
-    await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(multiSigContract);
-    await deployIfNotDeployed(freezeRegistryContract);
-    await deployIfNotDeployed(thresholdContract);
-    await registerTokenProgram(deployerPrivKey, deployerAddress, adminAddress, policies.threshold);
-  });
-
   test(`test initialize`, async () => {
-    const isInitialized = await isProgramInitialized(thresholdContract);
+    const fixture = state!;
+    const isInitialized =
+      (await fixture.thresholdPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX)) !== null;
     if (!isInitialized) {
-      if (deployerAddress !== adminAddress) {
+      if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
-        const rejectedTx = await thresholdContract.initialize(adminAddress, policies.threshold.blockHeightWindow);
-        await expect(rejectedTx.wait()).rejects.toThrow();
+        await fixture.thresholdPolicy.initialize.rejected(
+          {
+            admin: fixture.admin,
+            blocks: policies.threshold.blockHeightWindow,
+          },
+          asSigner(fixture.deployer),
+        );
       }
 
-      const tx = await thresholdContractForAdmin.initialize(adminAddress, policies.threshold.blockHeightWindow);
-      await tx.wait();
+      await fixture.thresholdPolicy.initialize.accepted(
+        {
+          admin: fixture.admin,
+          blocks: policies.threshold.blockHeightWindow,
+        },
+        asSigner(fixture.admin),
+      );
 
-      const role = await thresholdContract.address_to_role(adminAddress);
+      const role = await fixture.thresholdPolicy.getAddress_to_role(fixture.admin);
       expect(role).toBe(MANAGER_ROLE);
-      const freezeRegistryName = await thresholdContract.freeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
+      const freezeRegistryName =
+        await fixture.thresholdPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
       expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
-      const epoch = await thresholdContract.epoch(EPOCH_INDEX);
+      const epoch = await fixture.thresholdPolicy.getEpoch(EPOCH_INDEX);
       expect(epoch).toBe(EPOCH);
-      const threshold = await thresholdContract.threshold(THRESHOLD_INDEX);
+      const threshold = await fixture.thresholdPolicy.getThreshold(THRESHOLD_INDEX);
       expect(threshold).toBe(THRESHOLD);
       // It is possible to call to initialize only one time
-      const rejectedTx = await thresholdContractForAdmin.initialize(adminAddress, policies.threshold.blockHeightWindow);
-      await expect(rejectedTx.wait()).rejects.toThrow();
+      await fixture.thresholdPolicy.initialize.rejected(
+        {
+          admin: fixture.admin,
+          blocks: policies.threshold.blockHeightWindow,
+        },
+        asSigner(fixture.admin),
+      );
     }
   });
 
   test(`test update_role`, async () => {
+    const fixture = state!;
+
     // Manager can assign role
-    let tx = await thresholdContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
-    await tx.wait();
-    let role = await thresholdContract.address_to_role(frozenAccount);
+    await fixture.thresholdPolicy.update_role.accepted(
+      {
+        new_address: fixture.frozenAccount,
+        role: MANAGER_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
+    let role = await fixture.thresholdPolicy.getAddress_to_role(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
-    tx = await thresholdContractForAdmin.update_role(frozenAccount, NONE_ROLE);
-    await tx.wait();
-    role = await thresholdContract.address_to_role(frozenAccount);
+    await fixture.thresholdPolicy.update_role.accepted(
+      {
+        new_address: fixture.frozenAccount,
+        role: NONE_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.thresholdPolicy.getAddress_to_role(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
-    let rejectedTx = await thresholdContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.thresholdPolicy.update_role.rejected(
+      {
+        new_address: fixture.frozenAccount,
+        role: MANAGER_ROLE,
+      },
+      asSigner(fixture.frozenAccount),
+    );
 
     // Manager cannot unassign himself from being a manager
-    rejectedTx = await thresholdContractForAdmin.update_role(adminAddress, NONE_ROLE);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.thresholdPolicy.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: NONE_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
   });
 
   test(`test update_block_height_window`, async () => {
+    const fixture = state!;
+
     // only the admin can call update the block height window
-    const rejectedTx = await thresholdContractForFrozenAccount.update_block_height_window(
-      policies.threshold.blockHeightWindow,
+    await fixture.thresholdPolicy.update_block_height_window.rejected(
+      {
+        blocks: policies.threshold.blockHeightWindow,
+      },
+      asSigner(fixture.frozenAccount),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const tx = await thresholdContractForAdmin.update_block_height_window(policies.threshold.blockHeightWindow);
-    await tx.wait();
+    await fixture.thresholdPolicy.update_block_height_window.accepted(
+      {
+        blocks: policies.threshold.blockHeightWindow,
+      },
+      asSigner(fixture.admin),
+    );
 
-    const blockHeightWindow = await thresholdContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    const blockHeightWindow = await fixture.thresholdPolicy.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
     expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
   });
 
-  let accountRecord: Token;
-  let frozenAccountRecord: Token;
-  test("fund tokens", async () => {
-    let mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
-      tokenId,
-      account,
-      amount * 20n + THRESHOLD,
-      defaultAuthorizedUntil,
-    );
-    await mintPublicTx.wait();
-    mintPublicTx = await tokenRegistryContractForAdmin.mint_public(
-      tokenId,
-      frozenAccount,
-      amount * 20n + THRESHOLD,
-      defaultAuthorizedUntil,
-    );
-    await mintPublicTx.wait();
-
-    let mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
-      tokenId,
-      account,
-      amount * 20n + THRESHOLD,
-      true,
-      0,
-    );
-    const [encryptedAccountRecord] = await mintPrivateTx.wait();
-    accountRecord = decryptToken(encryptedAccountRecord, accountPrivKey);
-
-    mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(
-      tokenId,
-      frozenAccount,
-      amount * 20n + THRESHOLD,
-      true,
-      0,
-    );
-    const [encryptedFrozenAccountRecord] = await mintPrivateTx.wait();
-    frozenAccountRecord = decryptToken(encryptedFrozenAccountRecord, frozenAccountPrivKey);
-  });
-
-  let senderMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let recipientMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
-  test(`generate merkle proofs`, async () => {
-    const leaves = generateLeaves([frozenAccount]);
-    const tree = buildTree(leaves);
-    root = tree[tree.length - 1];
-    const senderLeafIndices = getLeafIndices(tree, account);
-    const recipientLeafIndices = getLeafIndices(tree, recipient);
-    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount);
-    senderMerkleProof = [
-      getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH),
-    ];
-    recipientMerkleProof = [
-      getSiblingPath(tree, recipientLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, recipientLeafIndices[1], MAX_TREE_DEPTH),
-    ];
-    frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH),
-    ];
-  });
-
-  test(`verify sealed_threshold_policy address`, async () => {
-    expect(thresholdContract.address()).toBe(SEALED_THRESHOLD_POLICY_ADDRESS);
-  });
-
-  test(`freeze registry setup`, async () => {
-    await initializeProgram(freezeRegistryContract, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
-
-    const role = await freezeRegistryContract.address_to_role(adminAddress, NONE_ROLE);
-    if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      const tx = await freezeRegistryContractForAdmin.update_role(adminAddress, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE);
-      await tx.wait();
-    }
-
-    const isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
-    if (!isAccountFrozen) {
-      const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const tx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, currentRoot, root);
-      await tx.wait();
-    }
-
-    const tx = await freezeRegistryContractForAdmin.update_block_height_window(300);
-    await tx.wait();
-  });
-
   test("token_registry calls should fail", async () => {
-    const rejectedTx1 = await tokenRegistryContractForAccount.transfer_private_to_public(
-      account,
-      amount,
-      accountRecord,
+    const fixture = state!;
+
+    await fixture.tokenRegistry.transfer_private_to_public.rejected(
+      {
+        recipient: fixture.account,
+        amount,
+        input_record: fixture.accountRecord!,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx1.wait()).rejects.toThrow();
 
-    const rejectedTx2 = await tokenRegistryContractForAccount.transfer_private(account, amount, accountRecord);
-    await expect(rejectedTx2.wait()).rejects.toThrow();
-
-    const rejectedTx3 = await tokenRegistryContractForAccount.transfer_public(tokenId, account, amount);
-    await expect(rejectedTx3.wait()).rejects.toThrow();
-
-    const rejectedTx4 = await tokenRegistryContractForAccount.transfer_public_as_signer(tokenId, account, amount);
-    await expect(rejectedTx4.wait()).rejects.toThrow();
-
-    const rejectedTx5 = await tokenRegistryContractForAccount.transfer_public_to_private(
-      tokenId,
-      account,
-      amount,
-      true,
+    await fixture.tokenRegistry.transfer_private.rejected(
+      {
+        recipient: fixture.account,
+        amount,
+        input_record: fixture.accountRecord!,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx5.wait()).rejects.toThrow();
 
-    const tx = await tokenRegistryContractForAccount.approve_public(tokenId, account, amount);
-    await tx.wait();
-
-    const rejectedTx6 = await tokenRegistryContractForAccount.transfer_from_public(tokenId, account, account, amount);
-    await expect(rejectedTx6.wait()).rejects.toThrow();
-
-    const rejectedTx7 = await tokenRegistryContractForAccount.transfer_from_public_to_private(
-      tokenId,
-      account,
-      account,
-      amount,
-      true,
+    await fixture.tokenRegistry.transfer_public.rejected(
+      {
+        token_id: tokenIdField,
+        recipient: fixture.account,
+        amount,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx7.wait()).rejects.toThrow();
+
+    await fixture.tokenRegistry.transfer_public_as_signer.rejected(
+      {
+        token_id: tokenIdField,
+        recipient: fixture.account,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.tokenRegistry.transfer_public_to_private.rejected(
+      {
+        token_id: tokenIdField,
+        recipient: fixture.account,
+        amount,
+        external_authorization_required: true,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.tokenRegistry.approve_public.accepted(
+      {
+        token_id: tokenIdField,
+        spender: fixture.account,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.tokenRegistry.transfer_from_public.rejected(
+      {
+        token_id: tokenIdField,
+        owner: fixture.account,
+        recipient: fixture.account,
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    await fixture.tokenRegistry.transfer_from_public_to_private.rejected(
+      {
+        token_id: tokenIdField,
+        owner: fixture.account,
+        recipient: fixture.account,
+        amount,
+        external_authorization_required: true,
+      },
+      asSigner(fixture.account),
+    );
   });
 
-  let accountStateRecord: TokenComplianceStateRecord;
-  let frozenAccountStateRecord: TokenComplianceStateRecord;
   test(`test signup`, async () => {
-    const isAccountSigned = await thresholdContractForAccount.owned_state_record(account, false);
+    const fixture = state!;
+
+    const isAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.account)) || false;
     expect(isAccountSigned).toBe(false);
-    const isFrozenAccountSigned = await thresholdContractForAccount.owned_state_record(frozenAccount, false);
+    const isFrozenAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.frozenAccount)) || false;
     expect(isFrozenAccountSigned).toBe(false);
-    let tx = await thresholdContractForAccount.signup();
-    const [encryptedAccountStateRecord] = await tx.wait();
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountStateRecord, accountPrivKey);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(0n);
-    expect(accountStateRecord.latest_block_height).toBe(0);
-    tx = await thresholdContractForFrozenAccount.signup();
-    const [encryptedFrozenAccountStateRecord] = await tx.wait();
-    frozenAccountStateRecord = decryptTokenComplianceStateRecord(
-      encryptedFrozenAccountStateRecord,
-      frozenAccountPrivKey,
-    );
-    expect(frozenAccountStateRecord.owner).toBe(frozenAccount);
-    expect(frozenAccountStateRecord.cumulative_amount_per_epoch).toBe(0n);
-    expect(frozenAccountStateRecord.latest_block_height).toBe(0);
+    let tx = await fixture.thresholdPolicy.signup.accepted(asSigner(fixture.account));
+    fixture.accountStateRecord = await tx.outputs.decrypt(fixture.account);
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(0n);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(0);
+    tx = await fixture.thresholdPolicy.signup.accepted(asSigner(fixture.frozenAccount));
+    fixture.frozenAccountStateRecord = await tx.outputs.decrypt(fixture.frozenAccount);
+    expect(fixture.frozenAccountStateRecord.owner).toBe(fixture.frozenAccount.address);
+    expect(fixture.frozenAccountStateRecord.cumulative_amount_per_epoch).toBe(0n);
+    expect(fixture.frozenAccountStateRecord.latest_block_height).toBe(0);
 
     // If the user have already signed the tx will fail
-    tx = await thresholdContractForAccount.signup();
-    await expect(tx.wait()).rejects.toThrow();
+    await fixture.thresholdPolicy.signup.rejected(asSigner(fixture.account));
   });
 
   test(`test signup_and_transfer_private function`, async () => {
-    let isAccountSigned = await thresholdContract.owned_state_record(recipient, false);
+    const fixture = state!;
+
+    let isAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.recipient)) || false;
     expect(isAccountSigned).toBe(false);
 
-    const mintPrivateTx = await tokenRegistryContractForAdmin.mint_private(tokenId, recipient, 2n * amount, true, 0);
-    const [encryptedRecipientRecord] = await mintPrivateTx.wait();
-    let recipientRecord = decryptToken(encryptedRecipientRecord, recipientPrivKey);
-
-    const latestBlockHeight = await getLatestBlockHeight();
-    const tx = await thresholdContractForRecipient.signup_and_transfer_private(
-      account,
-      amount,
-      recipientRecord,
-      latestBlockHeight,
-      senderMerkleProof,
+    const mintPrivateTx = await fixture.tokenRegistry.mint_private.accepted(
+      {
+        token_id: tokenIdField,
+        recipient: fixture.recipient,
+        amount: 2n * amount,
+        external_authorization_required: true,
+        authorized_until: 0,
+      },
+      asSigner(fixture.admin),
     );
-    const [complianceRecord, encryptedRecipientStateRecord] = await tx.wait();
+    let recipientRecord = await mintPrivateTx.outputs.decrypt(fixture.recipient);
 
-    isAccountSigned = await thresholdContract.owned_state_record(recipient, false);
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    const tx = await fixture.thresholdPolicy.signup_and_transfer_private.accepted(
+      {
+        recipient: fixture.account,
+        amount,
+        input_record: recipientRecord,
+        estimated_block_height: latestBlockHeight,
+        recipient_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.recipient),
+    );
+
+    isAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.recipient)) as boolean;
     expect(isAccountSigned).toBe(true);
 
-    const recipientStateRecord = decryptTokenComplianceStateRecord(encryptedRecipientStateRecord, recipientPrivKey);
-    expect(recipientStateRecord.owner).toBe(recipient);
+    const recipientStateRecord = await tx.outputs[1].decrypt(fixture.recipient);
+    expect(recipientStateRecord.owner).toBe(fixture.recipient.address);
     expect(recipientStateRecord.cumulative_amount_per_epoch).toBe(amount);
     expect(recipientStateRecord.latest_block_height).toBe(latestBlockHeight);
 
     const previousAmount = recipientRecord.amount;
 
-    recipientRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, recipientPrivKey);
-    const accountRecord = decryptToken(
-      (tx as any).transaction.execution.transitions[4].outputs[1].value,
-      accountPrivKey,
-    );
+    recipientRecord = await tx.outputs[2]
+      .match(TokenRegistry_Token.output.from("prehook_private", 0))
+      .decrypt(fixture.recipient);
+    const accountRecord = await tx.outputs[3]
+      .match(TokenRegistry_Token.output.from("transfer_private", 1))
+      .decrypt(fixture.account);
 
-    expect(accountRecord.owner).toBe(account);
+    expect(accountRecord.owner).toBe(fixture.account.address);
     expect(accountRecord.amount).toBe(amount);
-    expect(accountRecord.token_id).toBe(tokenId);
+    expect(accountRecord.token_id).toBe(tokenIdField);
     expect(accountRecord.external_authorization_required).toBe(true);
     expect(accountRecord.authorized_until).toBe(0);
-    expect(recipientRecord.owner).toBe(recipient);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
     expect(recipientRecord.amount).toBe(previousAmount - amount);
-    expect(recipientRecord.token_id).toBe(tokenId);
+    expect(recipientRecord.token_id).toBe(tokenIdField);
     expect(recipientRecord.external_authorization_required).toBe(true);
     expect(recipientRecord.authorized_until).toBe(0);
 
     if (recipientStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
-      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+      const decryptedComplianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+      expect(decryptedComplianceRecord.owner).toBe(fixture.investigator.address);
       expect(decryptedComplianceRecord.amount).toBe(amount);
-      expect(decryptedComplianceRecord.sender).toBe(recipient);
-      expect(decryptedComplianceRecord.recipient).toBe(account);
+      expect(decryptedComplianceRecord.sender).toBe(fixture.recipient.address);
+      expect(decryptedComplianceRecord.recipient).toBe(fixture.account.address);
     } else {
-      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+      await expect(tx.outputs[0].decrypt(fixture.investigator)).rejects.toThrow();
     }
 
     // If the user have already signed the tx will fail
-    const tx2 = await thresholdContractForRecipient.signup();
-    await expect(tx2.wait()).rejects.toThrow();
+    await fixture.thresholdPolicy.signup.rejected(asSigner(fixture.recipient));
 
-    const tx3 = await thresholdContractForRecipient.signup_and_transfer_private(
-      account,
-      amount,
-      recipientRecord,
-      latestBlockHeight,
-      senderMerkleProof,
+    await fixture.thresholdPolicy.signup_and_transfer_private.rejected(
+      {
+        recipient: fixture.account,
+        amount,
+        input_record: recipientRecord,
+        estimated_block_height: latestBlockHeight,
+        recipient_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.recipient),
     );
-    await expect(tx3.wait()).rejects.toThrow();
   });
 
   test(`test state record behavior`, async () => {
-    const latestBlockHeight1 = await getLatestBlockHeight();
-    let transferPublicTx = await thresholdContractForAccount.transfer_public_as_signer(
-      recipient,
-      amount,
-      accountStateRecord,
-      latestBlockHeight1,
-    );
-    const [encryptedAccountRecord1] = await transferPublicTx.wait();
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord1, accountPrivKey);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(amount);
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight1);
+    const fixture = state!;
 
-    const latestBlockHeight2 = await getLatestBlockHeight();
-    let transferPrivateTx = await thresholdContractForAccount.transfer_private(
-      recipient,
-      amount,
-      accountRecord,
-      accountStateRecord,
-      latestBlockHeight2,
-      senderMerkleProof,
-      recipientMerkleProof,
+    const latestBlockHeight1 = await getLatestBlockHeight(fixture.ctx);
+    let transferPublicTx = await fixture.thresholdPolicy.transfer_public_as_signer.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: latestBlockHeight1,
+      },
+      asSigner(fixture.account),
     );
-    const [complianceRecord1, encryptedAccountRecord2] = await transferPrivateTx.wait();
-    expect(() => decryptComplianceRecord(complianceRecord1, investigatorPrivKey)).toThrow();
+    fixture.accountStateRecord = await transferPublicTx.outputs.decrypt(fixture.account);
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(amount);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight1);
 
-    accountRecord = decryptToken(
-      (transferPrivateTx as any).transaction.execution.transitions[4].outputs[0].value,
-      accountPrivKey,
+    const latestBlockHeight2 = await getLatestBlockHeight(fixture.ctx);
+    let transferPrivateTx = await fixture.thresholdPolicy.transfer_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord,
+        estimated_block_height: latestBlockHeight2,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
     );
+    await expect(transferPrivateTx.outputs[0].decrypt(fixture.investigator)).rejects.toThrow();
+
+    fixture.accountRecord = await transferPrivateTx.outputs[2]
+      .match(TokenRegistry_Token.output.from("prehook_private", 0))
+      .decrypt(fixture.account);
     let isTheSameEpoch = Math.floor(latestBlockHeight2 / EPOCH) === Math.floor(latestBlockHeight1 / EPOCH);
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord2, accountPrivKey);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? amount * 2n : amount);
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight2);
+    fixture.accountStateRecord = await transferPrivateTx.outputs[1].decrypt(fixture.account);
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(isTheSameEpoch ? amount * 2n : amount);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight2);
 
-    let updateBlockHeightWindowTx = await thresholdContractForAdmin.update_block_height_window(0);
-    await updateBlockHeightWindowTx.wait();
+    await fixture.thresholdPolicy.update_block_height_window.accepted(
+      {
+        blocks: 0,
+      },
+      asSigner(fixture.admin),
+    );
 
     // the transaction will reject because the estimated block height is too low
-    transferPublicTx = await thresholdContractForAccount.transfer_public_as_signer(
-      recipient,
-      amount,
-      accountStateRecord,
-      latestBlockHeight2 + 1,
+    await fixture.thresholdPolicy.transfer_public_as_signer.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord,
+        estimated_block_height: latestBlockHeight2 + 1,
+      },
+      asSigner(fixture.account),
     );
-    await expect(transferPublicTx.wait()).rejects.toThrow();
 
-    updateBlockHeightWindowTx = await thresholdContractForAdmin.update_block_height_window(
-      policies.threshold.blockHeightWindow,
+    await fixture.thresholdPolicy.update_block_height_window.accepted(
+      {
+        blocks: policies.threshold.blockHeightWindow,
+      },
+      asSigner(fixture.admin),
     );
-    await updateBlockHeightWindowTx.wait();
 
-    const latestBlockHeight3 = await getLatestBlockHeight();
-    transferPrivateTx = await thresholdContractForAccount.transfer_private(
-      recipient,
-      THRESHOLD + amount,
-      accountRecord,
-      accountStateRecord,
-      latestBlockHeight3,
-      senderMerkleProof,
-      recipientMerkleProof,
+    const latestBlockHeight3 = await getLatestBlockHeight(fixture.ctx);
+    transferPrivateTx = await fixture.thresholdPolicy.transfer_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount: THRESHOLD + amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord,
+        estimated_block_height: latestBlockHeight3,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    const [complianceRecord2, encryptedAccountRecord3] = await transferPrivateTx.wait();
-    accountRecord = decryptToken(
-      (transferPrivateTx as any).transaction.execution.transitions[4].outputs[0].value,
-      accountPrivKey,
-    );
+    const decryptedComplianceRecord = await transferPrivateTx.outputs[0].decrypt(fixture.investigator);
+    fixture.accountRecord = await transferPrivateTx.outputs[2]
+      .match(TokenRegistry_Token.output.from("prehook_private", 0))
+      .decrypt(fixture.account);
 
     isTheSameEpoch = Math.floor(latestBlockHeight3 / EPOCH) === Math.floor(latestBlockHeight2 / EPOCH);
-    const previousCumulativeAmount = accountStateRecord.cumulative_amount_per_epoch;
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord3, accountPrivKey);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(
+    const previousCumulativeAmount = fixture.accountStateRecord.cumulative_amount_per_epoch;
+    fixture.accountStateRecord = await transferPrivateTx.outputs[1].decrypt(fixture.account);
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(
       isTheSameEpoch ? previousCumulativeAmount + THRESHOLD + amount : THRESHOLD + amount,
     );
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight3);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight3);
 
-    const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord2, investigatorPrivKey);
-    expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    expect(decryptedComplianceRecord.owner).toBe(fixture.investigator.address);
     expect(decryptedComplianceRecord.amount).toBe(THRESHOLD + amount);
-    expect(decryptedComplianceRecord.sender).toBe(account);
-    expect(decryptedComplianceRecord.recipient).toBe(recipient);
+    expect(decryptedComplianceRecord.sender).toBe(fixture.account.address);
+    expect(decryptedComplianceRecord.recipient).toBe(fixture.recipient.address);
   });
 
   test(`test transfer_public`, async () => {
+    const fixture = state!;
+
     // If the sender didn't approve the program the tx will fail
-    let rejectedTx = await thresholdContractForAccount.transfer_public(
-      recipient,
-      amount,
-      accountStateRecord,
-      await getLatestBlockHeight(),
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const approvalTx = await tokenRegistryContractForAccount.approve_public(
-      tokenId,
-      thresholdContract.address(),
-      amount,
+    await fixture.thresholdPolicy.transfer_public.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+      },
+      asSigner(fixture.account),
     );
 
-    await approvalTx.wait();
+    const approvalTx = await fixture.tokenRegistry.approve_public.accepted(
+      {
+        token_id: tokenIdField,
+        spender: addressLiteral(policies.threshold.programAddress),
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    void approvalTx;
 
     // If the sender is frozen account it's impossible to send tokens
-    rejectedTx = await thresholdContractForFrozenAccount.transfer_public(
-      recipient,
-      amount,
-      frozenAccountStateRecord,
-      await getLatestBlockHeight(),
+    await fixture.thresholdPolicy.transfer_public.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.frozenAccountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+      },
+      asSigner(fixture.frozenAccount),
     );
 
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
     // If the recipient is frozen account it's impossible to send tokens
-    rejectedTx = await thresholdContractForAccount.transfer_public(
-      frozenAccount,
-      amount,
-      accountStateRecord,
-      await getLatestBlockHeight(),
+    await fixture.thresholdPolicy.transfer_public.rejected(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+      },
+      asSigner(fixture.account),
     );
 
     // If the estimated block height is too low the transaction will fail
-    await expect(thresholdContractForAccount.transfer_public(account, amount, accountStateRecord, 0)).rejects.toThrow();
+    await fixture.thresholdPolicy.transfer_public.failsLocally(
+      {
+        recipient: fixture.account,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 0,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too high the transaction will fail
-    rejectedTx = await thresholdContractForAccount.transfer_public(
-      account,
-      amount,
-      accountStateRecord,
-      2 ** 32 - 1, // Max u32
+    await fixture.thresholdPolicy.transfer_public.rejected(
+      {
+        recipient: fixture.account,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 2 ** 32 - 1, // Max u32
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const latestBlockHeight = await getLatestBlockHeight();
-    const tx = await thresholdContractForAccount.transfer_public(
-      recipient,
-      amount,
-      accountStateRecord,
-      latestBlockHeight,
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    const tx = await fixture.thresholdPolicy.transfer_public.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: latestBlockHeight,
+      },
+      asSigner(fixture.account),
     );
-    const [encryptedAccountRecord] = await tx.wait();
-    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
-    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const latestBlockHeightBefore = fixture.accountStateRecord!.latest_block_height;
+    const cumulativeAmountBefore = fixture.accountStateRecord!.cumulative_amount_per_epoch;
+    fixture.accountStateRecord = await tx.outputs.decrypt(fixture.account);
     const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(
       isTheSameEpoch ? cumulativeAmountBefore + amount : amount,
     );
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight);
   });
 
   test(`test transfer_public_as_signer`, async () => {
-    // If the sender is frozen account it's impossible to send tokens
-    let rejectedTx = await thresholdContractForFrozenAccount.transfer_public_as_signer(
-      recipient,
-      amount,
-      frozenAccountStateRecord,
-      await getLatestBlockHeight(),
-    );
+    const fixture = state!;
 
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    // If the sender is frozen account it's impossible to send tokens
+    await fixture.thresholdPolicy.transfer_public_as_signer.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.frozenAccountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+      },
+      asSigner(fixture.frozenAccount),
+    );
 
     // If the recipient is frozen account it's impossible to send tokens
-    rejectedTx = await thresholdContractForAccount.transfer_public_as_signer(
-      frozenAccount,
-      amount,
-      accountStateRecord,
-      await getLatestBlockHeight(),
+    await fixture.thresholdPolicy.transfer_public_as_signer.rejected(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+      },
+      asSigner(fixture.account),
     );
-
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the estimated block height is too low the transaction will fail
-    await expect(
-      thresholdContractForAccount.transfer_public_as_signer(account, amount, accountStateRecord, 0),
-    ).rejects.toThrow();
+    await fixture.thresholdPolicy.transfer_public_as_signer.failsLocally(
+      {
+        recipient: fixture.account,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 0,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too high the transaction will fail
-    rejectedTx = await thresholdContractForAccount.transfer_public_as_signer(
-      account,
-      amount,
-      accountStateRecord,
-      2 ** 32 - 1, // Max u32
+    await fixture.thresholdPolicy.transfer_public_as_signer.rejected(
+      {
+        recipient: fixture.account,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 2 ** 32 - 1, // Max u32
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const latestBlockHeight = await getLatestBlockHeight();
-    const tx = await thresholdContractForAccount.transfer_public_as_signer(
-      recipient,
-      amount,
-      accountStateRecord,
-      latestBlockHeight,
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    const tx = await fixture.thresholdPolicy.transfer_public_as_signer.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: latestBlockHeight,
+      },
+      asSigner(fixture.account),
     );
-    const [encryptedAccountRecord] = await tx.wait();
-    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
-    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const latestBlockHeightBefore = fixture.accountStateRecord!.latest_block_height;
+    const cumulativeAmountBefore = fixture.accountStateRecord!.cumulative_amount_per_epoch;
+    fixture.accountStateRecord = await tx.outputs.decrypt(fixture.account);
     const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(
       isTheSameEpoch ? cumulativeAmountBefore + amount : amount,
     );
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight);
   });
 
   test(`test transfer_public_to_priv`, async () => {
+    const fixture = state!;
+
     // If the sender didn't approve the program the tx will fail
-    let rejectedTx = await thresholdContractForAccount.transfer_public_to_priv(
-      recipient,
-      amount,
-      accountStateRecord,
-      await getLatestBlockHeight(),
-      recipientMerkleProof,
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const approvalTx = await tokenRegistryContractForAccount.approve_public(
-      tokenId,
-      thresholdContract.address(),
-      amount,
+    await fixture.thresholdPolicy.transfer_public_to_priv.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
     );
 
-    await approvalTx.wait();
+    const approvalTx = await fixture.tokenRegistry.approve_public.accepted(
+      {
+        token_id: tokenIdField,
+        spender: addressLiteral(policies.threshold.programAddress),
+        amount,
+      },
+      asSigner(fixture.account),
+    );
+
+    void approvalTx;
 
     // If the sender is frozen account it's impossible to send tokens
-    rejectedTx = await thresholdContractForFrozenAccount.transfer_public_to_priv(
-      recipient,
-      amount,
-      frozenAccountStateRecord,
-      await getLatestBlockHeight(),
-      recipientMerkleProof,
+    await fixture.thresholdPolicy.transfer_public_to_priv.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.frozenAccountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the recipient is frozen account it's impossible to send tokens
-    await expect(
-      thresholdContractForAccount.transfer_public_to_priv(
-        frozenAccount,
+    await fixture.thresholdPolicy.transfer_public_to_priv.failsLocally(
+      {
+        recipient: fixture.frozenAccount,
         amount,
-        accountStateRecord,
-        await getLatestBlockHeight(),
-        frozenAccountMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too low the transaction will fail
-    await expect(
-      thresholdContractForAccount.transfer_public_to_priv(
-        recipient,
+    await fixture.thresholdPolicy.transfer_public_to_priv.failsLocally(
+      {
+        recipient: fixture.recipient,
         amount,
-        accountStateRecord,
-        0,
-        frozenAccountMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 0,
+        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too high the transaction will fail
-    rejectedTx = await thresholdContractForAccount.transfer_public_to_priv(
-      recipient,
-      amount,
-      accountStateRecord,
-      2 ** 32 - 1, // Max u32
-      recipientMerkleProof,
-    );
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    const latestBlockHeight = await getLatestBlockHeight();
-    const tx = await thresholdContractForAccount.transfer_public_to_priv(
-      recipient,
-      amount,
-      accountStateRecord,
-      latestBlockHeight,
-      recipientMerkleProof,
+    await fixture.thresholdPolicy.transfer_public_to_priv.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 2 ** 32 - 1, // Max u32
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
     );
 
-    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    const tx = await fixture.thresholdPolicy.transfer_public_to_priv.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: latestBlockHeight,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
-    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
-    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const latestBlockHeightBefore = fixture.accountStateRecord!.latest_block_height;
+    const cumulativeAmountBefore = fixture.accountStateRecord!.cumulative_amount_per_epoch;
+    fixture.accountStateRecord = await tx.outputs[1].decrypt(fixture.account);
     const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(
       isTheSameEpoch ? cumulativeAmountBefore + amount : amount,
     );
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight);
 
-    const tokenRecord = (tx as any).transaction.execution.transitions[4].outputs[0].value;
-    const recipientRecord = decryptToken(tokenRecord, recipientPrivKey);
-    expect(recipientRecord.owner).toBe(recipient);
+    const recipientRecord = await tx.outputs[2]
+      .match(TokenRegistry_Token.output.from("transfer_from_public_to_private", 0))
+      .decrypt(fixture.recipient);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
     expect(recipientRecord.amount).toBe(amount);
-    expect(recipientRecord.token_id).toBe(tokenId);
+    expect(recipientRecord.token_id).toBe(tokenIdField);
     expect(recipientRecord.external_authorization_required).toBe(true);
     expect(recipientRecord.authorized_until).toBe(0);
 
-    if (accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
-      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    if (fixture.accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+      expect(decryptedComplianceRecord.owner).toBe(fixture.investigator.address);
       expect(decryptedComplianceRecord.amount).toBe(amount);
-      expect(decryptedComplianceRecord.sender).toBe(account);
-      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+      expect(decryptedComplianceRecord.sender).toBe(fixture.account.address);
+      expect(decryptedComplianceRecord.recipient).toBe(fixture.recipient.address);
     } else {
-      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+      await expect(tx.outputs[0].decrypt(fixture.investigator)).rejects.toThrow();
     }
   });
 
   test(`test transfer_private`, async () => {
+    const fixture = state!;
+
     // If the sender is frozen account it's impossible to send tokens
-    await expect(
-      thresholdContractForFrozenAccount.transfer_private(
-        recipient,
+    await fixture.thresholdPolicy.transfer_private.failsLocally(
+      {
+        recipient: fixture.recipient,
         amount,
-        frozenAccountRecord,
-        frozenAccountStateRecord,
-        await getLatestBlockHeight(),
-        frozenAccountMerkleProof,
-        recipientMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_record: fixture.frozenAccountRecord!,
+        input_state_record: fixture.frozenAccountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
+    );
     // If the recipient is frozen account it's impossible to send tokens
-    await expect(
-      thresholdContractForAccount.transfer_private(
-        frozenAccount,
+    await fixture.thresholdPolicy.transfer_private.failsLocally(
+      {
+        recipient: fixture.frozenAccount,
         amount,
-        accountRecord,
-        accountStateRecord,
-        await getLatestBlockHeight(),
-        senderMerkleProof,
-        frozenAccountMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too low the transaction will fail
-    await expect(
-      thresholdContractForAccount.transfer_private(
-        recipient,
+    await fixture.thresholdPolicy.transfer_private.failsLocally(
+      {
+        recipient: fixture.recipient,
         amount,
-        accountRecord,
-        accountStateRecord,
-        0,
-        senderMerkleProof,
-        frozenAccountMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 0,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too high the transaction will fail
-    const rejectedTx = await thresholdContractForAccount.transfer_private(
-      recipient,
-      amount,
-      accountRecord,
-      accountStateRecord,
-      2 ** 32 - 1, // Max u32
-      senderMerkleProof,
-      recipientMerkleProof,
+    await fixture.thresholdPolicy.transfer_private.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 2 ** 32 - 1, // Max u32
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const latestBlockHeight = await getLatestBlockHeight();
-    const tx = await thresholdContractForAccount.transfer_private(
-      recipient,
-      amount,
-      accountRecord,
-      accountStateRecord,
-      latestBlockHeight,
-      senderMerkleProof,
-      recipientMerkleProof,
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    const tx = await fixture.thresholdPolicy.transfer_private.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: latestBlockHeight,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
 
-    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
-    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const latestBlockHeightBefore = fixture.accountStateRecord!.latest_block_height;
+    const cumulativeAmountBefore = fixture.accountStateRecord!.cumulative_amount_per_epoch;
+    fixture.accountStateRecord = await tx.outputs[1].decrypt(fixture.account);
     const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(
       isTheSameEpoch ? cumulativeAmountBefore + amount : amount,
     );
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight);
 
-    const previousAmount = accountRecord.amount;
-    accountRecord = decryptToken((tx as any).transaction.execution.transitions[4].outputs[0].value, accountPrivKey);
-    const recipientRecord = decryptToken(
-      (tx as any).transaction.execution.transitions[5].outputs[1].value,
-      recipientPrivKey,
-    );
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
-    expect(accountRecord.token_id).toBe(tokenId);
-    expect(accountRecord.external_authorization_required).toBe(true);
-    expect(accountRecord.authorized_until).toBe(0);
-    expect(recipientRecord.owner).toBe(recipient);
+    const previousAmount = fixture.accountRecord!.amount;
+    fixture.accountRecord = await tx.outputs[2]
+      .match(TokenRegistry_Token.output.from("prehook_private", 0))
+      .decrypt(fixture.account);
+    const recipientRecord = await tx.outputs[3]
+      .match(TokenRegistry_Token.output.from("transfer_private", 1))
+      .decrypt(fixture.recipient);
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountRecord.amount).toBe(previousAmount - amount);
+    expect(fixture.accountRecord.token_id).toBe(tokenIdField);
+    expect(fixture.accountRecord.external_authorization_required).toBe(true);
+    expect(fixture.accountRecord.authorized_until).toBe(0);
+    expect(recipientRecord.owner).toBe(fixture.recipient.address);
     expect(recipientRecord.amount).toBe(amount);
-    expect(recipientRecord.token_id).toBe(tokenId);
+    expect(recipientRecord.token_id).toBe(tokenIdField);
     expect(recipientRecord.external_authorization_required).toBe(true);
     expect(recipientRecord.authorized_until).toBe(0);
 
-    if (accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
-      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    if (fixture.accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+      expect(decryptedComplianceRecord.owner).toBe(fixture.investigator.address);
       expect(decryptedComplianceRecord.amount).toBe(amount);
-      expect(decryptedComplianceRecord.sender).toBe(account);
-      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+      expect(decryptedComplianceRecord.sender).toBe(fixture.account.address);
+      expect(decryptedComplianceRecord.recipient).toBe(fixture.recipient.address);
     } else {
-      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+      await expect(tx.outputs[0].decrypt(fixture.investigator)).rejects.toThrow();
     }
   });
 
   test(`test transfer_priv_to_public`, async () => {
+    const fixture = state!;
+
     // If the sender is frozen account it's impossible to send tokens
-    await expect(
-      thresholdContractForFrozenAccount.transfer_priv_to_public(
-        recipient,
+    await fixture.thresholdPolicy.transfer_priv_to_public.failsLocally(
+      {
+        recipient: fixture.recipient,
         amount,
-        frozenAccountRecord,
-        accountStateRecord,
-        await getLatestBlockHeight(),
-        frozenAccountMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_record: fixture.frozenAccountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+      },
+      asSigner(fixture.frozenAccount),
+    );
 
     // If the recipient is frozen account it's impossible to send tokens
-    let rejectedTx = await thresholdContractForAccount.transfer_priv_to_public(
-      frozenAccount,
-      amount,
-      accountRecord,
-      accountStateRecord,
-      await getLatestBlockHeight(),
-      senderMerkleProof,
+    await fixture.thresholdPolicy.transfer_priv_to_public.rejected(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // If the estimated block height is too low the transaction will fail
-    await expect(
-      thresholdContractForAccount.transfer_priv_to_public(
-        recipient,
+    await fixture.thresholdPolicy.transfer_priv_to_public.failsLocally(
+      {
+        recipient: fixture.recipient,
         amount,
-        accountRecord,
-        accountStateRecord,
-        0,
-        senderMerkleProof,
-      ),
-    ).rejects.toThrow();
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 0,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
+    );
 
     // If the estimated block height is too high the transaction will fail
-    rejectedTx = await thresholdContractForAccount.transfer_priv_to_public(
-      recipient,
-      amount,
-      accountRecord,
-      accountStateRecord,
-      2 ** 32 - 1, // Max u32
-      senderMerkleProof,
+    await fixture.thresholdPolicy.transfer_priv_to_public.rejected(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: 2 ** 32 - 1, // Max u32
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    const latestBlockHeight = await getLatestBlockHeight();
-    const tx = await thresholdContractForAccount.transfer_priv_to_public(
-      recipient,
-      amount,
-      accountRecord,
-      accountStateRecord,
-      latestBlockHeight,
-      senderMerkleProof,
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    const tx = await fixture.thresholdPolicy.transfer_priv_to_public.accepted(
+      {
+        recipient: fixture.recipient,
+        amount,
+        input_record: fixture.accountRecord!,
+        input_state_record: fixture.accountStateRecord!,
+        estimated_block_height: latestBlockHeight,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+      },
+      asSigner(fixture.account),
     );
-    const [complianceRecord, encryptedAccountRecord] = await tx.wait();
 
-    const latestBlockHeightBefore = accountStateRecord.latest_block_height;
-    const cumulativeAmountBefore = accountStateRecord.cumulative_amount_per_epoch;
-    accountStateRecord = decryptTokenComplianceStateRecord(encryptedAccountRecord, accountPrivKey);
+    const latestBlockHeightBefore = fixture.accountStateRecord!.latest_block_height;
+    const cumulativeAmountBefore = fixture.accountStateRecord!.cumulative_amount_per_epoch;
+    fixture.accountStateRecord = await tx.outputs[1].decrypt(fixture.account);
     const isTheSameEpoch = Math.floor(latestBlockHeight / EPOCH) === Math.floor(latestBlockHeightBefore / EPOCH);
-    expect(accountStateRecord.owner).toBe(account);
-    expect(accountStateRecord.cumulative_amount_per_epoch).toBe(
+    expect(fixture.accountStateRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountStateRecord.cumulative_amount_per_epoch).toBe(
       isTheSameEpoch ? cumulativeAmountBefore + amount : amount,
     );
-    expect(accountStateRecord.latest_block_height).toBe(latestBlockHeight);
+    expect(fixture.accountStateRecord.latest_block_height).toBe(latestBlockHeight);
 
-    const previousAmount = accountRecord.amount;
-    accountRecord = decryptToken((tx as any).transaction.execution.transitions[3].outputs[0].value, accountPrivKey);
-    expect(accountRecord.owner).toBe(account);
-    expect(accountRecord.amount).toBe(previousAmount - amount);
-    expect(accountRecord.token_id).toBe(tokenId);
-    expect(accountRecord.external_authorization_required).toBe(true);
-    expect(accountRecord.authorized_until).toBe(0);
+    const previousAmount = fixture.accountRecord!.amount;
+    fixture.accountRecord = await tx.outputs[2]
+      .match(TokenRegistry_Token.output.from("prehook_private", 0))
+      .decrypt(fixture.account);
+    expect(fixture.accountRecord.owner).toBe(fixture.account.address);
+    expect(fixture.accountRecord.amount).toBe(previousAmount - amount);
+    expect(fixture.accountRecord.token_id).toBe(tokenIdField);
+    expect(fixture.accountRecord.external_authorization_required).toBe(true);
+    expect(fixture.accountRecord.authorized_until).toBe(0);
 
-    if (accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
-      const decryptedComplianceRecord = decryptComplianceRecord(complianceRecord, investigatorPrivKey);
-      expect(decryptedComplianceRecord.owner).toBe(investigatorAddress);
+    if (fixture.accountStateRecord.cumulative_amount_per_epoch > THRESHOLD) {
+      const decryptedComplianceRecord = await tx.outputs[0].decrypt(fixture.investigator);
+      expect(decryptedComplianceRecord.owner).toBe(fixture.investigator.address);
       expect(decryptedComplianceRecord.amount).toBe(amount);
-      expect(decryptedComplianceRecord.sender).toBe(account);
-      expect(decryptedComplianceRecord.recipient).toBe(recipient);
+      expect(decryptedComplianceRecord.sender).toBe(fixture.account.address);
+      expect(decryptedComplianceRecord.recipient).toBe(fixture.recipient.address);
     } else {
-      expect(() => decryptComplianceRecord(complianceRecord, investigatorPrivKey)).toThrow();
+      await expect(tx.outputs[0].decrypt(fixture.investigator)).rejects.toThrow();
     }
   });
 });

@@ -1,58 +1,73 @@
-import { BaseContract } from "../contract/base-contract";
-import { ExecutionMode } from "@doko-js/core";
-import { Multisig_coreContract } from "../artifacts/js/multisig_core";
-import { ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
+import { AddressInput, Leo, LeoField } from "../typechain/BaseContract";
+import { MultisigCommonParams } from "../typechain/MultisigCompliantToken";
+import { asSigner, scalarLiteral } from "./LiondenAdapters";
+import { createMultisigCore } from "../typechain/MultisigCore";
+import { type SignableNamedAccount } from "@lionden/config";
+import { type TestContext } from "@lionden/testing";
+import { zeroAddress } from "./Constants";
 
-const mode = ExecutionMode.SnarkExecute;
-const contract = new BaseContract({ mode });
-const [deployerAddress, , , , , , , , , , , , signer1, signer2] = contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const signer1rPrivKey = contract.getPrivateKey(signer1);
-const signer2PrivateKey = contract.getPrivateKey(signer2);
+export function multisigCommonParams(walletId: ReturnType<typeof Leo.address>, salt: bigint): MultisigCommonParams {
+  return {
+    wallet_id: walletId,
+    salt: scalarLiteral(salt),
+  };
+}
 
-const defaultAleoSigners = [signer1, signer2, ZERO_ADDRESS, ZERO_ADDRESS];
-const defaultEcdsaSigners = Array(4).fill(Array(20).fill(0));
-const defaultThreshold = 2;
+export function randomSalt() {
+  return BigInt(Math.floor(Math.random() * 100000));
+}
 
-const multiSigContract = new Multisig_coreContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const multiSigContractForSigner1 = new Multisig_coreContract({
-  mode,
-  privateKey: signer1rPrivKey,
-});
-const multiSigContractForSigner2 = new Multisig_coreContract({
-  mode,
-  privateKey: signer2PrivateKey,
-});
-
-export async function createWallet(
-  walletId: string,
-  threshold: number = defaultThreshold,
-  aleoSigners: string[] = defaultAleoSigners,
-  ecdsaSigners: number[][] = defaultEcdsaSigners,
+export async function initializeMultisig(
+  multisig: ReturnType<typeof createMultisigCore>,
+  deployer: SignableNamedAccount,
 ) {
-  try {
-    await multiSigContract.wallets_map(walletId);
-  } catch {
-    const tx = await multiSigContract.create_wallet(walletId, threshold, aleoSigners, ecdsaSigners);
-    await tx.wait();
+  if ((await multisig.getProgram_settings_map(true)) === null) {
+    await multisig.init.accepted(
+      {
+        upgrader_address: deployer,
+        guard_create_wallet: false,
+      },
+      asSigner(deployer),
+    );
   }
 }
 
-export async function approveRequest(walletId: string, signingOpId: bigint) {
-  let tx = await multiSigContractForSigner1.sign(walletId, signingOpId);
-  await tx.wait();
-  tx = await multiSigContractForSigner2.sign(walletId, signingOpId);
-  await tx.wait();
+export async function createWallet(
+  multisig: ReturnType<typeof createMultisigCore>,
+  deployer: SignableNamedAccount,
+  walletId: ReturnType<typeof Leo.address>,
+  aleoSigners: ReadonlyArray<AddressInput> = [zeroAddress, zeroAddress, zeroAddress, zeroAddress],
+  threshold = 2,
+  ecdsaSigners = Array.from({ length: 4 }, () => Array(20).fill(0)),
+) {
+  if ((await multisig.getWallets_map(walletId)) === null) {
+    await multisig.create_wallet.accepted(
+      {
+        wallet_id: walletId,
+        threshold,
+        aleo_signers: aleoSigners,
+        ecdsa_signers: ecdsaSigners,
+      },
+      asSigner(deployer),
+    );
+  }
 }
 
-export async function initializeMultisig() {
-  try {
-    await multiSigContract.program_settings_map(true);
-  } catch {
-    const tx = await multiSigContract.init(deployerAddress, false);
-    await tx.wait();
+export async function approveRequest(
+  ctx: TestContext,
+  signers: SignableNamedAccount[],
+  walletId: ReturnType<typeof Leo.address>,
+  signingOpId: LeoField,
+) {
+  const multisigCore = createMultisigCore().connect(ctx.lre);
+
+  for (const signer of signers) {
+    await multisigCore.sign.accepted(
+      {
+        wallet_id: walletId,
+        signing_op_id: signingOpId,
+      },
+      asSigner(signer),
+    );
   }
 }

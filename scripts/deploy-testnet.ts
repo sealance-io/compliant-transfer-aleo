@@ -1,4 +1,4 @@
-import { ExecutionMode } from "@doko-js/core";
+import { ExecutionMode } from "../lionden-compat/core";
 import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
 import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
 import { deployIfNotDeployed } from "../lib/Deploy";

@@ -1,14 +1,11 @@
-import { ExecutionMode } from "@doko-js/core";
-import { Sealed_report_policyContract } from "../artifacts/js/sealed_report_policy";
-import { Sealed_timelock_policyContract } from "../artifacts/js/sealed_timelock_policy";
-import { Sealed_threshold_report_policyContract } from "../artifacts/js/sealed_threshold_report_policy";
 import { stringToBigInt, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
+import { Leo } from "../typechain/BaseContract";
+import { multisigCommonParams } from "./Multisig";
+import { fieldLiteral, scalarLiteral } from "./LiondenAdapters";
+import { Address } from "@provablehq/sdk";
 
 // addresses
-export const SEALED_REPORT_POLICY_ADDRESS = "aleo18t5vlckuaxxaujsl0q03lqs690cgk0zfca6lj3hpeqk5kh4zzupqtzr7j2";
-export const SEALED_THRESHOLD_POLICY_ADDRESS = "aleo14s6pc22xlf33wm62422v24equzj0s5wlsffrcl43lgfyy6wsdvgs9h6ns7";
 export { ZERO_ADDRESS }; // for backwards compatability
-export const SEALED_TIMELOCK_POLICY_ADDRESS = "aleo1q40dlwxfgka53c3wt5ef5k0yvf06dksgcrkdc0r20xpky0ezwqrqpzggeq";
 export const TREASURE_ADDRESS = "aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn";
 
 export const BLOCK_HEIGHT_WINDOW = 300;
@@ -18,20 +15,18 @@ export interface IPolicy {
   tokenSymbol: string;
   tokenId: bigint;
   programAddress: string;
-  Contract: any;
   initMappings: boolean;
   requireInitialization: boolean;
   blockHeightWindow: number;
 }
-
+Address.fromProgramId("sealed_report_policy.aleo").to_string();
 // policies specs
 export const policies: { [key: string]: IPolicy } = {
   report: {
     tokenName: "Report",
     tokenSymbol: "REPORT",
     tokenId: stringToBigInt("SEALED_REPORT_POLICY"),
-    programAddress: SEALED_REPORT_POLICY_ADDRESS,
-    Contract: Sealed_report_policyContract,
+    programAddress: Address.fromProgramId("sealed_report_policy.aleo").to_string(),
     initMappings: false,
     requireInitialization: false,
     blockHeightWindow: BLOCK_HEIGHT_WINDOW,
@@ -40,8 +35,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Threshold report",
     tokenSymbol: "THRESHOLD_REPORT",
     tokenId: stringToBigInt("SEALED_THRESHOLD_REPORT_POLICY"),
-    programAddress: SEALED_THRESHOLD_POLICY_ADDRESS,
-    Contract: Sealed_threshold_report_policyContract,
+    programAddress: Address.fromProgramId("sealed_threshold_report_policy.aleo").to_string(),
     initMappings: true,
     requireInitialization: false,
     blockHeightWindow: BLOCK_HEIGHT_WINDOW,
@@ -50,8 +44,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Timelock",
     tokenSymbol: "TIMELOCK",
     tokenId: stringToBigInt("SEALED_TIMELOCK_POLICY"),
-    programAddress: SEALED_TIMELOCK_POLICY_ADDRESS,
-    Contract: Sealed_timelock_policyContract,
+    programAddress: Address.fromProgramId("sealed_timelock_policy.aleo").to_string(),
     initMappings: false,
     requireInitialization: true,
     blockHeightWindow: 0,
@@ -96,12 +89,14 @@ export const MAX_TREE_DEPTH = 15;
 export const defaultAuthorizedUntil = 4294967295;
 export const emptyRoot = 3642222252059314292809609689035560016959342421640560347114299934615987159853n;
 export const fundedAmount = 1000000000n;
-export const mode = ExecutionMode.SnarkExecute;
 export const defaultRate = 10n;
+export const zeroAddress = Leo.address(ZERO_ADDRESS);
+export const emptyRootField = fieldLiteral(emptyRoot);
+export const SETUP_TIMEOUT_MS = 10 * 60 * 1000;
+export const amount = 10n;
+export const decimals = 6;
+export const maxSupply = 1_000_000_000_000_000n;
 
-export const emptyMultisigCommonParams = {
-  salt: 0n,
-  wallet_id: ZERO_ADDRESS,
-};
+export const emptyMultisigCommonParams = multisigCommonParams(Leo.address(ZERO_ADDRESS), 0n);
 
 export const MAX_BLOCK_HEIGHT = 4294967295; // 2**32 - 1

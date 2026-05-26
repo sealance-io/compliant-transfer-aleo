@@ -1,6 +1,8 @@
-import { ExecutionMode } from "@doko-js/core";
-import { BaseContract } from "../contract/base-contract";
-import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
+import { type SignableNamedAccount } from "@lionden/config";
+import { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "@sealance-io/policy-engine-aleo";
+
 import {
   BLOCK_HEIGHT_WINDOW,
   BLOCK_HEIGHT_WINDOW_INDEX,
@@ -9,314 +11,474 @@ import {
   FREEZELIST_MANAGER_ROLE,
   MANAGER_ROLE,
   MAX_TREE_DEPTH,
+  NONE_ROLE,
   PREVIOUS_FREEZE_LIST_ROOT_INDEX,
-  ZERO_ADDRESS,
   emptyRoot,
   fundedAmount,
-  NONE_ROLE,
-} from "../lib/Constants";
-import { getLeafIndices, getSiblingPath } from "../lib/FreezeList";
-import { fundWithCredits } from "../lib/Fund";
-import { deployIfNotDeployed } from "../lib/Deploy";
-import { buildTree, generateLeaves } from "@sealance-io/policy-engine-aleo";
-import { safeAddress } from "./utils/Accounts";
-import { isProgramInitialized } from "../lib/Initalize";
-import { Sealance_freezelist_registryContract } from "../artifacts/js/sealance_freezelist_registry";
-import { Multisig_coreContract } from "../artifacts/js/multisig_core";
+  zeroAddress,
+  emptyRootField,
+  SETUP_TIMEOUT_MS,
+} from "../lib/Constants.js";
+import { fundWithCredits } from "../lib/Fund.js";
+import { asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
+import { Leo } from "../typechain/BaseContract.js";
+import { createSealanceFreezelistRegistry } from "../typechain/SealanceFreezelistRegistry.js";
+import type { MerkleProof } from "../typechain/MerkleTree.js";
+import { safeAddress } from "./utils/Accounts.js";
+interface FreezeRegistryFixture {
+  readonly ctx: TestContext;
+  readonly deployer: SignableNamedAccount;
+  readonly admin: SignableNamedAccount;
+  readonly frozenAccount: SignableNamedAccount;
+  readonly freezeListManager: SignableNamedAccount;
+  readonly freezeRegistry: ReturnType<typeof createSealanceFreezelistRegistry>;
+  readonly rootField: ReturnType<typeof fieldLiteral>;
+  readonly adminMerkleProof: MerkleProof[];
+  readonly frozenAccountMerkleProof: MerkleProof[];
+}
 
-const mode = ExecutionMode.SnarkExecute;
-const contract = new BaseContract({ mode });
+async function deployFixture() {
+  const ctx = await setup();
 
-// This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-// THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-const [deployerAddress, adminAddress, , frozenAccount, , , , , , , freezeListManager] = contract.getAccounts();
-const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-const frozenAccountPrivKey = contract.getPrivateKey(frozenAccount);
-const adminPrivKey = contract.getPrivateKey(adminAddress);
-const freezeListManagerPrivKey = contract.getPrivateKey(freezeListManager);
+  try {
+    const deployer = ctx.named.signer("deployer");
+    const admin = ctx.named.signer("admin");
+    const frozenAccount = ctx.named.signer("frozenAccount");
+    const freezeListManager = ctx.named.signer("freezeListManager");
 
-const freezeRegistryContract = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const freezeRegistryContractForAdmin = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: adminPrivKey,
-});
-const freezeRegistryContractForFrozenAccount = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: frozenAccountPrivKey,
-});
-const freezeRegistryContractForFreezeListManager = new Sealance_freezelist_registryContract({
-  mode,
-  privateKey: freezeListManagerPrivKey,
-});
-const merkleTreeContract = new Merkle_treeContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
-const multiSigContract = new Multisig_coreContract({
-  mode,
-  privateKey: deployerPrivKey,
-});
+    for (const signer of [admin, frozenAccount, freezeListManager]) {
+      await fundWithCredits(ctx, signer.address, fundedAmount, deployer);
+    }
 
-let root: bigint;
+    const freezeRegistry = createSealanceFreezelistRegistry().connect(ctx.lre);
+
+    for (const program of ["merkle_tree", "multisig_core", "sealance_freezelist_registry"]) {
+      await ctx.deploy(program, { noCompile: true });
+    }
+
+    const leaves = generateLeaves([frozenAccount.address]);
+    const tree = buildTree(leaves);
+    const root = tree[tree.length - 1]!;
+    const rootField = fieldLiteral(root);
+
+    const adminLeafIndices = getLeafIndices(tree, admin.address);
+    const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount.address);
+    const adminMerkleProof = [
+      toMerkleProof(getSiblingPath(tree, adminLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, adminLeafIndices[1], MAX_TREE_DEPTH)),
+    ];
+    const frozenAccountMerkleProof = [
+      toMerkleProof(getSiblingPath(tree, frozenAccountLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, frozenAccountLeafIndices[1], MAX_TREE_DEPTH)),
+    ];
+
+    return {
+      ctx,
+      deployer,
+      admin,
+      frozenAccount,
+      freezeListManager,
+      freezeRegistry,
+      rootField,
+      adminMerkleProof,
+      frozenAccountMerkleProof,
+    } satisfies FreezeRegistryFixture;
+  } catch (error) {
+    await ctx.teardown();
+    throw error;
+  }
+}
+
+let state: FreezeRegistryFixture | undefined;
+
+beforeAll(async () => {
+  state = await loadFixture(deployFixture);
+}, SETUP_TIMEOUT_MS);
+
+afterAll(async () => {
+  if (state) {
+    await state.ctx.teardown();
+  } else {
+    clearFixtures();
+  }
+});
 
 describe("test freeze registry program", () => {
-  beforeAll(async () => {
-    await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-    await fundWithCredits(deployerPrivKey, frozenAccount, fundedAmount);
-    await fundWithCredits(deployerPrivKey, freezeListManager, fundedAmount);
+  test("test initialize", async () => {
+    const fixture = state!;
+    const isFreezeRegistryInitialized =
+      (await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
 
-    await deployIfNotDeployed(merkleTreeContract);
-    await deployIfNotDeployed(multiSigContract);
-    await deployIfNotDeployed(freezeRegistryContract);
-  });
-
-  let adminMerkleProof: { siblings: any[]; leaf_index: any }[];
-  let frozenAccountMerkleProof: { siblings: any[]; leaf_index: any }[];
-  test(`generate merkle proofs`, async () => {
-    const leaves = generateLeaves([frozenAccount]);
-    const tree = buildTree(leaves);
-    root = tree[tree.length - 1];
-    const adminLeadIndices = getLeafIndices(tree, adminAddress);
-    const frozenAccountLeadIndices = getLeafIndices(tree, frozenAccount);
-    adminMerkleProof = [
-      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_DEPTH),
-    ];
-    frozenAccountMerkleProof = [
-      getSiblingPath(tree, frozenAccountLeadIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, frozenAccountLeadIndices[1], MAX_TREE_DEPTH),
-    ];
-  });
-
-  test(`test initialize`, async () => {
-    const isFreezeRegistryInitialized = await isProgramInitialized(freezeRegistryContract);
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
-      let rejectedTx = await freezeRegistryContractForAdmin.update_freeze_list(frozenAccount, true, 1, 0n, root);
-      await expect(rejectedTx.wait()).rejects.toThrow();
+      await fixture.freezeRegistry.update_freeze_list.rejected(
+        {
+          account: fixture.frozenAccount,
+          is_frozen: true,
+          frozen_index: 1,
+          previous_root: fieldLiteral(0n),
+          new_root: fixture.rootField!,
+        },
+        asSigner(fixture.admin),
+      );
 
-      if (deployerAddress !== adminAddress) {
+      if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
-        rejectedTx = await freezeRegistryContractForAdmin.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
-        await expect(rejectedTx.wait()).rejects.toThrow();
+        await fixture.freezeRegistry.initialize.rejected(
+          {
+            admin: fixture.admin,
+            blocks: BLOCK_HEIGHT_WINDOW,
+          },
+          asSigner(fixture.admin),
+        );
       }
 
-      const tx = await freezeRegistryContract.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
-      await tx.wait();
-      const isAccountFrozen = await freezeRegistryContract.freeze_list(ZERO_ADDRESS);
-      const frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(0);
-      const lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await freezeRegistryContract.block_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const role = await freezeRegistryContract.address_to_role(adminAddress);
+      await fixture.freezeRegistry.initialize.accepted(
+        {
+          admin: fixture.admin,
+          blocks: BLOCK_HEIGHT_WINDOW,
+        },
+        asSigner(fixture.deployer),
+      );
+
+      const isAccountFrozen = await fixture.freezeRegistry.getFreeze_list(zeroAddress);
+      const frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(0);
+      const lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await fixture.freezeRegistry.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+      const role = await fixture.freezeRegistry.getAddress_to_role(fixture.admin);
 
       expect(role).toBe(MANAGER_ROLE);
       expect(isAccountFrozen).toBe(false);
-      expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
+      expect(frozenAccountByIndex).toBe(zeroAddress);
       expect(lastIndex).toBe(0);
-      expect(initializedRoot).toBe(emptyRoot);
+      expect(initializedRoot).toBe(emptyRootField);
       expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
     }
 
     // It is possible to call to initialize only one time
-    const rejectedTx = await freezeRegistryContract.initialize(adminAddress, BLOCK_HEIGHT_WINDOW);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.freezeRegistry.initialize.rejected(
+      {
+        admin: fixture.admin,
+        blocks: BLOCK_HEIGHT_WINDOW,
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
-  test(`test update_manager_address`, async () => {
+  test("test update_manager_address", async () => {
+    const fixture = state!;
+
     // Manager cannot unassign himself from being a manager
-    let rejectedTx = await freezeRegistryContractForAdmin.update_role(adminAddress, NONE_ROLE);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.freezeRegistry.update_role.rejected(
+      {
+        new_address: fixture.admin,
+        role: NONE_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
 
-    let tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, MANAGER_ROLE);
-    await tx.wait();
+    await fixture.freezeRegistry.update_role.accepted(
+      {
+        new_address: fixture.frozenAccount,
+        role: MANAGER_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
 
-    let role = await freezeRegistryContract.address_to_role(frozenAccount);
+    let role = await fixture.freezeRegistry.getAddress_to_role(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
-    tx = await freezeRegistryContractForAdmin.update_role(frozenAccount, NONE_ROLE);
-    await tx.wait();
-    role = await freezeRegistryContract.address_to_role(frozenAccount);
+    await fixture.freezeRegistry.update_role.accepted(
+      {
+        new_address: fixture.frozenAccount,
+        role: NONE_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
+    role = await fixture.freezeRegistry.getAddress_to_role(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Only the manager can update the roles
-    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, MANAGER_ROLE);
-    await expect(tx.wait()).rejects.toThrow();
+    await fixture.freezeRegistry.update_role.rejected(
+      {
+        new_address: fixture.frozenAccount,
+        role: MANAGER_ROLE,
+      },
+      asSigner(fixture.frozenAccount),
+    );
   });
 
-  test(`test update_freeze_list_manager`, async () => {
-    let tx = await freezeRegistryContractForAdmin.update_role(freezeListManager, FREEZELIST_MANAGER_ROLE);
-    await tx.wait();
-    const freezeListManagerRole = await freezeRegistryContract.address_to_role(freezeListManager);
+  test("test update_freeze_list_manager", async () => {
+    const fixture = state!;
+
+    await fixture.freezeRegistry.update_role.accepted(
+      {
+        new_address: fixture.freezeListManager,
+        role: FREEZELIST_MANAGER_ROLE,
+      },
+      asSigner(fixture.admin),
+    );
+    const freezeListManagerRole = await fixture.freezeRegistry.getAddress_to_role(fixture.freezeListManager);
     expect(freezeListManagerRole).toBe(FREEZELIST_MANAGER_ROLE);
 
-    tx = await freezeRegistryContractForFrozenAccount.update_role(frozenAccount, FREEZELIST_MANAGER_ROLE);
-    await expect(tx.wait()).rejects.toThrow();
+    await fixture.freezeRegistry.update_role.rejected(
+      {
+        new_address: fixture.frozenAccount,
+        role: FREEZELIST_MANAGER_ROLE,
+      },
+      asSigner(fixture.frozenAccount),
+    );
   });
 
-  test(`test update_freeze_list`, async () => {
-    const currentRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+  test("test update_freeze_list", async () => {
+    const fixture = state!;
+    const currentRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     // Only the manager can call to update_freeze_list
-    let rejectedTx = await freezeRegistryContractForFrozenAccount.update_freeze_list(
-      adminAddress,
-      true,
-      1,
-      currentRoot,
-      root,
+    await fixture.freezeRegistry.update_freeze_list.rejected(
+      {
+        account: fixture.admin,
+        is_frozen: true,
+        frozen_index: 1,
+        previous_root: currentRoot!,
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.frozenAccount),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot update the root if the previous root is incorrect
-    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(frozenAccount, false, 1, 0n, root);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.freezeRegistry.update_freeze_list.rejected(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: false,
+        frozen_index: 1,
+        previous_root: fieldLiteral(0n),
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.freezeListManager),
+    );
 
-    let isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount, false);
+    let isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(fixture.frozenAccount)) ?? false;
     if (!isAccountFrozen) {
       // Cannot unfreeze an unfrozen account
-      rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-        frozenAccount,
-        false,
-        1,
-        currentRoot,
-        root,
+      await fixture.freezeRegistry.update_freeze_list.rejected(
+        {
+          account: fixture.frozenAccount,
+          is_frozen: false,
+          frozen_index: 1,
+          previous_root: currentRoot!,
+          new_root: fixture.rootField!,
+        },
+        asSigner(fixture.freezeListManager),
       );
-      await expect(rejectedTx.wait()).rejects.toThrow();
 
-      let tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-        frozenAccount,
-        true,
-        1,
-        currentRoot,
-        root,
+      await fixture.freezeRegistry.update_freeze_list.accepted(
+        {
+          account: fixture.frozenAccount,
+          is_frozen: true,
+          frozen_index: 1,
+          previous_root: currentRoot!,
+          new_root: fixture.rootField!,
+        },
+        asSigner(fixture.freezeListManager),
       );
-      await tx.wait();
-      isAccountFrozen = await freezeRegistryContract.freeze_list(frozenAccount);
-      let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(1);
-      let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(fixture.frozenAccount)) as boolean;
+      let frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(1);
+      let lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(true);
-      expect(frozenAccountByIndex).toBe(frozenAccount);
+      expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
       expect(lastIndex).toBe(1);
     }
 
     // Cannot unfreeze an account when the frozen list index is incorrect
-    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-      frozenAccount,
-      false,
-      2,
-      root,
-      root,
+    await fixture.freezeRegistry.update_freeze_list.rejected(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: false,
+        frozen_index: 2,
+        previous_root: fixture.rootField!,
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.freezeListManager),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
     // Cannot freeze a frozen account
-    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-      frozenAccount,
-      true,
-      1,
-      root,
-      root,
+    await fixture.freezeRegistry.update_freeze_list.rejected(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: true,
+        frozen_index: 1,
+        previous_root: fixture.rootField!,
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.freezeListManager),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
 
-    let randomAddress = safeAddress();
-    let tx = await freezeRegistryContractForFreezeListManager.update_freeze_list(randomAddress, true, 2, root, root);
-    await tx.wait();
-    isAccountFrozen = await freezeRegistryContract.freeze_list(randomAddress);
-    let frozenAccountByIndex = await freezeRegistryContract.freeze_list_index(2);
-    let lastIndex = await freezeRegistryContract.freeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    let randomAddress = Leo.address(safeAddress());
+    await fixture.freezeRegistry.update_freeze_list.accepted(
+      {
+        account: randomAddress,
+        is_frozen: true,
+        frozen_index: 2,
+        previous_root: fixture.rootField!,
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.freezeListManager),
+    );
+    isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(randomAddress)) as boolean;
+    let frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(2);
+    let lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(randomAddress);
     expect(lastIndex).toBe(2);
 
-    randomAddress = safeAddress();
+    randomAddress = Leo.address(safeAddress());
     // Cannot freeze an account when the frozen list index is greater than the last index
-    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-      randomAddress,
-      true,
-      10,
-      root,
-      root,
+    await fixture.freezeRegistry.update_freeze_list.rejected(
+      {
+        account: randomAddress,
+        is_frozen: true,
+        frozen_index: 10,
+        previous_root: fixture.rootField!,
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.freezeListManager),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
     // Cannot freeze an account when the frozen list index is already taken
-    rejectedTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-      randomAddress,
-      true,
-      2,
-      root,
-      root,
+    await fixture.freezeRegistry.update_freeze_list.rejected(
+      {
+        account: randomAddress,
+        is_frozen: true,
+        frozen_index: 2,
+        previous_root: fixture.rootField!,
+        new_root: fixture.rootField!,
+      },
+      asSigner(fixture.freezeListManager),
     );
-    await expect(rejectedTx.wait()).rejects.toThrow();
   });
 
-  test(`test update_block_height_window`, async () => {
-    const rejectedTx = await freezeRegistryContractForFrozenAccount.update_block_height_window(BLOCK_HEIGHT_WINDOW);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+  test("test update_block_height_window", async () => {
+    const fixture = state!;
 
-    const tx = await freezeRegistryContractForFreezeListManager.update_block_height_window(BLOCK_HEIGHT_WINDOW);
-    await tx.wait();
+    await fixture.freezeRegistry.update_block_height_window.rejected(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+      },
+      asSigner(fixture.frozenAccount),
+    );
+
+    await fixture.freezeRegistry.update_block_height_window.accepted(
+      {
+        blocks: BLOCK_HEIGHT_WINDOW,
+      },
+      asSigner(fixture.freezeListManager),
+    );
   });
 
-  test(`test verify_non_inclusion_pub`, async () => {
-    const rejectedTx = await freezeRegistryContract.verify_non_inclusion_pub(frozenAccount);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-    const tx = await freezeRegistryContract.verify_non_inclusion_pub(adminAddress);
-    await tx.wait();
+  test("test verify_non_inclusion_pub", async () => {
+    const fixture = state!;
+
+    await fixture.freezeRegistry.verify_non_inclusion_pub.rejected(
+      {
+        account: fixture.frozenAccount,
+      },
+      asSigner(fixture.deployer),
+    );
+    await fixture.freezeRegistry.verify_non_inclusion_pub.accepted(
+      {
+        account: fixture.admin,
+      },
+      asSigner(fixture.deployer),
+    );
   });
 
-  test(`test verify_non_inclusion_priv`, async () => {
-    await expect(
-      freezeRegistryContract.verify_non_inclusion_priv(frozenAccount, frozenAccountMerkleProof),
-    ).rejects.toThrow();
+  test("test verify_non_inclusion_priv", async () => {
+    const fixture = state!;
+
+    await fixture.freezeRegistry.verify_non_inclusion_priv.failsLocally(
+      {
+        account: fixture.frozenAccount,
+        merkle_proof: fixture.frozenAccountMerkleProof!,
+      },
+      asSigner(fixture.deployer),
+    );
 
     const leaves = generateLeaves([]);
     const tree = buildTree(leaves);
     expect(tree[tree.length - 1]).toBe(emptyRoot);
 
-    const adminLeadIndices = getLeafIndices(tree, adminAddress);
+    const adminLeafIndices = getLeafIndices(tree, fixture.admin.address);
     const emptyTreeAdminMerkleProof = [
-      getSiblingPath(tree, adminLeadIndices[0], MAX_TREE_DEPTH),
-      getSiblingPath(tree, adminLeadIndices[1], MAX_TREE_DEPTH),
+      toMerkleProof(getSiblingPath(tree, adminLeafIndices[0], MAX_TREE_DEPTH)),
+      toMerkleProof(getSiblingPath(tree, adminLeafIndices[1], MAX_TREE_DEPTH)),
     ];
     // The transaction failed because the root is mismatch
-    let rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, emptyTreeAdminMerkleProof);
-    await expect(rejectedTx.wait()).rejects.toThrow();
-
-    let tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
-    await tx.wait();
-
-    const updateFreezeListTx = await freezeRegistryContractForFreezeListManager.update_freeze_list(
-      frozenAccount,
-      false,
-      1,
-      root,
-      emptyRoot,
+    await fixture.freezeRegistry.verify_non_inclusion_priv.rejected(
+      {
+        account: fixture.admin,
+        merkle_proof: emptyTreeAdminMerkleProof,
+      },
+      asSigner(fixture.deployer),
     );
-    await updateFreezeListTx.wait();
 
-    const newRoot = await freezeRegistryContract.freeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const oldRoot = await freezeRegistryContract.freeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
-    expect(oldRoot).toBe(root);
-    expect(newRoot).toBe(emptyRoot);
+    await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
+      {
+        account: fixture.admin,
+        merkle_proof: fixture.adminMerkleProof!,
+      },
+      asSigner(fixture.deployer),
+    );
+
+    await fixture.freezeRegistry.update_freeze_list.accepted(
+      {
+        account: fixture.frozenAccount,
+        is_frozen: false,
+        frozen_index: 1,
+        previous_root: fixture.rootField!,
+        new_root: emptyRootField,
+      },
+      asSigner(fixture.freezeListManager),
+    );
+
+    const newRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await fixture.freezeRegistry.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    expect(oldRoot).toBe(fixture.rootField);
+    expect(newRoot).toBe(emptyRootField);
 
     // The transaction succeed because the old root is match
-    tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
-    await tx.wait();
+    await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
+      {
+        account: fixture.admin,
+        merkle_proof: fixture.adminMerkleProof!,
+      },
+      asSigner(fixture.deployer),
+    );
 
-    const updateBlockHeightWindowTx = await freezeRegistryContractForFreezeListManager.update_block_height_window(1);
-    await updateBlockHeightWindowTx.wait();
+    await fixture.freezeRegistry.update_block_height_window.accepted(
+      {
+        blocks: 1,
+      },
+      asSigner(fixture.freezeListManager),
+    );
 
     // The transaction failed because the old root is expired
-    rejectedTx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, adminMerkleProof);
-    await expect(rejectedTx.wait()).rejects.toThrow();
+    await fixture.freezeRegistry.verify_non_inclusion_priv.rejected(
+      {
+        account: fixture.admin,
+        merkle_proof: fixture.adminMerkleProof!,
+      },
+      asSigner(fixture.deployer),
+    );
 
-    tx = await freezeRegistryContract.verify_non_inclusion_priv(adminAddress, emptyTreeAdminMerkleProof);
-    await tx.wait();
+    await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
+      {
+        account: fixture.admin,
+        merkle_proof: emptyTreeAdminMerkleProof,
+      },
+      asSigner(fixture.deployer),
+    );
   });
 });
