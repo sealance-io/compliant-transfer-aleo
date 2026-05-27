@@ -2648,13 +2648,11 @@ describe("test multisig_compliant_token program", () => {
     const tree = buildTree(leaves);
     expect(tree[tree.length - 1]).toBe(emptyRoot);
 
-    console.log("test old root support 0");
     const senderLeafIndices = getLeafIndices(tree, fixture.account.address);
     const emptyTreeSenderMerkleProof = [
       toMerkleProof(getSiblingPath(tree, senderLeafIndices[0], MAX_TREE_DEPTH)),
       toMerkleProof(getSiblingPath(tree, senderLeafIndices[1], MAX_TREE_DEPTH)),
     ];
-    console.log("test old root support 1");
 
     // The transaction failed because the root is mismatch
     await fixture.token.transfer_private.rejected(
@@ -2666,7 +2664,6 @@ describe("test multisig_compliant_token program", () => {
       },
       asSigner(fixture.account),
     );
-    console.log("test old root support 2");
 
     await fixture.freezeRegistry.update_freeze_list.accepted(
       {
@@ -2679,7 +2676,6 @@ describe("test multisig_compliant_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    console.log("test old root support 3");
 
     const newRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
     const oldRoot = await fixture.freezeRegistry.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);

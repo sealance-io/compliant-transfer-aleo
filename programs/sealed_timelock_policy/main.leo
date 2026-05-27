@@ -202,6 +202,7 @@ program sealed_timelock_policy.aleo {
             amount
         );
 
+        assert(sealed_token.amount >= amount);
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
@@ -261,6 +262,7 @@ program sealed_timelock_policy.aleo {
             amount
         );
 
+        assert(sealed_token.amount >= amount);
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
@@ -327,6 +329,7 @@ program sealed_timelock_policy.aleo {
             true
         );
 
+        assert(sealed_token.amount >= amount);
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
@@ -396,6 +399,7 @@ program sealed_timelock_policy.aleo {
             authorization_call.1,
         );
 
+        assert(sealed_token.amount >= amount);
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,
@@ -461,6 +465,7 @@ program sealed_timelock_policy.aleo {
             authorization_call.1,
         );
 
+        assert(sealed_token.amount >= amount);
         let sender_compliant_record: CompliantToken = CompliantToken {
             owner: sealed_token.owner,
             amount: sealed_token.amount - amount,

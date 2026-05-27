@@ -1,97 +1,146 @@
-// import { ExecutionMode } from "@doko-js/core";
-// import { BaseContract } from "../contract/base-contract";
-// import { Merkle_treeContract } from "../artifacts/js/merkle_tree";
-// import { BLOCK_HEIGHT_WINDOW, fundedAmount, MAX_BLOCK_HEIGHT } from "../lib/Constants";
-// import { fundWithCredits } from "../lib/Fund";
-// import { deployIfNotDeployed } from "../lib/Deploy";
-// import { getDeployedProgramChecksum, getProgramEdition, upgradeProgram } from "../lib/Upgrade";
-// import { initializeProgram } from "../lib/Initalize";
-// import { ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
-// import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig";
-// import { Multisig_coreContract } from "../artifacts/js/multisig_core";
-// import { Multisig_freezelist_registryContract } from "../artifacts/js/multisig_freezelist_registry";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
+import { type SignableNamedAccount } from "@lionden/config";
+import {
+  BLOCK_HEIGHT_WINDOW,
+  fundedAmount,
+  MAX_BLOCK_HEIGHT,
+  SETUP_TIMEOUT_MS,
+  zeroAddress,
+} from "../lib/Constants.js";
+import { fundWithCredits } from "../lib/Fund.js";
+import { getDeployedProgramChecksum, getProgramEdition, upgradeProgram } from "../lib/Upgrade.js";
+import { asSigner } from "../lib/LiondenAdapters.js";
+import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisig.js";
+import { Leo } from "../typechain/BaseContract.js";
+import { createMultisigCore } from "../typechain/MultisigCore.js";
+import { createMultisigFreezelistRegistry } from "../typechain/MultisigFreezelistRegistry.js";
+import { Address } from "@provablehq/sdk";
 
-// const mode = ExecutionMode.SnarkExecute;
-// const contract = new BaseContract({ mode });
+interface UpgradeFixture {
+  readonly ctx: TestContext;
+  readonly deployer: SignableNamedAccount;
+  readonly admin: SignableNamedAccount;
+  readonly signer1: SignableNamedAccount;
+  readonly signer2: SignableNamedAccount;
+  readonly freezeRegistry: ReturnType<typeof createMultisigFreezelistRegistry>;
+  readonly multisig: ReturnType<typeof createMultisigCore>;
+  readonly freezeRegistryAddress: ReturnType<typeof Leo.address>;
+}
 
-// // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-// // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
-// const [deployerAddress, adminAddress, , , , , , , , , , , signer1, signer2] = contract.getAccounts();
+const freezeRegistryAddress = Leo.address(Address.fromProgramId("multisig_freezelist_registry.aleo").to_string());
 
-// const deployerPrivKey = contract.getPrivateKey(deployerAddress);
-// const adminPrivKey = contract.getPrivateKey(adminAddress);
+async function deployFixture() {
+  const ctx = await setup();
 
-// const freezeRegistryContract = new Multisig_freezelist_registryContract({
-//   mode,
-//   privateKey: deployerPrivKey,
-// });
-// const freezeRegistryContractForAdmin = new Multisig_freezelist_registryContract({
-//   mode,
-//   privateKey: adminPrivKey,
-// });
-// const merkleTreeContract = new Merkle_treeContract({
-//   mode,
-//   privateKey: deployerPrivKey,
-// });
-// const multiSigContract = new Multisig_coreContract({
-//   mode,
-//   privateKey: deployerPrivKey,
-// });
+  try {
+    // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
+    // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
+    const deployer = ctx.named.signer("deployer");
+    const admin = ctx.named.signer("admin");
+    const signer1 = ctx.named.signer("signer1");
+    const signer2 = ctx.named.signer("signer2");
 
-// // await ctx!.lre.tasks.run("upgrade", { program: "admin_example" });
-// describe("test upgradeability", () => {
-//   beforeAll(async () => {
-//     // Deploy the multisig programs
-//     await deployIfNotDeployed(multiSigContract);
+    const freezeRegistry = createMultisigFreezelistRegistry().connect(ctx.lre);
+    const multisig = createMultisigCore().connect(ctx.lre);
 
-//     await fundWithCredits(deployerPrivKey, adminAddress, fundedAmount);
-//     await fundWithCredits(deployerPrivKey, signer1, fundedAmount);
-//     await fundWithCredits(deployerPrivKey, signer2, fundedAmount);
+    await fundWithCredits(ctx, admin.address, fundedAmount, deployer);
+    await fundWithCredits(ctx, signer1.address, fundedAmount, deployer);
+    await fundWithCredits(ctx, signer2.address, fundedAmount, deployer);
 
-//     await deployIfNotDeployed(merkleTreeContract);
-//     await deployIfNotDeployed(freezeRegistryContract);
+    for (const program of ["merkle_tree", "multisig_core", "multisig_freezelist_registry"]) {
+      await ctx.deploy(program, { noCompile: true });
+    }
 
-//     await initializeProgram(freezeRegistryContractForAdmin, [adminAddress, BLOCK_HEIGHT_WINDOW, ZERO_ADDRESS]);
+    if ((await freezeRegistry.getFreeze_list_root(1)) === null) {
+      await freezeRegistry.initialize.accepted(
+        {
+          admin,
+          blocks: BLOCK_HEIGHT_WINDOW,
+          manager_wallet_id: zeroAddress,
+        },
+        asSigner(admin),
+      );
+    }
 
-//     // Create the wallets
-//     await initializeMultisig();
-//     await createWallet(freezeRegistryContract.address());
-//   });
+    // Create the wallets
+    await initializeMultisig(multisig, deployer);
+    await createWallet(multisig, deployer, freezeRegistryAddress, [signer1, signer2, zeroAddress, zeroAddress]);
 
-//   test(`test upgrades`, async () => {
-//     // It shouldn't be possible to upgrade the merkle_Tree program
-//     const merkleTreeEditionBefore = await getProgramEdition("merkle_tree");
-//     let isUpgradeSuccessful = await upgradeProgram("merkle_tree", adminPrivKey);
-//     const merkleTreeEditionAfter = await getProgramEdition("merkle_tree");
-//     expect(isUpgradeSuccessful).toBe(false);
-//     expect(merkleTreeEditionBefore).toBe(merkleTreeEditionAfter);
+    return {
+      ctx,
+      deployer,
+      admin,
+      signer1,
+      signer2,
+      freezeRegistry,
+      multisig,
+      freezeRegistryAddress,
+    } satisfies UpgradeFixture;
+  } catch (error) {
+    await ctx.teardown();
+    throw error;
+  }
+}
 
-//     // Only The multisig can upgrade the freeze registry program
-//     // upgrade by a multisig request
-//     let freezeRegistryEditionBefore = await getProgramEdition("multisig_freezelist_registry");
-//     const checksum = await getDeployedProgramChecksum("multisig_freezelist_registry");
-//     const getSigningOpIdForDeployTx = await freezeRegistryContract.get_signing_op_id_for_deploy(
-//       checksum,
-//       freezeRegistryEditionBefore + 1,
-//     );
-//     const [signingOpId] = await getSigningOpIdForDeployTx.wait();
-//     const tx = await multiSigContract.initiate_signing_op(
-//       freezeRegistryContract.address(),
-//       signingOpId,
-//       MAX_BLOCK_HEIGHT,
-//     );
-//     await tx.wait();
-//     // The upgrade fail because the multisig request is not approved yet
-//     isUpgradeSuccessful = await upgradeProgram("multisig_freezelist_registry", adminPrivKey);
-//     let freezeRegistryTreeEditionAfter = await getProgramEdition("multisig_freezelist_registry");
-//     expect(isUpgradeSuccessful).toBe(false);
-//     expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);
+let state: UpgradeFixture | undefined;
 
-//     await approveRequest(freezeRegistryContract.address(), signingOpId);
+beforeAll(async () => {
+  state = await loadFixture(deployFixture);
+}, SETUP_TIMEOUT_MS);
 
-//     isUpgradeSuccessful = await upgradeProgram("multisig_freezelist_registry", adminPrivKey);
-//     freezeRegistryTreeEditionAfter = await getProgramEdition("multisig_freezelist_registry");
-//     expect(isUpgradeSuccessful).toBe(true);
-//     expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
-//   });
-// });
+afterAll(async () => {
+  if (state) {
+    await state.ctx.teardown();
+  } else {
+    clearFixtures();
+  }
+});
+
+// await ctx!.lre.tasks.run("upgrade", { program: "admin_example" });
+describe("test upgradeability", () => {
+  test(`test upgrades`, async () => {
+    const fixture = state!;
+
+    // It shouldn't be possible to upgrade the merkle_Tree program
+    const merkleTreeEditionBefore = await getProgramEdition(fixture.ctx, "merkle_tree");
+    let isUpgradeSuccessful = await upgradeProgram(fixture.ctx, "merkle_tree");
+    const merkleTreeEditionAfter = await getProgramEdition(fixture.ctx, "merkle_tree");
+    expect(isUpgradeSuccessful).toBe(false);
+    expect(merkleTreeEditionBefore).toBe(merkleTreeEditionAfter);
+
+    // Only The multisig can upgrade the freeze registry program
+    // upgrade by a multisig request
+    const freezeRegistryEditionBefore = await getProgramEdition(fixture.ctx, "multisig_freezelist_registry");
+    const freezeRegistryUpgradeEdition = freezeRegistryEditionBefore + 1; // getProgramUpgradeEdition(fixture.ctx, "multisig_freezelist_registry");
+    const checksum = await getDeployedProgramChecksum(fixture.ctx, "multisig_freezelist_registry");
+    const getSigningOpIdForDeployTx = await fixture.freezeRegistry.get_signing_op_id_for_deploy.accepted(
+      {
+        checksum,
+        edition: freezeRegistryUpgradeEdition,
+      },
+      asSigner(fixture.deployer),
+    );
+    const signingOpId = await getSigningOpIdForDeployTx.outputs.decrypt(fixture.deployer);
+    await fixture.multisig.initiate_signing_op.accepted(
+      {
+        wallet_id: fixture.freezeRegistryAddress,
+        signing_op_id: signingOpId,
+        block_expiration: MAX_BLOCK_HEIGHT,
+      },
+      asSigner(fixture.deployer),
+    );
+    // The upgrade fail because the multisig request is not approved yet
+    isUpgradeSuccessful = await upgradeProgram(fixture.ctx, "multisig_freezelist_registry");
+    let freezeRegistryTreeEditionAfter = await getProgramEdition(fixture.ctx, "multisig_freezelist_registry");
+    expect(isUpgradeSuccessful).toBe(false);
+    expect(freezeRegistryEditionBefore).toBe(freezeRegistryTreeEditionAfter);
+
+    await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.freezeRegistryAddress, signingOpId);
+
+    isUpgradeSuccessful = await upgradeProgram(fixture.ctx, "multisig_freezelist_registry");
+    freezeRegistryTreeEditionAfter = await getProgramEdition(fixture.ctx, "multisig_freezelist_registry");
+    expect(isUpgradeSuccessful).toBe(true);
+    expect(freezeRegistryEditionBefore + 1).toBe(freezeRegistryTreeEditionAfter);
+  });
+});
