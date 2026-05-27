@@ -19,7 +19,6 @@ export interface IPolicy {
   requireInitialization: boolean;
   blockHeightWindow: number;
 }
-Address.fromProgramId("sealed_report_policy.aleo").to_string();
 // policies specs
 export const policies: { [key: string]: IPolicy } = {
   report: {

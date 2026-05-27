@@ -458,6 +458,17 @@ describe("test sealed_timelock_policy program", () => {
       asSigner(fixture.account),
     );
 
+    // cannot send more tokens than the sealed record amount
+    await fixture.timelockPolicy.transfer_public.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount: fixture.accountSealedRecord!.amount + 1n,
+        sealed_token: fixture.accountSealedRecord!,
+        lock_until: latestBlockHeight + 100,
+      },
+      asSigner(fixture.account),
+    );
+
     // Sending tokens to the recipient with a long timelock, should succeed
     let tx = await fixture.timelockPolicy.transfer_public.accepted(
       {
@@ -509,7 +520,6 @@ describe("test sealed_timelock_policy program", () => {
   test(`test transfer_public_as_signer`, async () => {
     const fixture = state!;
 
-    console.log("test transfer_public_as_signer 0");
     await fixture.timelockPolicy.mint_public.accepted(
       {
         recipient: fixture.account,
@@ -518,7 +528,6 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.minter),
     );
-    console.log("test transfer_public_as_signer 1");
 
     const mintPublicTx = await fixture.timelockPolicy.mint_public.accepted(
       {
@@ -529,10 +538,8 @@ describe("test sealed_timelock_policy program", () => {
       asSigner(fixture.minter),
     );
     fixture.accountSealedRecord = await mintPublicTx.outputs.decrypt(fixture.account);
-    console.log("test transfer_public_as_signer 2");
 
     const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
-    console.log("test transfer_public_as_signer 3");
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.timelockPolicy.transfer_public_as_signer.rejected(
@@ -544,7 +551,6 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.frozenAccount),
     );
-    console.log("test transfer_public_as_signer 4");
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.timelockPolicy.transfer_public_as_signer.rejected(
@@ -556,19 +562,17 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.account),
     );
-    console.log("test transfer_public_as_signer 5");
-    // Integer subtraction failed on: 10u128 and 11u128
-    // cannot send tokens with the smaller amount in the sealed record
-    await fixture.timelockPolicy.transfer_public_as_signer.failsLocally(
+
+    // cannot send more tokens than the sealed record amount
+    await fixture.timelockPolicy.transfer_public.failsLocally(
       {
         recipient: fixture.recipient,
-        amount: amount + 1n,
+        amount: fixture.accountSealedRecord!.amount + 1n,
         sealed_token: fixture.accountSealedRecord!,
         lock_until: latestBlockHeight,
       },
       asSigner(fixture.account),
     );
-    console.log("test transfer_public_as_signer 6");
 
     await fixture.timelockPolicy.transfer_public_as_signer.accepted(
       {
@@ -579,10 +583,9 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.account),
     );
-    console.log("test transfer_public_as_signer 7");
   });
 
-  test.skip(`test transfer_public_to_priv`, async () => {
+  test(`test transfer_public_to_priv`, async () => {
     const fixture = state!;
 
     await fixture.timelockPolicy.mint_public.accepted(
@@ -651,7 +654,7 @@ describe("test sealed_timelock_policy program", () => {
       asSigner(fixture.account),
     );
 
-    // cannot send tokens with the smaller amount in the sealed record
+    // cannot send more tokens than the sealed record amount
     await fixture.timelockPolicy.transfer_public_to_priv.failsLocally(
       {
         recipient: fixture.recipient,
@@ -697,7 +700,7 @@ describe("test sealed_timelock_policy program", () => {
     expect(recipientSealedRecord.locked_until).toBe(largeBlockHeight);
   });
 
-  test.skip(`test transfer_private`, async () => {
+  test(`test transfer_private`, async () => {
     const fixture = state!;
 
     let mintPrivateTx = await fixture.timelockPolicy.mint_private.accepted(
@@ -708,6 +711,7 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.minter),
     );
+
     fixture.accountSealedRecord = await mintPrivateTx.outputs[0].decrypt(fixture.account);
     fixture.accountRecord = await mintPrivateTx.outputs[1]
       .match(TokenRegistry_Token.output.from("mint_private", 0))
@@ -741,7 +745,6 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.frozenAccount),
     );
-
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.timelockPolicy.transfer_private.failsLocally(
       {
@@ -760,25 +763,11 @@ describe("test sealed_timelock_policy program", () => {
     const change = 1n;
     const amountToSend = fixture.accountRecord!.amount - change;
 
-    // cannot send amount larger than in sealed token
+    // cannot send more tokens than the sealed record amount
     await fixture.timelockPolicy.transfer_private.failsLocally(
       {
         recipient: fixture.recipient,
-        amount: accountRecord2.amount + 1n,
-        sealed_token: fixture.accountSealedRecord2!,
-        base_token: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-        lock_until: largeBlockHeight,
-      },
-      asSigner(fixture.account),
-    );
-
-    // cannot send a different amount in base token than in sealed token
-    await fixture.timelockPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount: fixture.accountRecord!.amount,
+        amount: fixture.accountSealedRecord2.amount + 1n,
         sealed_token: fixture.accountSealedRecord2!,
         base_token: fixture.accountRecord!,
         sender_merkle_proofs: fixture.senderMerkleProof,
@@ -856,10 +845,9 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.account),
     );
-    await tx.outputs[0].decrypt(fixture.account);
   });
 
-  test.skip(`test transfer_priv_to_public`, async () => {
+  test(`test transfer_priv_to_public`, async () => {
     const fixture = state!;
 
     let mintPrivateTx = await fixture.timelockPolicy.mint_private.accepted(
@@ -890,7 +878,7 @@ describe("test sealed_timelock_policy program", () => {
 
     const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
 
-    // If the sender is frozen account it's impossible to send tokens
+    // // If the sender is frozen account it's impossible to send tokens
     await fixture.timelockPolicy.transfer_priv_to_public.failsLocally(
       {
         recipient: fixture.recipient,
@@ -916,7 +904,7 @@ describe("test sealed_timelock_policy program", () => {
       asSigner(fixture.account),
     );
 
-    // cannot send tokens with the smaller amount in the sealed record
+    // cannot send more tokens than the sealed record amount
     await fixture.timelockPolicy.transfer_priv_to_public.failsLocally(
       {
         recipient: fixture.recipient,
@@ -964,7 +952,7 @@ describe("test sealed_timelock_policy program", () => {
     expect(recipientSealedRecord.amount).toBe(amountToSend);
     expect(recipientSealedRecord.locked_until).toBe(largeBlockHeight);
 
-    // Send the remaining amount to account using large blockheight
+    // Send the remaining amount to account using large block height
     // and verify that account cannot call transfer_priv_to_public with it
     const tx2 = await fixture.timelockPolicy.transfer_private.accepted(
       {
@@ -997,7 +985,7 @@ describe("test sealed_timelock_policy program", () => {
     );
   });
 
-  test.skip(`test join`, async () => {
+  test(`test join`, async () => {
     const fixture = state!;
 
     // create new records

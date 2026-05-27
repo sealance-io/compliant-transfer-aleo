@@ -1,28 +1,46 @@
-import networkConfig from "../aleo-config";
-import { runLiondenTask } from "../lionden-compat/core";
+import type { LionDenRuntimeEnvironment } from "@lionden/core";
+import type { TestContext } from "@lionden/testing";
 
-export async function upgradeProgram(programName: string, privateKey: string) {
-  const networkName = networkConfig.defaultNetwork;
-  void privateKey;
+type UpgradeRuntime = TestContext | LionDenRuntimeEnvironment;
+
+interface UpgradeProgramOptions {
+  generateTypechain?: boolean;
+}
+
+function getLre(runtime: UpgradeRuntime): LionDenRuntimeEnvironment {
+  return "lre" in runtime ? runtime.lre : runtime;
+}
+
+export async function upgradeProgram(
+  runtime: UpgradeRuntime,
+  programName: string,
+  options: UpgradeProgramOptions = {},
+) {
+  const lre = getLre(runtime);
+  const codegen = lre.config.codegen as { enabled: boolean };
+  const codegenEnabled = codegen.enabled;
+  const generateTypechain = options.generateTypechain ?? false;
 
   try {
-    await runLiondenTask("upgrade", {
+    codegen.enabled = generateTypechain;
+    await lre.tasks.run("upgrade", {
       program: programName,
-      network: networkName,
     });
     return true;
   } catch (error) {
     if (error instanceof Error) {
-      console.log(error.message);
+      console.log(`${error.name}: ${error.message}`);
+    } else {
+      console.log(`Upgrade error: ${String(error)} ${JSON.stringify(error)}`);
     }
     return false;
+  } finally {
+    codegen.enabled = codegenEnabled;
   }
 }
 
-export async function getProgramEdition(programName: string): Promise<number> {
-  const endpoint = networkConfig.networks[networkConfig.defaultNetwork].endpoint;
-  const networkName = networkConfig.defaultNetwork;
-  const url = `${endpoint}/${networkName}/program/${programName}.aleo/latest_edition`;
+export async function getProgramEdition(ctx: TestContext, programName: string): Promise<number> {
+  const url = `${ctx.connection.endpoint}/${ctx.connection.networkId}/program/${programName}.aleo/latest_edition`;
   console.log(url);
   const latest_edition = Number(await (await fetch(url)).json());
   return latest_edition;
@@ -34,10 +52,8 @@ interface DeploymentTransaction {
   };
 }
 
-export async function getDeployedProgramChecksum(programName: string): Promise<number[]> {
-  const endpoint = networkConfig.networks[networkConfig.defaultNetwork].endpoint;
-  const network = networkConfig.defaultNetwork;
-  const baseUrl = `${endpoint}/${network}`;
+export async function getDeployedProgramChecksum(ctx: TestContext, programName: string): Promise<number[]> {
+  const baseUrl = `${ctx.connection.endpoint}/${ctx.connection.networkId}`;
 
   const transactionId: string = (await (
     await fetch(`${baseUrl}/find/transactionID/deployment/${programName}.aleo`)
