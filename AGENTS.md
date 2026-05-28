@@ -1,6 +1,6 @@
 # sealance-io/compliant-transfer-aleo AI Agent Guide
 
-> Last Updated: 2026-01-26
+> Last Updated: 2026-05-28
 
 AI agent instructions for this repository. See detailed docs for specific topics.
 
@@ -12,9 +12,9 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 
 - **Leo Programs** (`/programs`): Compliance policy smart contracts
 - **Policy Engine SDK** (`/packages/policy-engine-sdk`): Published as `@sealance-io/policy-engine-aleo`
-- **Test Suite** (`/test`): Testcontainers + leo devnode/devnet
+- **Test Suite** (`/test`): LionDen-managed `leo devnode` integration tests
 - **Shared Libraries** (`/lib`): Freeze lists, tokens, deployment, roles, funding
-- **Deployment Scripts** (`/scripts`): Devnet/testnet deployment and configuration
+- **Deployment Scripts** (`/scripts`): Devnode/testnet deployment, upgrades, and configuration
 
 ## Quick Reference
 
@@ -22,23 +22,25 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 # Setup
 npm run lint:lockfile
 npm ci --ignore-scripts --allow-git=none
-npm run postinstall
-npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 
 # Build
-dokojs compile              # Compile Leo programs
+npm run compile              # Compile Leo programs with LionDen
 npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
 npm test                    # Default devnode mode (recommended)
-DEVNET=true npm test        # Full devnet mode
-npm run test:select ./test/merkle_tree.test.ts  # Specific test
-npm run test:agent          # Vitest with machine-friendly agent reporter
-npm run test:select:agent ./test/merkle_tree.test.ts  # Specific test with agent reporter
+npm test test/merkle_tree.test.ts  # Specific test
+npm test --grep "mint"      # Filter tests by name
+npm test --no-compile       # Reuse existing artifacts/typechain
+npm test --prove            # Generate proofs during execution
 
 # Deploy
-npm run deploy:devnet       # Deploy to devnet
+npm run deploy:devnode      # Deploy to local devnode
 npm run deploy:testnet      # Deploy to testnet
+
+# Upgrade
+lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
+# Example: lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
 
 # Format
 npm run format:fix          # Auto-fix formatting
@@ -76,9 +78,10 @@ npm run format:fix          # Auto-fix formatting
 1. **Node Version**: Use Node 20.19.0+ on the 20.x line, or Node 22.12.0+; the repo default in `.nvmrc` is `v24`
 2. **Leo Version**: Developed with Leo CLI v4.0.1
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
-4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/devnet)
+4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/testnet)
 5. **npm Security**: Always use `--ignore-scripts` for installs; use `--allow-git=none` with `npm ci`. Build/publish workflows may run scripts as needed
-6. **Dokojs Patches**: `@doko-js/*` blocked in dependabot - verify against `/patches` before updating
+6. **LionDen Dependencies**: `@lionden/*` packages are local file dependencies from `../lionden`; update them intentionally with the LionDen checkout
+7. **Program Upgrades**: Use `scripts/upgrade.ts` with `--program <program-name>` where the program name comes from `/programs` without the `.aleo` suffix
 
 ## CI/CD Status Checks
 
@@ -92,7 +95,7 @@ Required for branch protection:
 
 Load the linked file(s) when your task touches that area. Do not assume links are auto-loaded.
 
-- **Build, deploy, devnet, release, or setup:** `docs/DEVELOPMENT.md` - commands, SDK development, deployment
+- **Build, deploy, upgrade, release, or setup:** `docs/DEVELOPMENT.md` - commands, SDK development, deployment, upgrades
 - **Testing or CI failures:** `docs/TESTING.md` - manual local Aleo setup, test configuration
 - **npm install, security policy, or dependency updates:** `docs/NPM-SECURITY.md` - security model and practices
 - **Program structure or compliance flow:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system
@@ -108,14 +111,14 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Common Issues
 
-| Issue                   | Solution                                                                           |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| Container auth          | `docker login ghcr.io`                                                             |
-| Tests too slow          | Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI |
-| Port 3030 in use        | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`       |
-| Manual local Aleo setup | See `docs/TESTING.md`                                                              |
+| Issue                   | Solution                                                    |
+| ----------------------- | ----------------------------------------------------------- |
+| Leo CLI missing         | Install a Leo CLI compatible with `lionden.config.ts`       |
+| Tests too slow          | Keep proofs disabled; use `npm test --prove` only as needed |
+| Port 3030 in use        | Stop the process currently listening on port 3030           |
+| Manual local Aleo setup | See `docs/TESTING.md`                                       |
 
 ## Testing Preferences
 
-- When running Vitest directly, prefer the `agent` reporter for minimal machine-friendly output: `vitest run --reporter=agent`
-- Prefer `npm run test:agent` or `npm run test:select:agent` when those scripts fit the task
+- Prefer `npm test` for root integration tests so LionDen manages compile, typechain, and devnode lifecycle.
+- Use `npm test --no-compile` only when intentionally reusing existing artifacts/typechain.

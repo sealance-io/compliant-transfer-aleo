@@ -2,75 +2,58 @@
 
 ## Testing Modes
 
-| Mode        | Command           | Speed | Use Case            | Status                       |
-| ----------- | ----------------- | ----- | ------------------- | ---------------------------- |
-| **Devnode** | Default (no flag) | Fast  | Local iteration, CI | **Default and recommended**  |
-| **Devnet**  | `DEVNET=true`     | Slow  | Nightly, pre-deploy | Supported full-network check |
+| Mode        | Command    | Speed | Use Case            | Status                      |
+| ----------- | ---------- | ----- | ------------------- | --------------------------- |
+| **Devnode** | `npm test` | Fast  | Local iteration, CI | **Default and recommended** |
 
-> `npm test` now uses `devnode` by default. Use `DEVNET=true` when you specifically want the slower full-network path.
+> `npm test` uses LionDen's managed `leo devnode` by default.
 
 ## Quick Start
 
 ```bash
 cp .env.example .env
 npm test                    # Default devnode mode (recommended)
-DEVNET=true npm test        # Full devnet mode
-npm run test:select ./test/your-test.test.ts  # Single test
+npm test test/your-test.test.ts  # Single test
+npm test --grep "mint"           # Filter tests by name
+npm test --prove                 # Generate proofs during execution
 ```
 
 ## Environment Variables
 
 ### Core
 
-| Variable                  | Default | Description                                               |
-| ------------------------- | ------- | --------------------------------------------------------- |
-| `DEVNET`                  | `false` | Enable full devnet mode                                   |
-| `SKIP_EXECUTE_PROOF`      | `true`  | Skip ZK proofs (devnode only). Set `false` to opt out.    |
-| `SKIP_DEPLOY_CERTIFICATE` | `true`  | Skip deploy certs (devnode only). Set `false` to opt out. |
-
-### Container
-
-| Variable              | Default | Description                        |
-| --------------------- | ------- | ---------------------------------- |
-| `USE_TEST_CONTAINERS` | `true`  | Use Testcontainers                 |
-| `ALEO_TEST_IMAGE`     | Auto    | Docker image override for the mode |
-
-Default images: Devnode `ghcr.io/sealance-io/leo-lang:v4.0.1`, Devnet `ghcr.io/sealance-io/aleo-devnet:v4.0.1-v4.6.0`
-
-- Devnode override: image must provide `/usr/local/bin/leo`; the test harness injects `leo devnode start ...`
-- Devnet override: image must be compatible with the upstream `ghcr.io/sealance-io/aleo-devnet` entrypoint contract and self-start via `ENTRYPOINT`/`CMD`
+| Variable        | Default | Description                                             |
+| --------------- | ------- | ------------------------------------------------------- |
+| `LIONDEN_PROVE` | Unset   | Generate proofs during tests; normally set by `--prove` |
 
 ### Timing & Logging
 
-| Variable                  | Default  | Description                       |
-| ------------------------- | -------- | --------------------------------- |
-| `CONSENSUS_CHECK_TIMEOUT` | `600000` | Max wait for consensus (ms)       |
-| `ALEO_VERBOSITY`          | `1`      | Log level: 0 (quiet) to 4 (debug) |
+| Variable               | Default  | Description                                         |
+| ---------------------- | -------- | --------------------------------------------------- |
+| `LIONDEN_DEVNODE_LOGS` | Buffered | Devnode log mode: `inherit`, `forward`, or buffered |
 
-## Manual Setup (Without Testcontainers)
+## Manual Setup
+
+The repository tests use LionDen's managed devnode by default. For ad hoc tests or scripts that call `setup({ skipDevnode: true })`, start a devnode separately:
 
 ```bash
-export USE_TEST_CONTAINERS=0
-
 # In another terminal:
-docker run -p 3030:3030 ghcr.io/sealance-io/leo-lang:v4.0.1 \
-  leo devnode start --listener-addr 0.0.0.0:3030 \
-  --private-key "$ALEO_PRIVATE_KEY" --verbosity 1
-
-npm test
+leo devnode start \
+  --private-key "$ALEO_DEVNET_DEPLOYER_PRIVATE_KEY" \
+  --consensus-heights 0,1,2,3,4,5,6,7,8,9,10,11,12,13
 ```
 
 ## Troubleshooting
 
-| Issue                | Solution                                                                           |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| Consensus timeout    | `CONSENSUS_CHECK_TIMEOUT=600000 npm test`                                          |
-| Container auth error | `docker login ghcr.io` (use PAT with `read:packages`)                              |
-| Tests too slow       | Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI |
-| Port 3030 in use     | `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`       |
+| Issue               | Solution                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| Devnode logs hidden | `LIONDEN_DEVNODE_LOGS=forward npm test`                                      |
+| Leo CLI missing     | Install a Leo CLI compatible with `lionden.config.ts`                        |
+| Tests too slow      | Keep proofs disabled for normal devnode runs; use `--prove` only when needed |
+| Port 3030 in use    | Stop the process currently listening on port 3030                            |
 
 ## Notes
 
 - Tests run **sequentially** (shared blockchain state)
-- `devnode` is the default locally and in standard CI runs; nightly CI keeps `devnet` as the default full-network coverage job
-- Devnode/devnet are for **local testing only** - use `npm run deploy:testnet` for public networks
+- `devnode` is the default locally and in standard CI runs
+- Devnode is for **local testing only** - use `npm run deploy:testnet` for public networks

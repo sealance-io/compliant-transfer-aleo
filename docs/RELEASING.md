@@ -355,7 +355,6 @@ cd compliant-transfer-aleo
 # 2. Install and build
 npm run lint:lockfile
 npm ci --ignore-scripts --allow-git=none
-npm run postinstall
 npm run build --workspace=@sealance-io/policy-engine-aleo
 
 # 3. Login to npm (requires 2FA)

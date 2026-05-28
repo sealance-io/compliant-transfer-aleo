@@ -66,13 +66,13 @@ Located in `/packages/policy-engine-sdk`:
 
 ## Testing Infrastructure
 
-Tests use **Testcontainers** to spin up containerized Aleo environment:
+Tests use **LionDen** to compile programs and manage a local `leo devnode` process:
 
-| File                     | Purpose                                          |
-| ------------------------ | ------------------------------------------------ |
-| `vitest.global-setup.ts` | Starts container, waits for consensus, port 3030 |
-| `vitest.config.ts`       | Sequential execution, 3000s timeout, alphabetic  |
-| `aleo-config.js`         | Test accounts and network config                 |
+| File                | Purpose                                           |
+| ------------------- | ------------------------------------------------- |
+| `lionden.config.ts` | Networks, named accounts, plugins, codegen config |
+| `/test/*.test.ts`   | Sequential Vitest integration tests               |
+| `/lib/*.ts`         | Shared test and deployment helpers                |
 
 **Test Accounts**: deployer, admin, investigator, frozen_address, sender, recipient, minter, burner, supply_manager, spender, freeze_list_manager, pauser
 
@@ -80,12 +80,12 @@ Tests use **Testcontainers** to spin up containerized Aleo environment:
 
 Compiled programs output to `/artifacts`:
 
-- JS bindings for contract interaction
+- ABI and key artifact metadata
 - Type definitions
-- Leo2JS conversion utilities (encrypt/decrypt records)
+- TypeScript bindings in `/typechain`
 
-## Dokojs Framework
+## LionDen Framework
 
-Uses custom fork (`@doko-js/core`, `@doko-js/utils`, `@doko-js/wasm`) for compiling Leo and generating JS bindings. Patches in `/patches`.
+Uses local `@lionden/*` packages for compiling Leo, generating TypeScript bindings, managing devnode tests, and running deployment scripts. Configuration lives in `lionden.config.ts`.
 
-**Key classes**: `ExecutionMode.SnarkExecute`, `BaseContract`, `AleoNetworkClient`
+**Key APIs**: `LionDenRuntimeEnvironment`, generated `/typechain` contracts, `@lionden/testing` `TestContext`

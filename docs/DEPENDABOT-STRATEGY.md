@@ -21,7 +21,7 @@ This document explains the rationale behind our Dependabot configuration. For im
 2. **Stability over speed** - Cooldowns prevent adopting buggy releases
 3. **Exact versioning** - No `^` or `~` ranges; deterministic builds
 4. **Aggressive grouping** - Reduce PR noise while keeping SDK deps separate
-5. **Pragmatic blocking** - Patched packages (`@doko-js/*`) require manual updates
+5. **Pragmatic blocking** - Local framework packages (`@lionden/*`) are updated manually with LionDen changes
 
 ## npm Ecosystem
 
@@ -45,13 +45,13 @@ We chose GitHub's recommended defaults (7/3) to balance security with avoiding t
 | --------------- | ------------------------------------------------------------ |
 | `@provablehq/*` | SDK dependency - needs careful review for Aleo compatibility |
 | `@scure/base`   | SDK dependency - cryptographic library                       |
-| `@doko-js/*`    | Blocked entirely (custom patches)                            |
+| `@lionden/*`    | Local file dependencies - updated manually with LionDen      |
 
 This reduces PR volume significantly while ensuring SDK-affecting changes get individual attention.
 
 ### Blocked Updates
 
-- **`@doko-js/*`** - Custom patches in `/patches`; updates would break patches
+- **`@lionden/*`** - Local file dependencies; update intentionally with the framework checkout
 - **All major versions** - Breaking changes require manual review (security updates bypass)
 
 ## GitHub Actions Ecosystem

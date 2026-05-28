@@ -19,10 +19,9 @@ npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
 
 ```bash
 npm ci --ignore-scripts --allow-git=none  # Install without running scripts
-npm run postinstall          # Controlled execution after validation
 ```
 
-**Why not `.npmrc` with `ignore-scripts=true`?** This repo treats lockfile validation as an explicit step (`npm run lint:lockfile`) and applies patches via an explicit `npm run postinstall` after install. CI and any `npm ci --ignore-scripts` flow must run those commands directly because lifecycle scripts are skipped.
+**Why not `.npmrc` with `ignore-scripts=true`?** This repo treats lockfile validation as an explicit step (`npm run lint:lockfile`). CI and any `npm ci --ignore-scripts` flow must run that command directly because lifecycle scripts are skipped.
 
 ### 3. Lockfile Validation
 
@@ -48,7 +47,6 @@ git/file/tarball fallback sources when `resolved` is absent.
 ```yaml
 - run: node scripts/validate-lockfile.mjs
 - run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
-- run: npm run postinstall
 ```
 
 ## Attack Prevention

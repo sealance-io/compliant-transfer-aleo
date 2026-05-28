@@ -12,19 +12,17 @@ Monorepo for compliant token transfers on the Aleo blockchain. Leo programs (sma
 # Setup
 npm run lint:lockfile                                # Explicit lockfile validation
 npm ci --ignore-scripts --allow-git=none            # ALWAYS use --ignore-scripts
-npm run postinstall                                 # Apply committed patches explicitly
-npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 
 # Build
-dokojs compile                                       # Compile Leo programs (NOT leo build)
+npm run compile                                      # Compile Leo programs with LionDen
 npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
-npm test                                             # Devnode mode (fast, default)
-DEVNET=true npm test                                 # Devnet mode (slow, full network)
-npm run test:select ./test/merkle_tree.test.ts       # Single test file
-npm run test:agent                                   # Machine-friendly agent reporter
-npm run test:select:agent ./test/some.test.ts        # Single test with agent reporter
+npm test                                             # LionDen-managed devnode mode (fast, default)
+npm test test/merkle_tree.test.ts                    # Single test file
+npm test --grep "mint"                               # Filter tests by name
+npm test --no-compile                                # Reuse existing artifacts/typechain
+npm test --prove                                     # Generate proofs during execution
 
 # Quality
 npm run format:fix                                   # Prettier (run before committing)
@@ -34,8 +32,12 @@ npm run lint:licenses                                # Check for GPL/AGPL (block
 npx changeset                                        # Add changeset for SDK changes
 
 # Deploy
-npm run deploy:devnet
+npm run deploy:devnode
 npm run deploy:testnet
+
+# Upgrade
+lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
+# Example: lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
 ```
 
 ## Architecture
@@ -56,14 +58,15 @@ npm run deploy:testnet
 
 **SDK** (`/packages/policy-engine-sdk`): Published as `@sealance-io/policy-engine-aleo`. Pure TypeScript, ESM only. Fetches freeze lists, builds Merkle trees, generates proofs.
 
-**Testing**: Testcontainers spin up a local Aleo node. Tests run sequentially (shared chain state, alphabetical file order). Devnode is fast (minutes); devnet is slow (60-90 min, nightly only).
+**Testing**: LionDen manages the local `leo devnode` lifecycle by default. Tests run sequentially (shared chain state, alphabetical file order). Devnode is the recommended local and CI path.
 
 ## Constraints
 
 - **npm security**: Always `--ignore-scripts` for install/ci commands and use `--allow-git=none` with `npm ci`
 - **Workspace**: Install packages from repo root only, never in subdirectories
-- **Leo version**: v4.0.1 — compile with `dokojs compile`, not `leo build`
-- **dokojs patches**: `@doko-js/*` is patched locally — verify against `/patches` before updating
+- **Leo version**: v4.0.1 — compile with `npm run compile`, not `leo build`
+- **LionDen dependencies**: `@lionden/*` packages are local file dependencies from `../lionden`; update them intentionally with the LionDen checkout
+- **Program upgrades**: Use `scripts/upgrade.ts` with `--program <program-name>` where the program name comes from `/programs` without the `.aleo` suffix
 - **Node**: v24 (see `.nvmrc`); v20.19.0+ or v22.12.0+ also work
 
 ## Rules
@@ -84,8 +87,8 @@ Context-specific rules load automatically from `.claude/rules/` based on file pa
 
 ### Testing
 
-- Prefer `npm run test:agent` or `npm run test:select:agent` for machine-friendly output
-- When running Vitest directly, use `--reporter=agent`
+- Prefer `npm test` for root integration tests so LionDen manages compile, typechain, and devnode lifecycle
+- Use `npm test --no-compile` only when intentionally reusing existing artifacts/typechain
 
 ## Documentation Index
 
@@ -94,8 +97,8 @@ Load the linked file when your task touches that area:
 - **Leo/Aleo patterns**: `docs/LEO-ALEO-PATTERNS.md` — execution model, program structure, compliance patterns, limitations
 - **Architecture**: `docs/ARCHITECTURE.md` — program dependencies, compliance system, SDK modules
 - **Code patterns**: `docs/CODE-PATTERNS.md` — contract interaction, freeze lists, test structure
-- **Build/deploy**: `docs/DEVELOPMENT.md` — commands, environment variables, SDK development
-- **Testing**: `docs/TESTING.md` — modes, container config, troubleshooting
+- **Build/deploy/upgrade**: `docs/DEVELOPMENT.md` — commands, SDK development, deployment, upgrades
+- **Testing**: `docs/TESTING.md` — LionDen devnode setup and troubleshooting
 - **npm security**: `docs/NPM-SECURITY.md` — security model, attack prevention
 - **SDK guide**: `packages/policy-engine-sdk/AGENTS.md`
 - **Releasing**: `docs/RELEASING.md` — Changesets workflow, emergency procedures
