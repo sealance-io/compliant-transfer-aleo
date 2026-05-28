@@ -10,9 +10,9 @@ See @docs/ARCHITECTURE.md for program structure and @docs/LEO-ALEO-PATTERNS.md f
 
 **Build constraints:**
 
-- Compile with `dokojs compile` (not `leo build`)
+- Compile with `npm run compile` (not `leo build`)
 - Leo CLI version: 4.0.0
-- Never update `@doko-js/*` without checking `/patches`
+- `@lionden/*` packages are local file dependencies from `../lionden`; update them intentionally with the LionDen checkout
 
 **Execution model:**
 

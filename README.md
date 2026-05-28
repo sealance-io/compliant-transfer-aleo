@@ -13,7 +13,7 @@ This project is developed and tested with the following tooling:
 
 - [Leo](https://github.com/ProvableHQ/leo) CLI v4.0.1
 
-- [Dokojs](https://github.com/venture23-aleo/doko-js) testing framework (using [Sealance fork](https://github.com/sealance-io/dokojs) with fixes not yet released upstream)
+- [LionDen](./lionden.config.ts) Aleo development framework for compiling programs, generating TypeScript bindings, deployment, and testing
 
 ## Audits
 
@@ -79,21 +79,34 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
    # Navigate to repository root
    cd compliant-transfer-aleo
 
-   # Validate lockfile, install all dependencies, then apply committed patches
+   # Validate lockfile and install all dependencies
    npm run lint:lockfile
    npm ci --ignore-scripts --allow-git=none
-   npm run postinstall
    ```
 
    **Note**: Do not run `npm install` in workspace directories (`packages/*/`). The root workspace manages all dependencies and ensures consistent versions across packages.
 
-2. **Install doko-js CLI**
-   `npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts`
-
-3. **Build the Contracts**
+2. **Build the Contracts**
    ```bash
-   dokojs compile
+   npm run compile
    ```
+
+## Deployment and Upgrades
+
+Use the root LionDen config when running deployment or upgrade scripts.
+
+```bash
+# Deploy all configured programs to the local devnode
+npm run deploy:devnode
+
+# Upgrade one program on the local devnode
+lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
+
+# Example: upgrade the merkle_tree program
+lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
+```
+
+Replace `<program-name>` with the target program name from `/programs` without the `.aleo` suffix. The upgrade script compiles before running the upgrade recipe.
 
 ### Workspace Commands
 
@@ -113,31 +126,26 @@ npm run format --workspaces
 
 ## Testing
 
-Tests use [Testcontainers](https://node.testcontainers.org/) to automatically provision an Aleo blockchain environment.
+Tests use LionDen's managed `leo devnode` lifecycle by default.
 
 ```bash
 # Run all tests (fast mode - default)
 npm test
 
 # Run specific test
-npm run test:select ./test/merkle_tree.test.ts
+npm test test/merkle_tree.test.ts
 
-# Run with verbose logging
-ALEO_VERBOSITY=4 npm test
 ```
 
 ### Testing Modes
 
-| Mode        | Command                | Speed           | Use Case                          | Status                       |
-| ----------- | ---------------------- | --------------- | --------------------------------- | ---------------------------- |
-| **Devnode** | `npm test`             | Fast (minutes)  | Local development, standard CI    | **Default and recommended**  |
-| **Devnet**  | `DEVNET=true npm test` | Slow (60-90min) | Nightly and pre-deployment checks | Supported full-network check |
+| Mode        | Command    | Speed          | Use Case                       | Status                      |
+| ----------- | ---------- | -------------- | ------------------------------ | --------------------------- |
+| **Devnode** | `npm test` | Fast (minutes) | Local development, standard CI | **Default and recommended** |
 
-**Devnode mode** is the default path for local work and regular CI. It gives much faster feedback while keeping the same sequential Vitest harness.
+**Devnode mode** is the default path for local work and regular CI. It gives fast feedback while keeping the same sequential Vitest harness.
 
-**Devnet mode** remains supported for slower full-network validation. Nightly CI continues to use it by default to preserve that coverage.
-
-> Use `DEVNET=true npm test` when you explicitly want the devnet path.
+Use `npm test --prove` when you explicitly want proof generation during devnode tests.
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 

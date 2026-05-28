@@ -11,5 +11,7 @@ See @docs/TESTING.md for complete testing guide.
 **Critical constraints:**
 
 - Tests run sequentially (shared chain state)
-- Use devnode for fast iteration: `npm test` (default and recommended)
-- Use devnet for full-network testing: `DEVNET=true npm test`
+- Use LionDen-managed devnode for fast iteration: `npm test` (default and recommended)
+- Run one file with `npm test test/merkle_tree.test.ts`
+- Use `npm test --no-compile` only when intentionally reusing existing artifacts/typechain
+- Use `npm test --prove` when proof generation is required

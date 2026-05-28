@@ -8,10 +8,6 @@ Commands and workflows for developing in this repository.
 # Install from repository root (uses npm workspaces)
 npm run lint:lockfile
 npm ci --ignore-scripts --allow-git=none
-npm run postinstall
-
-# Install doko-js CLI (required for compiling Leo programs)
-npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 ```
 
 **Critical**: Uses npm workspaces with a single root `package-lock.json`. Never run `npm install` in workspace directories (`packages/*/`).
@@ -20,8 +16,7 @@ npm install -g @sealance-io/dokojs@1.0.8 --ignore-scripts
 
 ```bash
 # Compile all Leo programs (output to /artifacts)
-dokojs compile
-# or: npm run compile
+npm run compile
 
 # Build SDK only
 npm run build --workspace=@sealance-io/policy-engine-aleo
@@ -29,21 +24,19 @@ npm run build --workspace=@sealance-io/policy-engine-aleo
 
 ## Testing
 
-| Mode        | Command                | Speed | Use Case            | Status                       |
-| ----------- | ---------------------- | ----- | ------------------- | ---------------------------- |
-| **Devnode** | `npm test`             | Fast  | Local iteration, CI | **Default and recommended**  |
-| **Devnet**  | `DEVNET=true npm test` | Slow  | Nightly, pre-deploy | Supported full-network check |
+| Mode        | Command    | Speed | Use Case            | Status                      |
+| ----------- | ---------- | ----- | ------------------- | --------------------------- |
+| **Devnode** | `npm test` | Fast  | Local iteration, CI | **Default and recommended** |
 
 ```bash
-npm test                                        # Default devnode mode (recommended)
-DEVNET=true npm test                            # Full devnet mode
-npm run test:select ./test/merkle_tree.test.ts  # Specific test file
-USE_TEST_CONTAINERS=0 npm test                  # Manual local Aleo setup
-ALEO_VERBOSITY=4 npm test                       # Verbose logging (0-4)
-ALEO_TEST_IMAGE=custom/aleo:latest npm test     # Custom Docker image for the active mode
+npm test                                      # Default devnode mode (recommended)
+npm test test/merkle_tree.test.ts          # Specific test file
+npm test --grep "mint"                     # Filter tests by name
+npm test --no-compile                      # Reuse existing artifacts/typechain
+npm test --prove                           # Generate proofs during execution
 ```
 
-**Note**: PR CI and local runs now default to devnode. The nightly cron workflow keeps devnet as the default full-network regression job.
+**Note**: PR CI and local runs default to LionDen's managed devnode.
 
 ## SDK Development
 
@@ -65,11 +58,22 @@ npm run version # Preview version bumps (dry-run)
 ## Deployment
 
 ```bash
-npm run deploy:devnet               # Deploy to devnet
+npm run deploy:devnode               # Deploy to local devnode
 npm run deploy:testnet              # Deploy to testnet
-npm run update-freeze-list:devnet   # Update freeze list on devnet
-npm run update-freeze-list:testnet  # Update freeze list on testnet
 ```
+
+## Upgrades
+
+Run the upgrade script with the target network and program name:
+
+```bash
+lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
+
+# Example: upgrade the merkle_tree program
+lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
+```
+
+Replace `<program-name>` with the target program name from `/programs` without the `.aleo` suffix. The script compiles before running `recipes/upgrade.ts`.
 
 ## Code Formatting
 
@@ -86,31 +90,9 @@ npm install <package>                                          # Root workspace
 npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 ```
 
-## Environment Variables
-
-| Variable                  | Description                             | Default   |
-| ------------------------- | --------------------------------------- | --------- |
-| `DEVNET`                  | Enable full devnet mode                 | `false`   |
-| `USE_TEST_CONTAINERS`     | Use Testcontainers                      | `true`    |
-| `SKIP_EXECUTE_PROOF`      | Skip ZK proofs (devnode only)           | `true`    |
-| `SKIP_DEPLOY_CERTIFICATE` | Skip deploy certs (devnode only)        | `true`    |
-| `ALEO_VERBOSITY`          | Logging level (0-4)                     | `1`       |
-| `CONSENSUS_CHECK_TIMEOUT` | Consensus wait timeout (ms)             | `600000`  |
-| `ALEO_TEST_IMAGE`         | Custom Docker image for the active mode | See below |
-
-**Default images:**
-
-- Devnode: `ghcr.io/sealance-io/leo-lang:v4.0.1`
-- Devnet: `ghcr.io/sealance-io/aleo-devnet:v4.0.1-v4.6.0`
-
-When overriding `ALEO_TEST_IMAGE`:
-
-- Devnode images only need to provide the Leo CLI at `/usr/local/bin/leo`; the test harness injects `leo devnode start ...`
-- Devnet images must be compatible with the upstream `ghcr.io/sealance-io/aleo-devnet` entrypoint contract and self-start via the image `ENTRYPOINT`/`CMD`
-
 ## Common Issues
 
-- **Container auth**: Run `docker login ghcr.io` for ghcr.io images
-- **Tests too slow**: Skip flags are on by default in devnode; increase `CONSENSUS_CHECK_TIMEOUT` for CI
-- **Port 3030 in use**: `docker stop $(docker ps -q --filter ancestor=ghcr.io/sealance-io/leo-lang)`
+- **Leo CLI missing**: Install a Leo CLI compatible with `lionden.config.ts`
+- **Tests too slow**: Keep proofs disabled for normal devnode runs; use `npm test -- --prove` only when needed
+- **Port 3030 in use**: Stop the process currently listening on port 3030
 - **Manual local Aleo setup**: See `docs/TESTING.md`
