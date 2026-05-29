@@ -162,7 +162,7 @@ describe("test sealed_report_token program", () => {
       blocks: BLOCK_HEIGHT_WINDOW,
     };
 
-    const currentRoot = await fixture.token.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const currentRoot = (await fixture.token.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) || emptyRootField;
     // Cannot update freeze list before initialization
     await fixture.token.update_freeze_list.rejected(
       {

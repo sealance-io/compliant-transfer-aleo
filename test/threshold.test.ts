@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
 import { type SignableNamedAccount } from "@lionden/config";
-import { Address } from "@provablehq/sdk";
 import { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "@sealance-io/policy-engine-aleo";
 
 import {
@@ -86,7 +85,7 @@ async function deployFixture() {
       "sealance_freezelist_registry",
       "sealed_threshold_report_policy",
     ]) {
-      await ctx.deploy(program, {});
+      await ctx.deploy(program, { noCompile: true });
     }
 
     await registerTokenProgram(tokenRegistry, deployer, admin, policies.threshold);

@@ -165,13 +165,15 @@ describe("test multisig freeze registry program", () => {
       (await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
 
     if (!isFreezeRegistryInitialized) {
+      const currentRoot =
+        (await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) || emptyRootField;
       // Cannot update freeze list before initialization
       await fixture.freezeRegistry.update_freeze_list.rejected(
         {
           account: fixture.frozenAccount,
           is_frozen: true,
           frozen_index: 1,
-          previous_root: fieldLiteral(0n),
+          previous_root: currentRoot,
           new_root: fixture.rootField!,
           multisig_common_params: emptyMultisigCommonParams,
         },

@@ -18,8 +18,9 @@ import {
 } from "../lib/Constants.js";
 import { fundWithCredits } from "../lib/Fund.js";
 import { registerTokenProgram } from "../lib/Token.js";
+import { Address } from "@provablehq/sdk";
 
-const EXCHANGE_PROGRAM_ADDRESS = "aleo1m7halk64v66ntlsxpny8zl67hslkdpgxewsa3apfzymteelzgsqs5hrqj9";
+const EXCHANGE_PROGRAM_ADDRESS = Address.fromProgramId("gqrfmwbtyp.aleo").to_string();
 
 const exchangeProgramAddress = Leo.address(EXCHANGE_PROGRAM_ADDRESS);
 const reportTokenId = fieldLiteral(policies.report.tokenId);

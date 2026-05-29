@@ -131,7 +131,7 @@ async function deployFixture() {
           admin: admin,
           blocks: BLOCK_HEIGHT_WINDOW,
         },
-        asSigner(admin),
+        asSigner(deployer),
       );
     }
 

@@ -36,6 +36,7 @@ import {
   SETUP_TIMEOUT_MS,
   maxSupply,
   amount,
+  decimals,
 } from "../lib/Constants.js";
 import { fundWithCredits } from "../lib/Fund.js";
 import { addressLiteral, asSigner, fieldLiteral, scalarLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
@@ -2693,7 +2694,6 @@ describe("test multisig_compliant_token program", () => {
       asSigner(fixture.account),
     );
     fixture.accountRecord = await tx.outputs[1].decrypt(fixture.account);
-    console.log("test old root support 4");
 
     await fixture.freezeRegistry.update_block_height_window.accepted(
       {
@@ -2702,7 +2702,6 @@ describe("test multisig_compliant_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    console.log("test old root support 5");
 
     // The transaction failed because the old root is expired
     await fixture.token.transfer_private.rejected(
@@ -2714,7 +2713,6 @@ describe("test multisig_compliant_token program", () => {
       },
       asSigner(fixture.account),
     );
-    console.log("test old root support 6");
 
     tx = await fixture.token.transfer_private.accepted(
       {
@@ -2726,6 +2724,5 @@ describe("test multisig_compliant_token program", () => {
       asSigner(fixture.account),
     );
     await tx.outputs[1].decrypt(fixture.account);
-    console.log("test old root support 7");
   });
 });
