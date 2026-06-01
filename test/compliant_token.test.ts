@@ -932,15 +932,18 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.token.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.token.transfer_private.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.frozenAccountRecord!,
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
+
     const tx = await fixture.token.transfer_private.accepted(
       {
         recipient: fixture.recipient,
@@ -971,15 +974,17 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.token.transfer_private_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.token.transfer_private_to_public.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.frozenAccountRecord!,
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.token.transfer_private_to_public.rejected(
@@ -1024,12 +1029,14 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // It's impossible to get the credentials record with an invalid merkle proof
-    await fixture.token.get_credentials.failsLocally(
-      {
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.token.get_credentials.settled(
+        {
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
 
     const leaves = generateLeaves([fixture.recipient.address]);
     const tree = buildTree(leaves);

@@ -676,14 +676,16 @@ describe("test sealed_report_policy program", () => {
     );
 
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.reportPolicy.transfer_public_to_priv.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.reportPolicy.transfer_public_to_priv.settled(
+        {
+          recipient: fixture.frozenAccount,
+          amount,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     const tx = await fixture.reportPolicy.transfer_public_to_priv.accepted(
       {
@@ -714,27 +716,31 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.reportPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.reportPolicy.transfer_private.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.accountRecord!,
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+          recipient_merkle_proofs: fixture.recipientMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.reportPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.reportPolicy.transfer_private.settled(
+        {
+          recipient: fixture.frozenAccount,
+          amount,
+          input_record: fixture.accountRecord!,
+          sender_merkle_proofs: fixture.senderMerkleProof,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     const tx = await fixture.reportPolicy.transfer_private.accepted(
       {
@@ -776,15 +782,17 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.reportPolicy.transfer_priv_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.reportPolicy.transfer_priv_to_public.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.frozenAccountRecord!,
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_priv_to_public.rejected(

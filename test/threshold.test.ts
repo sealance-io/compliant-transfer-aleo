@@ -677,15 +677,17 @@ describe("test sealed_threshold_policy program", () => {
     );
 
     // If the estimated block height is too low the transaction will fail
-    await fixture.thresholdPolicy.transfer_public.failsLocally(
-      {
-        recipient: fixture.account,
-        amount,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: 0,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_public.settled(
+        {
+          recipient: fixture.account,
+          amount,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: 0,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     // If the estimated block height is too high the transaction will fail
     await fixture.thresholdPolicy.transfer_public.rejected(
@@ -745,16 +747,17 @@ describe("test sealed_threshold_policy program", () => {
     );
 
     // If the estimated block height is too low the transaction will fail
-    await fixture.thresholdPolicy.transfer_public_as_signer.failsLocally(
-      {
-        recipient: fixture.account,
-        amount,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: 0,
-      },
-      asSigner(fixture.account),
-    );
-
+    await expect(
+      fixture.thresholdPolicy.transfer_public_as_signer.settled(
+        {
+          recipient: fixture.account,
+          amount,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: 0,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
     // If the estimated block height is too high the transaction will fail
     await fixture.thresholdPolicy.transfer_public_as_signer.rejected(
       {
@@ -826,28 +829,32 @@ describe("test sealed_threshold_policy program", () => {
     );
 
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.thresholdPolicy.transfer_public_to_priv.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_public_to_priv.settled(
+        {
+          recipient: fixture.frozenAccount,
+          amount,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     // If the estimated block height is too low the transaction will fail
-    await fixture.thresholdPolicy.transfer_public_to_priv.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: 0,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_public_to_priv.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: 0,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     // If the estimated block height is too high the transaction will fail
     await fixture.thresholdPolicy.transfer_public_to_priv.rejected(
@@ -907,45 +914,51 @@ describe("test sealed_threshold_policy program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.thresholdPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        input_state_record: fixture.frozenAccountStateRecord!,
-        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_private.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.frozenAccountRecord!,
+          input_state_record: fixture.frozenAccountStateRecord!,
+          estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+          recipient_merkle_proofs: fixture.recipientMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.thresholdPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        input_record: fixture.accountRecord!,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_private.settled(
+        {
+          recipient: fixture.frozenAccount,
+          amount,
+          input_record: fixture.accountRecord!,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+          sender_merkle_proofs: fixture.senderMerkleProof,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     // If the estimated block height is too low the transaction will fail
-    await fixture.thresholdPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: 0,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_private.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.accountRecord!,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: 0,
+          sender_merkle_proofs: fixture.senderMerkleProof,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     // If the estimated block height is too high the transaction will fail
     await fixture.thresholdPolicy.transfer_private.rejected(
@@ -1018,17 +1031,19 @@ describe("test sealed_threshold_policy program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.thresholdPolicy.transfer_priv_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: await getLatestBlockHeight(fixture.ctx),
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_priv_to_public.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.frozenAccountRecord!,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: await getLatestBlockHeight(fixture.ctx),
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.thresholdPolicy.transfer_priv_to_public.rejected(
@@ -1044,17 +1059,19 @@ describe("test sealed_threshold_policy program", () => {
     );
 
     // If the estimated block height is too low the transaction will fail
-    await fixture.thresholdPolicy.transfer_priv_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        input_state_record: fixture.accountStateRecord!,
-        estimated_block_height: 0,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.thresholdPolicy.transfer_priv_to_public.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.accountRecord!,
+          input_state_record: fixture.accountStateRecord!,
+          estimated_block_height: 0,
+          sender_merkle_proofs: fixture.senderMerkleProof,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     // If the estimated block height is too high the transaction will fail
     await fixture.thresholdPolicy.transfer_priv_to_public.rejected(
