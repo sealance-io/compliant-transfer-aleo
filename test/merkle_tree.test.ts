@@ -134,11 +134,13 @@ async function verifyNonInclusion(
   return tx.outputs.decrypt(fixture.deployer);
 }
 
-async function verifyInclusionFailsLocally(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
-  await fixture.contract.verify_inclusion.failsLocally({
-    addr: addressLiteral(addr),
-    merkle_proof: proof,
-  });
+async function expectVerifyInclusionSettledToThrow(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
+  await expect(
+    fixture.contract.verify_inclusion.settled({
+      addr: addressLiteral(addr),
+      merkle_proof: proof,
+    }),
+  ).rejects.toThrow();
 }
 
 async function verifyNonInclusionFailsLocally(
@@ -146,10 +148,12 @@ async function verifyNonInclusionFailsLocally(
   addr: string,
   proofs: readonly [MerkleProof, MerkleProof],
 ) {
-  await fixture.contract.verify_non_inclusion.failsLocally({
-    addr: addressLiteral(addr),
-    merkle_proofs: proofs,
-  });
+  await expect(
+    fixture.contract.verify_non_inclusion.settled({
+      addr: addressLiteral(addr),
+      merkle_proofs: proofs,
+    }),
+  ).rejects.toThrow();
 }
 
 let state: MerkleTreeFixture | undefined;
@@ -256,7 +260,7 @@ describe("merkle_tree program tests", () => {
     expect(root).not.toBe(merkleRoot(tree));
 
     // Verify inclusion fails if the merkle proof doesn't belong to the address
-    await verifyInclusionFailsLocally(fixture, sortedAddresses[1].address, smallestMerkleProof);
+    await expectVerifyInclusionSettledToThrow(fixture, sortedAddresses[1].address, smallestMerkleProof);
 
     if (leftLeafIndex !== 0) {
       // the siblings indices are not adjusted
@@ -493,7 +497,7 @@ describe("merkle_tree program tests", () => {
       internalLeaves = internalNodesTree.slice(0, internalLeafCount);
 
       const increasingIndex = internalLeaves.findIndex((leaf, index) => {
-        return index > 0 && leaf > internalLeaves[index - 1];
+        return (index - 1) % 2 === 1 && leaf > internalLeaves[index - 1];
       });
       if (increasingIndex === -1) {
         continue;

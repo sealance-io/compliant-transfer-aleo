@@ -953,15 +953,17 @@ describe("test sealed_report_token program", () => {
     );
 
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.token.transfer_from_public_to_private.failsLocally(
-      {
-        owner: fixture.account,
-        recipient: fixture.frozenAccount,
-        amount,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof!,
-      },
-      asSigner(fixture.spender),
-    );
+    await expect(
+      fixture.token.transfer_from_public_to_private.settled(
+        {
+          owner: fixture.account,
+          recipient: fixture.frozenAccount,
+          amount,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof!,
+        },
+        asSigner(fixture.spender),
+      ),
+    ).rejects.toThrow();
 
     const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
 
@@ -1002,14 +1004,16 @@ describe("test sealed_report_token program", () => {
     );
 
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.token.transfer_public_to_private.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof!,
-      },
-      asSigner(fixture.account),
-    );
+    await expect(
+      fixture.token.transfer_public_to_private.settled(
+        {
+          recipient: fixture.frozenAccount,
+          amount,
+          recipient_merkle_proofs: fixture.frozenAccountMerkleProof!,
+        },
+        asSigner(fixture.account),
+      ),
+    ).rejects.toThrow();
 
     const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
 
@@ -1039,18 +1043,21 @@ describe("test sealed_report_token program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    (await fixture.token.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof!,
-        recipient_merkle_proofs: fixture.recipientMerkleProof!,
-      },
-      asSigner(fixture.frozenAccount),
-    ),
-      // If the recipient is frozen account it's impossible to send tokens
-      await fixture.token.transfer_private.failsLocally(
+    await expect(
+      fixture.token.transfer_private.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.accountRecord!,
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof!,
+          recipient_merkle_proofs: fixture.recipientMerkleProof!,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
+    // If the recipient is frozen account it's impossible to send tokens
+    await expect(
+      fixture.token.transfer_private.settled(
         {
           recipient: fixture.frozenAccount,
           amount,
@@ -1059,7 +1066,8 @@ describe("test sealed_report_token program", () => {
           recipient_merkle_proofs: fixture.frozenAccountMerkleProof!,
         },
         asSigner(fixture.account),
-      ));
+      ),
+    ).rejects.toThrow();
 
     const tx = await fixture.token.transfer_private.accepted(
       {
@@ -1091,15 +1099,17 @@ describe("test sealed_report_token program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.token.transfer_private_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof!,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await expect(
+      fixture.token.transfer_private_to_public.settled(
+        {
+          recipient: fixture.recipient,
+          amount,
+          input_record: fixture.frozenAccountRecord!,
+          sender_merkle_proofs: fixture.frozenAccountMerkleProof!,
+        },
+        asSigner(fixture.frozenAccount),
+      ),
+    ).rejects.toThrow();
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.token.transfer_private_to_public.rejected(
