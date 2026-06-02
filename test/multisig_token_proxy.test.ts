@@ -47,7 +47,7 @@ const managerWalletId = Leo.address(safeAddress());
 const pauseWalletId = Leo.address(safeAddress());
 const minterWalletId = Leo.address(safeAddress());
 const burnerWalletId = Leo.address(safeAddress());
-const proxyProgramAddress = Address.fromProgramId("multisig_token_proxy.aleo").to_string();
+const proxyProgramAddress = createMultisigTokenProxy().address()
 
 interface MultisigTokenProxyFixture {
   readonly ctx: TestContext;
@@ -231,7 +231,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.admin),
     );
-    const role = await fixture.proxy.getWallet_id_to_role(fixture.managerWalletId);
+    const role = await fixture.proxy.mappings.walletIdToRole.get(fixture.managerWalletId);
     expect(role).toBe(MANAGER_ROLE);
 
     // It is possible to call to initialize only one time
@@ -262,7 +262,7 @@ describe("test multisig token proxy program", () => {
       multisigOp,
       MAX_BLOCK_HEIGHT,
     );
-    let pendingRequest = await fixture.proxy.getPending_requests(walletSigningOpIdHash);
+    let pendingRequest = await fixture.proxy.mappings.pendingRequests.get(walletSigningOpIdHash);
     expect(pendingRequest?.op).toBe(0);
     expect(pendingRequest?.user).toBe(zeroAddress);
     expect(pendingRequest?.pause_status).toBe(false);
@@ -286,7 +286,7 @@ describe("test multisig token proxy program", () => {
       salt: scalarLiteral(salt),
     };
     ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, 1));
-    pendingRequest = await fixture.proxy.getPending_requests(walletSigningOpIdHash);
+    pendingRequest = await fixture.proxy.mappings.pendingRequests.get(walletSigningOpIdHash);
     expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
     await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
@@ -311,7 +311,7 @@ describe("test multisig token proxy program", () => {
       salt,
       MAX_BLOCK_HEIGHT,
     );
-    let privatePendingRequest = await fixture.proxy.getPrivate_pending_requests(walletSigningOpIdHash);
+    let privatePendingRequest = await fixture.proxy.mappings.privatePendingRequests.get(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
 
     // It's impossible to initiate a request twice
@@ -333,7 +333,7 @@ describe("test multisig token proxy program", () => {
       salt,
       1,
     ));
-    privatePendingRequest = await fixture.proxy.getPrivate_pending_requests(walletSigningOpIdHash);
+    privatePendingRequest = await fixture.proxy.mappings.privatePendingRequests.get(walletSigningOpIdHash);
     expect(privatePendingRequest).toBe(true);
     await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
@@ -422,7 +422,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    let role = await fixture.proxy.getWallet_id_to_role(fixture.pauseWalletId);
+    let role = await fixture.proxy.mappings.walletIdToRole.get(fixture.pauseWalletId);
     expect(role).toBe(PAUSE_ROLE);
 
     // It's possible to execute the request only once
@@ -468,7 +468,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    role = await fixture.proxy.getWallet_id_to_role(fixture.minterWalletId);
+    role = await fixture.proxy.mappings.walletIdToRole.get(fixture.minterWalletId);
     expect(role).toBe(MINTER_ROLE);
 
     salt = randomSalt();
@@ -491,7 +491,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    role = await fixture.proxy.getWallet_id_to_role(fixture.burnerWalletId);
+    role = await fixture.proxy.mappings.walletIdToRole.get(fixture.burnerWalletId);
     expect(role).toBe(BURNER_ROLE);
   });
 
@@ -575,7 +575,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const role = await fixture.token.getAddress_to_role(randomAddress);
+    const role = await fixture.token.mappings.addressToRole.get(randomAddress);
     expect(role).toBe(randomRole);
 
     // It's possible to execute the request only once
@@ -811,7 +811,7 @@ describe("test multisig token proxy program", () => {
       asSigner(fixture.deployer),
     );
 
-    const initialBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const initialBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     await fixture.proxy.mint_public.accepted(
       {
@@ -821,7 +821,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const balance = await fixture.token.getBalances(fixture.account);
+    const balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(initialBalance + amount * 20n);
 
     // It's possible to execute the request only once
@@ -851,7 +851,7 @@ describe("test multisig token proxy program", () => {
   test(`test burn_public`, async () => {
     const fixture = state!;
 
-    const previousAccountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     const salt = randomSalt();
     const multisigOp: CompliantTokenMultisigOp = {
       op: MULTISIG_OP_BURN_PUBLIC,
@@ -924,7 +924,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const balance = await fixture.token.getBalances(fixture.account);
+    const balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(previousAccountPublicBalance! - amount);
 
     // It's possible to execute the request only once
@@ -1127,7 +1127,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    let pauseStatus = await fixture.token.getPause(true);
+    let pauseStatus = await fixture.token.mappings.pause.get(true);
     expect(pauseStatus).toBe(true);
 
     // It's possible to execute the request only once
@@ -1168,7 +1168,7 @@ describe("test multisig token proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    pauseStatus = await fixture.token.getPause(true);
+    pauseStatus = await fixture.token.mappings.pause.get(true);
     expect(pauseStatus).toBe(false);
   });
 });

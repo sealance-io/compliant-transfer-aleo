@@ -1,8 +1,10 @@
 import { stringToBigInt, ZERO_ADDRESS } from "@sealance-io/policy-engine-aleo";
 import { Leo } from "../typechain/BaseContract";
 import { multisigCommonParams } from "./Multisig";
-import { fieldLiteral, scalarLiteral } from "./LiondenAdapters";
-import { Address } from "@provablehq/sdk";
+import { fieldLiteral } from "./LiondenAdapters";
+import { createSealedTimelockPolicy } from "../typechain/SealedTimelockPolicy";
+import { createSealedReportPolicy } from "../typechain/SealedReportPolicy";
+import { createSealedThresholdReportPolicy } from "../typechain/SealedThresholdReportPolicy";
 
 // addresses
 export { ZERO_ADDRESS }; // for backwards compatability
@@ -25,7 +27,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Report",
     tokenSymbol: "REPORT",
     tokenId: stringToBigInt("SEALED_REPORT_POLICY"),
-    programAddress: Address.fromProgramId("sealed_report_policy.aleo").to_string(),
+    programAddress: createSealedReportPolicy().address(),
     initMappings: false,
     requireInitialization: false,
     blockHeightWindow: BLOCK_HEIGHT_WINDOW,
@@ -34,7 +36,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Threshold report",
     tokenSymbol: "THRESHOLD_REPORT",
     tokenId: stringToBigInt("SEALED_THRESHOLD_REPORT_POLICY"),
-    programAddress: Address.fromProgramId("sealed_threshold_report_policy.aleo").to_string(),
+    programAddress: createSealedThresholdReportPolicy().address(),
     initMappings: true,
     requireInitialization: false,
     blockHeightWindow: BLOCK_HEIGHT_WINDOW,
@@ -43,7 +45,7 @@ export const policies: { [key: string]: IPolicy } = {
     tokenName: "Timelock",
     tokenSymbol: "TIMELOCK",
     tokenId: stringToBigInt("SEALED_TIMELOCK_POLICY"),
-    programAddress: Address.fromProgramId("sealed_timelock_policy.aleo").to_string(),
+    programAddress: createSealedTimelockPolicy().address(),
     initMappings: false,
     requireInitialization: true,
     blockHeightWindow: 0,

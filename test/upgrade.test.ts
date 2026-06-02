@@ -3,6 +3,7 @@ import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/te
 import { type SignableNamedAccount } from "@lionden/config";
 import {
   BLOCK_HEIGHT_WINDOW,
+  CURRENT_FREEZE_LIST_ROOT_INDEX,
   fundedAmount,
   MAX_BLOCK_HEIGHT,
   SETUP_TIMEOUT_MS,
@@ -28,7 +29,7 @@ interface UpgradeFixture {
   readonly freezeRegistryAddress: ReturnType<typeof Leo.address>;
 }
 
-const freezeRegistryAddress = Leo.address(Address.fromProgramId("multisig_freezelist_registry.aleo").to_string());
+const freezeRegistryAddress = createMultisigFreezelistRegistry().address();
 
 async function deployFixture() {
   const ctx = await setup();
@@ -52,7 +53,7 @@ async function deployFixture() {
       await ctx.deploy(program, { noCompile: true });
     }
 
-    if ((await freezeRegistry.getFreeze_list_root(1)) === null) {
+    if (!(await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
       await freezeRegistry.initialize.accepted(
         {
           admin,

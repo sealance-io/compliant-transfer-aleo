@@ -99,7 +99,7 @@ async function deployFixture() {
     const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount.address);
 
     const isFreezeRegistryInitialized =
-      (await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+      await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
     if (!isFreezeRegistryInitialized) {
       await freezeRegistry.initialize.accepted(
         {
@@ -110,7 +110,7 @@ async function deployFixture() {
       );
     }
 
-    const role = (await freezeRegistry.getAddress_to_role(admin)) as number;
+    const role = await freezeRegistry.mappings.addressToRole.get(admin);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
       await freezeRegistry.update_role.accepted(
         {
@@ -121,9 +121,9 @@ async function deployFixture() {
       );
     }
 
-    const isAccountFrozen = await freezeRegistry.getFreeze_list(frozenAccount);
+    const isAccountFrozen = await freezeRegistry.mappings.freezeList.getOrUse(frozenAccount, false);
     if (!isAccountFrozen) {
-      const currentRoot = await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const currentRoot = await freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
       await freezeRegistry.update_freeze_list.accepted(
         {
           account: frozenAccount,
@@ -237,7 +237,7 @@ describe("test sealed_threshold_policy program", () => {
   test(`test initialize`, async () => {
     const fixture = state!;
     const isInitialized =
-      (await fixture.thresholdPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX)) !== null;
+      await fixture.thresholdPolicy.mappings.freezeRegistryProgramName.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
     if (!isInitialized) {
       if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
@@ -258,14 +258,14 @@ describe("test sealed_threshold_policy program", () => {
         asSigner(fixture.admin),
       );
 
-      const role = await fixture.thresholdPolicy.getAddress_to_role(fixture.admin);
+      const role = await fixture.thresholdPolicy.mappings.addressToRole.get(fixture.admin);
       expect(role).toBe(MANAGER_ROLE);
       const freezeRegistryName =
-        await fixture.thresholdPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX);
+        await fixture.thresholdPolicy.mappings.freezeRegistryProgramName.get(FREEZE_REGISTRY_PROGRAM_INDEX);
       expect(freezeRegistryName).toBe(531934507715736310883939492834865785n);
-      const epoch = await fixture.thresholdPolicy.getEpoch(EPOCH_INDEX);
+      const epoch = await fixture.thresholdPolicy.mappings.epoch.get(EPOCH_INDEX);
       expect(epoch).toBe(EPOCH);
-      const threshold = await fixture.thresholdPolicy.getThreshold(THRESHOLD_INDEX);
+      const threshold = await fixture.thresholdPolicy.mappings.threshold.get(THRESHOLD_INDEX);
       expect(threshold).toBe(THRESHOLD);
       // It is possible to call to initialize only one time
       await fixture.thresholdPolicy.initialize.rejected(
@@ -289,7 +289,7 @@ describe("test sealed_threshold_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.thresholdPolicy.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.thresholdPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
@@ -300,7 +300,7 @@ describe("test sealed_threshold_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.thresholdPolicy.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.thresholdPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
@@ -340,7 +340,7 @@ describe("test sealed_threshold_policy program", () => {
       asSigner(fixture.admin),
     );
 
-    const blockHeightWindow = await fixture.thresholdPolicy.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    const blockHeightWindow = await fixture.thresholdPolicy.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
     expect(blockHeightWindow).toBe(policies.threshold.blockHeightWindow);
   });
 
@@ -427,9 +427,12 @@ describe("test sealed_threshold_policy program", () => {
   test(`test signup`, async () => {
     const fixture = state!;
 
-    const isAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.account)) || false;
+    const isAccountSigned = await fixture.thresholdPolicy.mappings.ownedStateRecord.getOrUse(fixture.account, false);
     expect(isAccountSigned).toBe(false);
-    const isFrozenAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.frozenAccount)) || false;
+    const isFrozenAccountSigned = await fixture.thresholdPolicy.mappings.ownedStateRecord.getOrUse(
+      fixture.frozenAccount,
+      false,
+    );
     expect(isFrozenAccountSigned).toBe(false);
     let tx = await fixture.thresholdPolicy.signup.accepted(asSigner(fixture.account));
     fixture.accountStateRecord = await tx.outputs.decrypt(fixture.account);
@@ -449,7 +452,7 @@ describe("test sealed_threshold_policy program", () => {
   test(`test signup_and_transfer_private function`, async () => {
     const fixture = state!;
 
-    let isAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.recipient)) || false;
+    let isAccountSigned = await fixture.thresholdPolicy.mappings.ownedStateRecord.getOrUse(fixture.recipient, false);
     expect(isAccountSigned).toBe(false);
 
     const mintPrivateTx = await fixture.tokenRegistry.mint_private.accepted(
@@ -476,7 +479,7 @@ describe("test sealed_threshold_policy program", () => {
       asSigner(fixture.recipient),
     );
 
-    isAccountSigned = (await fixture.thresholdPolicy.getOwned_state_record(fixture.recipient)) as boolean;
+    isAccountSigned = await fixture.thresholdPolicy.mappings.ownedStateRecord.get(fixture.recipient);
     expect(isAccountSigned).toBe(true);
 
     const recipientStateRecord = await tx.outputs[1].decrypt(fixture.recipient);

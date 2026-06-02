@@ -21,18 +21,17 @@ import {
 } from "../lib/Constants.js";
 import { waitBlocks } from "../lib/Block.js";
 import { fundWithCredits } from "../lib/Fund.js";
-import { addressLiteral, asSigner, fieldLiteral, scalarLiteral } from "../lib/LiondenAdapters.js";
+import { asSigner, fieldLiteral, scalarLiteral } from "../lib/LiondenAdapters.js";
 import { approveRequest, createWallet, initializeMultisig, multisigCommonParams, randomSalt } from "../lib/Multisig.js";
-import { Leo, LeoField } from "../typechain/BaseContract.js";
+import { Leo } from "../typechain/BaseContract.js";
 import { createMultisigCore } from "../typechain/MultisigCore.js";
 import { createMultisigFreezelistProxy, type FreezeRegistryMultisigOp } from "../typechain/MultisigFreezelistProxy.js";
 import { createSealanceFreezelistRegistry } from "../typechain/SealanceFreezelistRegistry.js";
 import { safeAddress } from "./utils/Accounts.js";
-import { Address } from "@provablehq/sdk";
 
 const managerWalletId = Leo.address(safeAddress());
 const freezeListManagerWalletId = Leo.address(safeAddress());
-const proxyProgramAddress = Address.fromProgramId("multisig_freezelist_proxy.aleo").to_string();
+const proxyProgramAddress = createMultisigFreezelistProxy().address();
 const rootField = fieldLiteral(1n);
 
 interface MultisigFreezelistProxyFixture {
@@ -157,12 +156,10 @@ afterAll(async () => {
 describe("test multisig_freezelist_proxy program", () => {
   test(`test initialize`, async () => {
     const fixture = state!;
-    const isProxyInitialized = (await fixture.proxy.getInitialized(true)) === true;
+    const isProxyInitialized = await fixture.proxy.mappings.initialized.contains(true);
 
     if (!isProxyInitialized) {
-      const currentRoot = (await fixture.freezeRegistry.getFreeze_list_root(
-        CURRENT_FREEZE_LIST_ROOT_INDEX,
-      )) as LeoField;
+      const currentRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
       // Cannot update freeze list before initialization
       await fixture.proxy.update_freeze_list.rejected(
         {
@@ -200,7 +197,7 @@ describe("test multisig_freezelist_proxy program", () => {
         },
         asSigner(fixture.admin),
       );
-      const role = await fixture.proxy.getWallet_id_to_role(fixture.managerWalletId);
+      const role = await fixture.proxy.mappings.walletIdToRole.get(fixture.managerWalletId);
       expect(role).toBe(MANAGER_ROLE);
     }
 
@@ -235,7 +232,7 @@ describe("test multisig_freezelist_proxy program", () => {
       multisigOp,
       MAX_BLOCK_HEIGHT,
     );
-    let pendingRequest = await fixture.proxy.getPending_requests(walletSigningOpIdHash);
+    let pendingRequest = await fixture.proxy.mappings.pendingRequests.get(walletSigningOpIdHash);
     expect(pendingRequest?.op).toBe(0);
     expect(pendingRequest?.user).toBe(zeroAddress);
     expect(pendingRequest?.is_frozen).toBe(false);
@@ -262,7 +259,7 @@ describe("test multisig_freezelist_proxy program", () => {
       salt: scalarLiteral(salt),
     };
     ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, 1));
-    pendingRequest = await fixture.proxy.getPending_requests(walletSigningOpIdHash);
+    pendingRequest = await fixture.proxy.mappings.pendingRequests.get(walletSigningOpIdHash);
     expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
     await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
@@ -346,7 +343,7 @@ describe("test multisig_freezelist_proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const role = await fixture.proxy.getWallet_id_to_role(fixture.freezeListManagerWalletId);
+    const role = await fixture.proxy.mappings.walletIdToRole.get(fixture.freezeListManagerWalletId);
     expect(role).toBe(FREEZELIST_MANAGER_ROLE);
 
     // It's possible to execute the request only once
@@ -383,7 +380,7 @@ describe("test multisig_freezelist_proxy program", () => {
     const salt = randomSalt();
     const multisigOp: FreezeRegistryMultisigOp = {
       op: MULTISIG_OP_UPDATE_ROLE,
-      user: fixture.admin,
+      user: Leo.address(fixture.admin.address),
       is_frozen: false,
       frozen_index: 0,
       previous_root: fieldLiteral(0n),
@@ -454,7 +451,7 @@ describe("test multisig_freezelist_proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const role = await fixture.freezeRegistry.getAddress_to_role(fixture.admin);
+    const role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
     // It's possible to execute the request only once
@@ -488,14 +485,14 @@ describe("test multisig_freezelist_proxy program", () => {
 
   test(`test update_freeze_list`, async () => {
     const fixture = state!;
-    const currentRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    const currentRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
     const randomAddress = safeAddress();
 
     const salt = randomSalt();
     let multisigOp: FreezeRegistryMultisigOp = {
       op: MULTISIG_OP_UPDATE_FREEZE_LIST,
-      user: addressLiteral(randomAddress),
+      user: Leo.address(randomAddress),
       is_frozen: true,
       frozen_index: (lastIndex ?? 0) + 1,
       previous_root: currentRoot!,
@@ -515,7 +512,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -534,7 +531,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -547,7 +544,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -560,7 +557,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(safeAddress()),
+        account: Leo.address(safeAddress()),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -572,7 +569,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the is_frozen doesn't match the is_frozen in the request the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: false,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -584,7 +581,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the frozen_index doesn't match the frozen_index in the request the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index - 1,
         previous_root: currentRoot!,
@@ -596,7 +593,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the previous_root doesn't match the previous_root in the request the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: fieldLiteral(0n),
@@ -608,7 +605,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the new_root doesn't match the new_root in the request the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: rootField,
@@ -620,7 +617,7 @@ describe("test multisig_freezelist_proxy program", () => {
 
     await fixture.proxy.update_freeze_list.accepted(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -629,13 +626,13 @@ describe("test multisig_freezelist_proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const isFrozen = await fixture.freezeRegistry.getFreeze_list(addressLiteral(randomAddress));
+    const isFrozen = await fixture.freezeRegistry.mappings.freezeList.get(Leo.address(randomAddress));
     expect(isFrozen).toBe(true);
 
     // It's possible to execute the request only once
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: true,
         frozen_index: multisigOp.frozen_index,
         previous_root: currentRoot!,
@@ -656,7 +653,7 @@ describe("test multisig_freezelist_proxy program", () => {
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.update_freeze_list.rejected(
       {
-        account: addressLiteral(randomAddress),
+        account: Leo.address(randomAddress),
         is_frozen: false,
         frozen_index: 3,
         previous_root: rootField,
@@ -739,7 +736,7 @@ describe("test multisig_freezelist_proxy program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const blockHeightWindow = await fixture.freezeRegistry.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
     expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
 
     // It's possible to execute the request only once

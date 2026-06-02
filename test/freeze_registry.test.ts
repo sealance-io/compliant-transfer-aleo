@@ -107,7 +107,7 @@ describe("test freeze registry program", () => {
   test("test initialize", async () => {
     const fixture = state!;
     const isFreezeRegistryInitialized =
-      (await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+      await fixture.freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
@@ -141,12 +141,12 @@ describe("test freeze registry program", () => {
         asSigner(fixture.deployer),
       );
 
-      const isAccountFrozen = await fixture.freezeRegistry.getFreeze_list(zeroAddress);
-      const frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(0);
-      const lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await fixture.freezeRegistry.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const role = await fixture.freezeRegistry.getAddress_to_role(fixture.admin);
+      const isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(zeroAddress);
+      const frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(0);
+      const lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
+      const role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.admin);
 
       expect(role).toBe(MANAGER_ROLE);
       expect(isAccountFrozen).toBe(false);
@@ -186,7 +186,7 @@ describe("test freeze registry program", () => {
       asSigner(fixture.admin),
     );
 
-    let role = await fixture.freezeRegistry.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.accepted(
@@ -196,7 +196,7 @@ describe("test freeze registry program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.freezeRegistry.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Only the manager can update the roles
@@ -219,7 +219,7 @@ describe("test freeze registry program", () => {
       },
       asSigner(fixture.admin),
     );
-    const freezeListManagerRole = await fixture.freezeRegistry.getAddress_to_role(fixture.freezeListManager);
+    const freezeListManagerRole = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.freezeListManager);
     expect(freezeListManagerRole).toBe(FREEZELIST_MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.rejected(
@@ -233,7 +233,7 @@ describe("test freeze registry program", () => {
 
   test("test update_freeze_list", async () => {
     const fixture = state!;
-    const currentRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const currentRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     // Only the manager can call to update_freeze_list
     await fixture.freezeRegistry.update_freeze_list.rejected(
@@ -259,7 +259,7 @@ describe("test freeze registry program", () => {
       asSigner(fixture.freezeListManager),
     );
 
-    let isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(fixture.frozenAccount)) ?? false;
+    let isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.getOrUse(fixture.frozenAccount, false);
     if (!isAccountFrozen) {
       // Cannot unfreeze an unfrozen account
       await fixture.freezeRegistry.update_freeze_list.rejected(
@@ -283,9 +283,9 @@ describe("test freeze registry program", () => {
         },
         asSigner(fixture.freezeListManager),
       );
-      isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(fixture.frozenAccount)) as boolean;
-      let frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(1);
-      let lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(fixture.frozenAccount);
+      let frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(1);
+      let lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(true);
       expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
@@ -327,9 +327,9 @@ describe("test freeze registry program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(randomAddress)) as boolean;
-    let frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(2);
-    let lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(randomAddress);
+    let frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(2);
+    let lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(randomAddress);
@@ -445,8 +445,8 @@ describe("test freeze registry program", () => {
       asSigner(fixture.freezeListManager),
     );
 
-    const newRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const oldRoot = await fixture.freezeRegistry.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    const newRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(fixture.rootField);
     expect(newRoot).toBe(emptyRootField);
 

@@ -2,7 +2,7 @@ import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 import { IPolicy } from "./Constants";
 import type { SignableNamedAccount } from "@lionden/config";
 import { asSigner, fieldLiteral } from "./LiondenAdapters";
-import { createTokenRegistry, TokenMetadata } from "../typechain/TokenRegistry";
+import { createTokenRegistry } from "../typechain/TokenRegistry";
 import { Leo } from "../typechain/BaseContract";
 
 export async function registerTokenProgram(
@@ -12,9 +12,9 @@ export async function registerTokenProgram(
   policy: IPolicy,
 ) {
   const tokenId = fieldLiteral(policy.tokenId);
-  const tokenMetadata = await tokenRegistry.getRegistered_tokens(tokenId);
+  const isRegistered = await tokenRegistry.mappings.registeredTokens.contains(tokenId);
 
-  if (tokenMetadata === null) {
+  if (!isRegistered) {
     await tokenRegistry.register_token.accepted(
       {
         token_id: tokenId,
@@ -29,7 +29,7 @@ export async function registerTokenProgram(
     );
   }
 
-  const currentMetadata = (await tokenRegistry.getRegistered_tokens(tokenId)) as TokenMetadata;
+  const currentMetadata = await tokenRegistry.mappings.registeredTokens.get(tokenId);
   if (
     currentMetadata.external_authorization_party !== policy.programAddress ||
     currentMetadata.admin !== admin.address
