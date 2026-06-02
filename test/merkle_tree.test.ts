@@ -13,7 +13,13 @@ import {
 import { MAX_TREE_DEPTH, SETUP_TIMEOUT_MS } from "../lib/Constants.js";
 import { addressLiteral, asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
 import { createMerkleTree, type MerkleProof } from "../typechain/MerkleTree.js";
-import { generateAddressesParallel, safeAddress } from "./utils/Accounts.js";
+import {
+  generateAddressesParallel,
+  safeAddress,
+  safeAddressAbove,
+  safeAddressBelow,
+  safeAddressBetween,
+} from "./utils/Accounts.js";
 
 interface MerkleTreeFixture {
   readonly ctx: TestContext;
@@ -68,42 +74,6 @@ function sortAddressEntries(addresses: readonly string[]) {
 
 function generateSafeAddresses(count: number) {
   return Array.from({ length: count }, () => safeAddress());
-}
-
-function safeAddressBetween(minExclusive: bigint, maxExclusive: bigint) {
-  let address = safeAddress();
-  let field = convertAddressToField(address);
-
-  while (field <= minExclusive || field >= maxExclusive) {
-    address = safeAddress();
-    field = convertAddressToField(address);
-  }
-
-  return address;
-}
-
-function safeAddressBelow(maxExclusive: bigint) {
-  let address = safeAddress();
-  let field = convertAddressToField(address);
-
-  while (field >= maxExclusive) {
-    address = safeAddress();
-    field = convertAddressToField(address);
-  }
-
-  return address;
-}
-
-function safeAddressAbove(minExclusive: bigint) {
-  let address = safeAddress();
-  let field = convertAddressToField(address);
-
-  while (field <= minExclusive) {
-    address = safeAddress();
-    field = convertAddressToField(address);
-  }
-
-  return address;
 }
 
 async function verifyInclusion(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
@@ -175,16 +145,7 @@ describe("merkle_tree program tests", () => {
     const fixture = state!;
     const depth = 1;
     const size = 2 ** depth;
-    const addresses = Array(size)
-      .fill(null)
-      .map(() => safeAddress());
-    const sortedAddresses = addresses
-      .map(addr => ({
-        address: addr,
-        field: convertAddressToField(addr),
-      }))
-      .sort((a, b) => (a.field < b.field ? -1 : 1));
-
+    const sortedAddresses = sortAddressEntries(generateSafeAddresses(size));
     const smallestAddress = safeAddressBelow(sortedAddresses[0].field);
     const betweenAddress = safeAddressBetween(sortedAddresses[0].field, sortedAddresses[size - 1].field);
     const largestAddress = safeAddressAbove(sortedAddresses[size - 1].field);
@@ -216,15 +177,7 @@ describe("merkle_tree program tests", () => {
     const fixture = state!;
     const depth = 3;
     const size = Math.floor(2 ** (depth - 1));
-
-    const addresses = depth > 1 ? await generateAddressesParallel(size) : Array.from({ length: size }).map(safeAddress);
-
-    const sortedAddresses = addresses
-      .map(addr => ({
-        address: addr,
-        field: convertAddressToField(addr),
-      }))
-      .sort((a, b) => (a.field < b.field ? -1 : 1));
+    const sortedAddresses = sortAddressEntries(generateSafeAddresses(size));
 
     const smallestAddress = safeAddressBelow(sortedAddresses[0].field);
 
@@ -322,16 +275,7 @@ describe("merkle_tree program tests", () => {
       const fixture = state!;
       const size = Math.floor(2 ** (depth - 1));
 
-      const addresses =
-        depth > 1 ? await generateAddressesParallel(size) : Array.from({ length: size }).map(safeAddress);
-
-      const sortedAddresses = addresses
-        .map(addr => ({
-          address: addr,
-          field: convertAddressToField(addr),
-        }))
-        .sort((a, b) => (a.field < b.field ? -1 : 1));
-
+      const sortedAddresses = sortAddressEntries(await generateAddressesParallel(size));
       const smallestAddress = safeAddressBelow(sortedAddresses[0].field);
 
       const betweenAddress = safeAddressBetween(sortedAddresses[0].field, sortedAddresses[size - 1].field);

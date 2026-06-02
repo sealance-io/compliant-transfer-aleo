@@ -47,7 +47,7 @@ const managerWalletId = Leo.address(safeAddress());
 const pauseWalletId = Leo.address(safeAddress());
 const minterWalletId = Leo.address(safeAddress());
 const burnerWalletId = Leo.address(safeAddress());
-const proxyProgramAddress = createMultisigTokenProxy().address()
+const proxyProgramAddress = createMultisigTokenProxy().address();
 
 interface MultisigTokenProxyFixture {
   readonly ctx: TestContext;

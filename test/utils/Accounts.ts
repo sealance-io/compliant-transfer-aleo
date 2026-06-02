@@ -1,6 +1,7 @@
 import { Worker } from "worker_threads";
 import os from "os";
-import { Account } from "@provablehq/sdk";
+import { Account, Address, Group } from "@provablehq/sdk";
+import { convertFieldToAddress } from "@sealance-io/policy-engine-aleo";
 
 // Leo CLI parses arguments with these suffixes as typed literals, causing it to
 // reject valid Aleo addresses. Listed longest-first so the most-specific suffix
@@ -143,4 +144,62 @@ export async function generateAddressesParallel(
 
   const results = await Promise.all(workerPromises);
   return results.flat();
+}
+
+function addressFromGroupX(x: bigint): string | null {
+  try {
+    const group = Group.fromString(`${x}group`);
+    return Address.fromGroup(group).to_string();
+  } catch {
+    return null;
+  }
+}
+export function safeAddressBetween(minExclusive: bigint, maxExclusive: bigint) {
+  const availableRangeSize = Number(maxExclusive - minExclusive - 1n);
+
+  let address: string | null = null;
+  while (!address || hasDangerousSuffix(address)) {
+    const randomOffset = BigInt(Math.ceil(Math.random() * availableRangeSize));
+    const candidate = minExclusive + randomOffset;
+    address = addressFromGroupX(candidate);
+  }
+  return address;
+}
+
+export function safeAddressBelow(maxExclusive: bigint) {
+  const availableRangeSize = Number(maxExclusive - 1n);
+  const MAX_ITERATIONS = 10;
+  let address: string | null = null;
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const randomOffset = BigInt(Math.ceil(Math.random() * availableRangeSize));
+    const candidate = maxExclusive - randomOffset;
+    address = addressFromGroupX(candidate);
+    if (address !== null && !hasDangerousSuffix(address)) {
+      break;
+    }
+  }
+  if (address === null) {
+    address = convertFieldToAddress("0field");
+  }
+  return address;
+}
+
+export function safeAddressAbove(minExclusive: bigint): string {
+  const availableRangeSize = 1000;
+  const MAX_ITERATIONS = 10;
+  let address: string | null = null;
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const randomOffset = BigInt(Math.ceil(Math.random() * availableRangeSize));
+    const candidate = minExclusive + randomOffset;
+    address = addressFromGroupX(candidate);
+    if (address !== null && !hasDangerousSuffix(address)) {
+      break;
+    }
+  }
+  if (address === null) {
+    address = convertFieldToAddress(
+      "8444461749428370424248824938781546531375899335154063827935233455917409239039field",
+    );
+  }
+  return address;
 }
