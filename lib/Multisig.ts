@@ -21,7 +21,7 @@ export async function initializeMultisig(
   multisig: ReturnType<typeof createMultisigCore>,
   deployer: SignableNamedAccount,
 ) {
-  if ((await multisig.getProgram_settings_map(true)) === null) {
+  if (!(await multisig.mappings.programSettingsMap.contains(true))) {
     await multisig.init.accepted(
       {
         upgrader_address: deployer,
@@ -40,7 +40,7 @@ export async function createWallet(
   threshold = 2,
   ecdsaSigners = Array.from({ length: 4 }, () => Array(20).fill(0)),
 ) {
-  if ((await multisig.getWallets_map(walletId)) === null) {
+  if (!(await multisig.mappings.walletsMap.contains(walletId))) {
     await multisig.create_wallet.accepted(
       {
         wallet_id: walletId,

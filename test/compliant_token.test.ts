@@ -31,7 +31,6 @@ import { fundWithCredits } from "../lib/Fund.js";
 import { asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
 import {
   createCompliantTokenTemplate,
-  TokenInfo,
   type Credentials,
   type MerkleProof,
   type Token,
@@ -124,7 +123,7 @@ async function deployFixture() {
     ];
 
     const isFreezeRegistryInitialized =
-      (await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+      await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
     if (!isFreezeRegistryInitialized) {
       await freezeRegistry.initialize.accepted(
         {
@@ -135,7 +134,7 @@ async function deployFixture() {
       );
     }
 
-    const role = (await freezeRegistry.getAddress_to_role(admin)) as number;
+    const role = await freezeRegistry.mappings.addressToRole.get(admin);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
       await freezeRegistry.update_role.accepted(
         {
@@ -146,7 +145,7 @@ async function deployFixture() {
       );
     }
 
-    const isAccountFrozen = (await freezeRegistry.getFreeze_list(frozenAccount)) === true;
+    const isAccountFrozen = (await freezeRegistry.mappings.freezeList.getOrUse(frozenAccount, false));
     if (!isAccountFrozen) {
       await freezeRegistry.update_freeze_list.accepted(
         {
@@ -203,8 +202,7 @@ afterAll(async () => {
 describe("test compliant token program", () => {
   test("test initialize", async () => {
     const fixture = state!;
-    const tokenInfo = await fixture.token.getToken_info(true);
-    if (tokenInfo === null) {
+    if (!(await fixture.token.mappings.tokenInfo.contains(true))) {
       const initializeArgs = {
         name: tokenName,
         symbol: tokenSymbol,
@@ -215,15 +213,15 @@ describe("test compliant token program", () => {
 
       await fixture.token.initialize.accepted(initializeArgs, asSigner(fixture.deployer));
 
-      const tokenInfo = (await fixture.token.getToken_info(true)) as TokenInfo;
+      const tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
       expect(tokenInfo.supply).toBe(0n);
       expect(tokenInfo.decimals).toBe(decimals);
       expect(tokenInfo.max_supply).toBe(maxSupply);
       expect(tokenInfo.name).toBe(tokenName);
       expect(tokenInfo.symbol).toBe(tokenSymbol);
-      const role = await fixture.token.getAddress_to_role(fixture.admin);
+      const role = await fixture.token.mappings.addressToRole.get(fixture.admin);
       expect(role).toBe(MANAGER_ROLE);
-      const pauseStatus = await fixture.token.getPause(true);
+      const pauseStatus = await fixture.token.mappings.pause.get(true);
       expect(pauseStatus).toBe(false);
 
       // It is possible to call to initialize only one time
@@ -242,7 +240,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.token.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.token.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
@@ -253,7 +251,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.token.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
@@ -327,7 +325,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.minter);
+    role = await fixture.token.mappings.addressToRole.get(fixture.minter);
     expect(role).toBe(MINTER_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -337,7 +335,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.burner);
+    role = await fixture.token.mappings.addressToRole.get(fixture.burner);
     expect(role).toBe(BURNER_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -347,7 +345,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.supplyManager);
+    role = await fixture.token.mappings.addressToRole.get(fixture.supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -357,7 +355,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.account);
+    role = await fixture.token.mappings.addressToRole.get(fixture.account);
     expect(role).toBe(NONE_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -367,7 +365,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.pauser);
+    role = await fixture.token.mappings.addressToRole.get(fixture.pauser);
     expect(role).toBe(PAUSE_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -377,13 +375,13 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.admin);
+    role = await fixture.token.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
   });
 
   test("test mint_private", async () => {
     const fixture = state!;
-    const supply = ((await fixture.token.getToken_info(true)) as TokenInfo).supply;
+    const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // a regular user cannot mint private assets
     await fixture.token.mint_private.rejected(
@@ -423,7 +421,7 @@ describe("test compliant token program", () => {
     expect(fixture.frozenAccountRecord.amount).toBe(amount * 20n);
     expect(fixture.frozenAccountRecord.owner).toBe(fixture.frozenAccount.address);
 
-    let tokenInfo = (await fixture.token.getToken_info(true)) as TokenInfo;
+    let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo.supply - supply).toBe(amount * 20n);
 
     tx = await fixture.token.mint_private.accepted(
@@ -437,7 +435,7 @@ describe("test compliant token program", () => {
     expect(fixture.accountRecord.amount).toBe(amount * 20n);
     expect(fixture.accountRecord.owner).toBe(fixture.account.address);
 
-    tokenInfo = (await fixture.token.getToken_info(true)) as TokenInfo;
+    tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo.supply - supply).toBe(amount * 40n);
 
     const complianceRecord = await tx.outputs[0].decrypt(fixture.deployer);
@@ -451,7 +449,7 @@ describe("test compliant token program", () => {
 
   test("test mint_public", async () => {
     const fixture = state!;
-    const supply = ((await fixture.token.getToken_info(true)) as TokenInfo)!.supply;
+    const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // a regular user cannot mint public assets
     await fixture.token.mint_public.rejected(
@@ -487,10 +485,10 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.minter),
     );
-    let balance = await fixture.token.getBalances(fixture.frozenAccount);
+    let balance = await fixture.token.mappings.balances.get(fixture.frozenAccount);
     expect(balance).toBe(amount * 20n);
 
-    let tokenInfo = await fixture.token.getToken_info(true);
+    let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount * 20n);
 
     await fixture.token.mint_public.accepted(
@@ -500,16 +498,16 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.supplyManager),
     );
-    balance = await fixture.token.getBalances(fixture.account);
+    balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(amount * 20n);
 
-    tokenInfo = await fixture.token.getToken_info(true);
+    tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount * 40n);
   });
 
   test("test burn_public", async () => {
     const fixture = state!;
-    const supply = ((await fixture.token.getToken_info(true)) as TokenInfo).supply;
+    const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // A regular user cannot burn public assets
     await fixture.token.burn_public.rejected(
@@ -537,7 +535,7 @@ describe("test compliant token program", () => {
       asSigner(fixture.admin),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     await fixture.token.burn_public.accepted(
       {
@@ -546,7 +544,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.burner),
     );
-    let tokenInfo = await fixture.token.getToken_info(true);
+    let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(supply - tokenInfo!.supply).toBe(amount);
 
     await fixture.token.burn_public.accepted(
@@ -556,16 +554,16 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.supplyManager),
     );
-    tokenInfo = await fixture.token.getToken_info(true);
+    tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(supply - tokenInfo!.supply).toBe(amount * 2n);
 
-    const balance = await fixture.token.getBalances(fixture.account);
+    const balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(previousAccountPublicBalance - amount * 2n);
   });
 
   test("test burn_private", async () => {
     const fixture = state!;
-    const supply = ((await fixture.token.getToken_info(true)) as TokenInfo).supply;
+    const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // A user that doesn't have a burner role cannot burn private assets
     await fixture.token.burn_private.rejected(
@@ -587,7 +585,7 @@ describe("test compliant token program", () => {
     expect(burnerRecord.amount).toBe(amount);
     expect(burnerRecord.owner).toBe(fixture.burner.address);
 
-    let tokenInfo = await fixture.token.getToken_info(true);
+    let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount);
 
     let burnTx = await fixture.token.burn_private.accepted(
@@ -601,7 +599,7 @@ describe("test compliant token program", () => {
     expect(burnerRecord.amount).toBe(0n);
     expect(burnerRecord.owner).toBe(fixture.burner.address);
 
-    tokenInfo = await fixture.token.getToken_info(true);
+    tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(supply).toBe(tokenInfo!.supply);
 
     let complianceRecord = await burnTx.outputs[0].decrypt(fixture.deployer);
@@ -621,7 +619,7 @@ describe("test compliant token program", () => {
     expect(supplyManagerRecord.amount).toBe(amount);
     expect(supplyManagerRecord.owner).toBe(fixture.supplyManager.address);
 
-    tokenInfo = await fixture.token.getToken_info(true);
+    tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount);
 
     // check that MINTER_ROLE+BURNER_ROLE can burn private assets
@@ -636,14 +634,14 @@ describe("test compliant token program", () => {
     expect(supplyManagerRecord.amount).toBe(0n);
     expect(supplyManagerRecord.owner).toBe(fixture.supplyManager.address);
 
-    tokenInfo = await fixture.token.getToken_info(true);
+    tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(supply).toBe(tokenInfo!.supply);
   });
 
   test("test transfer_public", async () => {
     const fixture = state!;
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     // If the sender is frozen account it's IMPOSSIBLE to send tokens
     await fixture.token.transfer_public.rejected(
@@ -671,8 +669,8 @@ describe("test compliant token program", () => {
       asSigner(fixture.account),
     );
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
@@ -698,8 +696,8 @@ describe("test compliant token program", () => {
       asSigner(fixture.account),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     await fixture.token.transfer_public_as_signer.accepted(
       {
@@ -709,8 +707,8 @@ describe("test compliant token program", () => {
       asSigner(fixture.account),
     );
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
@@ -788,8 +786,8 @@ describe("test compliant token program", () => {
       asSigner(fixture.spender),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     await fixture.token.transfer_from_public.accepted(
       {
@@ -800,8 +798,8 @@ describe("test compliant token program", () => {
       asSigner(fixture.spender),
     );
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
@@ -869,7 +867,7 @@ describe("test compliant token program", () => {
       asSigner(fixture.spender),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     const tx = await fixture.token.transfer_from_public_to_private.accepted(
       {
@@ -889,7 +887,7 @@ describe("test compliant token program", () => {
     expect(complianceRecord.sender).toBe(fixture.account.address);
     expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
   });
 
@@ -905,7 +903,7 @@ describe("test compliant token program", () => {
       asSigner(fixture.frozenAccount),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     const tx = await fixture.token.transfer_public_to_private.accepted(
       {
@@ -924,7 +922,7 @@ describe("test compliant token program", () => {
     expect(complianceRecord.sender).toBe(fixture.account.address);
     expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
   });
 
@@ -997,7 +995,7 @@ describe("test compliant token program", () => {
       asSigner(fixture.account),
     );
 
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     const tx = await fixture.token.transfer_private_to_public.accepted(
       {
@@ -1021,7 +1019,7 @@ describe("test compliant token program", () => {
     expect(complianceRecord.sender).toBe(fixture.account.address);
     expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
 
@@ -1205,7 +1203,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.pauser),
     );
-    let pauseStatus = await fixture.token.getPause(true);
+    let pauseStatus = await fixture.token.mappings.pause.get(true);
     expect(pauseStatus).toBe(true);
 
     // verify that all the functionalities are paused
@@ -1328,7 +1326,7 @@ describe("test compliant token program", () => {
       },
       asSigner(fixture.pauser),
     );
-    pauseStatus = await fixture.token.getPause(true);
+    pauseStatus = await fixture.token.mappings.pause.get(true);
     expect(pauseStatus).toBe(false);
 
     //verify that the functionalities are back (one is enough)

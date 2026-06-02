@@ -162,11 +162,13 @@ describe("test multisig freeze registry program", () => {
   test("test initialize", async () => {
     const fixture = state!;
     const isFreezeRegistryInitialized =
-      (await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+      await fixture.freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     if (!isFreezeRegistryInitialized) {
-      const currentRoot =
-        (await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) || emptyRootField;
+      const currentRoot = await fixture.freezeRegistry.mappings.freezeListRoot.getOrUse(
+        CURRENT_FREEZE_LIST_ROOT_INDEX,
+        emptyRootField,
+      );
       // Cannot update freeze list before initialization
       await fixture.freezeRegistry.update_freeze_list.rejected(
         {
@@ -210,13 +212,13 @@ describe("test multisig freeze registry program", () => {
         },
         asSigner(fixture.admin),
       );
-      const isAccountFrozen = await fixture.freezeRegistry.getFreeze_list(zeroAddress);
-      const frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(0);
-      const lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await fixture.freezeRegistry.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const role = await fixture.freezeRegistry.getAddress_to_role(fixture.admin);
-      const walletIdRole = await fixture.freezeRegistry.getWallet_id_to_role(fixture.managerWalletId);
+      const isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(zeroAddress);
+      const frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(0);
+      const lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
+      const role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.admin);
+      const walletIdRole = await fixture.freezeRegistry.mappings.walletIdToRole.get(fixture.managerWalletId);
 
       expect(role).toBe(MANAGER_ROLE);
       expect(walletIdRole).toBe(MANAGER_ROLE);
@@ -260,7 +262,7 @@ describe("test multisig freeze registry program", () => {
       multisigOp,
       MAX_BLOCK_HEIGHT,
     );
-    let pendingRequest = await fixture.freezeRegistry.getPending_requests(walletSigningOpIdHash);
+    let pendingRequest = await fixture.freezeRegistry.mappings.pendingRequests.get(walletSigningOpIdHash);
     expect(pendingRequest?.op).toBe(0);
     expect(pendingRequest?.user).toBe(zeroAddress);
     expect(pendingRequest?.is_frozen).toBe(false);
@@ -287,7 +289,7 @@ describe("test multisig freeze registry program", () => {
       salt: scalarLiteral(salt),
     };
     ({ walletSigningOpIdHash } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, 1));
-    pendingRequest = await fixture.freezeRegistry.getPending_requests(walletSigningOpIdHash);
+    pendingRequest = await fixture.freezeRegistry.mappings.pendingRequests.get(walletSigningOpIdHash);
     expect(pendingRequest?.salt).toBe(scalarLiteral(salt));
     await waitBlocks(fixture.ctx, 1);
     // It's possible to initiate this request twice because the previous expired
@@ -316,7 +318,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.freezeRegistry.getWallet_id_to_role(fixture.managerWalletId);
+    let role = await fixture.freezeRegistry.mappings.walletIdToRole.get(fixture.managerWalletId);
     expect(role).toBe(MANAGER_ROLE);
 
     // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
@@ -414,7 +416,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.deployer),
     );
-    role = await fixture.freezeRegistry.getWallet_id_to_role(fixture.freezeListManagerWalletId);
+    role = await fixture.freezeRegistry.mappings.walletIdToRole.get(fixture.freezeListManagerWalletId);
     expect(role).toBe(FREEZELIST_MANAGER_ROLE);
 
     // It's possible to execute the request only once
@@ -543,7 +545,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const role = await fixture.freezeRegistry.getAddress_to_role(fixture.admin);
+    const role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
     // It's possible to execute the request only once
@@ -596,7 +598,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.freezeRegistry.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.accepted(
@@ -607,7 +609,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.freezeRegistry.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Only the manager can update the roles
@@ -632,7 +634,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.admin),
     );
-    const freezeListManagerRole = await fixture.freezeRegistry.getAddress_to_role(fixture.freezeListManager);
+    const freezeListManagerRole = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.freezeListManager);
     expect(freezeListManagerRole).toBe(FREEZELIST_MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.rejected(
@@ -647,7 +649,7 @@ describe("test multisig freeze registry program", () => {
 
   test("test update_freeze_list", async () => {
     const fixture = state!;
-    const currentRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const currentRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     // Only the manager can call to update_freeze_list
     await fixture.freezeRegistry.update_freeze_list.rejected(
@@ -675,7 +677,7 @@ describe("test multisig freeze registry program", () => {
       asSigner(fixture.freezeListManager),
     );
 
-    let isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(fixture.frozenAccount)) ?? false;
+    let isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.getOrUse(fixture.frozenAccount, false);
     if (!isAccountFrozen) {
       // Cannot unfreeze an unfrozen account
       await fixture.freezeRegistry.update_freeze_list.rejected(
@@ -701,9 +703,9 @@ describe("test multisig freeze registry program", () => {
         },
         asSigner(fixture.freezeListManager),
       );
-      isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(fixture.frozenAccount)) as boolean;
-      let frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(1);
-      let lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+      isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(fixture.frozenAccount);
+      let frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(1);
+      let lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
       expect(isAccountFrozen).toBe(true);
       expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
@@ -748,9 +750,9 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = (await fixture.freezeRegistry.getFreeze_list(randomAddress)) as boolean;
-    let frozenAccountByIndex = await fixture.freezeRegistry.getFreeze_list_index(2);
-    let lastIndex = await fixture.freezeRegistry.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(randomAddress);
+    let frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(2);
+    let lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(randomAddress);
@@ -947,7 +949,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const isFrozen = await fixture.freezeRegistry.getFreeze_list(randomAddress);
+    const isFrozen = await fixture.freezeRegistry.mappings.freezeList.get(randomAddress);
     expect(isFrozen).toBe(true);
 
     // It's possible to execute the request only once
@@ -1091,7 +1093,7 @@ describe("test multisig freeze registry program", () => {
       },
       asSigner(fixture.deployer),
     );
-    const blockHeightWindow = await fixture.freezeRegistry.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
+    const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
     expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
 
     // It's possible to execute the request only once
@@ -1184,8 +1186,8 @@ describe("test multisig freeze registry program", () => {
       asSigner(fixture.freezeListManager),
     );
 
-    const newRoot = await fixture.freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const oldRoot = await fixture.freezeRegistry.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    const newRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(fixture.rootField);
     expect(newRoot).toBe(emptyRootField);
 
@@ -1257,7 +1259,7 @@ describe("test multisig freeze registry program", () => {
     };
 
     let { walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1);
-    await fixture.multisig.getCompleted_signing_ops(walletSigningOpIdHash);
+    await fixture.multisig.mappings.completedSigningOps.get(walletSigningOpIdHash);
     await waitBlocks(fixture.ctx, 1);
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
       {
@@ -1273,7 +1275,7 @@ describe("test multisig freeze registry program", () => {
       op: MULTISIG_OP_UPDATE_ROLE,
     };
     ({ walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1));
-    await fixture.multisig.getCompleted_signing_ops(walletSigningOpIdHash);
+    await fixture.multisig.mappings.completedSigningOps.get(walletSigningOpIdHash);
     await waitBlocks(fixture.ctx, 1);
     await fixture.freezeRegistry.update_role.rejected(
       {
@@ -1289,7 +1291,7 @@ describe("test multisig freeze registry program", () => {
       op: MULTISIG_OP_UPDATE_BLOCK_WINDOW,
     };
     ({ walletSigningOpIdHash } = await initMultisigOp(fixture, randomWalletId, multisigOp, 1));
-    await fixture.multisig.getCompleted_signing_ops(walletSigningOpIdHash);
+    await fixture.multisig.mappings.completedSigningOps.get(walletSigningOpIdHash);
     await waitBlocks(fixture.ctx, 1);
     await fixture.freezeRegistry.update_block_height_window.rejected(
       {

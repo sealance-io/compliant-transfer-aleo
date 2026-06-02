@@ -179,10 +179,12 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     const isFreezeRegistryInitialized =
-      (await fixture.reportPolicy.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+      await fixture.reportPolicy.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
     if (!isFreezeRegistryInitialized) {
-      const currentRoot =
-        (await fixture.reportPolicy.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) || emptyRootField;
+      const currentRoot = await fixture.reportPolicy.mappings.freezeListRoot.getOrUse(
+        CURRENT_FREEZE_LIST_ROOT_INDEX,
+        emptyRootField,
+      );
       // Cannot update freeze list before initialization
       await fixture.reportPolicy.update_freeze_list.rejected(
         {
@@ -213,12 +215,12 @@ describe("test sealed_report_policy program", () => {
         },
         asSigner(fixture.admin),
       );
-      const isAccountFrozen = await fixture.reportPolicy.getFreeze_list(addressLiteral(ZERO_ADDRESS));
-      const frozenAccountByIndex = await fixture.reportPolicy.getFreeze_list_index(0);
-      const lastIndex = await fixture.reportPolicy.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-      const initializedRoot = await fixture.reportPolicy.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await fixture.reportPolicy.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-      const role = await fixture.reportPolicy.getAddress_to_role(fixture.admin);
+      const isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(addressLiteral(ZERO_ADDRESS));
+      const frozenAccountByIndex = await fixture.reportPolicy.mappings.freezeListIndex.get(0);
+      const lastIndex = await fixture.reportPolicy.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
+      const initializedRoot = await fixture.reportPolicy.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const blockHeightWindow = await fixture.reportPolicy.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
+      const role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.admin);
 
       expect(role).toBe(MANAGER_ROLE);
       expect(isAccountFrozen).toBe(false);
@@ -249,7 +251,7 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.reportPolicy.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
@@ -260,7 +262,7 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.reportPolicy.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
@@ -298,14 +300,14 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.reportPolicy.getAddress_to_role(fixture.freezeListManager);
+    role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.freezeListManager);
     expect(role).toBe(FREEZELIST_MANAGER_ROLE);
   });
 
   test(`test update_freeze_list`, async () => {
     const fixture = state!;
 
-    const currentRoot = await fixture.reportPolicy.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const currentRoot = await fixture.reportPolicy.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     // Only the admin can call to update_freeze_list
     await fixture.reportPolicy.update_freeze_list.rejected(
@@ -353,9 +355,9 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    let isAccountFrozen = await fixture.reportPolicy.getFreeze_list(fixture.frozenAccount);
-    let frozenAccountByIndex = await fixture.reportPolicy.getFreeze_list_index(1);
-    let lastIndex = await fixture.reportPolicy.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    let isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(fixture.frozenAccount);
+    let frozenAccountByIndex = await fixture.reportPolicy.mappings.freezeListIndex.get(1);
+    let lastIndex = await fixture.reportPolicy.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
@@ -395,9 +397,9 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = await fixture.reportPolicy.getFreeze_list(fixture.frozenAccount);
-    frozenAccountByIndex = await fixture.reportPolicy.getFreeze_list_index(1);
-    lastIndex = await fixture.reportPolicy.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(fixture.frozenAccount);
+    frozenAccountByIndex = await fixture.reportPolicy.mappings.freezeListIndex.get(1);
+    lastIndex = await fixture.reportPolicy.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(false);
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
@@ -414,9 +416,9 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = await fixture.reportPolicy.getFreeze_list(fixture.frozenAccount);
-    frozenAccountByIndex = await fixture.reportPolicy.getFreeze_list_index(1);
-    lastIndex = await fixture.reportPolicy.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(fixture.frozenAccount);
+    frozenAccountByIndex = await fixture.reportPolicy.mappings.freezeListIndex.get(1);
+    lastIndex = await fixture.reportPolicy.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
@@ -433,9 +435,9 @@ describe("test sealed_report_policy program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = await fixture.reportPolicy.getFreeze_list(randomAddress);
-    frozenAccountByIndex = await fixture.reportPolicy.getFreeze_list_index(2);
-    lastIndex = await fixture.reportPolicy.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(randomAddress);
+    frozenAccountByIndex = await fixture.reportPolicy.mappings.freezeListIndex.get(2);
+    lastIndex = await fixture.reportPolicy.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(randomAddress);
@@ -870,8 +872,8 @@ describe("test sealed_report_policy program", () => {
       asSigner(fixture.freezeListManager),
     );
 
-    const newRoot = await fixture.reportPolicy.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const oldRoot = await fixture.reportPolicy.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    const newRoot = await fixture.reportPolicy.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await fixture.reportPolicy.mappings.freezeListRoot.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(fixture.rootField);
     expect(newRoot).toBe(emptyRootField);
 

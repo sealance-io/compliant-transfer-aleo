@@ -24,8 +24,6 @@ import { createMultisigFreezelistRegistry } from "../typechain/MultisigFreezelis
 import { createCompliantTokenTemplate } from "../typechain/CompliantTokenTemplate.js";
 import { asSigner, fieldLiteral } from "../lib/LiondenAdapters.js";
 import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
-import { Address } from "@provablehq/sdk";
-import { Leo } from "../typechain/BaseContract.js";
 
 const PROGRAMS = [
   "token_registry",
@@ -71,7 +69,7 @@ export const setup: DeploymentRecipe = async ctx => {
   await registerTokenProgram(tokenRegistry, deployer, admin, policies.threshold);
 
   // initialize programs
-  if ((await reportPolicy.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) === null) {
+  if (!(await reportPolicy.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
     await reportPolicy.initialize.accepted(
       {
         admin,
@@ -80,7 +78,7 @@ export const setup: DeploymentRecipe = async ctx => {
       asSigner(admin),
     );
   }
-  if ((await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) === null) {
+  if (!(await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
     await freezeRegistry.initialize.accepted(
       {
         admin,
@@ -89,7 +87,7 @@ export const setup: DeploymentRecipe = async ctx => {
       asSigner(deployer),
     );
   }
-  if ((await multisigFreezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) === null) {
+  if (!(await multisigFreezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
     await multisigFreezeRegistry.initialize.accepted(
       {
         admin,
@@ -99,7 +97,7 @@ export const setup: DeploymentRecipe = async ctx => {
       asSigner(admin),
     );
   }
-  if ((await thresholdPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX)) === null) {
+  if (!(await thresholdPolicy.mappings.freezeRegistryProgramName.contains(FREEZE_REGISTRY_PROGRAM_INDEX))) {
     await thresholdPolicy.initialize.accepted(
       {
         admin,
@@ -108,13 +106,13 @@ export const setup: DeploymentRecipe = async ctx => {
       asSigner(admin),
     );
   }
-  if ((await timelockPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX)) === null) {
+  if (!(await timelockPolicy.mappings.freezeRegistryProgramName.contains(FREEZE_REGISTRY_PROGRAM_INDEX))) {
     await timelockPolicy.initialize.accepted({ admin }, asSigner(admin));
   }
-  if ((await exchange.getInitialized(true)) === null) {
+  if (!(await exchange.mappings.initialized.contains(true))) {
     await exchange.initialize.accepted({ admin }, asSigner(admin));
   }
-  if ((await reportToken.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) === null) {
+  if ((await reportToken.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX)) === null) {
     await reportToken.initialize.accepted(
       {
         name: stringToBigInt("Report Token"),
@@ -127,7 +125,7 @@ export const setup: DeploymentRecipe = async ctx => {
       asSigner(admin),
     );
   }
-  if ((await compliantToken.getToken_info(true)) === null) {
+  if (!(await compliantToken.mappings.tokenInfo.contains(true))) {
     await compliantToken.initialize.accepted(
       {
         name: stringToBigInt("Stable Token"),
@@ -139,7 +137,7 @@ export const setup: DeploymentRecipe = async ctx => {
       asSigner(deployer),
     );
   }
-  if ((await multisigCompliantToken.getToken_info(true)) === null) {
+  if (!(await multisigCompliantToken.mappings.tokenInfo.contains(true))) {
     await multisigCompliantToken.initialize.accepted(
       {
         name: stringToBigInt("Stable Token"),
@@ -154,11 +152,10 @@ export const setup: DeploymentRecipe = async ctx => {
   }
 
   // assign exchange program to be a minter
-  const exchangeProgramAddress = Leo.address(Address.fromProgramId("gqrfmwbtyp.aleo").to_string());
   await tokenRegistry.set_role.accepted(
     {
       token_id: fieldLiteral(policies.report.tokenId),
-      account: exchangeProgramAddress,
+      account: exchange.address(),
       role: 1,
     },
     asSigner(admin),
@@ -166,14 +163,14 @@ export const setup: DeploymentRecipe = async ctx => {
   await tokenRegistry.set_role.accepted(
     {
       token_id: fieldLiteral(policies.threshold.tokenId),
-      account: exchangeProgramAddress,
+      account: exchange.address(),
       role: 1,
     },
     asSigner(admin),
   );
   await timelockPolicy.update_role.accepted(
     {
-      new_address: exchangeProgramAddress,
+      new_address: exchange.address(),
       role: MINTER_ROLE,
     },
     asSigner(admin),

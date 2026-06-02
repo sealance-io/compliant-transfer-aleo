@@ -18,11 +18,8 @@ import {
 } from "../lib/Constants.js";
 import { fundWithCredits } from "../lib/Fund.js";
 import { registerTokenProgram } from "../lib/Token.js";
-import { Address } from "@provablehq/sdk";
 
-const EXCHANGE_PROGRAM_ADDRESS = Address.fromProgramId("gqrfmwbtyp.aleo").to_string();
-
-const exchangeProgramAddress = Leo.address(EXCHANGE_PROGRAM_ADDRESS);
+const exchangeProgramAddress = createGqrfmwbtyp().address();
 const reportTokenId = fieldLiteral(policies.report.tokenId);
 const thresholdTokenId = fieldLiteral(policies.threshold.tokenId);
 const timelockTokenId = fieldLiteral(policies.timelock.tokenId);
@@ -134,9 +131,9 @@ describe("test exchange contract", () => {
 
     await fixture.exchange.initialize.accepted({ admin: fixture.admin }, asSigner(fixture.admin));
 
-    const role = await fixture.exchange.getAddress_to_role(fixture.admin);
+    const role = await fixture.exchange.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
-    const initialized = await fixture.exchange.getInitialized(true);
+    const initialized = await fixture.exchange.mappings.initialized.get(true);
     expect(initialized).toBe(true);
 
     // It is possible to call to initialize only one time
@@ -154,7 +151,7 @@ describe("test exchange contract", () => {
       asSigner(fixture.admin),
     );
 
-    const role = await fixture.exchange.getAddress_to_role(fixture.admin);
+    const role = await fixture.exchange.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
     // Only the admin can call to this function
@@ -187,7 +184,7 @@ describe("test exchange contract", () => {
       asSigner(fixture.admin),
     );
 
-    const rate = await fixture.exchange.getToken_rates(reportTokenId);
+    const rate = await fixture.exchange.mappings.tokenRates.get(reportTokenId);
     expect(rate).toBe(defaultRate);
   });
 

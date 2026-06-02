@@ -34,7 +34,7 @@ import {
 import { fundWithCredits } from "../lib/Fund.js";
 import { asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
 import { Leo } from "../typechain/BaseContract.js";
-import { createSealedReportToken, type Token, type TokenInfo } from "../typechain/SealedReportToken.js";
+import { createSealedReportToken, type Token } from "../typechain/SealedReportToken.js";
 import type { MerkleProof } from "../typechain/MerkleTree.js";
 import { safeAddress } from "./utils/Accounts.js";
 
@@ -162,7 +162,10 @@ describe("test sealed_report_token program", () => {
       blocks: BLOCK_HEIGHT_WINDOW,
     };
 
-    const currentRoot = (await fixture.token.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) || emptyRootField;
+    const currentRoot = await fixture.token.mappings.freezeListRoot.getOrUse(
+      CURRENT_FREEZE_LIST_ROOT_INDEX,
+      emptyRootField,
+    );
     // Cannot update freeze list before initialization
     await fixture.token.update_freeze_list.rejected(
       {
@@ -182,13 +185,13 @@ describe("test sealed_report_token program", () => {
 
     await fixture.token.initialize.accepted(initializeArgs, asSigner(fixture.admin));
 
-    const initializedTokenInfo = (await fixture.token.getToken_info(true)) as TokenInfo;
-    const isAccountFrozen = await fixture.token.getFreeze_list(zeroAddress);
-    const frozenAccountByIndex = await fixture.token.getFreeze_list_index(0);
-    const lastIndex = await fixture.token.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
-    const initializedRoot = await fixture.token.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const blockHeightWindow = await fixture.token.getBlock_height_window(BLOCK_HEIGHT_WINDOW_INDEX);
-    const role = await fixture.token.getAddress_to_role(fixture.admin);
+    const initializedTokenInfo = await fixture.token.mappings.tokenInfo.get(true);
+    const isAccountFrozen = await fixture.token.mappings.freezeList.get(zeroAddress);
+    const frozenAccountByIndex = await fixture.token.mappings.freezeListIndex.get(0);
+    const lastIndex = await fixture.token.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
+    const initializedRoot = await fixture.token.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const blockHeightWindow = await fixture.token.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
+    const role = await fixture.token.mappings.addressToRole.get(fixture.admin);
 
     expect(initializedTokenInfo.supply).toBe(0n);
     expect(initializedTokenInfo.decimals).toBe(decimals);
@@ -217,7 +220,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.token.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.token.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
@@ -228,7 +231,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.token.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
@@ -284,7 +287,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.freezeListManager);
+    role = await fixture.token.mappings.addressToRole.get(fixture.freezeListManager);
     expect(role).toBe(FREEZELIST_MANAGER_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -294,7 +297,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.minter);
+    role = await fixture.token.mappings.addressToRole.get(fixture.minter);
     expect(role).toBe(MINTER_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -304,7 +307,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.burner);
+    role = await fixture.token.mappings.addressToRole.get(fixture.burner);
     expect(role).toBe(BURNER_ROLE);
 
     await fixture.token.update_role.accepted(
@@ -314,7 +317,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.token.getAddress_to_role(fixture.supplyManager);
+    role = await fixture.token.mappings.addressToRole.get(fixture.supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
   });
 
@@ -390,7 +393,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.minter),
     );
-    let balance = await fixture.token.getBalances(fixture.account);
+    let balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(amount * 20n);
 
     await fixture.token.mint_public.accepted(
@@ -400,7 +403,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.supplyManager),
     );
-    balance = await fixture.token.getBalances(fixture.frozenAccount);
+    balance = await fixture.token.mappings.balances.get(fixture.frozenAccount);
     expect(balance).toBe(amount * 20n);
   });
 
@@ -482,7 +485,7 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.minter),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     await fixture.token.burn_public.accepted(
       {
@@ -491,7 +494,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.burner),
     );
-    let balance = await fixture.token.getBalances(fixture.account);
+    let balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(previousAccountPublicBalance - amount);
 
     await fixture.token.burn_public.accepted(
@@ -501,13 +504,13 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.supplyManager),
     );
-    balance = await fixture.token.getBalances(fixture.account);
+    balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(previousAccountPublicBalance - amount * 2n);
   });
 
   test("test update_freeze_list", async () => {
     const fixture = state!;
-    const currentRoot = await fixture.token.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const currentRoot = await fixture.token.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
 
     // Only the admin can call to update_freeze_list
     await fixture.token.update_freeze_list.rejected(
@@ -555,9 +558,9 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    let isAccountFrozen = await fixture.token.getFreeze_list(fixture.frozenAccount);
-    let frozenAccountByIndex = await fixture.token.getFreeze_list_index(1);
-    let lastIndex = await fixture.token.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    let isAccountFrozen = await fixture.token.mappings.freezeList.get(fixture.frozenAccount);
+    let frozenAccountByIndex = await fixture.token.mappings.freezeListIndex.get(1);
+    let lastIndex = await fixture.token.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
@@ -597,9 +600,9 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = await fixture.token.getFreeze_list(fixture.frozenAccount);
-    frozenAccountByIndex = await fixture.token.getFreeze_list_index(1);
-    lastIndex = await fixture.token.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.token.mappings.freezeList.get(fixture.frozenAccount);
+    frozenAccountByIndex = await fixture.token.mappings.freezeListIndex.get(1);
+    lastIndex = await fixture.token.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(false);
     expect(frozenAccountByIndex).toBe(ZERO_ADDRESS);
@@ -615,9 +618,9 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = await fixture.token.getFreeze_list(fixture.frozenAccount);
-    frozenAccountByIndex = await fixture.token.getFreeze_list_index(1);
-    lastIndex = await fixture.token.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.token.mappings.freezeList.get(fixture.frozenAccount);
+    frozenAccountByIndex = await fixture.token.mappings.freezeListIndex.get(1);
+    lastIndex = await fixture.token.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
@@ -634,9 +637,9 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.freezeListManager),
     );
-    isAccountFrozen = await fixture.token.getFreeze_list(randomAddress);
-    frozenAccountByIndex = await fixture.token.getFreeze_list_index(2);
-    lastIndex = await fixture.token.getFreeze_list_last_index(FREEZE_LIST_LAST_INDEX);
+    isAccountFrozen = await fixture.token.mappings.freezeList.get(randomAddress);
+    frozenAccountByIndex = await fixture.token.mappings.freezeListIndex.get(2);
+    lastIndex = await fixture.token.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
 
     expect(isAccountFrozen).toBe(true);
     expect(frozenAccountByIndex).toBe(randomAddress);
@@ -707,8 +710,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.account),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     await fixture.token.transfer_public.accepted(
       {
@@ -718,8 +721,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.account),
     );
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
 
@@ -731,7 +734,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.account),
     );
-    expect(accountPublicBalance).toBe(await fixture.token.getBalances(fixture.account));
+    expect(accountPublicBalance).toBe(await fixture.token.mappings.balances.get(fixture.account));
   });
 
   test("test transfer_public_as_signer", async () => {
@@ -755,8 +758,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.account),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     await fixture.token.transfer_public_as_signer.accepted(
       {
@@ -766,8 +769,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.account),
     );
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
 
@@ -779,7 +782,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.account),
     );
-    expect(accountPublicBalance).toBe(await fixture.token.getBalances(fixture.account));
+    expect(accountPublicBalance).toBe(await fixture.token.mappings.balances.get(fixture.account));
   });
 
   test("test transfer_from_public", async () => {
@@ -856,8 +859,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.spender),
     );
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     await fixture.token.transfer_from_public.accepted(
       {
@@ -868,8 +871,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.spender),
     );
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
 
@@ -882,7 +885,7 @@ describe("test sealed_report_token program", () => {
       },
       asSigner(fixture.spender),
     );
-    expect(accountPublicBalance).toBe(await fixture.token.getBalances(fixture.account));
+    expect(accountPublicBalance).toBe(await fixture.token.mappings.balances.get(fixture.account));
   });
 
   test("test transfer_from_public_to_private", async () => {
@@ -965,7 +968,7 @@ describe("test sealed_report_token program", () => {
       ),
     ).rejects.toThrow();
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     const tx = await fixture.token.transfer_from_public_to_private.accepted(
       {
@@ -986,7 +989,7 @@ describe("test sealed_report_token program", () => {
     expect(complianceRecord.sender).toBe(fixture.account.address);
     expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
   });
 
@@ -1015,7 +1018,7 @@ describe("test sealed_report_token program", () => {
       ),
     ).rejects.toThrow();
 
-    const previousAccountPublicBalance = (await fixture.token.getBalances(fixture.account)) ?? 0n;
+    const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     const tx = await fixture.token.transfer_public_to_private.accepted(
       {
@@ -1035,7 +1038,7 @@ describe("test sealed_report_token program", () => {
     expect(complianceRecord.sender).toBe(fixture.account.address);
     expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
-    const accountPublicBalance = await fixture.token.getBalances(fixture.account);
+    const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     expect(accountPublicBalance).toBe(previousAccountPublicBalance - amount);
   });
 
@@ -1122,7 +1125,7 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.account),
     );
 
-    const previousRecipientPublicBalance = (await fixture.token.getBalances(fixture.recipient)) ?? 0n;
+    const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     const tx = await fixture.token.transfer_private_to_public.accepted(
       {
@@ -1145,7 +1148,7 @@ describe("test sealed_report_token program", () => {
     expect(complianceRecord.sender).toBe(fixture.account.address);
     expect(complianceRecord.recipient).toBe(fixture.recipient.address);
 
-    const recipientPublicBalance = await fixture.token.getBalances(fixture.recipient);
+    const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
     expect(recipientPublicBalance).toBe(previousRecipientPublicBalance + amount);
   });
 
@@ -1189,8 +1192,8 @@ describe("test sealed_report_token program", () => {
       asSigner(fixture.freezeListManager),
     );
 
-    const newRoot = await fixture.token.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
-    const oldRoot = await fixture.token.getFreeze_list_root(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+    const newRoot = await fixture.token.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const oldRoot = await fixture.token.mappings.freezeListRoot.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(fixture.rootField);
     expect(newRoot).toBe(emptyRootField);
 

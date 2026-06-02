@@ -90,7 +90,7 @@ async function deployFixture() {
     const frozenAccountLeafIndices = getLeafIndices(tree, frozenAccount.address);
 
     const isFreezeRegistryInitialized =
-      (await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX)) !== null;
+      await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
     if (!isFreezeRegistryInitialized) {
       await freezeRegistry.initialize.accepted(
         {
@@ -101,7 +101,7 @@ async function deployFixture() {
       );
     }
 
-    const role = (await freezeRegistry.getAddress_to_role(admin)) as number;
+    const role = await freezeRegistry.mappings.addressToRole.get(admin);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
       await freezeRegistry.update_role.accepted(
         {
@@ -112,9 +112,9 @@ async function deployFixture() {
       );
     }
 
-    const isAccountFrozen = await freezeRegistry.getFreeze_list(frozenAccount);
+    const isAccountFrozen = await freezeRegistry.mappings.freezeList.getOrUse(frozenAccount, false);
     if (!isAccountFrozen) {
-      const currentRoot = await freezeRegistry.getFreeze_list_root(CURRENT_FREEZE_LIST_ROOT_INDEX);
+      const currentRoot = await freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
       await freezeRegistry.update_freeze_list.accepted(
         {
           account: frozenAccount,
@@ -183,7 +183,7 @@ describe("test sealed_timelock_policy program", () => {
     const fixture = state!;
 
     const isInitialized =
-      (await fixture.timelockPolicy.getFreeze_registry_program_name(FREEZE_REGISTRY_PROGRAM_INDEX)) !== null;
+      await fixture.timelockPolicy.mappings.freezeRegistryProgramName.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
     if (!isInitialized) {
       if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
@@ -192,7 +192,7 @@ describe("test sealed_timelock_policy program", () => {
 
       await fixture.timelockPolicy.initialize.accepted({ admin: fixture.admin }, asSigner(fixture.admin));
 
-      const role = await fixture.timelockPolicy.getAddress_to_role(fixture.admin);
+      const role = await fixture.timelockPolicy.mappings.addressToRole.get(fixture.admin);
       expect(role).toBe(MANAGER_ROLE);
 
       // It is possible to call to initialize only one time
@@ -211,7 +211,7 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    let role = await fixture.timelockPolicy.getAddress_to_role(fixture.frozenAccount);
+    let role = await fixture.timelockPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
@@ -222,7 +222,7 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.timelockPolicy.getAddress_to_role(fixture.frozenAccount);
+    role = await fixture.timelockPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
@@ -260,7 +260,7 @@ describe("test sealed_timelock_policy program", () => {
       },
       asSigner(fixture.admin),
     );
-    role = await fixture.timelockPolicy.getAddress_to_role(fixture.minter);
+    role = await fixture.timelockPolicy.mappings.addressToRole.get(fixture.minter);
     expect(role).toBe(MINTER_ROLE);
   });
 
