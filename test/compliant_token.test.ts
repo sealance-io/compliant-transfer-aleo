@@ -145,7 +145,7 @@ async function deployFixture() {
       );
     }
 
-    const isAccountFrozen = (await freezeRegistry.mappings.freezeList.getOrUse(frozenAccount, false));
+    const isAccountFrozen = await freezeRegistry.mappings.freezeList.getOrUse(frozenAccount, false);
     if (!isAccountFrozen) {
       await freezeRegistry.update_freeze_list.accepted(
         {
