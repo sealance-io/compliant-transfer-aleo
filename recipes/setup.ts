@@ -35,7 +35,7 @@ const PROGRAMS = [
   "sealed_threshold_report_policy",
   "sealed_timelock_policy",
   "gqrfmwbtyp",
-  "report_token",
+  "sealed_report_token",
   "compliant_token_template",
   "multisig_compliant_token",
 ];
@@ -112,7 +112,7 @@ export const setup: DeploymentRecipe = async ctx => {
   if (!(await exchange.mappings.initialized.contains(true))) {
     await exchange.initialize.accepted({ admin }, asSigner(admin));
   }
-  if ((await reportToken.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX)) === null) {
+  if (!(await reportToken.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
     await reportToken.initialize.accepted(
       {
         name: stringToBigInt("Report Token"),
@@ -147,7 +147,7 @@ export const setup: DeploymentRecipe = async ctx => {
         admin,
         manager_wallet_id: zeroAddress,
       },
-      asSigner(deployer),
+      asSigner(admin),
     );
   }
 
