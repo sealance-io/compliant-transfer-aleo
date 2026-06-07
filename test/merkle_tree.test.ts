@@ -104,13 +104,11 @@ async function verifyNonInclusion(
   return tx.outputs.decrypt(fixture.deployer);
 }
 
-async function expectVerifyInclusionSettledToThrow(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
-  await expect(
-    fixture.contract.verify_inclusion.settled({
-      addr: addressLiteral(addr),
-      merkle_proof: proof,
-    }),
-  ).rejects.toThrow();
+async function verifyInclusionFailsLocally(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
+  await fixture.contract.verify_inclusion.failsLocally({
+    addr: addressLiteral(addr),
+    merkle_proof: proof,
+  });
 }
 
 async function verifyNonInclusionFailsLocally(
@@ -118,12 +116,10 @@ async function verifyNonInclusionFailsLocally(
   addr: string,
   proofs: readonly [MerkleProof, MerkleProof],
 ) {
-  await expect(
-    fixture.contract.verify_non_inclusion.settled({
-      addr: addressLiteral(addr),
-      merkle_proofs: proofs,
-    }),
-  ).rejects.toThrow();
+  await fixture.contract.verify_non_inclusion.failsLocally({
+    addr: addressLiteral(addr),
+    merkle_proofs: proofs,
+  });
 }
 
 let state: MerkleTreeFixture | undefined;
@@ -213,7 +209,7 @@ describe("merkle_tree program tests", () => {
     expect(root).not.toBe(merkleRoot(tree));
 
     // Verify inclusion fails if the merkle proof doesn't belong to the address
-    await expectVerifyInclusionSettledToThrow(fixture, sortedAddresses[1].address, smallestMerkleProof);
+    await verifyInclusionFailsLocally(fixture, sortedAddresses[1].address, smallestMerkleProof);
 
     if (leftLeafIndex !== 0) {
       // the siblings indices are not adjusted

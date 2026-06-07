@@ -398,15 +398,13 @@ describe("test freeze registry program", () => {
   test("test verify_non_inclusion_priv", async () => {
     const fixture = state!;
 
-    await expect(
-      fixture.freezeRegistry.verify_non_inclusion_priv.settled(
-        {
-          account: fixture.frozenAccount,
-          merkle_proof: fixture.frozenAccountMerkleProof!,
-        },
-        asSigner(fixture.deployer),
-      ),
-    ).rejects.toThrow();
+    await fixture.freezeRegistry.verify_non_inclusion_priv.failsLocally(
+      {
+        account: fixture.frozenAccount,
+        merkle_proof: fixture.frozenAccountMerkleProof!,
+      },
+      asSigner(fixture.deployer),
+    );
 
     const leaves = generateLeaves([]);
     const tree = buildTree(leaves);
