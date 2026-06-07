@@ -459,17 +459,15 @@ describe("test sealed_timelock_policy program", () => {
     );
 
     // cannot send more tokens than the sealed record amount
-    await expect(
-      fixture.timelockPolicy.transfer_public.settled(
-        {
-          recipient: fixture.recipient,
-          amount: fixture.accountSealedRecord!.amount + 1n,
-          sealed_token: fixture.accountSealedRecord!,
-          lock_until: latestBlockHeight + 100,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_public.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount: fixture.accountSealedRecord!.amount + 1n,
+        sealed_token: fixture.accountSealedRecord!,
+        lock_until: latestBlockHeight + 100,
+      },
+      asSigner(fixture.account),
+    );
 
     // Sending tokens to the recipient with a long timelock, should succeed
     let tx = await fixture.timelockPolicy.transfer_public.accepted(
@@ -566,17 +564,15 @@ describe("test sealed_timelock_policy program", () => {
     );
 
     // cannot send more tokens than the sealed record amount
-    await expect(
-      fixture.timelockPolicy.transfer_public.settled(
-        {
-          recipient: fixture.recipient,
-          amount: fixture.accountSealedRecord!.amount + 1n,
-          sealed_token: fixture.accountSealedRecord!,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_public.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount: fixture.accountSealedRecord!.amount + 1n,
+        sealed_token: fixture.accountSealedRecord!,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.account),
+    );
 
     await fixture.timelockPolicy.transfer_public_as_signer.accepted(
       {
@@ -647,32 +643,28 @@ describe("test sealed_timelock_policy program", () => {
     );
 
     // If the recipient is frozen account it's impossible to send tokens
-    await expect(
-      fixture.timelockPolicy.transfer_public_to_priv.settled(
-        {
-          recipient: fixture.frozenAccount,
-          amount,
-          sealed_token: fixture.accountSealedRecord!,
-          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_public_to_priv.failsLocally(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+        sealed_token: fixture.accountSealedRecord!,
+        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.account),
+    );
 
     // cannot send more tokens than the sealed record amount
-    await expect(
-      fixture.timelockPolicy.transfer_public_to_priv.settled(
-        {
-          recipient: fixture.recipient,
-          amount: amount + 1n,
-          sealed_token: fixture.accountSealedRecord!,
-          recipient_merkle_proofs: fixture.recipientMerkleProof,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_public_to_priv.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount: amount + 1n,
+        sealed_token: fixture.accountSealedRecord!,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.account),
+    );
 
     const largeBlockHeight = 2 ** 32 - 1; // Max u32
     const change = 1n;
@@ -741,55 +733,49 @@ describe("test sealed_timelock_policy program", () => {
     const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
 
     // If the sender is frozen account it's impossible to send tokens
-    await expect(
-      fixture.timelockPolicy.transfer_private.settled(
-        {
-          recipient: fixture.recipient,
-          amount,
-          sealed_token: fixture.frozenAccountSealedRecord!,
-          base_token: fixture.frozenAccountRecord!,
-          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-          recipient_merkle_proofs: fixture.recipientMerkleProof,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.frozenAccount),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_private.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount,
+        sealed_token: fixture.frozenAccountSealedRecord!,
+        base_token: fixture.frozenAccountRecord!,
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.frozenAccount),
+    );
     // If the recipient is frozen account it's impossible to send tokens
-    await expect(
-      fixture.timelockPolicy.transfer_private.settled(
-        {
-          recipient: fixture.frozenAccount,
-          amount,
-          sealed_token: fixture.accountSealedRecord!,
-          base_token: fixture.accountRecord!,
-          sender_merkle_proofs: fixture.senderMerkleProof,
-          recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_private.failsLocally(
+      {
+        recipient: fixture.frozenAccount,
+        amount,
+        sealed_token: fixture.accountSealedRecord!,
+        base_token: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.account),
+    );
 
     const largeBlockHeight = 2 ** 32 - 1; // Max u32
     const change = 1n;
     const amountToSend = fixture.accountRecord!.amount - change;
 
     // cannot send more tokens than the sealed record amount
-    await expect(
-      fixture.timelockPolicy.transfer_private.settled(
-        {
-          recipient: fixture.recipient,
-          amount: fixture.accountSealedRecord2.amount + 1n,
-          sealed_token: fixture.accountSealedRecord2!,
-          base_token: fixture.accountRecord!,
-          sender_merkle_proofs: fixture.senderMerkleProof,
-          recipient_merkle_proofs: fixture.recipientMerkleProof,
-          lock_until: largeBlockHeight,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_private.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount: fixture.accountSealedRecord2.amount + 1n,
+        sealed_token: fixture.accountSealedRecord2!,
+        base_token: fixture.accountRecord!,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        recipient_merkle_proofs: fixture.recipientMerkleProof,
+        lock_until: largeBlockHeight,
+      },
+      asSigner(fixture.account),
+    );
 
     let tx = await fixture.timelockPolicy.transfer_private.accepted(
       {
@@ -893,19 +879,17 @@ describe("test sealed_timelock_policy program", () => {
     const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
 
     // If the sender is frozen account it's impossible to send tokens
-    await expect(
-      fixture.timelockPolicy.transfer_priv_to_public.settled(
-        {
-          recipient: fixture.recipient,
-          amount,
-          sealed_token: fixture.frozenAccountSealedRecord!,
-          base_token: fixture.frozenAccountRecord!,
-          sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.frozenAccount),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_priv_to_public.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount,
+        sealed_token: fixture.frozenAccountSealedRecord!,
+        base_token: fixture.frozenAccountRecord!,
+        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.frozenAccount),
+    );
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.timelockPolicy.transfer_priv_to_public.rejected(
@@ -921,19 +905,17 @@ describe("test sealed_timelock_policy program", () => {
     );
 
     // cannot send more tokens than the sealed record amount
-    await expect(
-      fixture.timelockPolicy.transfer_priv_to_public.settled(
-        {
-          recipient: fixture.recipient,
-          amount: amount + 1n,
-          sealed_token: fixture.accountSealedRecord!,
-          base_token: accountTokenRecord2,
-          sender_merkle_proofs: fixture.senderMerkleProof,
-          lock_until: latestBlockHeight,
-        },
-        asSigner(fixture.account),
-      ),
-    ).rejects.toThrow();
+    await fixture.timelockPolicy.transfer_priv_to_public.failsLocally(
+      {
+        recipient: fixture.recipient,
+        amount: amount + 1n,
+        sealed_token: fixture.accountSealedRecord!,
+        base_token: accountTokenRecord2,
+        sender_merkle_proofs: fixture.senderMerkleProof,
+        lock_until: latestBlockHeight,
+      },
+      asSigner(fixture.account),
+    );
 
     const largeBlockHeight = 2 ** 32 - 1; // Max u32
     const change = 1n;
