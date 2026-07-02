@@ -65,31 +65,11 @@ async function deployFixture() {
     await registerTokenProgram(tokenRegistry, deployer, admin, policies.report);
     await registerTokenProgram(tokenRegistry, deployer, admin, policies.threshold);
 
-    await timelock.initialize.accepted({ admin }, asSigner(admin));
+    await timelock.initialize.accepted(admin, asSigner(admin));
 
-    await tokenRegistry.set_role.accepted(
-      {
-        token_id: reportTokenId,
-        account: exchangeProgramAddress,
-        role: 1,
-      },
-      asSigner(admin),
-    );
-    await tokenRegistry.set_role.accepted(
-      {
-        token_id: thresholdTokenId,
-        account: exchangeProgramAddress,
-        role: 1,
-      },
-      asSigner(admin),
-    );
-    await timelock.update_role.accepted(
-      {
-        new_address: exchangeProgramAddress,
-        role: MINTER_ROLE,
-      },
-      asSigner(admin),
-    );
+    await tokenRegistry.set_role.accepted(reportTokenId, exchangeProgramAddress, 1, asSigner(admin));
+    await tokenRegistry.set_role.accepted(thresholdTokenId, exchangeProgramAddress, 1, asSigner(admin));
+    await timelock.update_role.accepted(exchangeProgramAddress, MINTER_ROLE, asSigner(admin));
 
     return {
       ctx,
@@ -126,10 +106,10 @@ describe("test exchange contract", () => {
 
     if (fixture.deployer.address !== fixture.admin.address) {
       // The caller is not the initial admin
-      await fixture.exchange.initialize.rejected({ admin: fixture.admin }, asSigner(fixture.deployer));
+      await fixture.exchange.initialize.rejected(fixture.admin, asSigner(fixture.deployer));
     }
 
-    await fixture.exchange.initialize.accepted({ admin: fixture.admin }, asSigner(fixture.admin));
+    await fixture.exchange.initialize.accepted(fixture.admin, asSigner(fixture.admin));
 
     const role = await fixture.exchange.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
@@ -137,52 +117,28 @@ describe("test exchange contract", () => {
     expect(initialized).toBe(true);
 
     // It is possible to call to initialize only one time
-    await fixture.exchange.initialize.rejected({ admin: fixture.admin }, asSigner(fixture.admin));
+    await fixture.exchange.initialize.rejected(fixture.admin, asSigner(fixture.admin));
   });
 
   test("test update_admin", async () => {
     const fixture = state!;
 
-    await fixture.exchange.update_role.accepted(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.exchange.update_role.accepted(fixture.admin, MANAGER_ROLE, asSigner(fixture.admin));
 
     const role = await fixture.exchange.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
 
     // Only the admin can call to this function
-    await fixture.exchange.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.exchange.update_role.rejected(fixture.admin, MANAGER_ROLE, asSigner(fixture.account));
   });
 
   test("test update_rate", async () => {
     const fixture = state!;
 
     // Only the admin account can call to this function
-    await fixture.exchange.update_rate.rejected(
-      {
-        token_id: reportTokenId,
-        rate: defaultRate,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.exchange.update_rate.rejected(reportTokenId, defaultRate, asSigner(fixture.account));
 
-    await fixture.exchange.update_rate.accepted(
-      {
-        token_id: reportTokenId,
-        rate: defaultRate,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.exchange.update_rate.accepted(reportTokenId, defaultRate, asSigner(fixture.admin));
 
     const rate = await fixture.exchange.mappings.tokenRates.get(reportTokenId);
     expect(rate).toBe(defaultRate);
@@ -192,22 +148,13 @@ describe("test exchange contract", () => {
     const fixture = state!;
 
     // transaction with wrong rate will fail
-    await fixture.exchange.exchange_token.rejected(
-      {
-        token_id: reportTokenId,
-        amount,
-        rate: defaultRate + 1n,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.exchange.exchange_token.rejected(reportTokenId, amount, defaultRate + 1n, asSigner(fixture.account));
 
     let treasureBalanceBefore = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
     let exchangeToken = await fixture.exchange.exchange_token.accepted(
-      {
-        token_id: reportTokenId,
-        amount,
-        rate: defaultRate,
-      },
+      reportTokenId,
+      amount,
+      defaultRate,
       asSigner(fixture.account),
     );
     let treasureBalanceAfter = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
@@ -222,11 +169,9 @@ describe("test exchange contract", () => {
 
     treasureBalanceBefore = treasureBalanceAfter;
     exchangeToken = await fixture.exchange.exchange_token.accepted(
-      {
-        token_id: thresholdTokenId,
-        amount,
-        rate: defaultRate,
-      },
+      thresholdTokenId,
+      amount,
+      defaultRate,
       asSigner(fixture.account),
     );
     treasureBalanceAfter = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
@@ -245,10 +190,8 @@ describe("test exchange contract", () => {
 
     const treasureBalanceBefore = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);
     const exchangeTimelock = await fixture.exchange.exchange_timelock_token.accepted(
-      {
-        amount,
-        rate: defaultRate,
-      },
+      amount,
+      defaultRate,
       asSigner(fixture.account),
     );
     const treasureBalanceAfter = await fixture.ctx.connection.getBalance(TREASURE_ADDRESS);

@@ -942,8 +942,8 @@ program token_registry.aleo {
   }
 
   fn join(
-    private token_1: Token,
-    private token_2: Token
+    token_1: Token,
+    token_2: Token
   ) -> Token {
     // Check that the tokens are the same
     assert(token_1.token_id == token_2.token_id);
@@ -964,7 +964,7 @@ program token_registry.aleo {
   }
 
   fn split(
-    private token: Token,
+    token: Token,
     private amount: u128
   ) -> (Token, Token) {
     assert(token.amount >= amount);

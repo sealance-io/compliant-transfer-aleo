@@ -724,8 +724,8 @@ program compliant_token_template.aleo {
 
 
     fn join(
-        private token_1: Token,
-        private token_2: Token
+        token_1: Token,
+        token_2: Token
     ) -> Token {
         let new_token: Token = Token {
             owner: token_1.owner,
@@ -736,7 +736,7 @@ program compliant_token_template.aleo {
     }
 
     fn split(
-        private token: Token,
+        token: Token,
         private amount: u128
     ) -> (Token, Token) {
         let new_token_1: Token = Token {

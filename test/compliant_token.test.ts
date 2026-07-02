@@ -125,36 +125,22 @@ async function deployFixture() {
     const isFreezeRegistryInitialized =
       await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
     if (!isFreezeRegistryInitialized) {
-      await freezeRegistry.initialize.accepted(
-        {
-          admin: admin,
-          blocks: BLOCK_HEIGHT_WINDOW,
-        },
-        asSigner(deployer),
-      );
+      await freezeRegistry.initialize.accepted(admin, BLOCK_HEIGHT_WINDOW, asSigner(deployer));
     }
 
     const role = await freezeRegistry.mappings.addressToRole.get(admin);
     if ((role & FREEZELIST_MANAGER_ROLE) !== FREEZELIST_MANAGER_ROLE) {
-      await freezeRegistry.update_role.accepted(
-        {
-          new_address: admin,
-          role: MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
-        },
-        asSigner(admin),
-      );
+      await freezeRegistry.update_role.accepted(admin, MANAGER_ROLE + FREEZELIST_MANAGER_ROLE, asSigner(admin));
     }
 
     const isAccountFrozen = await freezeRegistry.mappings.freezeList.getOrUse(frozenAccount, false);
     if (!isAccountFrozen) {
       await freezeRegistry.update_freeze_list.accepted(
-        {
-          account: frozenAccount,
-          is_frozen: true,
-          frozen_index: 1,
-          previous_root: emptyRootField,
-          new_root: rootField,
-        },
+        frozenAccount,
+        true,
+        1,
+        emptyRootField,
+        rootField,
         asSigner(admin),
       );
     }
@@ -211,7 +197,14 @@ describe("test compliant token program", () => {
         admin: fixture.admin,
       };
 
-      await fixture.token.initialize.accepted(initializeArgs, asSigner(fixture.deployer));
+      await fixture.token.initialize.accepted(
+        tokenName,
+        tokenSymbol,
+        decimals,
+        maxSupply,
+        fixture.admin,
+        asSigner(fixture.deployer),
+      );
 
       const tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
       expect(tokenInfo.supply).toBe(0n);
@@ -225,7 +218,14 @@ describe("test compliant token program", () => {
       expect(pauseStatus).toBe(false);
 
       // It is possible to call to initialize only one time
-      await fixture.token.initialize.rejected(initializeArgs, asSigner(fixture.deployer));
+      await fixture.token.initialize.rejected(
+        tokenName,
+        tokenSymbol,
+        decimals,
+        maxSupply,
+        fixture.admin,
+        asSigner(fixture.deployer),
+      );
     }
   });
 
@@ -233,148 +233,62 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // Manager can assign role
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.frozenAccount, MANAGER_ROLE, asSigner(fixture.admin));
     let role = await fixture.token.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.frozenAccount, NONE_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
-    await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.update_role.rejected(fixture.frozenAccount, MANAGER_ROLE, asSigner(fixture.frozenAccount));
 
     // Non admin user cannot update minter role
-    await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.minter,
-        role: MINTER_ROLE,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.update_role.rejected(fixture.minter, MINTER_ROLE, asSigner(fixture.account));
 
     // Non admin user cannot update burner role
-    await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.burner,
-        role: BURNER_ROLE,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.update_role.rejected(fixture.burner, BURNER_ROLE, asSigner(fixture.account));
 
     // Non admin user cannot update supply manager role
     await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.supplyManager,
-        role: MINTER_ROLE + BURNER_ROLE,
-      },
+      fixture.supplyManager,
+      MINTER_ROLE + BURNER_ROLE,
       asSigner(fixture.account),
     );
 
     // Non admin user cannot update none role
-    await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.account,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.update_role.rejected(fixture.account, NONE_ROLE, asSigner(fixture.account));
 
     // Non admin user cannot update pause role
-    await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.account,
-        role: PAUSE_ROLE,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.update_role.rejected(fixture.account, PAUSE_ROLE, asSigner(fixture.account));
 
     // Manager cannot unassign himself from being a manager
-    await fixture.token.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.rejected(fixture.admin, NONE_ROLE, asSigner(fixture.admin));
 
     // Manager can assign minter, burner, manager, pauser and supply manager roles
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.minter,
-        role: MINTER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.minter, MINTER_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.minter);
     expect(role).toBe(MINTER_ROLE);
 
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.burner,
-        role: BURNER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.burner, BURNER_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.burner);
     expect(role).toBe(BURNER_ROLE);
 
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.supplyManager,
-        role: MINTER_ROLE + BURNER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.supplyManager, MINTER_ROLE + BURNER_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.supplyManager);
     expect(role).toBe(MINTER_ROLE + BURNER_ROLE);
 
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.account,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.account, NONE_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.account);
     expect(role).toBe(NONE_ROLE);
 
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.pauser,
-        role: PAUSE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.pauser, PAUSE_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.pauser);
     expect(role).toBe(PAUSE_ROLE);
 
-    await fixture.token.update_role.accepted(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.update_role.accepted(fixture.admin, MANAGER_ROLE, asSigner(fixture.admin));
     role = await fixture.token.mappings.addressToRole.get(fixture.admin);
     expect(role).toBe(MANAGER_ROLE);
   });
@@ -384,39 +298,15 @@ describe("test compliant token program", () => {
     const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // a regular user cannot mint private assets
-    await fixture.token.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.mint_private.rejected(fixture.account, amount * 20n, asSigner(fixture.account));
 
     // a burner cannot mint private assets
-    await fixture.token.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.burner),
-    );
+    await fixture.token.mint_private.rejected(fixture.account, amount * 20n, asSigner(fixture.burner));
 
     // an admin cannot mint private assets
-    await fixture.token.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.mint_private.rejected(fixture.account, amount * 20n, asSigner(fixture.admin));
 
-    let tx = await fixture.token.mint_private.accepted(
-      {
-        recipient: fixture.frozenAccount,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.minter),
-    );
+    let tx = await fixture.token.mint_private.accepted(fixture.frozenAccount, amount * 20n, asSigner(fixture.minter));
     fixture.frozenAccountRecord = await tx.outputs[1].decrypt(fixture.frozenAccount);
     expect(fixture.frozenAccountRecord.amount).toBe(amount * 20n);
     expect(fixture.frozenAccountRecord.owner).toBe(fixture.frozenAccount.address);
@@ -424,13 +314,7 @@ describe("test compliant token program", () => {
     let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo.supply - supply).toBe(amount * 20n);
 
-    tx = await fixture.token.mint_private.accepted(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.supplyManager),
-    );
+    tx = await fixture.token.mint_private.accepted(fixture.account, amount * 20n, asSigner(fixture.supplyManager));
     fixture.accountRecord = await tx.outputs[1].decrypt(fixture.account);
     expect(fixture.accountRecord.amount).toBe(amount * 20n);
     expect(fixture.accountRecord.owner).toBe(fixture.account.address);
@@ -452,52 +336,22 @@ describe("test compliant token program", () => {
     const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // a regular user cannot mint public assets
-    await fixture.token.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.mint_public.rejected(fixture.account, amount * 20n, asSigner(fixture.account));
 
     // a burner cannot mint public assets
-    await fixture.token.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.burner),
-    );
+    await fixture.token.mint_public.rejected(fixture.account, amount * 20n, asSigner(fixture.burner));
 
     // an admin cannot mint public assets
-    await fixture.token.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.mint_public.rejected(fixture.account, amount * 20n, asSigner(fixture.admin));
 
-    await fixture.token.mint_public.accepted(
-      {
-        recipient: fixture.frozenAccount,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.minter),
-    );
+    await fixture.token.mint_public.accepted(fixture.frozenAccount, amount * 20n, asSigner(fixture.minter));
     let balance = await fixture.token.mappings.balances.get(fixture.frozenAccount);
     expect(balance).toBe(amount * 20n);
 
     let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount * 20n);
 
-    await fixture.token.mint_public.accepted(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-      },
-      asSigner(fixture.supplyManager),
-    );
+    await fixture.token.mint_public.accepted(fixture.account, amount * 20n, asSigner(fixture.supplyManager));
     balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(amount * 20n);
 
@@ -510,50 +364,20 @@ describe("test compliant token program", () => {
     const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // A regular user cannot burn public assets
-    await fixture.token.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.burn_public.rejected(fixture.account, amount, asSigner(fixture.account));
 
     // A minter user cannot burn public assets
-    await fixture.token.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-      },
-      asSigner(fixture.minter),
-    );
+    await fixture.token.burn_public.rejected(fixture.account, amount, asSigner(fixture.minter));
 
-    await fixture.token.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.burn_public.rejected(fixture.account, amount, asSigner(fixture.admin));
 
     const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
-    await fixture.token.burn_public.accepted(
-      {
-        owner: fixture.account,
-        amount,
-      },
-      asSigner(fixture.burner),
-    );
+    await fixture.token.burn_public.accepted(fixture.account, amount, asSigner(fixture.burner));
     let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(supply - tokenInfo!.supply).toBe(amount);
 
-    await fixture.token.burn_public.accepted(
-      {
-        owner: fixture.account,
-        amount,
-      },
-      asSigner(fixture.supplyManager),
-    );
+    await fixture.token.burn_public.accepted(fixture.account, amount, asSigner(fixture.supplyManager));
     tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(supply - tokenInfo!.supply).toBe(amount * 2n);
 
@@ -566,21 +390,9 @@ describe("test compliant token program", () => {
     const supply = (await fixture.token.mappings.tokenInfo.get(true)).supply;
 
     // A user that doesn't have a burner role cannot burn private assets
-    await fixture.token.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.burn_private.rejected(fixture.accountRecord!, amount, asSigner(fixture.account));
 
-    let mintTx = await fixture.token.mint_private.accepted(
-      {
-        recipient: fixture.burner,
-        amount,
-      },
-      asSigner(fixture.minter),
-    );
+    let mintTx = await fixture.token.mint_private.accepted(fixture.burner, amount, asSigner(fixture.minter));
     let burnerRecord = await mintTx.outputs[1].decrypt(fixture.burner);
     expect(burnerRecord.amount).toBe(amount);
     expect(burnerRecord.owner).toBe(fixture.burner.address);
@@ -588,13 +400,7 @@ describe("test compliant token program", () => {
     let tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount);
 
-    let burnTx = await fixture.token.burn_private.accepted(
-      {
-        input_record: burnerRecord,
-        amount,
-      },
-      asSigner(fixture.burner),
-    );
+    let burnTx = await fixture.token.burn_private.accepted(burnerRecord, amount, asSigner(fixture.burner));
     burnerRecord = await burnTx.outputs[1].decrypt(fixture.burner);
     expect(burnerRecord.amount).toBe(0n);
     expect(burnerRecord.owner).toBe(fixture.burner.address);
@@ -608,13 +414,7 @@ describe("test compliant token program", () => {
     expect(complianceRecord.sender).toBe(fixture.burner.address);
     expect(complianceRecord.recipient).toBe(ZERO_ADDRESS);
 
-    mintTx = await fixture.token.mint_private.accepted(
-      {
-        recipient: fixture.supplyManager,
-        amount,
-      },
-      asSigner(fixture.minter),
-    );
+    mintTx = await fixture.token.mint_private.accepted(fixture.supplyManager, amount, asSigner(fixture.minter));
     let supplyManagerRecord = await mintTx.outputs[1].decrypt(fixture.supplyManager);
     expect(supplyManagerRecord.amount).toBe(amount);
     expect(supplyManagerRecord.owner).toBe(fixture.supplyManager.address);
@@ -623,13 +423,7 @@ describe("test compliant token program", () => {
     expect(tokenInfo!.supply - supply).toBe(amount);
 
     // check that MINTER_ROLE+BURNER_ROLE can burn private assets
-    burnTx = await fixture.token.burn_private.accepted(
-      {
-        input_record: supplyManagerRecord,
-        amount,
-      },
-      asSigner(fixture.supplyManager),
-    );
+    burnTx = await fixture.token.burn_private.accepted(supplyManagerRecord, amount, asSigner(fixture.supplyManager));
     supplyManagerRecord = await burnTx.outputs[1].decrypt(fixture.supplyManager);
     expect(supplyManagerRecord.amount).toBe(0n);
     expect(supplyManagerRecord.owner).toBe(fixture.supplyManager.address);
@@ -644,30 +438,12 @@ describe("test compliant token program", () => {
     const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     // If the sender is frozen account it's IMPOSSIBLE to send tokens
-    await fixture.token.transfer_public.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.transfer_public.rejected(fixture.recipient, amount, asSigner(fixture.frozenAccount));
 
     // If the recipient is frozen account it's IMPOSSIBLE to send tokens
-    await fixture.token.transfer_public.rejected(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public.rejected(fixture.frozenAccount, amount, asSigner(fixture.account));
 
-    await fixture.token.transfer_public.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public.accepted(fixture.recipient, amount, asSigner(fixture.account));
 
     const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
@@ -679,33 +455,15 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.token.transfer_public_as_signer.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.transfer_public_as_signer.rejected(fixture.recipient, amount, asSigner(fixture.frozenAccount));
 
     // If the recipient is frozen account it's IMPOSSIBLE to send tokens
-    await fixture.token.transfer_public_as_signer.rejected(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public_as_signer.rejected(fixture.frozenAccount, amount, asSigner(fixture.account));
 
     const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
     const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
-    await fixture.token.transfer_public_as_signer.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public_as_signer.accepted(fixture.recipient, amount, asSigner(fixture.account));
 
     const accountPublicBalance = await fixture.token.mappings.balances.get(fixture.account);
     const recipientPublicBalance = await fixture.token.mappings.balances.get(fixture.recipient);
@@ -718,71 +476,39 @@ describe("test compliant token program", () => {
 
     // If the sender didn't approve the spender the transaction will fail
     await fixture.token.transfer_from_public.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
-    await fixture.token.unapprove_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    await fixture.token.unapprove_public.accepted(fixture.spender, amount, asSigner(fixture.account));
 
     // If the sender approve and then unapprove the spender the transaction will fail
     await fixture.token.transfer_from_public.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.frozenAccount));
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.token.transfer_from_public.rejected(
-      {
-        owner: fixture.frozenAccount,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.frozenAccount,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.token.transfer_from_public.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.frozenAccount,
-        amount,
-      },
+      fixture.account,
+      fixture.frozenAccount,
+      amount,
       asSigner(fixture.spender),
     );
 
@@ -790,11 +516,9 @@ describe("test compliant token program", () => {
     const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     await fixture.token.transfer_from_public.accepted(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
@@ -809,72 +533,40 @@ describe("test compliant token program", () => {
 
     // If the sender didn't approve the spender the transaction will fail
     await fixture.token.transfer_from_public_to_private.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
-    await fixture.token.unapprove_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    await fixture.token.unapprove_public.accepted(fixture.spender, amount, asSigner(fixture.account));
 
     // If the sender approve and then unapprove the spender the transaction will fail
     await fixture.token.transfer_from_public_to_private.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.frozenAccount));
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.token.transfer_from_public_to_private.rejected(
-      {
-        owner: fixture.frozenAccount,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.frozenAccount,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
     const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     const tx = await fixture.token.transfer_from_public_to_private.accepted(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
     const recipientRecord = await tx.outputs[1].decrypt(fixture.recipient);
@@ -895,21 +587,13 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.token.transfer_public_to_private.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.transfer_public_to_private.rejected(fixture.recipient, amount, asSigner(fixture.frozenAccount));
 
     const previousAccountPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     const tx = await fixture.token.transfer_public_to_private.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.recipient,
+      amount,
       asSigner(fixture.account),
     );
     const recipientRecord = await tx.outputs[1].decrypt(fixture.recipient);
@@ -931,22 +615,18 @@ describe("test compliant token program", () => {
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.token.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.frozenAccountRecord!,
+      fixture.frozenAccountMerkleProof,
       asSigner(fixture.frozenAccount),
     );
 
     const tx = await fixture.token.transfer_private.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
     fixture.privateAccountBalance -= amount;
@@ -971,35 +651,29 @@ describe("test compliant token program", () => {
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.token.transfer_private_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.frozenAccountRecord!,
+      fixture.frozenAccountMerkleProof,
       asSigner(fixture.frozenAccount),
     );
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.token.transfer_private_to_public.rejected(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.frozenAccount,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
 
     const previousRecipientPublicBalance = await fixture.token.mappings.balances.getOrUse(fixture.recipient, 0n);
 
     const tx = await fixture.token.transfer_private_to_public.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
     fixture.privateAccountBalance -= amount;
@@ -1023,12 +697,7 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // It's impossible to get the credentials record with an invalid merkle proof
-    await fixture.token.get_credentials.failsLocally(
-      {
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.token.get_credentials.failsLocally(fixture.frozenAccountMerkleProof, asSigner(fixture.frozenAccount));
 
     const leaves = generateLeaves([fixture.recipient.address]);
     const tree = buildTree(leaves);
@@ -1039,19 +708,9 @@ describe("test compliant token program", () => {
     ];
 
     // If the root doesn't match the on-chain root the transaction will be rejected
-    await fixture.token.get_credentials.rejected(
-      {
-        sender_merkle_proofs: incorrectSenderMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.get_credentials.rejected(incorrectSenderMerkleProof, asSigner(fixture.account));
 
-    const tx = await fixture.token.get_credentials.accepted(
-      {
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
-      asSigner(fixture.account),
-    );
+    const tx = await fixture.token.get_credentials.accepted(fixture.senderMerkleProof, asSigner(fixture.account));
     fixture.credentials = await tx.outputs.decrypt(fixture.account);
     expect(fixture.credentials.owner).toBe(fixture.account.address);
     expect(fixture.credentials.freeze_list_root).toBe(fixture.rootField);
@@ -1061,12 +720,10 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     let transferPrivateTx = await fixture.token.transfer_private_with_creds.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        credentials: fixture.credentials!,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.credentials!,
       asSigner(fixture.account),
     );
     fixture.privateAccountBalance -= amount;
@@ -1094,57 +751,39 @@ describe("test compliant token program", () => {
 
     // Update the root to make the old credentials expired
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fixture.rootField,
-        new_root: fakeRootField,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fixture.rootField,
+      fakeRootField,
       asSigner(fixture.admin),
     );
-    await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: 1,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.freezeRegistry.update_block_height_window.accepted(1, asSigner(fixture.admin));
 
     await fixture.token.transfer_private_with_creds.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        credentials: fixture.credentials!,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.credentials!,
       asSigner(fixture.account),
     );
 
     // bring back the old root
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: fakeRootField,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      true,
+      1,
+      fakeRootField,
+      fixture.rootField,
       asSigner(fixture.admin),
     );
-    await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.freezeRegistry.update_block_height_window.accepted(BLOCK_HEIGHT_WINDOW, asSigner(fixture.admin));
 
     transferPrivateTx = await fixture.token.transfer_private_with_creds.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        credentials: fixture.credentials!,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.credentials!,
       asSigner(fixture.account),
     );
     fixture.privateAccountBalance -= amount;
@@ -1175,162 +814,77 @@ describe("test compliant token program", () => {
     const fixture = state!;
 
     // Only the pauser can pause the program
-    await fixture.token.set_pause_status.rejected(
-      {
-        pause_status: true,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.token.set_pause_status.rejected(true, asSigner(fixture.admin));
 
-    await fixture.token.approve_public.accepted(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
 
     // pause the contract
-    await fixture.token.set_pause_status.accepted(
-      {
-        pause_status: true,
-      },
-      asSigner(fixture.pauser),
-    );
+    await fixture.token.set_pause_status.accepted(true, asSigner(fixture.pauser));
     let pauseStatus = await fixture.token.mappings.pause.get(true);
     expect(pauseStatus).toBe(true);
 
     // verify that all the functionalities are paused
-    await fixture.token.mint_public.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.minter),
-    );
+    await fixture.token.mint_public.rejected(fixture.recipient, amount, asSigner(fixture.minter));
 
-    await fixture.token.mint_private.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.minter),
-    );
+    await fixture.token.mint_private.rejected(fixture.recipient, amount, asSigner(fixture.minter));
 
-    await fixture.token.burn_public.rejected(
-      {
-        owner: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.burner),
-    );
+    await fixture.token.burn_public.rejected(fixture.recipient, amount, asSigner(fixture.burner));
 
-    await fixture.token.transfer_public.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public.rejected(fixture.recipient, amount, asSigner(fixture.account));
 
-    await fixture.token.transfer_public_as_signer.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public_as_signer.rejected(fixture.recipient, amount, asSigner(fixture.account));
 
-    await fixture.token.approve_public.rejected(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.approve_public.rejected(fixture.spender, amount, asSigner(fixture.account));
 
-    await fixture.token.unapprove_public.rejected(
-      {
-        spender: fixture.spender,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.unapprove_public.rejected(fixture.spender, amount, asSigner(fixture.account));
 
     await fixture.token.transfer_from_public.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
     await fixture.token.transfer_from_public_to_private.rejected(
-      {
-        owner: fixture.account,
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.account,
+      fixture.recipient,
+      amount,
       asSigner(fixture.spender),
     );
 
-    await fixture.token.transfer_public_to_private.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public_to_private.rejected(fixture.recipient, amount, asSigner(fixture.account));
 
     await fixture.token.transfer_private.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
 
     await fixture.token.transfer_private_to_public.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
 
     await fixture.token.transfer_private_with_creds.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        credentials: fixture.credentials!,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.credentials!,
       asSigner(fixture.account),
     );
 
     // unpause the contract
-    await fixture.token.set_pause_status.accepted(
-      {
-        pause_status: false,
-      },
-      asSigner(fixture.pauser),
-    );
+    await fixture.token.set_pause_status.accepted(false, asSigner(fixture.pauser));
     pauseStatus = await fixture.token.mappings.pause.get(true);
     expect(pauseStatus).toBe(false);
 
     //verify that the functionalities are back (one is enough)
-    await fixture.token.transfer_public.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.token.transfer_public.accepted(fixture.recipient, amount, asSigner(fixture.account));
   });
 
   test("calculate private balance", async () => {

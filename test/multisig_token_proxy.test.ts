@@ -75,11 +75,9 @@ async function initMultisigOp(
   blockExpiration: number,
 ) {
   const tx = await fixture.proxy.init_multisig_op.accepted(
-    {
-      wallet_id: walletId,
-      multisig_op: multisigOp,
-      block_expiration: blockExpiration,
-    },
+    walletId,
+    multisigOp,
+    blockExpiration,
     asSigner(fixture.deployer),
   );
 
@@ -97,12 +95,10 @@ async function initPrivateMultisigOp(
   blockExpiration: number,
 ) {
   const tx = await fixture.proxy.init_private_multisig_op.accepted(
-    {
-      wallet_id: walletId,
-      multisig_op: multisigOp,
-      salt: scalarLiteral(salt),
-      block_expiration: blockExpiration,
-    },
+    walletId,
+    multisigOp,
+    scalarLiteral(salt),
+    blockExpiration,
     asSigner(fixture.deployer),
   );
 
@@ -149,21 +145,10 @@ async function deployFixture() {
     await createWallet(multisig, deployer, minterWalletId, aleoSigners);
     await createWallet(multisig, deployer, burnerWalletId, aleoSigners);
 
-    await token.initialize.accepted(
-      {
-        name: tokenName,
-        symbol: tokenSymbol,
-        decimals,
-        max_supply: maxSupply,
-        admin,
-      },
-      asSigner(deployer),
-    );
+    await token.initialize.accepted(tokenName, tokenSymbol, decimals, maxSupply, admin, asSigner(deployer));
     await token.update_role.accepted(
-      {
-        new_address: proxyProgramAddress,
-        role: MANAGER_ROLE + MINTER_ROLE + BURNER_ROLE + PAUSE_ROLE,
-      },
+      proxyProgramAddress,
+      MANAGER_ROLE + MINTER_ROLE + BURNER_ROLE + PAUSE_ROLE,
       asSigner(admin),
     );
 
@@ -209,38 +194,18 @@ describe("test multisig token proxy program", () => {
 
     if (fixture.deployer.address !== fixture.admin.address) {
       // The caller is not the initial admin
-      await fixture.proxy.initialize.rejected(
-        {
-          manager_wallet_id: fixture.managerWalletId,
-        },
-        asSigner(fixture.deployer),
-      );
+      await fixture.proxy.initialize.rejected(fixture.managerWalletId, asSigner(fixture.deployer));
     }
 
     // The admin or the wallet ID manager has to be non zero
-    await fixture.proxy.initialize.rejected(
-      {
-        manager_wallet_id: zeroAddress,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.proxy.initialize.rejected(zeroAddress, asSigner(fixture.admin));
 
-    await fixture.proxy.initialize.accepted(
-      {
-        manager_wallet_id: fixture.managerWalletId,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.proxy.initialize.accepted(fixture.managerWalletId, asSigner(fixture.admin));
     const role = await fixture.proxy.mappings.walletIdToRole.get(fixture.managerWalletId);
     expect(role).toBe(MANAGER_ROLE);
 
     // It is possible to call to initialize only one time
-    await fixture.proxy.initialize.rejected(
-      {
-        manager_wallet_id: fixture.managerWalletId,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.proxy.initialize.rejected(fixture.managerWalletId, asSigner(fixture.admin));
   });
 
   test(`test init_multisig_op`, async () => {
@@ -272,11 +237,9 @@ describe("test multisig token proxy program", () => {
 
     // It's impossible to initiate a request twice
     await fixture.proxy.init_multisig_op.rejected(
-      {
-        wallet_id: fixture.managerWalletId,
-        multisig_op: multisigOp,
-        block_expiration: MAX_BLOCK_HEIGHT,
-      },
+      fixture.managerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
       asSigner(fixture.deployer),
     );
 
@@ -316,12 +279,10 @@ describe("test multisig token proxy program", () => {
 
     // It's impossible to initiate a request twice
     await fixture.proxy.init_private_multisig_op.rejected(
-      {
-        wallet_id: fixture.managerWalletId,
-        multisig_op: privMultisigOp,
-        salt: scalarLiteral(salt),
-        block_expiration: MAX_BLOCK_HEIGHT,
-      },
+      fixture.managerWalletId,
+      privMultisigOp,
+      scalarLiteral(salt),
+      MAX_BLOCK_HEIGHT,
       asSigner(fixture.deployer),
     );
 
@@ -364,11 +325,9 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.pauseWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -376,50 +335,40 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      fixture.pauseWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
-      },
+      fixture.pauseWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.minterWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.minterWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the role doesn't match the role in the request the transaction will fail
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.pauseWalletId,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.proxy.update_wallet_id_role.accepted(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.pauseWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
     let role = await fixture.proxy.mappings.walletIdToRole.get(fixture.pauseWalletId);
@@ -427,11 +376,9 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.pauseWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -440,11 +387,9 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.pauseWalletId,
-        role: PAUSE_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      fixture.pauseWalletId,
+      PAUSE_ROLE,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -461,11 +406,9 @@ describe("test multisig token proxy program", () => {
     ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
     await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
     await fixture.proxy.update_wallet_id_role.accepted(
-      {
-        target_wallet_id: fixture.minterWalletId,
-        role: MINTER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.minterWalletId,
+      MINTER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
     role = await fixture.proxy.mappings.walletIdToRole.get(fixture.minterWalletId);
@@ -484,11 +427,9 @@ describe("test multisig token proxy program", () => {
     ({ signingOpId } = await initMultisigOp(fixture, fixture.managerWalletId, multisigOp, MAX_BLOCK_HEIGHT));
     await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
     await fixture.proxy.update_wallet_id_role.accepted(
-      {
-        target_wallet_id: fixture.burnerWalletId,
-        role: BURNER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.burnerWalletId,
+      BURNER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
     role = await fixture.proxy.mappings.walletIdToRole.get(fixture.burnerWalletId);
@@ -517,11 +458,9 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: randomAddress,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      randomAddress,
+      randomRole,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -529,50 +468,40 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: randomAddress,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      randomAddress,
+      randomRole,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: randomAddress,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
-      },
+      randomAddress,
+      randomRole,
+      multisigCommonParams(fixture.managerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: fixture.deployer,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.deployer,
+      randomRole,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the role doesn't match the role in the request the transaction will fail
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: randomAddress,
-        role: randomRole + 1,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      randomAddress,
+      randomRole + 1,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.proxy.update_role.accepted(
-      {
-        new_address: randomAddress,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      randomAddress,
+      randomRole,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
     const role = await fixture.token.mappings.addressToRole.get(randomAddress);
@@ -580,11 +509,9 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: randomAddress,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      randomAddress,
+      randomRole,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -593,11 +520,9 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.update_role.rejected(
-      {
-        new_address: randomAddress,
-        role: randomRole,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      randomAddress,
+      randomRole,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -624,11 +549,9 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -636,50 +559,40 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt + 1n),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.deployer,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.deployer,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the amount doesn't match the amount in the request the transaction will fail
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     let tx = await fixture.proxy.mint_private.accepted(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
     fixture.accountRecord = await tx.outputs[1]
@@ -690,11 +603,9 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -709,11 +620,9 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.mint_private.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -730,11 +639,9 @@ describe("test multisig token proxy program", () => {
     ));
     await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.minterWalletId, signingOpId);
     tx = await fixture.proxy.mint_private.accepted(
-      {
-        recipient: fixture.frozenAccount,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.frozenAccount,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
     fixture.frozenAccountRecord = await tx.outputs[1]
@@ -761,11 +668,9 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -773,52 +678,42 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt + 1n),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.deployer,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.deployer,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the amount doesn't match the amount in the request the transaction will fail
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount + 1n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount + 1n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     const initialBalance = await fixture.token.mappings.balances.getOrUse(fixture.account, 0n);
 
     await fixture.proxy.mint_public.accepted(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
     const balance = await fixture.token.mappings.balances.get(fixture.account);
@@ -826,11 +721,9 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.minterWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.minterWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -839,11 +732,9 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.mint_public.rejected(
-      {
-        recipient: fixture.account,
-        amount: amount * 20n,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.account,
+      amount * 20n,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -866,11 +757,9 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -878,50 +767,40 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt + 1n),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.frozenAccount,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.frozenAccount,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the amount doesn't match the amount in the request the transaction will fail
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount: amount + 1n,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.account,
+      amount + 1n,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.proxy.burn_public.accepted(
-      {
-        owner: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.deployer),
     );
     const balance = await fixture.token.mappings.balances.get(fixture.account);
@@ -929,11 +808,9 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -942,11 +819,9 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.burn_public.rejected(
-      {
-        owner: fixture.account,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.account,
+      amount,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -971,11 +846,9 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.accountRecord!,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.account),
     );
 
@@ -983,51 +856,41 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.accountRecord!,
+      amount,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.account),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt + 1n),
-      },
+      fixture.accountRecord!,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt + 1n),
       asSigner(fixture.account),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.frozenAccountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.frozenAccountRecord!,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.frozenAccount),
     );
 
     // If the amount doesn't match the amount in the request the transaction will fail
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount: amount - 1n,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.accountRecord!,
+      amount - 1n,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.account),
     );
 
     const accountRecordBalanceBefore = fixture.accountRecord!.amount;
     const burnTx = await fixture.proxy.burn_private.accepted(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.accountRecord!,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.account),
     );
 
@@ -1039,11 +902,9 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.burnerWalletId, salt),
-      },
+      fixture.accountRecord!,
+      amount,
+      multisigCommonParams(fixture.burnerWalletId, salt),
       asSigner(fixture.account),
     );
 
@@ -1058,11 +919,9 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.burn_private.rejected(
-      {
-        input_record: fixture.accountRecord!,
-        amount,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.accountRecord!,
+      amount,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.account),
     );
   });
@@ -1084,10 +943,8 @@ describe("test multisig token proxy program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.proxy.set_pause_status.rejected(
-      {
-        pause_status: true,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      true,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1095,36 +952,28 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.proxy.set_pause_status.rejected(
-      {
-        pause_status: true,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      true,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.proxy.set_pause_status.rejected(
-      {
-        pause_status: true,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt + 1n),
-      },
+      true,
+      multisigCommonParams(fixture.pauseWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the pause status doesn't match the pause status in the request the transaction will fail
     await fixture.proxy.set_pause_status.rejected(
-      {
-        pause_status: false,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      false,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.proxy.set_pause_status.accepted(
-      {
-        pause_status: true,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      true,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
     let pauseStatus = await fixture.token.mappings.pause.get(true);
@@ -1132,10 +981,8 @@ describe("test multisig token proxy program", () => {
 
     // It's possible to execute the request only once
     await fixture.proxy.set_pause_status.rejected(
-      {
-        pause_status: true,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      true,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1144,10 +991,8 @@ describe("test multisig token proxy program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.proxy.set_pause_status.rejected(
-      {
-        pause_status: true,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      true,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1162,10 +1007,8 @@ describe("test multisig token proxy program", () => {
     await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.pauseWalletId, signingOpId);
 
     await fixture.proxy.set_pause_status.accepted(
-      {
-        pause_status: false,
-        multisig_common_params: multisigCommonParams(fixture.pauseWalletId, salt),
-      },
+      false,
+      multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
     pauseStatus = await fixture.token.mappings.pause.get(true);

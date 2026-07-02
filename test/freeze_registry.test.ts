@@ -112,34 +112,20 @@ describe("test freeze registry program", () => {
     if (!isFreezeRegistryInitialized) {
       // Cannot update freeze list before initialization
       await fixture.freezeRegistry.update_freeze_list.rejected(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: true,
-          frozen_index: 1,
-          previous_root: fieldLiteral(0n),
-          new_root: fixture.rootField!,
-        },
+        fixture.frozenAccount,
+        true,
+        1,
+        fieldLiteral(0n),
+        fixture.rootField!,
         asSigner(fixture.admin),
       );
 
       if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
-        await fixture.freezeRegistry.initialize.rejected(
-          {
-            admin: fixture.admin,
-            blocks: BLOCK_HEIGHT_WINDOW,
-          },
-          asSigner(fixture.admin),
-        );
+        await fixture.freezeRegistry.initialize.rejected(fixture.admin, BLOCK_HEIGHT_WINDOW, asSigner(fixture.admin));
       }
 
-      await fixture.freezeRegistry.initialize.accepted(
-        {
-          admin: fixture.admin,
-          blocks: BLOCK_HEIGHT_WINDOW,
-        },
-        asSigner(fixture.deployer),
-      );
+      await fixture.freezeRegistry.initialize.accepted(fixture.admin, BLOCK_HEIGHT_WINDOW, asSigner(fixture.deployer));
 
       const isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(zeroAddress);
       const frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(0);
@@ -157,54 +143,28 @@ describe("test freeze registry program", () => {
     }
 
     // It is possible to call to initialize only one time
-    await fixture.freezeRegistry.initialize.rejected(
-      {
-        admin: fixture.admin,
-        blocks: BLOCK_HEIGHT_WINDOW,
-      },
-      asSigner(fixture.deployer),
-    );
+    await fixture.freezeRegistry.initialize.rejected(fixture.admin, BLOCK_HEIGHT_WINDOW, asSigner(fixture.deployer));
   });
 
   test("test update_manager_address", async () => {
     const fixture = state!;
 
     // Manager cannot unassign himself from being a manager
-    await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.freezeRegistry.update_role.rejected(fixture.admin, NONE_ROLE, asSigner(fixture.admin));
 
-    await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.freezeRegistry.update_role.accepted(fixture.frozenAccount, MANAGER_ROLE, asSigner(fixture.admin));
 
     let role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
-    await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.freezeRegistry.update_role.accepted(fixture.frozenAccount, NONE_ROLE, asSigner(fixture.admin));
     role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Only the manager can update the roles
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-      },
+      fixture.frozenAccount,
+      MANAGER_ROLE,
       asSigner(fixture.frozenAccount),
     );
   });
@@ -213,20 +173,16 @@ describe("test freeze registry program", () => {
     const fixture = state!;
 
     await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.freezeListManager,
-        role: FREEZELIST_MANAGER_ROLE,
-      },
+      fixture.freezeListManager,
+      FREEZELIST_MANAGER_ROLE,
       asSigner(fixture.admin),
     );
     const freezeListManagerRole = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.freezeListManager);
     expect(freezeListManagerRole).toBe(FREEZELIST_MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.frozenAccount,
-        role: FREEZELIST_MANAGER_ROLE,
-      },
+      fixture.frozenAccount,
+      FREEZELIST_MANAGER_ROLE,
       asSigner(fixture.frozenAccount),
     );
   });
@@ -237,25 +193,21 @@ describe("test freeze registry program", () => {
 
     // Only the manager can call to update_freeze_list
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.admin,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: currentRoot!,
-        new_root: fixture.rootField!,
-      },
+      fixture.admin,
+      true,
+      1,
+      currentRoot!,
+      fixture.rootField!,
       asSigner(fixture.frozenAccount),
     );
 
     // Cannot update the root if the previous root is incorrect
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fieldLiteral(0n),
-        new_root: fixture.rootField!,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fieldLiteral(0n),
+      fixture.rootField!,
       asSigner(fixture.freezeListManager),
     );
 
@@ -263,24 +215,20 @@ describe("test freeze registry program", () => {
     if (!isAccountFrozen) {
       // Cannot unfreeze an unfrozen account
       await fixture.freezeRegistry.update_freeze_list.rejected(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: false,
-          frozen_index: 1,
-          previous_root: currentRoot!,
-          new_root: fixture.rootField!,
-        },
+        fixture.frozenAccount,
+        false,
+        1,
+        currentRoot!,
+        fixture.rootField!,
         asSigner(fixture.freezeListManager),
       );
 
       await fixture.freezeRegistry.update_freeze_list.accepted(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: true,
-          frozen_index: 1,
-          previous_root: currentRoot!,
-          new_root: fixture.rootField!,
-        },
+        fixture.frozenAccount,
+        true,
+        1,
+        currentRoot!,
+        fixture.rootField!,
         asSigner(fixture.freezeListManager),
       );
       isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(fixture.frozenAccount);
@@ -294,37 +242,31 @@ describe("test freeze registry program", () => {
 
     // Cannot unfreeze an account when the frozen list index is incorrect
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-      },
+      fixture.frozenAccount,
+      false,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
       asSigner(fixture.freezeListManager),
     );
 
     // Cannot freeze a frozen account
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-      },
+      fixture.frozenAccount,
+      true,
+      1,
+      fixture.rootField!,
+      fixture.rootField!,
       asSigner(fixture.freezeListManager),
     );
 
     let randomAddress = Leo.address(safeAddress());
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
       asSigner(fixture.freezeListManager),
     );
     isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(randomAddress);
@@ -338,24 +280,20 @@ describe("test freeze registry program", () => {
     randomAddress = Leo.address(safeAddress());
     // Cannot freeze an account when the frozen list index is greater than the last index
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 10,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-      },
+      randomAddress,
+      true,
+      10,
+      fixture.rootField!,
+      fixture.rootField!,
       asSigner(fixture.freezeListManager),
     );
     // Cannot freeze an account when the frozen list index is already taken
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
       asSigner(fixture.freezeListManager),
     );
   });
@@ -364,16 +302,12 @@ describe("test freeze registry program", () => {
     const fixture = state!;
 
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-      },
+      BLOCK_HEIGHT_WINDOW,
       asSigner(fixture.frozenAccount),
     );
 
     await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-      },
+      BLOCK_HEIGHT_WINDOW,
       asSigner(fixture.freezeListManager),
     );
   });
@@ -381,28 +315,16 @@ describe("test freeze registry program", () => {
   test("test verify_non_inclusion_pub", async () => {
     const fixture = state!;
 
-    await fixture.freezeRegistry.verify_non_inclusion_pub.rejected(
-      {
-        account: fixture.frozenAccount,
-      },
-      asSigner(fixture.deployer),
-    );
-    await fixture.freezeRegistry.verify_non_inclusion_pub.accepted(
-      {
-        account: fixture.admin,
-      },
-      asSigner(fixture.deployer),
-    );
+    await fixture.freezeRegistry.verify_non_inclusion_pub.rejected(fixture.frozenAccount, asSigner(fixture.deployer));
+    await fixture.freezeRegistry.verify_non_inclusion_pub.accepted(fixture.admin, asSigner(fixture.deployer));
   });
 
   test("test verify_non_inclusion_priv", async () => {
     const fixture = state!;
 
     await fixture.freezeRegistry.verify_non_inclusion_priv.failsLocally(
-      {
-        account: fixture.frozenAccount,
-        merkle_proof: fixture.frozenAccountMerkleProof!,
-      },
+      fixture.frozenAccount,
+      fixture.frozenAccountMerkleProof!,
       asSigner(fixture.deployer),
     );
 
@@ -417,29 +339,23 @@ describe("test freeze registry program", () => {
     ];
     // The transaction failed because the root is mismatch
     await fixture.freezeRegistry.verify_non_inclusion_priv.rejected(
-      {
-        account: fixture.admin,
-        merkle_proof: emptyTreeAdminMerkleProof,
-      },
+      fixture.admin,
+      emptyTreeAdminMerkleProof,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
-      {
-        account: fixture.admin,
-        merkle_proof: fixture.adminMerkleProof!,
-      },
+      fixture.admin,
+      fixture.adminMerkleProof!,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fixture.rootField!,
-        new_root: emptyRootField,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fixture.rootField!,
+      emptyRootField,
       asSigner(fixture.freezeListManager),
     );
 
@@ -450,34 +366,23 @@ describe("test freeze registry program", () => {
 
     // The transaction succeed because the old root is match
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
-      {
-        account: fixture.admin,
-        merkle_proof: fixture.adminMerkleProof!,
-      },
+      fixture.admin,
+      fixture.adminMerkleProof!,
       asSigner(fixture.deployer),
     );
 
-    await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: 1,
-      },
-      asSigner(fixture.freezeListManager),
-    );
+    await fixture.freezeRegistry.update_block_height_window.accepted(1, asSigner(fixture.freezeListManager));
 
     // The transaction failed because the old root is expired
     await fixture.freezeRegistry.verify_non_inclusion_priv.rejected(
-      {
-        account: fixture.admin,
-        merkle_proof: fixture.adminMerkleProof!,
-      },
+      fixture.admin,
+      fixture.adminMerkleProof!,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
-      {
-        account: fixture.admin,
-        merkle_proof: emptyTreeAdminMerkleProof,
-      },
+      fixture.admin,
+      emptyTreeAdminMerkleProof,
       asSigner(fixture.deployer),
     );
   });

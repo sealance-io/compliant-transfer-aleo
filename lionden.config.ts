@@ -9,13 +9,14 @@ dotenv.config({ quiet: true });
 
 export default defineConfig({
   plugins: [pluginLeo, pluginNetwork, pluginDeploy, pluginTest],
-  leoVersion: "4.0.0",
+  leoVersion: "4.2.0",
   defaultNetwork: "devnode",
   networks: {
     devnode: {
       type: "devnode",
       network: "testnet",
       autoBlock: true,
+      provider: "leo",
       consensusHeights: "0,1,2,3,4,5,6,7,8,9,10,11,12,13",
       privateKey: configVariable(
         "ALEO_DEVNET_DEPLOYER_PRIVATE_KEY",
