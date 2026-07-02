@@ -22,13 +22,7 @@ export async function initializeMultisig(
   deployer: SignableNamedAccount,
 ) {
   if (!(await multisig.mappings.programSettingsMap.contains(true))) {
-    await multisig.init.accepted(
-      {
-        upgrader_address: deployer,
-        guard_create_wallet: false,
-      },
-      asSigner(deployer),
-    );
+    await multisig.init.accepted(deployer, false, asSigner(deployer));
   }
 }
 
@@ -41,15 +35,7 @@ export async function createWallet(
   ecdsaSigners = Array.from({ length: 4 }, () => Array(20).fill(0)),
 ) {
   if (!(await multisig.mappings.walletsMap.contains(walletId))) {
-    await multisig.create_wallet.accepted(
-      {
-        wallet_id: walletId,
-        threshold,
-        aleo_signers: aleoSigners,
-        ecdsa_signers: ecdsaSigners,
-      },
-      asSigner(deployer),
-    );
+    await multisig.create_wallet.accepted(walletId, threshold, aleoSigners, ecdsaSigners, asSigner(deployer));
   }
 }
 
@@ -62,12 +48,6 @@ export async function approveRequest(
   const multisigCore = createMultisigCore().connect(ctx.lre);
 
   for (const signer of signers) {
-    await multisigCore.sign.accepted(
-      {
-        wallet_id: walletId,
-        signing_op_id: signingOpId,
-      },
-      asSigner(signer),
-    );
+    await multisigCore.sign.accepted(walletId, signingOpId, asSigner(signer));
   }
 }

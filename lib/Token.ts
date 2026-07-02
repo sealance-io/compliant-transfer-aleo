@@ -16,15 +16,13 @@ export async function registerTokenProgram(
 
   if (!isRegistered) {
     await tokenRegistry.register_token.accepted(
-      {
-        token_id: tokenId,
-        name: stringToBigInt(policy.tokenName),
-        symbol: stringToBigInt(policy.tokenSymbol),
-        decimals: 6,
-        max_supply: 1_000_000_000_000_000n,
-        external_authorization_required: true,
-        external_authorization_party: Leo.address(policy.programAddress),
-      },
+      tokenId,
+      stringToBigInt(policy.tokenName),
+      stringToBigInt(policy.tokenSymbol),
+      6,
+      1_000_000_000_000_000n,
+      true,
+      Leo.address(policy.programAddress),
       asSigner(deployer),
     );
   }
@@ -35,11 +33,9 @@ export async function registerTokenProgram(
     currentMetadata.admin !== admin.address
   ) {
     await tokenRegistry.update_token_management.accepted(
-      {
-        token_id: tokenId,
-        admin,
-        external_authorization_party: Leo.address(policy.programAddress),
-      },
+      tokenId,
+      admin,
+      Leo.address(policy.programAddress),
       asSigner(deployer),
     );
   }

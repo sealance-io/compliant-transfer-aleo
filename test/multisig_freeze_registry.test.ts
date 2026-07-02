@@ -64,11 +64,9 @@ async function initMultisigOp(
   blockExpiration: number,
 ) {
   const tx = await fixture.freezeRegistry.init_multisig_op.accepted(
-    {
-      wallet_id: walletId,
-      multisig_op: multisigOp,
-      block_expiration: blockExpiration,
-    },
+    walletId,
+    multisigOp,
+    blockExpiration,
     asSigner(fixture.deployer),
   );
 
@@ -171,45 +169,37 @@ describe("test multisig freeze registry program", () => {
       );
       // Cannot update freeze list before initialization
       await fixture.freezeRegistry.update_freeze_list.rejected(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: true,
-          frozen_index: 1,
-          previous_root: currentRoot,
-          new_root: fixture.rootField!,
-          multisig_common_params: emptyMultisigCommonParams,
-        },
+        fixture.frozenAccount,
+        true,
+        1,
+        currentRoot,
+        fixture.rootField!,
+        emptyMultisigCommonParams,
         asSigner(fixture.admin),
       );
 
       if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
         await fixture.freezeRegistry.initialize.rejected(
-          {
-            admin: fixture.admin,
-            blocks: BLOCK_HEIGHT_WINDOW,
-            manager_wallet_id: zeroAddress,
-          },
+          fixture.admin,
+          BLOCK_HEIGHT_WINDOW,
+          zeroAddress,
           asSigner(fixture.deployer),
         );
       }
 
       // The admin or the wallet ID manager has to be non zero
       await fixture.freezeRegistry.initialize.rejected(
-        {
-          admin: zeroAddress,
-          blocks: BLOCK_HEIGHT_WINDOW,
-          manager_wallet_id: zeroAddress,
-        },
+        zeroAddress,
+        BLOCK_HEIGHT_WINDOW,
+        zeroAddress,
         asSigner(fixture.admin),
       );
 
       await fixture.freezeRegistry.initialize.accepted(
-        {
-          admin: fixture.admin,
-          blocks: BLOCK_HEIGHT_WINDOW,
-          manager_wallet_id: fixture.managerWalletId,
-        },
+        fixture.admin,
+        BLOCK_HEIGHT_WINDOW,
+        fixture.managerWalletId,
         asSigner(fixture.admin),
       );
       const isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(zeroAddress);
@@ -231,11 +221,9 @@ describe("test multisig freeze registry program", () => {
 
     // It is possible to call to initialize only one time
     await fixture.freezeRegistry.initialize.rejected(
-      {
-        admin: fixture.admin,
-        blocks: BLOCK_HEIGHT_WINDOW,
-        manager_wallet_id: fixture.managerWalletId,
-      },
+      fixture.admin,
+      BLOCK_HEIGHT_WINDOW,
+      fixture.managerWalletId,
       asSigner(fixture.admin),
     );
   });
@@ -275,11 +263,9 @@ describe("test multisig freeze registry program", () => {
 
     // It's impossible to initiate a request twice
     await fixture.freezeRegistry.init_multisig_op.rejected(
-      {
-        wallet_id: fixture.managerWalletId,
-        multisig_op: multisigOp,
-        block_expiration: MAX_BLOCK_HEIGHT,
-      },
+      fixture.managerWalletId,
+      multisigOp,
+      MAX_BLOCK_HEIGHT,
       asSigner(fixture.deployer),
     );
 
@@ -302,20 +288,16 @@ describe("test multisig freeze registry program", () => {
 
     // Non manager address can't update the wallet_id without multisig approval
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.managerWalletId,
-        role: MULTISIG_OP_UPDATE_WALLET_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.managerWalletId,
+      MULTISIG_OP_UPDATE_WALLET_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.frozenAccount),
     );
 
     await fixture.freezeRegistry.update_wallet_id_role.accepted(
-      {
-        target_wallet_id: fixture.managerWalletId,
-        role: MANAGER_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.managerWalletId,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.admin),
     );
     let role = await fixture.freezeRegistry.mappings.walletIdToRole.get(fixture.managerWalletId);
@@ -324,20 +306,16 @@ describe("test multisig freeze registry program", () => {
     // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.managerWalletId,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
-      },
+      fixture.managerWalletId,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, 0n),
       asSigner(fixture.admin),
     );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.managerWalletId,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
-      },
+      fixture.managerWalletId,
+      MANAGER_ROLE,
+      multisigCommonParams(zeroAddress, 1n),
       asSigner(fixture.admin),
     );
 
@@ -358,11 +336,9 @@ describe("test multisig freeze registry program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.freezeListManagerWalletId,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -370,50 +346,40 @@ describe("test multisig freeze registry program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      fixture.freezeListManagerWalletId,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
-      },
+      fixture.freezeListManagerWalletId,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManager,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.freezeListManager,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the role doesn't match the role in the request the transaction will fail
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.freezeListManagerWalletId,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_wallet_id_role.accepted(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.freezeListManagerWalletId,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
     role = await fixture.freezeRegistry.mappings.walletIdToRole.get(fixture.freezeListManagerWalletId);
@@ -421,11 +387,9 @@ describe("test multisig freeze registry program", () => {
 
     // It's possible to execute the request only once
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.freezeListManagerWalletId,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -439,11 +403,9 @@ describe("test multisig freeze registry program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: fixture.freezeListManagerWalletId,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      fixture.freezeListManagerWalletId,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -454,20 +416,16 @@ describe("test multisig freeze registry program", () => {
     // Even though the caller is a manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, 0n),
       asSigner(fixture.admin),
     );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(zeroAddress, 1n),
       asSigner(fixture.admin),
     );
 
@@ -488,61 +446,49 @@ describe("test multisig freeze registry program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await approveRequest(fixture.ctx, [fixture.signer1, fixture.signer2], fixture.managerWalletId, signingOpId);
     // If the wallet_id is incorrect the transaction will fail
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt + 1n),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.deployer,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.deployer,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the role doesn't match the role in the request the transaction will fail
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.admin,
+      FREEZELIST_MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
     const role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.admin);
@@ -550,11 +496,9 @@ describe("test multisig freeze registry program", () => {
 
     // It's possible to execute the request only once
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -568,11 +512,9 @@ describe("test multisig freeze registry program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: MANAGER_ROLE,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      fixture.admin,
+      MANAGER_ROLE,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -582,31 +524,25 @@ describe("test multisig freeze registry program", () => {
 
     // Manager cannot unassign himself from being a manager
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: NONE_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.admin,
+      NONE_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.admin),
     );
 
     await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.admin),
     );
     let role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: NONE_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      NONE_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.admin),
     );
     role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.frozenAccount);
@@ -614,11 +550,9 @@ describe("test multisig freeze registry program", () => {
 
     // Only the manager can update the roles
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      MANAGER_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.frozenAccount),
     );
   });
@@ -627,22 +561,18 @@ describe("test multisig freeze registry program", () => {
     const fixture = state!;
 
     await fixture.freezeRegistry.update_role.accepted(
-      {
-        new_address: fixture.freezeListManager,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.freezeListManager,
+      FREEZELIST_MANAGER_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.admin),
     );
     const freezeListManagerRole = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.freezeListManager);
     expect(freezeListManagerRole).toBe(FREEZELIST_MANAGER_ROLE);
 
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: fixture.frozenAccount,
-        role: FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      FREEZELIST_MANAGER_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.frozenAccount),
     );
   });
@@ -653,27 +583,23 @@ describe("test multisig freeze registry program", () => {
 
     // Only the manager can call to update_freeze_list
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.admin,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: currentRoot!,
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.admin,
+      true,
+      1,
+      currentRoot!,
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.frozenAccount),
     );
 
     // Cannot update the root if the previous root is incorrect
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fieldLiteral(0n),
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fieldLiteral(0n),
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
@@ -681,26 +607,22 @@ describe("test multisig freeze registry program", () => {
     if (!isAccountFrozen) {
       // Cannot unfreeze an unfrozen account
       await fixture.freezeRegistry.update_freeze_list.rejected(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: false,
-          frozen_index: 1,
-          previous_root: currentRoot!,
-          new_root: fixture.rootField!,
-          multisig_common_params: emptyMultisigCommonParams,
-        },
+        fixture.frozenAccount,
+        false,
+        1,
+        currentRoot!,
+        fixture.rootField!,
+        emptyMultisigCommonParams,
         asSigner(fixture.freezeListManager),
       );
 
       await fixture.freezeRegistry.update_freeze_list.accepted(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: true,
-          frozen_index: 1,
-          previous_root: currentRoot!,
-          new_root: fixture.rootField!,
-          multisig_common_params: emptyMultisigCommonParams,
-        },
+        fixture.frozenAccount,
+        true,
+        1,
+        currentRoot!,
+        fixture.rootField!,
+        emptyMultisigCommonParams,
         asSigner(fixture.freezeListManager),
       );
       isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(fixture.frozenAccount);
@@ -714,40 +636,34 @@ describe("test multisig freeze registry program", () => {
 
     // Cannot unfreeze an account when the frozen list index is incorrect
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      false,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
     // Cannot freeze a frozen account
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      true,
+      1,
+      fixture.rootField!,
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
     let randomAddress = Leo.address(safeAddress());
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
     isAccountFrozen = await fixture.freezeRegistry.mappings.freezeList.get(randomAddress);
@@ -761,26 +677,22 @@ describe("test multisig freeze registry program", () => {
     randomAddress = Leo.address(safeAddress());
     // Cannot freeze an account when the frozen list index is greater than the last index
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 10,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      randomAddress,
+      true,
+      10,
+      fixture.rootField!,
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
     // Cannot freeze an account when the frozen list index is already taken
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
@@ -789,26 +701,22 @@ describe("test multisig freeze registry program", () => {
     // Even though the caller is a freeze list manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.managerWalletId, 0n),
       asSigner(fixture.freezeListManager),
     );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(zeroAddress, 1n),
       asSigner(fixture.freezeListManager),
     );
 
@@ -834,14 +742,12 @@ describe("test multisig freeze registry program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -853,100 +759,84 @@ describe("test multisig freeze registry program", () => {
     );
     // If the wallet_id is incorrect the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt + 1n),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the address doesn't match the address in the request the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: Leo.address(safeAddress()),
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      Leo.address(safeAddress()),
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
     // If the is_frozen doesn't match the is_frozen in the request the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: false,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      false,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
     // If the frozen_index doesn't match the frozen_index in the request the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
     // If the previous_root doesn't match the previous_root in the request the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fieldLiteral(0n),
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      3,
+      fieldLiteral(0n),
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
     // If the new_root doesn't match the new_root in the request the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fieldLiteral(0n),
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fieldLiteral(0n),
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
     const isFrozen = await fixture.freezeRegistry.mappings.freezeList.get(randomAddress);
@@ -954,14 +844,12 @@ describe("test multisig freeze registry program", () => {
 
     // It's possible to execute the request only once
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      randomAddress,
+      true,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -974,14 +862,12 @@ describe("test multisig freeze registry program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.freezeRegistry.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: false,
-        frozen_index: 3,
-        previous_root: fixture.rootField!,
-        new_root: fixture.rootField!,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      randomAddress,
+      false,
+      3,
+      fixture.rootField!,
+      fixture.rootField!,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -990,36 +876,28 @@ describe("test multisig freeze registry program", () => {
     const fixture = state!;
 
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      BLOCK_HEIGHT_WINDOW,
+      emptyMultisigCommonParams,
       asSigner(fixture.frozenAccount),
     );
 
     await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      BLOCK_HEIGHT_WINDOW,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
     // Even though the caller is a freeze list manager, a non-ZERO wallet_id triggers a multisig check,
     // which fails because no such request exists.
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, 0n),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.managerWalletId, 0n),
       asSigner(fixture.freezeListManager),
     );
     // If wallet_id is ZERO_ADDRESS but salt is non-zero, the transaction fails.
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(zeroAddress, 1n),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(zeroAddress, 1n),
       asSigner(fixture.freezeListManager),
     );
 
@@ -1045,10 +923,8 @@ describe("test multisig freeze registry program", () => {
 
     // If the request wasn't approved yet the transaction will fail
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1061,36 +937,28 @@ describe("test multisig freeze registry program", () => {
 
     // If the wallet_id is incorrect the transaction will fail
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     // If the salt is incorrect the transaction will fail
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt + 1n),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt + 1n),
       asSigner(fixture.deployer),
     );
 
     // If the block height window doesn't match the block height window in the request the transaction will fail
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: 0,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      0,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
     const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
@@ -1098,10 +966,8 @@ describe("test multisig freeze registry program", () => {
 
     // It's possible to execute the request only once
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.freezeListManagerWalletId, salt),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1110,10 +976,8 @@ describe("test multisig freeze registry program", () => {
 
     // If the wallet_id doesn't allow to update the wallet_id role the transaction will fail
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: BLOCK_HEIGHT_WINDOW,
-        multisig_common_params: multisigCommonParams(fixture.managerWalletId, salt),
-      },
+      BLOCK_HEIGHT_WINDOW,
+      multisigCommonParams(fixture.managerWalletId, salt),
       asSigner(fixture.deployer),
     );
   });
@@ -1121,28 +985,16 @@ describe("test multisig freeze registry program", () => {
   test("test verify_non_inclusion_pub", async () => {
     const fixture = state!;
 
-    await fixture.freezeRegistry.verify_non_inclusion_pub.rejected(
-      {
-        account: fixture.frozenAccount,
-      },
-      asSigner(fixture.deployer),
-    );
-    await fixture.freezeRegistry.verify_non_inclusion_pub.accepted(
-      {
-        account: fixture.admin,
-      },
-      asSigner(fixture.deployer),
-    );
+    await fixture.freezeRegistry.verify_non_inclusion_pub.rejected(fixture.frozenAccount, asSigner(fixture.deployer));
+    await fixture.freezeRegistry.verify_non_inclusion_pub.accepted(fixture.admin, asSigner(fixture.deployer));
   });
 
   test("test verify_non_inclusion_priv", async () => {
     const fixture = state!;
 
     await fixture.freezeRegistry.verify_non_inclusion_priv.failsLocally(
-      {
-        account: fixture.frozenAccount,
-        merkle_proof: fixture.frozenAccountMerkleProof!,
-      },
+      fixture.frozenAccount,
+      fixture.frozenAccountMerkleProof!,
       asSigner(fixture.deployer),
     );
 
@@ -1157,30 +1009,24 @@ describe("test multisig freeze registry program", () => {
     ];
     // The transaction failed because the root is mismatch
     await fixture.freezeRegistry.verify_non_inclusion_priv.rejected(
-      {
-        account: fixture.admin,
-        merkle_proof: emptyTreeAdminMerkleProof,
-      },
+      fixture.admin,
+      emptyTreeAdminMerkleProof,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
-      {
-        account: fixture.admin,
-        merkle_proof: fixture.adminMerkleProof!,
-      },
+      fixture.admin,
+      fixture.adminMerkleProof!,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fixture.rootField!,
-        new_root: emptyRootField,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fixture.rootField!,
+      emptyRootField,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
@@ -1191,35 +1037,27 @@ describe("test multisig freeze registry program", () => {
 
     // The transaction succeed because the old root is match
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
-      {
-        account: fixture.admin,
-        merkle_proof: fixture.adminMerkleProof!,
-      },
+      fixture.admin,
+      fixture.adminMerkleProof!,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.update_block_height_window.accepted(
-      {
-        blocks: 1,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      1,
+      emptyMultisigCommonParams,
       asSigner(fixture.freezeListManager),
     );
 
     // The transaction failed because the old root is expired
     await fixture.freezeRegistry.verify_non_inclusion_priv.rejected(
-      {
-        account: fixture.admin,
-        merkle_proof: fixture.adminMerkleProof!,
-      },
+      fixture.admin,
+      fixture.adminMerkleProof!,
       asSigner(fixture.deployer),
     );
 
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
-      {
-        account: fixture.admin,
-        merkle_proof: emptyTreeAdminMerkleProof,
-      },
+      fixture.admin,
+      emptyTreeAdminMerkleProof,
       asSigner(fixture.deployer),
     );
   });
@@ -1235,11 +1073,9 @@ describe("test multisig freeze registry program", () => {
       1,
     );
     await fixture.freezeRegistry.update_wallet_id_role.accepted(
-      {
-        target_wallet_id: randomWalletId,
-        role: MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
-        multisig_common_params: emptyMultisigCommonParams,
-      },
+      randomWalletId,
+      MANAGER_ROLE + FREEZELIST_MANAGER_ROLE,
+      emptyMultisigCommonParams,
       asSigner(fixture.admin),
     );
 
@@ -1260,11 +1096,9 @@ describe("test multisig freeze registry program", () => {
     await fixture.multisig.mappings.completedSigningOps.get(walletSigningOpIdHash);
     await waitBlocks(fixture.ctx, 1);
     await fixture.freezeRegistry.update_wallet_id_role.rejected(
-      {
-        target_wallet_id: zeroAddress,
-        role: 0,
-        multisig_common_params: multisigCommonParams(randomWalletId, salt),
-      },
+      zeroAddress,
+      0,
+      multisigCommonParams(randomWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1276,11 +1110,9 @@ describe("test multisig freeze registry program", () => {
     await fixture.multisig.mappings.completedSigningOps.get(walletSigningOpIdHash);
     await waitBlocks(fixture.ctx, 1);
     await fixture.freezeRegistry.update_role.rejected(
-      {
-        new_address: zeroAddress,
-        role: 0,
-        multisig_common_params: multisigCommonParams(randomWalletId, salt),
-      },
+      zeroAddress,
+      0,
+      multisigCommonParams(randomWalletId, salt),
       asSigner(fixture.deployer),
     );
 
@@ -1292,10 +1124,8 @@ describe("test multisig freeze registry program", () => {
     await fixture.multisig.mappings.completedSigningOps.get(walletSigningOpIdHash);
     await waitBlocks(fixture.ctx, 1);
     await fixture.freezeRegistry.update_block_height_window.rejected(
-      {
-        blocks: 0,
-        multisig_common_params: multisigCommonParams(randomWalletId, salt),
-      },
+      0,
+      multisigCommonParams(randomWalletId, salt),
       asSigner(fixture.deployer),
     );
   });

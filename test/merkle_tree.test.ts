@@ -77,13 +77,7 @@ function generateSafeAddresses(count: number) {
 }
 
 async function verifyInclusion(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
-  const tx = await fixture.contract.verify_inclusion.accepted(
-    {
-      addr: addressLiteral(addr),
-      merkle_proof: proof,
-    },
-    asSigner(fixture.deployer),
-  );
+  const tx = await fixture.contract.verify_inclusion.accepted(addressLiteral(addr), proof, asSigner(fixture.deployer));
 
   return tx.outputs.decrypt(fixture.deployer);
 }
@@ -94,10 +88,8 @@ async function verifyNonInclusion(
   proofs: readonly [MerkleProof, MerkleProof],
 ) {
   const tx = await fixture.contract.verify_non_inclusion.accepted(
-    {
-      addr: addressLiteral(addr),
-      merkle_proofs: proofs,
-    },
+    addressLiteral(addr),
+    proofs,
     asSigner(fixture.deployer),
   );
 
@@ -105,10 +97,7 @@ async function verifyNonInclusion(
 }
 
 async function verifyInclusionFailsLocally(fixture: MerkleTreeFixture, addr: string, proof: MerkleProof) {
-  await fixture.contract.verify_inclusion.failsLocally({
-    addr: addressLiteral(addr),
-    merkle_proof: proof,
-  });
+  await fixture.contract.verify_inclusion.failsLocally(addressLiteral(addr), proof);
 }
 
 async function verifyNonInclusionFailsLocally(
@@ -116,10 +105,7 @@ async function verifyNonInclusionFailsLocally(
   addr: string,
   proofs: readonly [MerkleProof, MerkleProof],
 ) {
-  await fixture.contract.verify_non_inclusion.failsLocally({
-    addr: addressLiteral(addr),
-    merkle_proofs: proofs,
-  });
+  await fixture.contract.verify_non_inclusion.failsLocally(addressLiteral(addr), proofs);
 }
 
 let state: MerkleTreeFixture | undefined;

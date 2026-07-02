@@ -94,44 +94,36 @@ async function deployFixture() {
     ];
 
     await tokenRegistry.mint_public.accepted(
-      {
-        token_id: tokenIdField,
-        recipient: account,
-        amount: amount * 20n,
-        authorized_until: defaultAuthorizedUntil,
-      },
+      tokenIdField,
+      account,
+      amount * 20n,
+      defaultAuthorizedUntil,
       asSigner(admin),
     );
     await tokenRegistry.mint_public.accepted(
-      {
-        token_id: tokenIdField,
-        recipient: frozenAccount,
-        amount: amount * 20n,
-        authorized_until: defaultAuthorizedUntil,
-      },
+      tokenIdField,
+      frozenAccount,
+      amount * 20n,
+      defaultAuthorizedUntil,
       asSigner(admin),
     );
 
     let mintPrivateTx = await tokenRegistry.mint_private.accepted(
-      {
-        token_id: tokenIdField,
-        recipient: account,
-        amount: amount * 20n,
-        external_authorization_required: true,
-        authorized_until: 0,
-      },
+      tokenIdField,
+      account,
+      amount * 20n,
+      true,
+      0,
       asSigner(admin),
     );
     const accountRecord = await mintPrivateTx.outputs.decrypt(account);
 
     mintPrivateTx = await tokenRegistry.mint_private.accepted(
-      {
-        token_id: tokenIdField,
-        recipient: frozenAccount,
-        amount: amount * 20n,
-        external_authorization_required: true,
-        authorized_until: 0,
-      },
+      tokenIdField,
+      frozenAccount,
+      amount * 20n,
+      true,
+      0,
       asSigner(admin),
     );
     const frozenAccountRecord = await mintPrivateTx.outputs.decrypt(frozenAccount);
@@ -187,32 +179,26 @@ describe("test sealed_report_policy program", () => {
       );
       // Cannot update freeze list before initialization
       await fixture.reportPolicy.update_freeze_list.rejected(
-        {
-          account: fixture.frozenAccount,
-          is_frozen: true,
-          frozen_index: 1,
-          previous_root: currentRoot,
-          new_root: fixture.rootField,
-        },
+        fixture.frozenAccount,
+        true,
+        1,
+        currentRoot,
+        fixture.rootField,
         asSigner(fixture.freezeListManager),
       );
 
       if (fixture.deployer.address !== fixture.admin.address) {
         // The caller is not the initial admin
         await fixture.reportPolicy.initialize.rejected(
-          {
-            admin: fixture.admin,
-            blocks: policies.report.blockHeightWindow,
-          },
+          fixture.admin,
+          policies.report.blockHeightWindow,
           asSigner(fixture.deployer),
         );
       }
 
       await fixture.reportPolicy.initialize.accepted(
-        {
-          admin: fixture.admin,
-          blocks: policies.report.blockHeightWindow,
-        },
+        fixture.admin,
+        policies.report.blockHeightWindow,
         asSigner(fixture.admin),
       );
       const isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(addressLiteral(ZERO_ADDRESS));
@@ -231,10 +217,8 @@ describe("test sealed_report_policy program", () => {
 
       // It is possible to call to initialize only one time
       await fixture.reportPolicy.initialize.rejected(
-        {
-          admin: fixture.admin,
-          blocks: policies.report.blockHeightWindow,
-        },
+        fixture.admin,
+        policies.report.blockHeightWindow,
         asSigner(fixture.admin),
       );
     }
@@ -244,60 +228,36 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     // Manager can assign role
-    await fixture.reportPolicy.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.reportPolicy.update_role.accepted(fixture.frozenAccount, MANAGER_ROLE, asSigner(fixture.admin));
     let role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(MANAGER_ROLE);
 
     // Manager can remove role
-    await fixture.reportPolicy.update_role.accepted(
-      {
-        new_address: fixture.frozenAccount,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.reportPolicy.update_role.accepted(fixture.frozenAccount, NONE_ROLE, asSigner(fixture.admin));
     role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.frozenAccount);
     expect(role).toBe(NONE_ROLE);
 
     // Non manager cannot assign role
     await fixture.reportPolicy.update_role.rejected(
-      {
-        new_address: fixture.frozenAccount,
-        role: MANAGER_ROLE,
-      },
+      fixture.frozenAccount,
+      MANAGER_ROLE,
       asSigner(fixture.frozenAccount),
     );
 
     // Non admin user cannot update freeze list manager role
     await fixture.reportPolicy.update_role.rejected(
-      {
-        new_address: fixture.freezeListManager,
-        role: FREEZELIST_MANAGER_ROLE,
-      },
+      fixture.freezeListManager,
+      FREEZELIST_MANAGER_ROLE,
       asSigner(fixture.frozenAccount),
     );
 
     // Manager cannot unassign himself from being a manager
-    await fixture.reportPolicy.update_role.rejected(
-      {
-        new_address: fixture.admin,
-        role: NONE_ROLE,
-      },
-      asSigner(fixture.admin),
-    );
+    await fixture.reportPolicy.update_role.rejected(fixture.admin, NONE_ROLE, asSigner(fixture.admin));
 
     // Manager can assign freeze list manager role
     await fixture.reportPolicy.update_role.accepted(
-      {
-        new_address: fixture.freezeListManager,
-        role: FREEZELIST_MANAGER_ROLE,
-      },
+      fixture.freezeListManager,
+      FREEZELIST_MANAGER_ROLE,
       asSigner(fixture.admin),
     );
     role = await fixture.reportPolicy.mappings.addressToRole.get(fixture.freezeListManager);
@@ -311,48 +271,40 @@ describe("test sealed_report_policy program", () => {
 
     // Only the admin can call to update_freeze_list
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: fixture.admin,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: currentRoot!,
-        new_root: fixture.rootField,
-      },
+      fixture.admin,
+      true,
+      1,
+      currentRoot!,
+      fixture.rootField,
       asSigner(fixture.frozenAccount),
     );
 
     // Cannot unfreeze an unfrozen account
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: currentRoot!,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      currentRoot!,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
 
     // Cannot update the root if the previous root is incorrect
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fieldLiteral(0n),
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fieldLiteral(0n),
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
 
     await fixture.reportPolicy.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: currentRoot!,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      true,
+      1,
+      currentRoot!,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
     let isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(fixture.frozenAccount);
@@ -365,36 +317,30 @@ describe("test sealed_report_policy program", () => {
 
     // Cannot unfreeze an account when the frozen list index is incorrect
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 2,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      false,
+      2,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
 
     // Cannot freeze a frozen account
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      true,
+      1,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
 
     await fixture.reportPolicy.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
     isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(fixture.frozenAccount);
@@ -407,13 +353,11 @@ describe("test sealed_report_policy program", () => {
 
     // Also the freeze list manager can update the freeze list
     await fixture.reportPolicy.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: true,
-        frozen_index: 1,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      fixture.frozenAccount,
+      true,
+      1,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
     isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(fixture.frozenAccount);
@@ -426,13 +370,11 @@ describe("test sealed_report_policy program", () => {
 
     let randomAddress = addressLiteral(safeAddress());
     await fixture.reportPolicy.update_freeze_list.accepted(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
     isAccountFrozen = await fixture.reportPolicy.mappings.freezeList.get(randomAddress);
@@ -446,25 +388,21 @@ describe("test sealed_report_policy program", () => {
     randomAddress = addressLiteral(safeAddress());
     // Cannot freeze an account when the frozen list index is greater than the last index
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 10,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      randomAddress,
+      true,
+      10,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
 
     // Cannot freeze an account when the frozen list index is already taken
     await fixture.reportPolicy.update_freeze_list.rejected(
-      {
-        account: randomAddress,
-        is_frozen: true,
-        frozen_index: 2,
-        previous_root: fixture.rootField,
-        new_root: fixture.rootField,
-      },
+      randomAddress,
+      true,
+      2,
+      fixture.rootField,
+      fixture.rootField,
       asSigner(fixture.freezeListManager),
     );
   });
@@ -473,78 +411,62 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     await fixture.tokenRegistry.transfer_private_to_public.rejected(
-      {
-        recipient: fixture.account,
-        amount,
-        input_record: fixture.accountRecord!,
-      },
+      fixture.account,
+      amount,
+      fixture.accountRecord!,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.transfer_private.rejected(
-      {
-        recipient: fixture.account,
-        amount,
-        input_record: fixture.accountRecord!,
-      },
+      fixture.account,
+      amount,
+      fixture.accountRecord!,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.transfer_public.rejected(
-      {
-        token_id: tokenIdField,
-        recipient: fixture.account,
-        amount,
-      },
+      tokenIdField,
+      fixture.account,
+      amount,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.transfer_public_as_signer.rejected(
-      {
-        token_id: tokenIdField,
-        recipient: fixture.account,
-        amount,
-      },
+      tokenIdField,
+      fixture.account,
+      amount,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.transfer_public_to_private.rejected(
-      {
-        token_id: tokenIdField,
-        recipient: fixture.account,
-        amount,
-        external_authorization_required: true,
-      },
+      tokenIdField,
+      fixture.account,
+      amount,
+      true,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.approve_public.accepted(
-      {
-        token_id: tokenIdField,
-        spender: fixture.account,
-        amount,
-      },
+      tokenIdField,
+      fixture.account,
+      amount,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.transfer_from_public.rejected(
-      {
-        token_id: tokenIdField,
-        owner: fixture.account,
-        recipient: fixture.account,
-        amount,
-      },
+      tokenIdField,
+      fixture.account,
+      fixture.account,
+      amount,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.transfer_from_public_to_private.rejected(
-      {
-        token_id: tokenIdField,
-        owner: fixture.account,
-        recipient: fixture.account,
-        amount,
-        external_authorization_required: true,
-      },
+      tokenIdField,
+      fixture.account,
+      fixture.account,
+      amount,
+      true,
       asSigner(fixture.account),
     );
   });
@@ -553,16 +475,12 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     await fixture.reportPolicy.update_block_height_window.rejected(
-      {
-        blocks: policies.report.blockHeightWindow,
-      },
+      policies.report.blockHeightWindow,
       asSigner(fixture.account),
     );
 
     await fixture.reportPolicy.update_block_height_window.accepted(
-      {
-        blocks: policies.report.blockHeightWindow,
-      },
+      policies.report.blockHeightWindow,
       asSigner(fixture.freezeListManager),
     );
   });
@@ -571,48 +489,22 @@ describe("test sealed_report_policy program", () => {
     const fixture = state!;
 
     // If the sender didn't approve the program the tx will fail
-    await fixture.reportPolicy.transfer_public.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.reportPolicy.transfer_public.rejected(fixture.recipient, amount, asSigner(fixture.account));
 
     await fixture.tokenRegistry.approve_public.accepted(
-      {
-        token_id: tokenIdField,
-        spender: addressLiteral(policies.report.programAddress),
-        amount,
-      },
+      tokenIdField,
+      addressLiteral(policies.report.programAddress),
+      amount,
       asSigner(fixture.account),
     );
 
     // If the sender is frozen account it's impossible to send tokens
-    await fixture.reportPolicy.transfer_public.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.frozenAccount),
-    );
+    await fixture.reportPolicy.transfer_public.rejected(fixture.recipient, amount, asSigner(fixture.frozenAccount));
 
     // If the recipient is frozen account it's impossible to send tokens
-    await fixture.reportPolicy.transfer_public.rejected(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.reportPolicy.transfer_public.rejected(fixture.frozenAccount, amount, asSigner(fixture.account));
 
-    await fixture.reportPolicy.transfer_public.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.reportPolicy.transfer_public.accepted(fixture.recipient, amount, asSigner(fixture.account));
   });
 
   test(`test transfer_public_as_signer`, async () => {
@@ -620,29 +512,19 @@ describe("test sealed_report_policy program", () => {
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_public_as_signer.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
+      fixture.recipient,
+      amount,
       asSigner(fixture.frozenAccount),
     );
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_public_as_signer.rejected(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-      },
+      fixture.frozenAccount,
+      amount,
       asSigner(fixture.account),
     );
 
-    await fixture.reportPolicy.transfer_public_as_signer.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-      },
-      asSigner(fixture.account),
-    );
+    await fixture.reportPolicy.transfer_public_as_signer.accepted(fixture.recipient, amount, asSigner(fixture.account));
   });
 
   test(`test transfer_public_to_priv`, async () => {
@@ -650,49 +532,39 @@ describe("test sealed_report_policy program", () => {
 
     // If the sender didn't approve the program the tx will fail
     await fixture.reportPolicy.transfer_public_to_priv.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.recipientMerkleProof,
       asSigner(fixture.account),
     );
 
     await fixture.tokenRegistry.approve_public.accepted(
-      {
-        token_id: tokenIdField,
-        spender: addressLiteral(policies.report.programAddress),
-        amount,
-      },
+      tokenIdField,
+      addressLiteral(policies.report.programAddress),
+      amount,
       asSigner(fixture.account),
     );
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_public_to_priv.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.recipientMerkleProof,
       asSigner(fixture.frozenAccount),
     );
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_public_to_priv.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
+      fixture.frozenAccount,
+      amount,
+      fixture.frozenAccountMerkleProof,
       asSigner(fixture.account),
     );
 
     const tx = await fixture.reportPolicy.transfer_public_to_priv.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.recipientMerkleProof,
       asSigner(fixture.account),
     );
 
@@ -717,35 +589,29 @@ describe("test sealed_report_policy program", () => {
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.frozenAccountMerkleProof,
+      fixture.recipientMerkleProof,
       asSigner(fixture.frozenAccount),
     );
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_private.failsLocally(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
+      fixture.frozenAccount,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
+      fixture.frozenAccountMerkleProof,
       asSigner(fixture.account),
     );
 
     const tx = await fixture.reportPolicy.transfer_private.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
+      fixture.recipientMerkleProof,
       asSigner(fixture.account),
     );
 
@@ -779,32 +645,26 @@ describe("test sealed_report_policy program", () => {
 
     // If the sender is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_priv_to_public.failsLocally(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.frozenAccountRecord!,
-        sender_merkle_proofs: fixture.frozenAccountMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.frozenAccountRecord!,
+      fixture.frozenAccountMerkleProof,
       asSigner(fixture.frozenAccount),
     );
 
     // If the recipient is frozen account it's impossible to send tokens
     await fixture.reportPolicy.transfer_priv_to_public.rejected(
-      {
-        recipient: fixture.frozenAccount,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.frozenAccount,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
     const tx = await fixture.reportPolicy.transfer_priv_to_public.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
       asSigner(fixture.account),
     );
 
@@ -843,24 +703,20 @@ describe("test sealed_report_policy program", () => {
     ];
     // The transaction failed because the root is mismatch
     await fixture.reportPolicy.transfer_private.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: emptyTreeSenderMerkleProof,
-        recipient_merkle_proofs: emptyTreeRecipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      emptyTreeSenderMerkleProof,
+      emptyTreeRecipientMerkleProof,
       asSigner(fixture.account),
     );
 
     await fixture.reportPolicy.update_freeze_list.accepted(
-      {
-        account: fixture.frozenAccount,
-        is_frozen: false,
-        frozen_index: 1,
-        previous_root: fixture.rootField,
-        new_root: emptyRootField,
-      },
+      fixture.frozenAccount,
+      false,
+      1,
+      fixture.rootField,
+      emptyRootField,
       asSigner(fixture.freezeListManager),
     );
 
@@ -871,46 +727,35 @@ describe("test sealed_report_policy program", () => {
 
     // The transaction succeed because the old root is match
     let tx = await fixture.reportPolicy.transfer_private.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
+      fixture.recipientMerkleProof,
       asSigner(fixture.account),
     );
     fixture.accountRecord = await tx.outputs[1]
       .match(TokenRegistry_Token.output.from("prehook_private", 0))
       .decrypt(fixture.account);
 
-    await fixture.reportPolicy.update_block_height_window.accepted(
-      {
-        blocks: 1,
-      },
-      asSigner(fixture.freezeListManager),
-    );
+    await fixture.reportPolicy.update_block_height_window.accepted(1, asSigner(fixture.freezeListManager));
 
     // The transaction failed because the old root is expired
     await fixture.reportPolicy.transfer_private.rejected(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: fixture.senderMerkleProof,
-        recipient_merkle_proofs: fixture.recipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      fixture.senderMerkleProof,
+      fixture.recipientMerkleProof,
       asSigner(fixture.account),
     );
 
     tx = await fixture.reportPolicy.transfer_private.accepted(
-      {
-        recipient: fixture.recipient,
-        amount,
-        input_record: fixture.accountRecord!,
-        sender_merkle_proofs: emptyTreeSenderMerkleProof,
-        recipient_merkle_proofs: emptyTreeRecipientMerkleProof,
-      },
+      fixture.recipient,
+      amount,
+      fixture.accountRecord!,
+      emptyTreeSenderMerkleProof,
+      emptyTreeRecipientMerkleProof,
       asSigner(fixture.account),
     );
     await tx.outputs[1].match(TokenRegistry_Token.output.from("prehook_private", 0)).decrypt(fixture.account);

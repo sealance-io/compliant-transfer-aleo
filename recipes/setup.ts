@@ -70,140 +70,74 @@ export const setup: DeploymentRecipe = async ctx => {
 
   // initialize programs
   if (!(await reportPolicy.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
-    await reportPolicy.initialize.accepted(
-      {
-        admin,
-        blocks: policies.report.blockHeightWindow,
-      },
-      asSigner(admin),
-    );
+    await reportPolicy.initialize.accepted(admin, policies.report.blockHeightWindow, asSigner(admin));
   }
   if (!(await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
-    await freezeRegistry.initialize.accepted(
-      {
-        admin,
-        blocks: BLOCK_HEIGHT_WINDOW,
-      },
-      asSigner(deployer),
-    );
+    await freezeRegistry.initialize.accepted(admin, BLOCK_HEIGHT_WINDOW, asSigner(deployer));
   }
   if (!(await multisigFreezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
-    await multisigFreezeRegistry.initialize.accepted(
-      {
-        admin,
-        blocks: BLOCK_HEIGHT_WINDOW,
-        manager_wallet_id: zeroAddress,
-      },
-      asSigner(admin),
-    );
+    await multisigFreezeRegistry.initialize.accepted(admin, BLOCK_HEIGHT_WINDOW, zeroAddress, asSigner(admin));
   }
   if (!(await thresholdPolicy.mappings.freezeRegistryProgramName.contains(FREEZE_REGISTRY_PROGRAM_INDEX))) {
-    await thresholdPolicy.initialize.accepted(
-      {
-        admin,
-        blocks: policies.threshold.blockHeightWindow,
-      },
-      asSigner(admin),
-    );
+    await thresholdPolicy.initialize.accepted(admin, policies.threshold.blockHeightWindow, asSigner(admin));
   }
   if (!(await timelockPolicy.mappings.freezeRegistryProgramName.contains(FREEZE_REGISTRY_PROGRAM_INDEX))) {
-    await timelockPolicy.initialize.accepted({ admin }, asSigner(admin));
+    await timelockPolicy.initialize.accepted(admin, asSigner(admin));
   }
   if (!(await exchange.mappings.initialized.contains(true))) {
-    await exchange.initialize.accepted({ admin }, asSigner(admin));
+    await exchange.initialize.accepted(admin, asSigner(admin));
   }
   if (!(await reportToken.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
     await reportToken.initialize.accepted(
-      {
-        name: stringToBigInt("Report Token"),
-        symbol: stringToBigInt("REPORT_TOKEN"),
-        decimals: 6,
-        max_supply: 1000_000000000000n,
-        admin,
-        blocks: BLOCK_HEIGHT_WINDOW,
-      },
+      stringToBigInt("Report Token"),
+      stringToBigInt("REPORT_TOKEN"),
+      6,
+      1000_000000000000n,
+      admin,
+      BLOCK_HEIGHT_WINDOW,
       asSigner(admin),
     );
   }
   if (!(await compliantToken.mappings.tokenInfo.contains(true))) {
     await compliantToken.initialize.accepted(
-      {
-        name: stringToBigInt("Stable Token"),
-        symbol: stringToBigInt("STABLE_TOKEN"),
-        decimals: 6,
-        max_supply: 1000_000000000000n,
-        admin,
-      },
+      stringToBigInt("Stable Token"),
+      stringToBigInt("STABLE_TOKEN"),
+      6,
+      1000_000000000000n,
+      admin,
       asSigner(deployer),
     );
   }
   if (!(await multisigCompliantToken.mappings.tokenInfo.contains(true))) {
     await multisigCompliantToken.initialize.accepted(
-      {
-        name: stringToBigInt("Stable Token"),
-        symbol: stringToBigInt("STABLE_TOKEN"),
-        decimals: 6,
-        max_supply: 1000_000000000000n,
-        admin,
-        manager_wallet_id: zeroAddress,
-      },
+      stringToBigInt("Stable Token"),
+      stringToBigInt("STABLE_TOKEN"),
+      6,
+      1000_000000000000n,
+      admin,
+      zeroAddress,
       asSigner(admin),
     );
   }
 
   // assign exchange program to be a minter
+  await tokenRegistry.set_role.accepted(fieldLiteral(policies.report.tokenId), exchange.address(), 1, asSigner(admin));
   await tokenRegistry.set_role.accepted(
-    {
-      token_id: fieldLiteral(policies.report.tokenId),
-      account: exchange.address(),
-      role: 1,
-    },
+    fieldLiteral(policies.threshold.tokenId),
+    exchange.address(),
+    1,
     asSigner(admin),
   );
-  await tokenRegistry.set_role.accepted(
-    {
-      token_id: fieldLiteral(policies.threshold.tokenId),
-      account: exchange.address(),
-      role: 1,
-    },
-    asSigner(admin),
-  );
-  await timelockPolicy.update_role.accepted(
-    {
-      new_address: exchange.address(),
-      role: MINTER_ROLE,
-    },
-    asSigner(admin),
-  );
+  await timelockPolicy.update_role.accepted(exchange.address(), MINTER_ROLE, asSigner(admin));
 
   // Update the freeze list manager
-  await reportPolicy.update_role.accepted(
-    {
-      new_address: freezeListManager,
-      role: FREEZELIST_MANAGER_ROLE,
-    },
-    asSigner(admin),
-  );
-  await reportToken.update_role.accepted(
-    {
-      new_address: freezeListManager,
-      role: FREEZELIST_MANAGER_ROLE,
-    },
-    asSigner(admin),
-  );
-  await freezeRegistry.update_role.accepted(
-    {
-      new_address: freezeListManager,
-      role: FREEZELIST_MANAGER_ROLE,
-    },
-    asSigner(admin),
-  );
+  await reportPolicy.update_role.accepted(freezeListManager, FREEZELIST_MANAGER_ROLE, asSigner(admin));
+  await reportToken.update_role.accepted(freezeListManager, FREEZELIST_MANAGER_ROLE, asSigner(admin));
+  await freezeRegistry.update_role.accepted(freezeListManager, FREEZELIST_MANAGER_ROLE, asSigner(admin));
   await multisigFreezeRegistry.update_role.accepted(
-    {
-      new_address: freezeListManager,
-      role: FREEZELIST_MANAGER_ROLE,
-      multisig_common_params: emptyMultisigCommonParams,
-    },
+    freezeListManager,
+    FREEZELIST_MANAGER_ROLE,
+    emptyMultisigCommonParams,
     asSigner(admin),
   );
 };

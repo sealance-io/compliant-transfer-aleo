@@ -54,14 +54,7 @@ async function deployFixture() {
     }
 
     if (!(await freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX))) {
-      await freezeRegistry.initialize.accepted(
-        {
-          admin,
-          blocks: BLOCK_HEIGHT_WINDOW,
-          manager_wallet_id: zeroAddress,
-        },
-        asSigner(admin),
-      );
+      await freezeRegistry.initialize.accepted(admin, BLOCK_HEIGHT_WINDOW, zeroAddress, asSigner(admin));
     }
 
     // Create the wallets
@@ -116,19 +109,15 @@ describe("test upgradeability", () => {
     const freezeRegistryUpgradeEdition = freezeRegistryEditionBefore + 1; // getProgramUpgradeEdition(fixture.ctx, "multisig_freezelist_registry");
     const checksum = await getDeployedProgramChecksum(fixture.ctx, "multisig_freezelist_registry");
     const getSigningOpIdForDeployTx = await fixture.freezeRegistry.get_signing_op_id_for_deploy.accepted(
-      {
-        checksum,
-        edition: freezeRegistryUpgradeEdition,
-      },
+      checksum,
+      freezeRegistryUpgradeEdition,
       asSigner(fixture.deployer),
     );
     const signingOpId = await getSigningOpIdForDeployTx.outputs.decrypt(fixture.deployer);
     await fixture.multisig.initiate_signing_op.accepted(
-      {
-        wallet_id: fixture.freezeRegistryAddress,
-        signing_op_id: signingOpId,
-        block_expiration: MAX_BLOCK_HEIGHT,
-      },
+      fixture.freezeRegistryAddress,
+      signingOpId,
+      MAX_BLOCK_HEIGHT,
       asSigner(fixture.deployer),
     );
     // The upgrade fail because the multisig request is not approved yet
