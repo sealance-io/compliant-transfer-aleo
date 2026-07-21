@@ -10,6 +10,21 @@ struct ChecksumEdition {
 
 // The 'exchange' program.
 // This is a simple exchange program to demonstrate the complaint tokens capabilities. It is intended only for Aleo testnet
+
+// The address that received the Aleo credits in the swap
+const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
+// The rate that we will use in case there is no defined rate.
+const DEFAULT_RATE: u128 = 10u128;
+const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
+
+const INITIALIZED_INDEX: bool = true;
+// Maps a role to an address.
+// This program defines only one role: the admin.
+const NONE_ROLE: u16 = 0u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+
 program gqrfmwbtyp.aleo {
     @custom
     constructor() {
@@ -22,16 +37,6 @@ program gqrfmwbtyp.aleo {
             assert(signing_complete);
         }
     }
-
-    // The address that received the Aleo credits in the swap
-    const TREASURY_ADDRESS: address = aleo1lwa86hr7qx99d7e3dcyv2s7wt9g8rmd6qxzm5zprad0c4ejynsqqvaxysn;
-    // The rate that we will use in case there is no defined rate.
-    const DEFAULT_RATE: u128 = 10u128;
-    const TIMELOCK_TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field;
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-
-
-    const INITIALIZED_INDEX: bool = true;
     // Indicates whether an address is frozen.
     mapping initialized: bool => bool;
 
@@ -39,10 +44,6 @@ program gqrfmwbtyp.aleo {
     // Used to calculate how many tokens a user receives per credit.
     // received_tokens = sent_credits * token_rates[token_id]
     mapping token_rates: field => u128;
-    // Maps a role to an address.
-    // This program defines only one role: the admin.
-    const NONE_ROLE: u16 = 0u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
 
     // Initializes the admin

@@ -9,7 +9,7 @@ dotenv.config({ quiet: true });
 
 export default defineConfig({
   plugins: [pluginLeo, pluginNetwork, pluginDeploy, pluginTest],
-  leoVersion: "4.2.0",
+  leoVersion: "4.3.2",
   defaultNetwork: "devnode",
   networks: {
     devnode: {
@@ -17,7 +17,6 @@ export default defineConfig({
       network: "testnet",
       autoBlock: true,
       provider: "leo",
-      consensusHeights: "0,1,2,3,4,5,6,7,8,9,10,11,12,13",
       privateKey: configVariable(
         "ALEO_DEVNET_DEPLOYER_PRIVATE_KEY",
         "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
@@ -44,85 +43,85 @@ export default defineConfig({
   },
   namedAccounts: {
     deployer: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_DEPLOYER_PRIVATE_KEY",
-        "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
+        "APrivateKey1zkp3svrUTVPiKLUEUzYiAB3yhuN3w4ZQwMtZtHZ6rxfh31A",
       ),
     },
     admin: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_ADMIN_PRIVATE_KEY",
-        "APrivateKey1zkpGu1DmRgYYvQ3FmE2iXisTEDXYS2vDVLhbY3bTq8f7fv7",
+        "APrivateKey1zkp3svrUTVPiKLUEUzYiAB3yhuN3w4ZQwMtZtHZ6rxfh31A",
       ),
     },
     investigator: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_INVESTIGATOR_PRIVATE_KEY",
         "APrivateKey1zkpBjpEgLo4arVUkQmcLdKQMiAKGaHAQVVwmF8HQby8vdYs",
       ),
     },
     frozenAccount: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_FROZEN_ADDRESS_PRIVATE_KEY",
         "APrivateKey1zkpAaWyA9Qcs6hQbVPJv6Wjh7eSzTnxrobhTGguSpfJX5jz",
       ),
     },
     account: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_SENDER_PRIVATE_KEY",
         "APrivateKey1zkp2RWGDcde3efb89rjhME1VYA8QMxcxep5DShNBR6n8Yjh",
       ),
     },
     recipient: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_RECIPIENT_PRIVATE_KEY",
         "APrivateKey1zkp2GUmKbVsuc1NSj28pa1WTQuZaK5f1DQJAT6vPcHyWokG",
       ),
     },
     minter: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_MINTER_PRIVATE_KEY",
         "APrivateKey1zkp9FL6oLk5e5unwQrXCz3PfDJPE1WM1W7psGm8edP5KRLL",
       ),
     },
     burner: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_BURNER_PRIVATE_KEY",
         "APrivateKey1zkpDigVA9KDuNh7ziQ6QD7CGSDdGCYxixtVDsuf4f1U2jZC",
       ),
     },
     supplyManager: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_SUPPLY_MANAGER_PRIVATE_KEY",
         "APrivateKey1zkpGt8jNxSYTRgoYM21NuRzp7ockeeGDmpnXpUEvGyNeNSS",
       ),
     },
     spender: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_SPENDER_PRIVATE_KEY",
         "APrivateKey1zkpFKQi2yiWf1P1McSz5DarAH1EVtWn96jzGsc57ddn4fT4",
       ),
     },
     freezeListManager: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_FREEZE_LIST_MANAGER_PRIVATE_KEY",
         "APrivateKey1zkp8EXvwBCw1Tic27Uz7sZiZPpsGosLmmHFS3uzWFVU9q4e",
       ),
     },
     pauser: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_PAUSER_PRIVATE_KEY",
         "APrivateKey1zkpB4jk2y5fQDAH7cq6p1SiqwMGhj88QsUVQsa5zbnNd6Ub",
       ),
     },
     signer1: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_SIGNER1_PRIVATE_KEY",
         "APrivateKey1zkp3ZrLvtBha1dKbgYHcLr3jiEFQXZR5f3PagKSb2EA7zPe",
       ),
     },
     signer2: {
-      devnode: configVariable(
+      default: configVariable(
         "ALEO_DEVNET_SIGNER2_PRIVATE_KEY",
         "APrivateKey1zkpCKsb5i4wFyAuuZinJiW5Eru25aFLYE6ofJBwjQrxgqLB",
       ),

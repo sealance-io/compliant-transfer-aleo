@@ -32,6 +32,12 @@ struct Allowance {
   token_id: field
 }
 
+const CREDITS_RESERVED_TOKEN_ID: field = 3443843282313283355522573239085696902919850365217539366784739393210722344986field;
+
+const MINTER_ROLE: u8 = 1u8;
+const BURNER_ROLE: u8 = 2u8;
+const SUPPLY_MANAGER_ROLE: u8 = 3u8;
+
 program token_registry.aleo {
   @noupgrade
   constructor() {}
@@ -43,16 +49,10 @@ program token_registry.aleo {
     external_authorization_required: bool,
     authorized_until: u32
   }
-
-  const CREDITS_RESERVED_TOKEN_ID: field = 3443843282313283355522573239085696902919850365217539366784739393210722344986field;
   mapping registered_tokens: field => TokenMetadata;
   mapping balances: field => Balance; // hash(token_id, account) => Balance
   mapping authorized_balances: field => Balance; // hash(token_id, account) => Balance
   mapping allowances: field => u128; // hash(token_id, account, spender) => Allowance
-
-  const MINTER_ROLE: u8 = 1u8;
-  const BURNER_ROLE: u8 = 2u8;
-  const SUPPLY_MANAGER_ROLE: u8 = 3u8;
   mapping roles: field => u8; // hash(token_id, account) => role
 
   // -------------------------

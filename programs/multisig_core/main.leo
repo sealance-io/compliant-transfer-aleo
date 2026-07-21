@@ -16,6 +16,15 @@ const ADMIN_OP_CHANGE_THRESHOLD: u8 = 1;
 const ADMIN_OP_ADD_SIGNER: u8 = 2;
 const ADMIN_OP_REMOVE_SIGNER: u8 = 3;
 
+// The initial deployer, who is allowed to deploy the first edition of the program and call the init
+// transition.
+// When setting guard_create_wallet=true, this is also the only address that is allowed to create
+// the `self.address` "guard wallet".
+//
+// This address belongs to the first standard Aleo test account.
+// IMPORTANT! Remember to change this before deployment!
+const DEPLOYER_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+
 ///////////////////////////////////////////////////////////////////////////
 // Structs (moved outside program block for Leo v4)
 ///////////////////////////////////////////////////////////////////////////
@@ -458,15 +467,6 @@ final fn finalize_sign_ecdsa_impl(wallet_id: address, signing_op_id: field, sign
 ///////////////////////////////////////////////////////////////////////////
 
 program multisig_core.aleo {
-    // The initial deployer, who is allowed to deploy the first edition of the program and call the init
-    // transition.
-    // When setting guard_create_wallet=true, this is also the only address that is allowed to create
-    // the `self.address` "guard wallet".
-    //
-    // This address belongs to the first standard Aleo test account.
-    // IMPORTANT! Remember to change this before deployment!
-    const DEPLOYER_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
-
     @custom
     constructor() {
         if (self.edition == 0u16) {
