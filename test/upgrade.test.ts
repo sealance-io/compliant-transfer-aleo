@@ -16,7 +16,6 @@ import { approveRequest, createWallet, initializeMultisig } from "../lib/Multisi
 import { Leo } from "../typechain/BaseContract.js";
 import { createMultisigCore } from "../typechain/MultisigCore.js";
 import { createMultisigFreezelistRegistry } from "../typechain/MultisigFreezelistRegistry.js";
-import { Address } from "@provablehq/sdk";
 
 interface UpgradeFixture {
   readonly ctx: TestContext;
