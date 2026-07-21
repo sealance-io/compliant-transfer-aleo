@@ -120,6 +120,40 @@ fn verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field 
     return root1;
 }
 
+const TOKEN_INFO_INDEX: bool = true;
+
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MINTER_ROLE: u16 = 1u16;
+const BURNER_ROLE: u16 = 2u16;
+const PAUSE_ROLE: u16 = 4u16;   // can pause/unpause transfers
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+
+// Only this address can initialize the program
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
+// This address receives compliance records (can be updated with the contract upgrade)
+const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
+
+const PAUSE_STATUS_INDEX: bool = true;
+
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
+const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
+const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
+// Maximum depth of the Merkle tree used in freeze list proofs.
+// The siblings array has MAX_TREE_DEPTH + 1 elements because siblings[0] holds the leaf itself.
+const MAX_TREE_DEPTH: u32 = 15u32;
+
+const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;
+const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
+const MULTISIG_OP_SET_PAUSE_STATUS: u8 = 3u8;
+const MULTISIG_OP_MINT_PUBLIC: u8 = 4u8;
+const MULTISIG_OP_BURN_PUBLIC: u8 = 5u8;
+const MULTISIG_OP_MINT_PRIVATE: u8 = 6u8;
+const MULTISIG_OP_BURN_PRIVATE: u8 = 7u8;
+
 program multisig_compliant_token.aleo {
     @custom
     constructor() {
@@ -150,50 +184,16 @@ program multisig_compliant_token.aleo {
         owner: address,
         freeze_list_root: field,
     }
-
-    const TOKEN_INFO_INDEX: bool = true;
     // token specs
     mapping token_info: bool => TokenInfo;
 
     mapping balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => TokenAllowance
-
-    // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MINTER_ROLE: u16 = 1u16;
-    const BURNER_ROLE: u16 = 2u16;
-    const PAUSE_ROLE: u16 = 4u16;   // can pause/unpause transfers
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
     // Maps each multisig wallet ID to its assigned role,
     // defining what actions that multisig wallet is authorized to perform.
     mapping wallet_id_to_role: address => u16;
-
-    // Only this address can initialize the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-
-    // This address receives compliance records (can be updated with the contract upgrade)
-    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
-
-    const PAUSE_STATUS_INDEX: bool = true;
     mapping pause: bool => bool;
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
-    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    // Maximum depth of the Merkle tree used in freeze list proofs.
-    // The siblings array has MAX_TREE_DEPTH + 1 elements because siblings[0] holds the leaf itself.
-    const MAX_TREE_DEPTH: u32 = 15u32;
-
-    const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;
-    const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
-    const MULTISIG_OP_SET_PAUSE_STATUS: u8 = 3u8;
-    const MULTISIG_OP_MINT_PUBLIC: u8 = 4u8;
-    const MULTISIG_OP_BURN_PUBLIC: u8 = 5u8;
-    const MULTISIG_OP_MINT_PRIVATE: u8 = 6u8;
-    const MULTISIG_OP_BURN_PRIVATE: u8 = 7u8;
 
     // Stores pending multisig requests, Keyed by hash(multisig_core.aleo::WalletSigningOpId) to uniquely identify each operation
     mapping pending_requests: field => CompliantTokenMultisigOp; // hash(multisig_core.aleo::WalletSigningOpId) => CompliantTokenMultisigOp;

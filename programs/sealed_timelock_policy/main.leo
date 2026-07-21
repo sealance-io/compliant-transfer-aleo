@@ -8,6 +8,25 @@ struct ChecksumEdition {
     edition: u16,
 }
 
+// token specs
+const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
+const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
+const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
+const DECIMALS: u8 = 6u8;
+const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
+
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
+const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
+// Only this address can initialize the program
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
+const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MINTER_ROLE: u16 = 1u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+
 program sealed_timelock_policy.aleo {
     @custom
     constructor() {
@@ -21,29 +40,10 @@ program sealed_timelock_policy.aleo {
         }
     }
 
-    // token specs
-    const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
-    const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
-    const SYMBOL: u128 = 6073470532514169675u128; // symbol: u128, TIMELOCK ascii encoded
-    const DECIMALS: u8 = 6u8;
-    const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000u128;
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
-    const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
-    // Only this address can initialize the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-
-    const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
-
     // Mappings
     // Stores the ASCII-encoded name of the freeze registry program.
     // Used by off-chain parties to locate the correct program for generating Merkle proofs.
     mapping freeze_registry_program_name: bool => u128;
-    // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MINTER_ROLE: u16 = 1u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
 
 

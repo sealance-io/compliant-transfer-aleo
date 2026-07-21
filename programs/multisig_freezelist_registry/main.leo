@@ -33,6 +33,28 @@ struct MultisigCommonParams {
     salt: scalar
 }
 
+const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
+const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
+const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
+const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+const FREEZE_LIST_LAST_INDEX: bool = true;
+
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
+// Only this address can initialize the program
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+
+const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;
+const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
+const MULTISIG_OP_UPDATE_BLOCK_WINDOW: u8 = 3u8;
+const MULTISIG_OP_UPDATE_FREEZE_LIST: u8 = 4u8;
+
+
 program multisig_freezelist_registry.aleo {
     @custom
     constructor() {
@@ -46,26 +68,10 @@ program multisig_freezelist_registry.aleo {
         }
     }
 
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    // Only this address can initialize the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-
-    // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
-    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     mapping address_to_role: address => u16;
     // Maps each multisig wallet ID to its assigned role,
     // defining what actions that multisig wallet is authorized to perform.
     mapping wallet_id_to_role: address => u16;
-
-    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
-    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-    const FREEZE_LIST_LAST_INDEX: bool = true;
-
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
     // Mimics an array of frozen addresses by storing them at sequential indexes.
@@ -78,11 +84,6 @@ program multisig_freezelist_registry.aleo {
     mapping root_updated_height: bool => u32;
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
-
-    const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;
-    const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
-    const MULTISIG_OP_UPDATE_BLOCK_WINDOW: u8 = 3u8;
-    const MULTISIG_OP_UPDATE_FREEZE_LIST: u8 = 4u8;
 
     // Stores pending multisig requests, Keyed by hash(multisig_core.aleo::WalletSigningOpId) to uniquely identify each operation
     mapping pending_requests: field => FreezeRegistryMultisigOp; // hash(multisig_core.aleo::WalletSigningOpId) => FreezeRegistryMultisigOp;

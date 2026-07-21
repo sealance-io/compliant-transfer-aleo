@@ -19,6 +19,29 @@ struct ChecksumEdition {
     edition: u16,
 }
 
+// Freeze list manager: can update the freeze list
+const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
+const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
+const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
+const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
+const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+const FREEZE_LIST_LAST_INDEX: bool = true;
+
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
+// Only this address can initialize the program
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+// This address receives compliance records (can be updated with the contract upgrade)
+const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
+
+const TOKEN_INFO_INDEX: bool = true;
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MINTER_ROLE: u16 = 1u16;
+const BURNER_ROLE: u16 = 2u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+
 program sealed_report_token.aleo {
     @custom
     constructor() {
@@ -32,21 +55,6 @@ program sealed_report_token.aleo {
         }
     }
 
-    // Freeze list manager: can update the freeze list
-    const FREEZE_LIST_MANAGER_INDEX: u8 = 4u8;
-    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
-    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-    const FREEZE_LIST_LAST_INDEX: bool = true;
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    // Only this address can initialize the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-    // This address receives compliance records (can be updated with the contract upgrade)
-    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
-
     record Token {
         owner: address,
         amount: u128
@@ -59,8 +67,6 @@ program sealed_report_token.aleo {
         sender: address,
         recipient: address
     }
-
-    const TOKEN_INFO_INDEX: bool = true;
     // token specs
     mapping token_info: bool => TokenInfo;
 
@@ -79,12 +85,6 @@ program sealed_report_token.aleo {
     mapping root_updated_height: bool => u32;
     // Defines the number of blocks during which the previous root is still considered valid.
     mapping block_height_window: bool => u32;
-   // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MINTER_ROLE: u16 = 1u16;
-    const BURNER_ROLE: u16 = 2u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
-    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     mapping address_to_role: address => u16;
 
     // -------------------------

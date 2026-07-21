@@ -33,6 +33,22 @@ struct MultisigCommonParams {
     salt: scalar
 }
 
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+// Only this address can initialize the program
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+
+const INITIALIZED_INDEX: bool = true;
+
+const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;
+const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
+const MULTISIG_OP_UPDATE_BLOCK_WINDOW: u8 = 3u8;
+const MULTISIG_OP_UPDATE_FREEZE_LIST: u8 = 4u8;
+
 program multisig_freezelist_proxy.aleo {
     @custom
     constructor() {
@@ -45,27 +61,11 @@ program multisig_freezelist_proxy.aleo {
             assert(signing_complete);
         }
     }
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    // Only this address can initialize the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-
-    // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
-    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     // Maps each multisig wallet ID to its assigned role,
     // defining what actions that multisig wallet is authorized to perform.
     mapping wallet_id_to_role: address => u16;
-
-    const INITIALIZED_INDEX: bool = true;
     // Indicates whether an address is frozen.
     mapping initialized: bool => bool;
-
-    const MULTISIG_OP_UPDATE_WALLET_ROLE: u8 = 1u8;
-    const MULTISIG_OP_UPDATE_ROLE: u8 = 2u8;
-    const MULTISIG_OP_UPDATE_BLOCK_WINDOW: u8 = 3u8;
-    const MULTISIG_OP_UPDATE_FREEZE_LIST: u8 = 4u8;
 
     // Stores pending multisig requests, Keyed by hash(multisig_core.aleo::WalletSigningOpId) to uniquely identify each operation
     mapping pending_requests: field => FreezeRegistryMultisigOp; // hash(multisig_core.aleo::WalletSigningOpId) => FreezeRegistryMultisigOp;

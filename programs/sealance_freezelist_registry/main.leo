@@ -6,6 +6,22 @@ struct ChecksumEdition {
     edition: u16,
 }
 
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
+// Only this address can deploy the program
+const DEPLOYER_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
+
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
+
+const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
+const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
+const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
+const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+const FREEZE_LIST_LAST_INDEX: bool = true;
+
 program sealance_freezelist_registry.aleo {
     @custom
     constructor() {
@@ -18,23 +34,7 @@ program sealance_freezelist_registry.aleo {
             assert(signing_complete);
         }
     }
-
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const EMPTY_ROOT: field = 3642222252059314292809609689035560016959342421640560347114299934615987159853field; // hash of H(ZERO_ADDRESS, ZERO_ADDRESS)
-    // Only this address can deploy the program
-    const DEPLOYER_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
-
-    // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
-    const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
     mapping address_to_role: address => u16;
-
-    const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
-    const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-    const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-    const FREEZE_LIST_LAST_INDEX: bool = true;
 
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;

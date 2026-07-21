@@ -8,6 +8,29 @@ struct ChecksumEdition {
     edition: u16,
 }
 
+const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
+const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
+const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
+const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
+const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
+// Only this address can initialize the program
+const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
+// This address receives compliance records (can be updated with the contract upgrade)
+const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
+
+// Info: 1 block per 10 seconds (approx)
+// Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
+const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
+
+const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
+const EPOCH_INDEX: bool = true;
+const THRESHOLD_INDEX: bool = true;
+const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
+
+// Roles can be assigned using bitmasking to allow multiple roles per address
+const NONE_ROLE: u16 = 0u16;
+const MANAGER_ROLE: u16 = 8u16; // can only assign roles
+
 program sealed_threshold_report_policy.aleo {
     @custom
     constructor() {
@@ -20,25 +43,6 @@ program sealed_threshold_report_policy.aleo {
             assert(signing_complete);
         }
     }
-
-    const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
-    const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
-    const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
-    const FREEZE_REGISTRY_PROGRAM_NAME: u128 = 531934507715736310883939492834865785u128;// freeze_registry ascii encoded
-    const THRESHOLD: u128 = 1000000000u128; // 1000 tokens
-    // Only this address can initialize the program
-    const INITIAL_CONFIGURATION_ADDRESS: address = aleo1mh7al4qsedqvsh64pmmlcmzl5ugmrdxp4a4rdneja7etn8cpuspqvrj9q8;
-    // This address receives compliance records (can be updated with the contract upgrade)
-    const INVESTIGATOR_ADDRESS: address = aleo12ux3gdauck0v60westgcpqj7v8rrcr3v346e4jtq04q7kkt22czsh808v2;
-
-    // Info: 1 block per 10 seconds (approx)
-    // Reference: https://github.com/ProvableHQ/snarkVM/blob/staging/console/network/src/lib.rs#L152
-    const EPOCH: u32 = 8640u32; // ~24 hours, 3600/10 * 24 = 8640
-
-    const FREEZE_REGISTRY_PROGRAM_INDEX: bool = true;
-    const EPOCH_INDEX: bool = true;
-    const THRESHOLD_INDEX: bool = true;
-    const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
 
     // Mappings
     // Stores the ASCII-encoded name of the freeze registry program.
@@ -53,10 +57,6 @@ program sealed_threshold_report_policy.aleo {
     mapping block_height_window: bool => u32;
     // Tracks which addresses have already generated a TokenComplianceStateRecord.
     mapping owned_state_record: address => bool;
-
-    // Roles can be assigned using bitmasking to allow multiple roles per address
-    const NONE_ROLE: u16 = 0u16;
-    const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
 
     record ComplianceRecord {
