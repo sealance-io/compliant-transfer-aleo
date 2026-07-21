@@ -40,27 +40,15 @@ export async function upgradeProgram(
 }
 
 export async function getProgramEdition(ctx: TestContext, programName: string): Promise<number> {
-  const url = `${ctx.connection.endpoint}/${ctx.connection.networkId}/program/${programName}.aleo/latest_edition`;
-  console.log(url);
-  const latest_edition = Number(await (await fetch(url)).json());
-  return latest_edition;
+  return await ctx.connection.getProgramEdition(`${programName}.aleo`);
+}
+
+export async function getDeployedProgramChecksum(ctx: TestContext, programName: string): Promise<number[]> {
+  return [...(await ctx.connection.getProgramChecksum(`${programName}.aleo`))];
 }
 
 interface DeploymentTransaction {
   deployment: {
     program_checksum: string[]; // e.g., ["123u8", "45u8", ...]
   };
-}
-
-export async function getDeployedProgramChecksum(ctx: TestContext, programName: string): Promise<number[]> {
-  const baseUrl = `${ctx.connection.endpoint}/${ctx.connection.networkId}`;
-
-  const transactionId: string = (await (
-    await fetch(`${baseUrl}/find/transactionID/deployment/${programName}.aleo`)
-  ).json()) as string;
-  const transactionDetails: DeploymentTransaction = (await (
-    await fetch(`${baseUrl}/transaction/${transactionId}`)
-  ).json()) as DeploymentTransaction;
-  const checksum = transactionDetails.deployment.program_checksum.map((value: string) => parseInt(value, 10));
-  return checksum;
 }
