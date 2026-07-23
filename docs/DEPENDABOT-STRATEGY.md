@@ -21,7 +21,7 @@ This document explains the rationale behind our Dependabot configuration. For im
 2. **Stability over speed** - Cooldowns prevent adopting buggy releases
 3. **Exact versioning** - No `^` or `~` ranges; deterministic builds
 4. **Aggressive grouping** - Reduce PR noise while keeping SDK deps separate
-5. **Pragmatic blocking** - Local framework packages (`@lionden/*`) are updated manually with LionDen changes
+5. **Pragmatic blocking** - Framework packages (`@lionden/*`) are pinned and reviewed together
 
 ## npm Ecosystem
 
@@ -45,13 +45,13 @@ We chose GitHub's recommended defaults (7/3) to balance security with avoiding t
 | --------------- | ------------------------------------------------------------ |
 | `@provablehq/*` | SDK dependency - needs careful review for Aleo compatibility |
 | `@scure/base`   | SDK dependency - cryptographic library                       |
-| `@lionden/*`    | Local file dependencies - updated manually with LionDen      |
+| `@lionden/*`    | Framework dependency set - update and review together        |
 
 This reduces PR volume significantly while ensuring SDK-affecting changes get individual attention.
 
 ### Blocked Updates
 
-- **`@lionden/*`** - Local file dependencies; update intentionally with the framework checkout
+- **`@lionden/*`** - Framework dependency set; update intentionally and review together
 - **All major versions** - Breaking changes require manual review (security updates bypass)
 
 ## GitHub Actions Ecosystem
