@@ -71,9 +71,6 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
 
-      - name: Run postinstall
-        run: npm run postinstall
-
       - name: Compile Leo programs
         run: npm run compile
 
