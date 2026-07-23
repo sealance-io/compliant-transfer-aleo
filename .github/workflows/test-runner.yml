@@ -71,6 +71,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
 
+      - name: Initialize Leo home directory
+        run: mkdir -p "$HOME/.aleo"
+
       - name: Compile Leo programs
         run: npm run compile -- --network testnet
 
