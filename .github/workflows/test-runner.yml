@@ -80,9 +80,9 @@ jobs:
       - name: Run tests
         run: |
           if [ "$TEST_FILE" = "all" ]; then
-            npm test
+            npm test -- --no-compile
           else
-            npm test test/$TEST_FILE
+            npm test test/$TEST_FILE -- --no-compile
           fi
         env:
           TEST_FILE: ${{ inputs.test-file }}
