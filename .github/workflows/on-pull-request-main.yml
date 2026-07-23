@@ -101,8 +101,6 @@ jobs:
         run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
       - name: Check for vulnerabilities
         run: npm audit --audit-level=high
-      - name: Run postinstall
-        run: npm run postinstall
       - name: Run prettier
         run: npm run format
 
