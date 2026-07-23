@@ -80,7 +80,7 @@ npm run format:fix          # Auto-fix formatting
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
 4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/testnet)
 5. **npm Security**: Always use `--ignore-scripts` for installs; use `--allow-git=none` with `npm ci`. Build/publish workflows may run scripts as needed
-6. **LionDen Dependencies**: `@lionden/*` packages are local file dependencies from `../lionden`; update them intentionally with the LionDen checkout
+6. **LionDen Dependencies**: `@lionden/*` packages are installed from npm and pinned exactly; update them intentionally as a group
 7. **Program Upgrades**: Use `scripts/upgrade.ts` with `--program <program-name>` where the program name comes from `/programs` without the `.aleo` suffix
 
 ## CI/CD Status Checks

@@ -86,6 +86,6 @@ Compiled programs output to `/artifacts`:
 
 ## LionDen Framework
 
-Uses local `@lionden/*` packages for compiling Leo, generating TypeScript bindings, managing devnode tests, and running deployment scripts. Configuration lives in `lionden.config.ts`.
+Uses npm-published `@lionden/*` packages for compiling Leo, generating TypeScript bindings, managing devnode tests, and running deployment scripts. Configuration lives in `lionden.config.ts`.
 
 **Key APIs**: `LionDenRuntimeEnvironment`, generated `/typechain` contracts, `@lionden/testing` `TestContext`
