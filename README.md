@@ -11,7 +11,7 @@ This repository contains programs (smart contracts), tests, and auxiliary script
 
 This project is developed and tested with the following tooling:
 
-- [Leo](https://github.com/ProvableHQ/leo) CLI v4.0.1
+- [Leo](https://github.com/ProvableHQ/leo) CLI v4.3.2
 
 - [LionDen](./lionden.config.ts) Aleo development framework for compiling programs, generating TypeScript bindings, deployment, and testing
 
