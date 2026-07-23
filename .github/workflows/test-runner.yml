@@ -72,7 +72,7 @@ jobs:
         run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
 
       - name: Compile Leo programs
-        run: npm run compile
+        run: npm run compile -- --network testnet
 
       - name: Run tests
         run: |
