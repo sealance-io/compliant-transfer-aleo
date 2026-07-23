@@ -30,7 +30,7 @@ All actions pinned to commit SHAs:
 | `actions/github-script`            | `ed597411` | v8.0.0  |
 | `actions/setup-node`               | `53b83947` | v6.3.0  |
 | `changesets/action`                | `6a0a831f` | v1.7.0  |
-| `sealance-io/setup-leo-action`     | `4491779e` | v1.1.0  |
+| `sealance-io/setup-leo-action`     | `3fb8fc82` | v1.1.3  |
 | `zizmorcore/zizmor-action`         | `71321a20` | v0.5.2  |
 
 ### 3. Container Image Pinning
