@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
 import { type SignableNamedAccount } from "@lionden/config";
-import { Leo } from "../typechain/BaseContract.js";
 import { createGqrfmwbtyp } from "../typechain/Gqrfmwbtyp.js";
 import { asTimelockCompliantTokenRecord, createSealedTimelockPolicy } from "../typechain/SealedTimelockPolicy.js";
 import { asTokenRegistryRecord, createTokenRegistry } from "../typechain/TokenRegistry.js";
