@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
 import { type SignableNamedAccount } from "@lionden/config";
-import { Address } from "@provablehq/sdk";
 import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 
 import {
