@@ -40,11 +40,19 @@ export async function upgradeProgram(
 }
 
 export async function getProgramEdition(ctx: TestContext, programName: string): Promise<number> {
-  return await ctx.connection.getProgramEdition(`${programName}.aleo`);
+  const edition = await ctx.connection.getProgramEdition(`${programName}.aleo`);
+  if (edition === null) {
+    throw new Error(`Program ${programName}.aleo is not deployed`);
+  }
+  return edition;
 }
 
 export async function getDeployedProgramChecksum(ctx: TestContext, programName: string): Promise<number[]> {
-  return [...(await ctx.connection.getProgramChecksum(`${programName}.aleo`))];
+  const checksum = await ctx.connection.getProgramChecksum(`${programName}.aleo`);
+  if (checksum === null) {
+    throw new Error(`Program ${programName}.aleo is not deployed`);
+  }
+  return [...checksum];
 }
 
 interface DeploymentTransaction {
