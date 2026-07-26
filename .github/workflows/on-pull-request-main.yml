@@ -26,6 +26,11 @@ jobs:
   # Review dependency changes for vulnerabilities and license compliance
   # Runs independently - only analyzes dependency diff, not full codebase
   dependency-review:
+    # pull_request only: the action diffs base vs head and hard-fails on other
+    # events unless base-ref/head-ref are supplied. Without this guard a
+    # `workflow_dispatch` run (the only way to trigger devnet mode) fails here
+    # and every test job that needs it is skipped.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -123,15 +128,23 @@ jobs:
       - name: Discover test files
         id: set-matrix
         run: |
-          # Find all test files and create JSON array
+          # Find the top-level integration test files and create a JSON array.
+          # -maxdepth 1 because the matrix passes bare basenames back as
+          # test/<name>; nested helper tests (test/support/*) are devnode-only
+          # unit tests and are covered by the "all" devnode run.
           # Uses -exec instead of xargs to safely handle special characters in filenames
-          files=$(find test -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          files=$(find test -maxdepth 1 -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "matrix={\"test-file\":$files}" >> "$GITHUB_OUTPUT"
           echo "Discovered test files: $files"
 
   # Devnet mode: Matrix of jobs for all tests when explicitly requested
+  #
+  # Deliberately does NOT need dependency-review: that job is pull_request-only,
+  # and a *skipped* prerequisite skips its dependents just as a failed one does,
+  # which would make every manual dispatch a no-op. `ci-status` still needs it and
+  # enforces it on PRs, so the gate is preserved without blocking dispatch.
   test-devnet:
-    needs: [dependency-review, detect-changes, linter, discover-tests]
+    needs: [detect-changes, linter, discover-tests]
     if: needs.detect-changes.outputs.code == 'true' && github.event_name == 'workflow_dispatch' && inputs.mode == 'devnet'
     permissions:
       contents: read
@@ -148,8 +161,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Devnode mode: Single job for all tests (default for PRs and manual runs)
+  # See test-devnet above for why dependency-review is not a prerequisite here.
   test-devnode:
-    needs: [dependency-review, detect-changes, linter]
+    needs: [detect-changes, linter]
     if: needs.detect-changes.outputs.code == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'devnode')
     permissions:
       contents: read
@@ -187,8 +201,10 @@ jobs:
           echo "Devnode tests: $DEVNODE_RESULT"
           echo "::endgroup::"
 
-          # Dependency review must always pass (runs on all PRs)
-          if [[ "$DEP_REVIEW_RESULT" != "success" ]]; then
+          # Dependency review must pass on every PR. It is deliberately skipped on
+          # workflow_dispatch, so only enforce it for the event it runs on —
+          # checking "!= success" unconditionally would fail every manual run.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$DEP_REVIEW_RESULT" != "success" ]]; then
             echo "::error::Dependency review failed - check for vulnerabilities or license issues"
             exit 1
           fi

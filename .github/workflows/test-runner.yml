@@ -22,8 +22,6 @@ permissions: {}
 jobs:
   run-tests:
     runs-on: ubuntu-latest
-    env:
-      TESTNET_ENDPOINT: "http://localhost:3030"
     permissions:
       contents: read
       packages: read # Required for pulling package-backed test resources
@@ -34,6 +32,15 @@ jobs:
         shell: bash -eo pipefail {0}
 
     steps:
+      # Devnet runs one container per test file, so the caller must fan out a
+      # per-file matrix (see nightly-tests.yml). Running "all" in a single
+      # process would share one chain across every file.
+      - name: Reject unsupported devnet + all combination
+        if: inputs.mode == 'devnet' && inputs.test-file == 'all'
+        run: |
+          echo "::error::mode=devnet requires a single test file — devnet provides one container per file. Use a per-file matrix."
+          exit 1
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -71,30 +78,48 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
 
+      # `npm ci` does not build workspaces, and the SDK's "types" field points at
+      # gitignored dist/ — both the typecheck and the tests need it built.
+      - name: Build SDK
+        run: npm run build --workspace=@sealance-io/policy-engine-aleo
+
       - name: Initialize Leo home directory
         run: mkdir -p "$HOME/.aleo"
 
       - name: Compile Leo programs
         run: npm run compile -- --network testnet
 
+      # Needs both the built SDK and generated typechain/, so it runs after
+      # compile. Gated to run once per PR rather than 13x across the matrix.
+      - name: Type-check TypeScript
+        if: inputs.mode == 'devnode' && inputs.test-file == 'all'
+        run: npm run typecheck
+
+      # `npx lionden test` rather than `npm test`: the root test script rebuilds
+      # the SDK, which the Build SDK step above already did.
       - name: Run tests
         run: |
-          if [ "$TEST_FILE" = "all" ]; then
-            npm test -- --no-compile
-          else
-            npm test test/$TEST_FILE -- --no-compile
+          args=(--no-compile)
+          if [ "$TEST_MODE" = "devnet" ]; then
+            args+=(--network devnet --timeout 1800000)
           fi
+          if [ "$TEST_FILE" != "all" ]; then
+            args=("test/$TEST_FILE" "${args[@]}")
+          fi
+          npx lionden test "${args[@]}"
         env:
           TEST_FILE: ${{ inputs.test-file }}
-          DOCKER_HOST: "unix:///var/run/docker.sock"
+          # Selects the topology in lionden.config.ts: "devnet" registers the
+          # container plugin, "devnode" uses LionDen's managed devnode.
+          TEST_MODE: ${{ inputs.mode }}
+          # The runner VM is destroyed after the job and suiteTeardown stops the
+          # container, so Ryuk would only cost an extra image pull.
           TESTCONTAINERS_RYUK_DISABLED: true
-          USE_TEST_CONTAINERS: 1
-          VITEST_HOOK_TIMING: true
-          VITEST_TEST_MARKERS: true
-          DEVNET: ${{ inputs.mode == 'devnet' }}
-          SKIP_EXECUTE_PROOF: ${{ inputs.mode == 'devnode' }}
-          SKIP_DEPLOY_CERTIFICATE: ${{ inputs.mode == 'devnode' }}
-          CONSENSUS_VERSION: 17
-          CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16"
-          CONSENSUS_CHECK_TIMEOUT: ${{ inputs.mode == 'devnet' && '1500000' || '300000' }}
-          DEBUG: "testcontainers:containers"
+          DEVNET_IMAGE: "ghcr.io/sealance-io/aleo-devnet:v4.3.1-v4.8.1"
+          # Coupled to DEVNET_IMAGE: its snarkOS requires exactly one height per
+          # consensus version it knows, and that count is also the highest version
+          # the chain will report. snarkOS 4.8.1 takes 16. Re-derive both when
+          # DEVNET_IMAGE moves.
+          DEVNET_CONSENSUS_VERSION: 16
+          DEVNET_CONSENSUS_VERSION_HEIGHTS: "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"
+          DEVNET_READY_TIMEOUT_MS: 1500000
