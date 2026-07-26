@@ -62,18 +62,20 @@ npm run deploy:devnode               # Deploy to local devnode
 npm run deploy:testnet              # Deploy to testnet
 ```
 
+These commands run the LionDen deployment recipe in `recipes/setup.ts` for the selected network.
+
 ## Upgrades
 
-Run the upgrade script with the target network and program name:
+Run the upgrade recipe with the target network and program name:
 
 ```bash
-lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
+lionden recipe --file recipes/upgrade.ts --network devnode --program <program-name>
 
 # Example: upgrade the merkle_tree program
-lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
+lionden recipe --file recipes/upgrade.ts --network devnode --program merkle_tree
 ```
 
-Replace `<program-name>` with the target program name from `/programs` without the `.aleo` suffix. The script compiles before running `recipes/upgrade.ts`.
+Replace `<program-name>` with the target program name from `/programs` without the `.aleo` suffix. The recipe compiles before running the upgrade.
 
 ## Code Formatting
 
