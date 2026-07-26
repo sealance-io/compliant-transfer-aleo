@@ -27,9 +27,10 @@ jobs:
   # Runs independently - only analyzes dependency diff, not full codebase
   dependency-review:
     # pull_request only: the action diffs base vs head and hard-fails on other
-    # events unless base-ref/head-ref are supplied. Without this guard a
-    # `workflow_dispatch` run (the only way to trigger devnet mode) fails here
-    # and every test job that needs it is skipped.
+    # events unless base-ref/head-ref are supplied. No test job depends on this
+    # one, so without the guard a `workflow_dispatch` run (the only way to
+    # trigger devnet mode) would still run its tests but report red on an
+    # unrelated failure. `ci-status` enforces this job for pull_request only.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -67,10 +68,22 @@ jobs:
       - name: Check for code changes
         id: filter
         run: |
+          # The docs-only skip is a pull_request-only optimization: it needs a base
+          # ref to diff against, and github.base_ref is empty on workflow_dispatch.
+          # A manual dispatch is an explicit request to test, so always run it —
+          # otherwise devnet mode (dispatch-only) would depend on how an invalid
+          # `git diff origin/...HEAD` happens to fall through the filter below.
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "Event is $GITHUB_EVENT_NAME (not a PR) - running the full suite"
+            exit 0
+          fi
+
           git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
           CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || echo "")
 
-          # Check if any non-markdown files changed
+          # Check if any non-markdown files changed. An empty CHANGED (diff failed)
+          # also lands here as "code", which fails open — never skip on a bad diff.
           if echo "$CHANGED" | grep -qvE '\.md$'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "Code changes detected"
