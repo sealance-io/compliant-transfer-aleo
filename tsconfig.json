@@ -12,8 +12,14 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
-    "types": ["node", "vitest/globals"]
+    // lionden.config.ts and its local imports must use explicit .ts specifiers so
+    // Node's native TypeScript loader can resolve them inside Vitest workers.
+    "allowImportingTsExtensions": true,
+    // LionDen never sets Vitest's `globals: true`; every test file imports
+    // { describe, test, expect } explicitly. Keeping "vitest/globals" here would
+    // mask accidental global reliance that fails at runtime.
+    "types": ["node"]
   },
-  "include": ["lib/**/*", "scripts/**/*", "test/**/*", "*.ts"],
+  "include": ["lib/**/*", "recipes/**/*", "scripts/**/*", "test/**/*", "*.ts"],
   "exclude": ["node_modules"]
 }

@@ -23,8 +23,10 @@ npm test test/merkle_tree.test.ts                    # Single test file
 npm test --grep "mint"                               # Filter tests by name
 npm test --no-compile                                # Reuse existing artifacts/typechain
 npm test --prove                                     # Generate proofs during execution
+npm run test:devnet                                  # Containerized multi-validator devnet, one container per file
 
 # Quality
+npm run typecheck                                    # tsc --noEmit (needs built SDK + typechain)
 npm run format:fix                                   # Prettier (run before committing)
 npm run lint:licenses                                # Check for GPL/AGPL (blocked)
 
@@ -58,7 +60,7 @@ lionden recipe --file recipes/upgrade.ts --network devnode --program <program-na
 
 **SDK** (`/packages/policy-engine-sdk`): Published as `@sealance-io/policy-engine-aleo`. Pure TypeScript, ESM only. Fetches freeze lists, builds Merkle trees, generates proofs.
 
-**Testing**: LionDen manages the local `leo devnode` lifecycle by default. Tests run sequentially (shared chain state, alphabetical file order). Devnode is the recommended local and CI path.
+**Testing**: LionDen manages the local `leo devnode` lifecycle by default. Test files run serially, each in its own forked worker with its own devnode — no chain state is shared across files and file order is irrelevant. Devnode is the recommended local and PR-CI path; `TEST_MODE=devnet` swaps in a containerized multi-validator devnet (one container per file, via the nightly per-file matrix).
 
 ## Constraints
 
