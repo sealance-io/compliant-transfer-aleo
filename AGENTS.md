@@ -14,7 +14,7 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 - **Policy Engine SDK** (`/packages/policy-engine-sdk`): Published as `@sealance-io/policy-engine-aleo`
 - **Test Suite** (`/test`): LionDen-managed `leo devnode` integration tests
 - **Shared Libraries** (`/lib`): Freeze lists, tokens, deployment, roles, funding
-- **Deployment Scripts** (`/scripts`): Devnode/testnet deployment, upgrades, and configuration
+- **Deployment Recipes** (`/recipes`): Devnode/testnet deployment and upgrades
 
 ## Quick Reference
 
@@ -39,8 +39,8 @@ npm run deploy:devnode      # Deploy to local devnode
 npm run deploy:testnet      # Deploy to testnet
 
 # Upgrade
-lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
-# Example: lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
+lionden recipe --file recipes/upgrade.ts --network devnode --program <program-name>
+# Example: lionden recipe --file recipes/upgrade.ts --network devnode --program merkle_tree
 
 # Format
 npm run format:fix          # Auto-fix formatting
@@ -55,7 +55,8 @@ npm run format:fix          # Auto-fix formatting
 | `/test/*.test.ts`              | Integration tests      |
 | `/lib/`                        | Shared utilities       |
 | `/artifacts/`                  | Compiled output        |
-| `/scripts/`                    | Deployment scripts     |
+| `/recipes/`                    | Deployment recipes     |
+| `/scripts/`                    | Utility scripts        |
 | `/docs/`                       | Detailed documentation |
 
 ## Key Libraries (`/lib`)
@@ -81,7 +82,7 @@ npm run format:fix          # Auto-fix formatting
 4. **Sequential Testing**: Integration tests MUST run sequentially (shared chain state in devnode/testnet)
 5. **npm Security**: Always use `--ignore-scripts` for installs; use `--allow-git=none` with `npm ci`. Build/publish workflows may run scripts as needed
 6. **LionDen Dependencies**: `@lionden/*` packages are installed from npm and pinned exactly; update them intentionally as a group
-7. **Program Upgrades**: Use `scripts/upgrade.ts` with `--program <program-name>` where the program name comes from `/programs` without the `.aleo` suffix
+7. **Program Upgrades**: Use `lionden recipe --file recipes/upgrade.ts --network <network> --program <program-name>` where the program name comes from `/programs` without the `.aleo` suffix
 
 ## CI/CD Status Checks
 

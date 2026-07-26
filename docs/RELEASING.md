@@ -86,7 +86,7 @@ Not all changes require a release. Skip changesets for:
 - **CI/workflow changes**: GitHub Actions, dependabot config
 - **Internal refactoring**: Code reorganization with no public API impact
 - **Development tooling**: ESLint config, TypeScript config changes
-- **Non-SDK files**: Leo programs, deployment scripts, root-level docs
+- **Non-SDK files**: Leo programs, deployment recipes, utility scripts, root-level docs
 - **Internal SDK docs**: `DEVELOPMENT.md`, `QUICK_START.md` (don't ship to npm)
 
 **Rule of thumb**: If the change doesn't affect what users `npm install`, it doesn't need a changeset.

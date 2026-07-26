@@ -5,7 +5,9 @@ export default async function (lre: LionDenRuntimeEnvironment) {
   const programFlagIndex = process.argv.indexOf("--program");
 
   if (programFlagIndex === -1 || !process.argv[programFlagIndex + 1]) {
-    console.error("Expected --program argument! Usage: npx tsx scripts/upgrade.ts --program <programName> [testnet]");
+    console.error(
+      "Expected --program argument! Usage: lionden recipe --file recipes/upgrade.ts --network <network> --program <programName>",
+    );
     process.exit(1);
   }
 

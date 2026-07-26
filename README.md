@@ -28,7 +28,8 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 - **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts
 - **/test**: TypeScript tests that validate contract functionalities
 - **/lib**: Shared TypeScript utility libraries
-- **/scripts**: Deployment and configuration scripts
+- **/recipes**: LionDen deployment and upgrade recipes
+- **/scripts**: Utility scripts
 - **/docs**: Additional documentation (testing, security)
 - **/imports**: Shared Aleo modules (e.g., credits.aleo)
 
@@ -93,20 +94,23 @@ This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/works
 
 ## Deployment and Upgrades
 
-Use the root LionDen config when running deployment or upgrade scripts.
+Use the root LionDen config when running deployment or upgrade recipes.
 
 ```bash
 # Deploy all configured programs to the local devnode
 npm run deploy:devnode
 
+# Deploy all configured programs to testnet
+npm run deploy:testnet
+
 # Upgrade one program on the local devnode
-lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program <program-name>
+lionden recipe --file recipes/upgrade.ts --network devnode --program <program-name>
 
 # Example: upgrade the merkle_tree program
-lionden --config lionden.config.ts run scripts/upgrade.ts --network devnode --program merkle_tree
+lionden recipe --file recipes/upgrade.ts --network devnode --program merkle_tree
 ```
 
-Replace `<program-name>` with the target program name from `/programs` without the `.aleo` suffix. The upgrade script compiles before running the upgrade recipe.
+Deployments run `recipes/setup.ts` through the npm scripts. Replace `<program-name>` with the target program name from `/programs` without the `.aleo` suffix. The upgrade recipe compiles before running the upgrade.
 
 ### Workspace Commands
 
