@@ -60,9 +60,12 @@ jobs:
       - name: Discover test files
         id: set-matrix
         run: |
-          # Find all test files and create JSON array
+          # Find the top-level integration test files and create a JSON array.
+          # -maxdepth 1 because the matrix passes bare basenames back as
+          # test/<name>; nested helper tests (test/support/*) are devnode-only
+          # unit tests and are covered by the "all" devnode run.
           # Uses -exec instead of xargs to safely handle special characters in filenames
-          files=$(find test -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          files=$(find test -maxdepth 1 -name "*.test.ts" -type f -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "matrix={\"test-file\":$files}" >> "$GITHUB_OUTPUT"
           echo "Discovered test files: $files"
 

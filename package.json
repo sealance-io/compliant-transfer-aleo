@@ -26,7 +26,9 @@
     "compile": "lionden compile",
     "format": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
     "format:fix": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,cjs,mjs,json,md,sol,ts,cts,mts,yaml,yml}\"",
-    "test": "npm run build --workspace=@sealance-io/policy-engine-aleo && lionden test"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run build --workspace=@sealance-io/policy-engine-aleo && lionden test",
+    "test:devnet": "npm run build --workspace=@sealance-io/policy-engine-aleo && npm run compile -- --network testnet && for f in test/*.test.ts; do TEST_MODE=devnet npx lionden test \"$f\" --network devnet --no-compile --timeout 1800000 || exit 1; done"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.7.0",
