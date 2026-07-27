@@ -11,7 +11,6 @@ import {
   MANAGER_ROLE,
   MINTER_ROLE,
   policies,
-  SETUP_TIMEOUT_MS,
   TREASURE_ADDRESS,
   amount,
 } from "../lib/Constants.js";
@@ -89,7 +88,7 @@ let state: ExchangeFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

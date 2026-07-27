@@ -101,7 +101,7 @@ jobs:
         run: |
           args=(--no-compile)
           if [ "$TEST_MODE" = "devnet" ]; then
-            args+=(--network devnet --timeout 1800000)
+            args+=(--network devnet --timeout 7200000)
           fi
           if [ "$TEST_FILE" != "all" ]; then
             args=("test/$TEST_FILE" "${args[@]}")

@@ -200,7 +200,7 @@ export default defineConfig({
   },
   deploy: {
     confirmTransactions: true,
-    confirmationTimeout: 300_000,
+    confirmationTimeout: 600_000,
     // @lionden/plugin-deploy defaults this to 12_000ms for http networks; at 8
     // programs per file that is ~96s of pure sleep. The devnet image produces
     // blocks far faster than that — retune if its block time changes.

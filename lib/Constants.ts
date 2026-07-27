@@ -93,7 +93,6 @@ export const fundedAmount = 1000000000n;
 export const defaultRate = 10n;
 export const zeroAddress = Leo.address(ZERO_ADDRESS);
 export const emptyRootField = fieldLiteral(emptyRoot);
-export const SETUP_TIMEOUT_MS = 10 * 60 * 1000;
 export const amount = 10n;
 export const decimals = 6;
 export const maxSupply = 1_000_000_000_000_000n;

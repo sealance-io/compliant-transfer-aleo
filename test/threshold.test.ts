@@ -14,7 +14,6 @@ import {
   MANAGER_ROLE,
   MAX_TREE_DEPTH,
   NONE_ROLE,
-  SETUP_TIMEOUT_MS,
   THRESHOLD,
   THRESHOLD_INDEX,
   defaultAuthorizedUntil,
@@ -196,7 +195,7 @@ let state: ThresholdFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

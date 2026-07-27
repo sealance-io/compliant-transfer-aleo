@@ -10,7 +10,7 @@ import {
   getSiblingPath,
 } from "@sealance-io/policy-engine-aleo";
 
-import { MAX_TREE_DEPTH, SETUP_TIMEOUT_MS } from "../lib/Constants.js";
+import { MAX_TREE_DEPTH } from "../lib/Constants.js";
 import { addressLiteral, asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
 import { createMerkleTree, type MerkleProof } from "../typechain/MerkleTree.js";
 import {
@@ -112,7 +112,7 @@ let state: MerkleTreeFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

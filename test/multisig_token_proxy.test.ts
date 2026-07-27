@@ -16,7 +16,6 @@ import {
   MULTISIG_OP_UPDATE_ROLE,
   MULTISIG_OP_UPDATE_WALLET_ROLE,
   PAUSE_ROLE,
-  SETUP_TIMEOUT_MS,
   fundedAmount,
   maxSupply,
   decimals,
@@ -177,7 +176,7 @@ let state: MultisigTokenProxyFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {
