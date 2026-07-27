@@ -33,7 +33,6 @@ import {
   emptyMultisigCommonParams,
   zeroAddress,
   emptyRootField,
-  SETUP_TIMEOUT_MS,
   maxSupply,
   amount,
   decimals,
@@ -281,7 +280,7 @@ let state: MultisigCompliantTokenFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

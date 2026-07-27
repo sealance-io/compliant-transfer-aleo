@@ -17,7 +17,6 @@ import {
   emptyMultisigCommonParams,
   fundedAmount,
   zeroAddress,
-  SETUP_TIMEOUT_MS,
 } from "../lib/Constants.js";
 import { waitBlocks } from "../lib/Block.js";
 import { fundWithCredits } from "../lib/Fund.js";
@@ -133,7 +132,7 @@ let state: MultisigFreezelistProxyFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

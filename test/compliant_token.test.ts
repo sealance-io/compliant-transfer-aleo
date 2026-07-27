@@ -20,7 +20,6 @@ import {
   MINTER_ROLE,
   NONE_ROLE,
   PAUSE_ROLE,
-  SETUP_TIMEOUT_MS,
   amount,
   decimals,
   emptyRootField,
@@ -180,7 +179,7 @@ let state: CompliantTokenFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {
