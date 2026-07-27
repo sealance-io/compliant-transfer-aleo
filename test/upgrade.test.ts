@@ -6,7 +6,6 @@ import {
   CURRENT_FREEZE_LIST_ROOT_INDEX,
   fundedAmount,
   MAX_BLOCK_HEIGHT,
-  SETUP_TIMEOUT_MS,
   zeroAddress,
 } from "../lib/Constants.js";
 import { fundWithCredits } from "../lib/Fund.js";
@@ -78,7 +77,7 @@ let state: UpgradeFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

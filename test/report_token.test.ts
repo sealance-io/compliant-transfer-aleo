@@ -26,7 +26,6 @@ import {
   fundedAmount,
   zeroAddress,
   emptyRootField,
-  SETUP_TIMEOUT_MS,
   maxSupply,
   decimals,
   amount,
@@ -140,7 +139,7 @@ let state: ReportTokenFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

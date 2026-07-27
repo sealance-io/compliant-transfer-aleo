@@ -78,7 +78,7 @@ docker pull ghcr.io/sealance-io/aleo-devnet:v4.3.1-v4.8.1
 
 # One file:
 TEST_MODE=devnet DEVNET_CONTAINER_LOGS=1 \
-  npx lionden test test/merkle_tree.test.ts --network devnet --no-compile --timeout 1800000
+  npx lionden test test/merkle_tree.test.ts --network devnet --no-compile --timeout 7200000
 
 # Every file, one container each:
 npm run test:devnet

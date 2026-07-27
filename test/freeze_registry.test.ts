@@ -17,7 +17,6 @@ import {
   fundedAmount,
   zeroAddress,
   emptyRootField,
-  SETUP_TIMEOUT_MS,
 } from "../lib/Constants.js";
 import { fundWithCredits } from "../lib/Fund.js";
 import { asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
@@ -93,7 +92,7 @@ let state: FreezeRegistryFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {

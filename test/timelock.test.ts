@@ -14,7 +14,6 @@ import {
   MINTER_ROLE,
   NONE_ROLE,
   policies,
-  SETUP_TIMEOUT_MS,
 } from "../lib/Constants.js";
 import { getLatestBlockHeight } from "../lib/Block.js";
 import { fundWithCredits } from "../lib/Fund.js";
@@ -149,7 +148,7 @@ let state: TimelockFixture | undefined;
 
 beforeAll(async () => {
   state = await loadFixture(deployFixture);
-}, SETUP_TIMEOUT_MS);
+});
 
 afterAll(async () => {
   if (state) {
