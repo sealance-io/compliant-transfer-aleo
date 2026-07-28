@@ -4,7 +4,6 @@ import { asSigner, scalarLiteral } from "./LiondenAdapters";
 import { createMultisigCore } from "../typechain/MultisigCore";
 import { type SignableNamedAccount } from "@lionden/config";
 import { type TestContext } from "@lionden/testing";
-import { zeroAddress } from "./Constants";
 
 export function multisigCommonParams(walletId: ReturnType<typeof Leo.address>, salt: bigint): MultisigCommonParams {
   return {
@@ -30,7 +29,7 @@ export async function createWallet(
   multisig: ReturnType<typeof createMultisigCore>,
   deployer: SignableNamedAccount,
   walletId: ReturnType<typeof Leo.address>,
-  aleoSigners: ReadonlyArray<AddressInput> = [zeroAddress, zeroAddress, zeroAddress, zeroAddress],
+  aleoSigners: ReadonlyArray<AddressInput>,
   threshold = 2,
   ecdsaSigners = Array.from({ length: 4 }, () => Array(20).fill(0)),
 ) {
