@@ -34,8 +34,6 @@ async function deployFixture() {
   const ctx = await setup();
 
   try {
-    // This maps the accounts defined inside networks in aleo-config.js and return array of address of respective private keys
-    // THE ORDER IS IMPORTANT, IT MUST MATCH THE ORDER IN THE NETWORKS CONFIG
     const deployer = ctx.named.signer("deployer");
     const admin = ctx.named.signer("admin");
     const signer1 = ctx.named.signer("signer1");
@@ -90,7 +88,6 @@ afterAll(async () => {
   }
 });
 
-// await ctx!.lre.tasks.run("upgrade", { program: "admin_example" });
 describe("test upgradeability", () => {
   test(`test upgrades`, async () => {
     const fixture = state!;
@@ -105,7 +102,7 @@ describe("test upgradeability", () => {
     // Only The multisig can upgrade the freeze registry program
     // upgrade by a multisig request
     const freezeRegistryEditionBefore = await getProgramEdition(fixture.ctx, "multisig_freezelist_registry");
-    const freezeRegistryUpgradeEdition = freezeRegistryEditionBefore + 1; // getProgramUpgradeEdition(fixture.ctx, "multisig_freezelist_registry");
+    const freezeRegistryUpgradeEdition = freezeRegistryEditionBefore + 1;
     const checksum = await getDeployedProgramChecksum(fixture.ctx, "multisig_freezelist_registry");
     const getSigningOpIdForDeployTx = await fixture.freezeRegistry.get_signing_op_id_for_deploy.accepted(
       checksum,
