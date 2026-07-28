@@ -18,7 +18,7 @@ version: 2
 # - Exact version installation (versioning-strategy: increase)
 # - 7/4-day cooldown (minor/patch) per GitHub (close to recommended defaults)
 # - Aggressive grouping (SDK deps excluded for individual review)
-# - Special handling for patched dependencies (@doko-js/*)
+# - LionDen package updates grouped together
 # ============================================================================
 
 updates:
@@ -54,6 +54,15 @@ updates:
         patterns:
           - "*"
 
+      # LionDen packages must be updated and reviewed together.
+      lionden-dependencies:
+        applies-to: version-updates
+        patterns:
+          - "@lionden/*"
+        update-types:
+          - "minor"
+          - "patch"
+
       # All non-SDK dependencies grouped together (minor + patch only)
       # SDK dependencies (@provablehq/*, @scure/base) get individual PRs for careful review
       all-dependencies:
@@ -61,22 +70,14 @@ updates:
         patterns:
           - "*"
         exclude-patterns:
+          - "@lionden/*" # Reviewed together by lionden-dependencies
           - "@provablehq/*" # SDK dep - review individually
           - "@scure/base" # SDK dep - review individually
-          - "@doko-js/*" # Blocked anyway (patches)
         update-types:
           - "minor"
           - "patch"
 
-    # BLOCKED: @doko-js packages - these use custom patches via patch-package
-    # and should only be updated manually after verifying patch compatibility
     ignore:
-      # Block @doko-js packages - custom fork with patches applied
-      # Updates require manual verification of patch compatibility
-      # See patches/ directory for applied patches
-      - dependency-name: "@doko-js/core"
-      - dependency-name: "@doko-js/utils"
-      - dependency-name: "@doko-js/wasm"
       # Block ALL major version updates - require manual review
       # Security updates bypass this automatically
       - dependency-name: "*"

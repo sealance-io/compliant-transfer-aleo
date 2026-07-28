@@ -49,22 +49,24 @@ const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
 
 Tests follow this sequence:
 
-1. **Fund accounts** (`lib/Fund.ts`)
-2. **Deploy** (`deployIfNotDeployed()`)
-3. **Initialize** (roles, freeze list)
+1. **Fund accounts** (`fundWithCredits()` from `lib/Fund.ts`)
+2. **Deploy** (`ctx.deploy()` through LionDen)
+3. **Initialize** (program-specific setup transitions)
 4. **Execute** transition
 5. **Verify** with decrypt utilities
 
 Example:
 
 ```typescript
-import { fundAccount, deployIfNotDeployed } from "../lib";
+import { setup } from "@lionden/testing";
+import { fundWithCredits } from "../lib/Fund.js";
 
 describe("Policy Tests", () => {
   beforeAll(async () => {
-    await fundAccount(deployerAddress);
-    await deployIfNotDeployed(contract);
-    await initializeRoles();
+    const ctx = await setup();
+    await fundWithCredits(ctx, account.address, fundedAmount, deployer);
+    await ctx.deploy("program_name", { noCompile: true });
+    await contract.initialize.accepted(...params);
   });
 
   it("should execute compliant transfer", async () => {
@@ -77,15 +79,12 @@ describe("Policy Tests", () => {
 
 ## Key Libraries (`/lib`)
 
-| Module          | Purpose                                           |
-| --------------- | ------------------------------------------------- |
-| `FreezeList.ts` | `getLeafIndices()`, `getSiblingPath()` for Merkle |
-| `Deploy.ts`     | `deployIfNotDeployed()` utility                   |
-| `Fund.ts`       | Credit funding for test accounts                  |
-| `Token.ts`      | Token operation utilities                         |
-| `Role.ts`       | Role management utilities                         |
-| `Block.ts`      | Block height utilities                            |
-| `Constants.ts`  | `MAX_TREE_DEPTH`, `ZERO_ADDRESS`, etc.            |
-| `Initialize.ts` | Initialization helpers                            |
-| `Multisig.ts`   | Multi-signature utilities                         |
-| `Upgrade.ts`    | Contract upgrade utilities                        |
+| Module               | Purpose                                    |
+| -------------------- | ------------------------------------------ |
+| `Block.ts`           | Block height utilities                     |
+| `Constants.ts`       | Shared constants, policy metadata, roles   |
+| `Fund.ts`            | Credit funding for test accounts           |
+| `LiondenAdapters.ts` | Type and signer adapters for LionDen calls |
+| `Multisig.ts`        | Multi-signature utilities                  |
+| `Token.ts`           | Token operation utilities                  |
+| `Upgrade.ts`         | Contract upgrade utilities                 |

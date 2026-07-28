@@ -139,7 +139,7 @@ fn transfer(...) -> Final {
   (programs/freezelist_registry/sealance_freezelist_registry.leo::update_freeze_list).
 - MUST enforce the previous_root window in verify_non_inclusion_priv
   (programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv).
-- Sentinel value is defined in lib/Constants.ts; SDK handling is in lib/FreezeList.ts.
+- Sentinel value is defined in lib/Constants.ts; SDK handling is in packages/policy-engine-sdk/src/merkle-tree.ts.
 
 ### Block height window (threshold policy)
 
@@ -239,7 +239,7 @@ Separated pattern:
 ### Bitmasking for roles
 
 - Roles are composed via bitwise OR; checks via AND.
-- Constants live in role-related programs and lib/Role.ts for off-chain parity.
+- Constants live in role-related programs and lib/Constants.ts for off-chain parity.
 
 ## SDK Integration Points (Normative)
 

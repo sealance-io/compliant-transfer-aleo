@@ -61,18 +61,15 @@ npm run format:fix          # Auto-fix formatting
 
 ## Key Libraries (`/lib`)
 
-| Module          | Purpose                                         |
-| --------------- | ----------------------------------------------- |
-| `FreezeList.ts` | Merkle tree operations                          |
-| `Deploy.ts`     | `deployIfNotDeployed()` utility                 |
-| `Fund.ts`       | Credit funding for test accounts                |
-| `Token.ts`      | Token operation utilities                       |
-| `Role.ts`       | Role management utilities                       |
-| `Constants.ts`  | `MAX_TREE_DEPTH`, `ZERO_ADDRESS`, etc.          |
-| `Block.ts`      | Block height queries, `waitBlocks()` utility    |
-| `Initalize.ts`  | `isProgramInitialized()`, `initializeProgram()` |
-| `Multisig.ts`   | Multisig wallet creation and approval           |
-| `Upgrade.ts`    | Program upgrade and checksum verification       |
+| Module               | Purpose                                      |
+| -------------------- | -------------------------------------------- |
+| `Block.ts`           | Block height queries, `waitBlocks()` utility |
+| `Constants.ts`       | Shared constants, policy metadata, roles     |
+| `Fund.ts`            | Credit funding for test accounts             |
+| `LiondenAdapters.ts` | Type and signer adapters for LionDen calls   |
+| `Multisig.ts`        | Multisig wallet creation and approval        |
+| `Token.ts`           | Token operation utilities                    |
+| `Upgrade.ts`         | Program upgrade and checksum verification    |
 
 ## Critical Constraints
 
