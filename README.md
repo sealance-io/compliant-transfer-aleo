@@ -24,14 +24,13 @@ This project is developed and tested with the following tooling:
 This repository uses [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) to manage the monorepo structure.
 
 - **/packages/policy-engine-sdk**: TypeScript SDK for generating Merkle proofs and interacting with Aleo compliance policy programs (published as `@sealance-io/policy-engine-aleo`)
-- **/programs**: Aleo programs implementing various compliance policies (see below)
+- **/programs**: Aleo programs implementing various compliance policies; each program lives in a directory with its `main.leo` entrypoint
 - **/artifacts**: Compiled artifacts and JS bindings for interacting with contracts
 - **/test**: TypeScript tests that validate contract functionalities
 - **/lib**: Shared TypeScript utility libraries
 - **/recipes**: LionDen deployment and upgrade recipes
 - **/scripts**: Utility scripts
 - **/docs**: Additional documentation (testing, security)
-- **/imports**: Shared Aleo modules (e.g., credits.aleo)
 
 ### Programs
 
