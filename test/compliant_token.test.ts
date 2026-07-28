@@ -31,11 +31,14 @@ import { fundWithCredits } from "../lib/Fund.js";
 import { asSigner, fieldLiteral, toMerkleProof } from "../lib/LiondenAdapters.js";
 import {
   createCompliantTokenTemplate,
+  decryptComplianceRecord,
   type Credentials,
   type MerkleProof,
   type Token,
 } from "../typechain/CompliantTokenTemplate.js";
 import { createSealanceFreezelistRegistry } from "../typechain/SealanceFreezelistRegistry.js";
+import { AleoNetworkClient } from "@provablehq/sdk";
+import { getLatestBlockHeight } from "../lib/Block.js";
 
 const tokenName = stringToBigInt("Stable Token");
 const tokenSymbol = stringToBigInt("STABLE_TOKEN");
@@ -63,6 +66,7 @@ interface CompliantTokenFixture {
   frozenAccountRecord?: Token;
   credentials?: Credentials;
   privateAccountBalance: bigint;
+  startBlock: number;
 }
 
 async function deployFixture() {
@@ -164,6 +168,7 @@ async function deployFixture() {
       senderMerkleProof,
       frozenAccountMerkleProof,
       privateAccountBalance: 0n,
+      startBlock: 0,
     } satisfies CompliantTokenFixture;
   } catch (error) {
     await ctx.teardown();
@@ -189,14 +194,6 @@ describe("test compliant token program", () => {
   test("test initialize", async () => {
     const fixture = state!;
     if (!(await fixture.token.mappings.tokenInfo.contains(true))) {
-      const initializeArgs = {
-        name: tokenName,
-        symbol: tokenSymbol,
-        decimals,
-        max_supply: maxSupply,
-        admin: fixture.admin,
-      };
-
       await fixture.token.initialize.accepted(
         tokenName,
         tokenSymbol,
@@ -305,6 +302,8 @@ describe("test compliant token program", () => {
 
     // an admin cannot mint private assets
     await fixture.token.mint_private.rejected(fixture.account, amount * 20n, asSigner(fixture.admin));
+
+    fixture.startBlock = await getLatestBlockHeight(fixture.ctx);
 
     let tx = await fixture.token.mint_private.accepted(fixture.frozenAccount, amount * 20n, asSigner(fixture.minter));
     fixture.frozenAccountRecord = await tx.outputs[1].decrypt(fixture.frozenAccount);
@@ -889,6 +888,59 @@ describe("test compliant token program", () => {
 
   test("calculate private balance", async () => {
     const fixture = state!;
-    expect(fixture.accountRecord?.amount).toBe(fixture.privateAccountBalance);
+    const networkClient = new AleoNetworkClient(fixture.ctx.connection.endpoint);
+    const latestBlockHeight = await getLatestBlockHeight(fixture.ctx);
+    let calculatedAccountBalance = 0n;
+    let calculatedBurnerBalance = 0n;
+    while (latestBlockHeight > fixture.startBlock) {
+      const endBlock = Math.min(fixture.startBlock + 50, latestBlockHeight);
+      const blockRange = await networkClient.getBlockRange(fixture.startBlock, endBlock);
+      fixture.startBlock += 50;
+      for (const block of blockRange) {
+        if (!block.transactions || block.transactions.length === 0) {
+          // Skip empty blocks
+          continue;
+        }
+        for (const tx of block.transactions) {
+          if (!tx.transaction?.execution?.transitions) continue;
+          for (const transition of tx.transaction.execution.transitions ?? []) {
+            if (
+              transition.program === "compliant_token_template.aleo" &&
+              transition.outputs &&
+              transition.outputs[0].type === "record"
+            ) {
+              try {
+                const complianceRecord = await decryptComplianceRecord(
+                  transition.outputs[0].value,
+                  fixture.deployer.privateKey,
+                );
+                const { recipient, sender, amount: transferredAmount } = complianceRecord;
+                if (
+                  sender === fixture.account.address &&
+                  !["transfer_from_public_to_private", "transfer_public_to_private"].includes(transition.function)
+                ) {
+                  calculatedAccountBalance -= transferredAmount;
+                }
+                if (recipient === fixture.account.address && transition.function !== "transfer_private_to_public") {
+                  calculatedAccountBalance += transferredAmount;
+                }
+                if (
+                  sender === fixture.burner.address &&
+                  !["transfer_from_public_to_private", "transfer_public_to_private"].includes(transition.function)
+                ) {
+                  calculatedBurnerBalance -= transferredAmount;
+                }
+                if (recipient === fixture.burner.address && transition.function !== "transfer_private_to_public") {
+                  calculatedBurnerBalance += transferredAmount;
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+    }
+
+    expect(calculatedAccountBalance).toBe(fixture.privateAccountBalance);
+    expect(calculatedBurnerBalance).toBe(0n);
   });
 });
