@@ -322,9 +322,13 @@ describe("test sealed_report_token program", () => {
     let balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(amount * 20n);
 
-    await fixture.token.mint_public.accepted(fixture.frozenAccount, amount * 20n, asSigner(fixture.supplyManager));
+    await fixture.token.mint_public.accepted(fixture.frozenAccount, amount * 20n, asSigner(fixture.minter));
     balance = await fixture.token.mappings.balances.get(fixture.frozenAccount);
     expect(balance).toBe(amount * 20n);
+
+    await fixture.token.mint_public.accepted(fixture.account, amount * 20n, asSigner(fixture.supplyManager));
+    balance = await fixture.token.mappings.balances.get(fixture.account);
+    expect(balance).toBe(amount * 40n);
   });
 
   test("test burn_private", async () => {
