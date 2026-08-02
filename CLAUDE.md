@@ -20,9 +20,9 @@ npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 # Test
 npm test                                             # LionDen-managed devnode mode (fast, default)
 npm test test/merkle_tree.test.ts                    # Single test file
-npm test --grep "mint"                               # Filter tests by name
-npm test --no-compile                                # Reuse existing artifacts/typechain
-npm test --prove                                     # Generate proofs during execution
+npm test -- --grep "mint"                               # Filter tests by name
+npm test -- --no-compile                                # Reuse existing artifacts/typechain
+npm test -- --prove                                     # Generate proofs during execution
 npm run test:devnet                                  # Containerized multi-validator devnet, one container per file
 
 # Quality
@@ -90,7 +90,7 @@ Context-specific rules load automatically from `.claude/rules/` based on file pa
 ### Testing
 
 - Prefer `npm test` for root integration tests so LionDen manages compile, typechain, and devnode lifecycle
-- Use `npm test --no-compile` only when intentionally reusing existing artifacts/typechain
+- Use `npm test -- --no-compile` only when intentionally reusing existing artifacts/typechain
 
 ## Documentation Index
 

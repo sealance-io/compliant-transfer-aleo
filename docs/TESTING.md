@@ -27,8 +27,8 @@ LionDen runs test **files serially**, each in its own forked Vitest worker:
 cp .env.example .env
 npm test                         # Default devnode mode (recommended)
 npm test test/your-test.test.ts  # Single test
-npm test --grep "mint"           # Filter tests by name
-npm test --prove                 # Generate proofs during execution
+npm test -- --grep "mint"           # Filter tests by name
+npm test -- --prove                 # Generate proofs during execution
 ```
 
 ## Devnet mode
@@ -146,7 +146,7 @@ container logs.
 | Devnode logs hidden          | `LIONDEN_DEVNODE_LOGS=forward npm test`                                                                                    |
 | Devnet container logs hidden | `DEVNET_CONTAINER_LOGS=1`                                                                                                  |
 | Leo CLI missing              | Install a Leo CLI compatible with `lionden.config.ts`                                                                      |
-| Tests too slow               | Keep proofs disabled for normal devnode runs; use `--prove` only when needed                                               |
+| Tests too slow               | Keep proofs disabled for normal devnode runs; use `npm test -- --prove` only when needed                                   |
 | Port 3030 in use             | Stop the process currently listening on port 3030 (devnet maps a dynamic host port instead)                                |
 | Container exits immediately  | Wrong `DEVNET_CONSENSUS_VERSION_HEIGHTS` count for the image; run with `DEVNET_CONTAINER_LOGS=1` to see the expected count |
 | Devnet never reaches ready   | Check `DEVNET_CONSENSUS_VERSION` against what the pinned `DEVNET_IMAGE` can actually reach                                 |

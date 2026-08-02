@@ -148,7 +148,7 @@ npm test test/merkle_tree.test.ts
 
 **Devnode mode** is the default path for local work and regular CI. It gives fast feedback while keeping the same sequential Vitest harness.
 
-Use `npm test --prove` when you explicitly want proof generation during devnode tests.
+Use `npm test -- --prove` when you explicitly want proof generation during devnode tests.
 
 **Note**: Tests run sequentially (no parallelism) as they share blockchain state.
 
