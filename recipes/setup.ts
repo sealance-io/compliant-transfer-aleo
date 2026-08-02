@@ -45,8 +45,8 @@ export const setup: DeploymentRecipe = async ctx => {
   const admin = ctx.named.signer("admin");
   const freezeListManager = ctx.named.signer("freezeListManager");
 
+  await fundWithCredits(ctx, admin.address, fundedAmount, deployer);
   if (ctx.network === "devnode") {
-    await fundWithCredits(ctx, admin.address, fundedAmount, deployer);
     await fundWithCredits(ctx, freezeListManager.address, fundedAmount, deployer);
   }
 
