@@ -84,7 +84,7 @@ export default defineConfig({
       // Same key as `namedAccounts.deployer` — the container's genesis funds it.
       privateKey: configVariable(
         "ALEO_DEVNET_DEPLOYER_PRIVATE_KEY",
-        "APrivateKey1zkp3svrUTVPiKLUEUzYiAB3yhuN3w4ZQwMtZtHZ6rxfh31A",
+        "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
       ),
       // HttpNetworkConfig.ephemeral defaults to false, which would persist
       // deployment records for a chain that dies with the container.
@@ -113,13 +113,13 @@ export default defineConfig({
     deployer: {
       default: configVariable(
         "ALEO_DEVNET_DEPLOYER_PRIVATE_KEY",
-        "APrivateKey1zkp3svrUTVPiKLUEUzYiAB3yhuN3w4ZQwMtZtHZ6rxfh31A",
+        "APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH",
       ),
     },
     admin: {
       default: configVariable(
         "ALEO_DEVNET_ADMIN_PRIVATE_KEY",
-        "APrivateKey1zkp3svrUTVPiKLUEUzYiAB3yhuN3w4ZQwMtZtHZ6rxfh31A",
+        "APrivateKey1zkpGu1DmRgYYvQ3FmE2iXisTEDXYS2vDVLhbY3bTq8f7fv7",
       ),
     },
     investigator: {
