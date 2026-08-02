@@ -19,5 +19,8 @@ export default async function (lre: LionDenRuntimeEnvironment) {
 
   if (!isUpgradeSuccessful) {
     console.error(`Upgrading ${programName} failed`);
+    process.exit(1);
   }
+
+  process.exit(0);
 }
