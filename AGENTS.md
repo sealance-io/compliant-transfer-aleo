@@ -30,9 +30,9 @@ npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 # Test
 npm test                    # Default devnode mode (recommended)
 npm test test/merkle_tree.test.ts  # Specific test
-npm test --grep "mint"      # Filter tests by name
-npm test --no-compile       # Reuse existing artifacts/typechain
-npm test --prove            # Generate proofs during execution
+npm test -- --grep "mint"      # Filter tests by name
+npm test -- --no-compile       # Reuse existing artifacts/typechain
+npm test -- --prove            # Generate proofs during execution
 
 # Deploy
 npm run deploy:devnode      # Deploy to local devnode
@@ -109,14 +109,14 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Common Issues
 
-| Issue                   | Solution                                                    |
-| ----------------------- | ----------------------------------------------------------- |
-| Leo CLI missing         | Install a Leo CLI compatible with `lionden.config.ts`       |
-| Tests too slow          | Keep proofs disabled; use `npm test --prove` only as needed |
-| Port 3030 in use        | Stop the process currently listening on port 3030           |
-| Manual local Aleo setup | See `docs/TESTING.md`                                       |
+| Issue                   | Solution                                                       |
+| ----------------------- | -------------------------------------------------------------- |
+| Leo CLI missing         | Install a Leo CLI compatible with `lionden.config.ts`          |
+| Tests too slow          | Keep proofs disabled; use `npm test -- --prove` only as needed |
+| Port 3030 in use        | Stop the process currently listening on port 3030              |
+| Manual local Aleo setup | See `docs/TESTING.md`                                          |
 
 ## Testing Preferences
 
 - Prefer `npm test` for root integration tests so LionDen manages compile, typechain, and devnode lifecycle.
-- Use `npm test --no-compile` only when intentionally reusing existing artifacts/typechain.
+- Use `npm test -- --no-compile` only when intentionally reusing existing artifacts/typechain.

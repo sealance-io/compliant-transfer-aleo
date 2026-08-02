@@ -31,9 +31,9 @@ npm run build --workspace=@sealance-io/policy-engine-aleo
 ```bash
 npm test                                      # Default devnode mode (recommended)
 npm test test/merkle_tree.test.ts          # Specific test file
-npm test --grep "mint"                     # Filter tests by name
-npm test --no-compile                      # Reuse existing artifacts/typechain
-npm test --prove                           # Generate proofs during execution
+npm test -- --grep "mint"                     # Filter tests by name
+npm test -- --no-compile                      # Reuse existing artifacts/typechain
+npm test -- --prove                           # Generate proofs during execution
 ```
 
 **Note**: PR CI and local runs default to LionDen's managed devnode.
