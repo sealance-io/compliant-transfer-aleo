@@ -21,7 +21,7 @@ This document explains the rationale behind our Dependabot configuration. For im
 2. **Stability over speed** - Cooldowns prevent adopting buggy releases
 3. **Exact versioning** - No `^` or `~` ranges; deterministic builds
 4. **Aggressive grouping** - Reduce PR noise while keeping SDK deps separate
-5. **Pragmatic blocking** - Framework packages (`@lionden/*`) are pinned and reviewed together
+5. **Pragmatic grouping** - Framework packages (`@lionden/*`) are updated and reviewed together
 
 ## npm Ecosystem
 
@@ -51,8 +51,9 @@ This reduces PR volume significantly while ensuring SDK-affecting changes get in
 
 ### Blocked Updates
 
-- **`@lionden/*`** - Framework dependency set; update intentionally and review together
 - **All major versions** - Breaking changes require manual review (security updates bypass)
+
+LionDen minor and patch updates are grouped and reviewed together; they are not blocked.
 
 ## GitHub Actions Ecosystem
 
