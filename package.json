@@ -44,7 +44,7 @@
     "@lionden/plugin-network": "0.1.1",
     "@lionden/plugin-test": "0.1.1",
     "@lionden/testing": "0.1.1",
-    "@provablehq/sdk": "0.10.5",
+    "@provablehq/sdk": "0.11.4",
     "@sealance-io/policy-engine-aleo": "workspace:*",
     "@types/node": "^24.12.4",
     "dotenv": "^17.4.2",
