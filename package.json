@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.7.0",
-    "@changesets/cli": "2.31.0",
+    "@changesets/cli": "2.31.1",
     "@lionden/cli": "0.1.1",
     "@lionden/config": "0.1.1",
     "@lionden/core": "0.1.1",
@@ -46,13 +46,13 @@
     "@lionden/testing": "0.1.1",
     "@provablehq/sdk": "0.10.5",
     "@sealance-io/policy-engine-aleo": "workspace:*",
-    "@types/node": "^24.12.4",
+    "@types/node": "^24.13.3",
     "dotenv": "^17.4.2",
-    "prettier": "^3.8.3",
+    "prettier": "^3.9.6",
     "testcontainers": "^12.0.0",
-    "tsx": "^4.22.3",
+    "tsx": "^4.23.5",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "brace-expansion": "5.0.8"
