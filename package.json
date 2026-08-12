@@ -53,8 +53,5 @@
     "tsx": "^4.22.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.7"
-  },
-  "overrides": {
-    "brace-expansion": "5.0.8"
   }
 }
