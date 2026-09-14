@@ -53,10 +53,10 @@ program multisig_freezelist_proxy.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -91,7 +91,7 @@ program multisig_freezelist_proxy.aleo {
             let already_requested: bool = pending_requests.contains(wallet_signing_op_id_hash);
             if (already_requested) {
                 let existing_pending_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-                assert(existing_pending_op.expires_at_block < block.height);
+                assert(existing_pending_op.expires_at_block < std::ctx::block_height());
             }
 
             pending_requests.set(wallet_signing_op_id_hash, multisig_op);
@@ -105,7 +105,7 @@ program multisig_freezelist_proxy.aleo {
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
     fn initialize(public manager_wallet_id: address) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             assert_eq(caller, INITIAL_CONFIGURATION_ADDRESS);
 
@@ -144,7 +144,7 @@ program multisig_freezelist_proxy.aleo {
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
             pending_requests.remove(wallet_signing_op_id_hash);
@@ -184,7 +184,7 @@ program multisig_freezelist_proxy.aleo {
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
             pending_requests.remove(wallet_signing_op_id_hash);
@@ -220,7 +220,7 @@ program multisig_freezelist_proxy.aleo {
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
             pending_requests.remove(wallet_signing_op_id_hash);
@@ -281,7 +281,7 @@ program multisig_freezelist_proxy.aleo {
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
             pending_requests.remove(wallet_signing_op_id_hash);

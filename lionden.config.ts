@@ -58,7 +58,7 @@ export default defineConfig({
     // load it, so they never touch testcontainers or Docker.
     ...(IS_DEVNET ? [devnetContainerPlugin] : []),
   ],
-  leoVersion: "4.3.2",
+  leoVersion: "4.4.2",
   defaultNetwork: "devnode",
   networks: {
     devnode: {

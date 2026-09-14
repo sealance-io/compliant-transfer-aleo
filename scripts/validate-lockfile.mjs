@@ -3,7 +3,9 @@
  *
  * Checks that every resolved URL in package-lock.json points to the npm
  * registry over HTTPS, requires integrity for resolved packages, and rejects
- * non-registry sources encoded in `version` when `resolved` is absent.
+ * non-registry sources encoded in `version` when `resolved` is absent, except
+ * for the explicitly allowed local LionDen package links used during
+ * development.
  *
  * Runs as an explicit validation step before `npm ci` without bootstrapping
  * any package from the registry.
@@ -12,6 +14,18 @@
 import { readFileSync } from "node:fs";
 
 const ALLOWED_PREFIX = "https://registry.npmjs.org/";
+const ALLOWED_LOCAL_LIONDEN_PACKAGES = new Map([
+  ["node_modules/@lionden/cli", "file:../lionden/packages/cli"],
+  ["node_modules/@lionden/config", "file:../lionden/packages/config"],
+  ["node_modules/@lionden/core", "file:../lionden/packages/core"],
+  ["node_modules/@lionden/leo-compiler", "file:../lionden/packages/leo-compiler"],
+  ["node_modules/@lionden/network", "file:../lionden/packages/network"],
+  ["node_modules/@lionden/plugin-deploy", "file:../lionden/packages/plugin-deploy"],
+  ["node_modules/@lionden/plugin-leo", "file:../lionden/packages/plugin-leo"],
+  ["node_modules/@lionden/plugin-network", "file:../lionden/packages/plugin-network"],
+  ["node_modules/@lionden/plugin-test", "file:../lionden/packages/plugin-test"],
+  ["node_modules/@lionden/testing", "file:../lionden/packages/testing"],
+]);
 const SEMVER_REGEXP =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -31,6 +45,11 @@ for (const [name, info] of Object.entries(packages)) {
   if (!name || info.link) continue;
 
   const { resolved, integrity, version } = info;
+  const allowedLocalLiondenSource = ALLOWED_LOCAL_LIONDEN_PACKAGES.get(name);
+
+  if (allowedLocalLiondenSource && !resolved && version === allowedLocalLiondenSource) {
+    continue;
+  }
 
   // Validate resolved URL if present.
   if (resolved) {

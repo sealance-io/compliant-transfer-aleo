@@ -158,10 +158,10 @@ program multisig_compliant_token.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -222,7 +222,7 @@ program multisig_compliant_token.aleo {
             let already_requested: bool = pending_requests.contains(wallet_signing_op_id_hash);
             if(already_requested) {
                 let existing_pending_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-                assert(existing_pending_op.expires_at_block < block.height);
+                assert(existing_pending_op.expires_at_block < std::ctx::block_height());
             }
             assert(!private_pending_requests.contains(wallet_signing_op_id_hash));
             pending_requests.set(wallet_signing_op_id_hash, multisig_op);
@@ -247,7 +247,7 @@ program multisig_compliant_token.aleo {
             let already_requested: bool = private_pending_requests.contains(wallet_signing_op_id_hash);
             if(already_requested) {
                 let existing_pending_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-                assert(existing_pending_op.expires_at_block < block.height);
+                assert(existing_pending_op.expires_at_block < std::ctx::block_height());
             }
             assert(!pending_requests.contains(wallet_signing_op_id_hash));
             private_pending_requests.set(wallet_signing_op_id_hash, true);
@@ -275,7 +275,7 @@ program multisig_compliant_token.aleo {
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             if(multisig_common_params.wallet_id != ZERO_ADDRESS) {
                 let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -283,7 +283,7 @@ program multisig_compliant_token.aleo {
                 let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);
                 let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-                assert(pending_signing_op.expires_at_block > block.height);
+                assert(pending_signing_op.expires_at_block > std::ctx::block_height());
                 let pending_request = pending_requests.get(wallet_signing_op_id_hash);
                 assert_eq(pending_request, multisig_op);
                 pending_requests.remove(wallet_signing_op_id_hash);
@@ -316,7 +316,7 @@ program multisig_compliant_token.aleo {
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             if (multisig_common_params.wallet_id != ZERO_ADDRESS) {
                 let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -324,7 +324,7 @@ program multisig_compliant_token.aleo {
                 let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);
                 let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-                assert(pending_signing_op.expires_at_block > block.height);
+                assert(pending_signing_op.expires_at_block > std::ctx::block_height());
                 let pending_request = pending_requests.get(wallet_signing_op_id_hash);
                 assert_eq(pending_request, multisig_op);
                 pending_requests.remove(wallet_signing_op_id_hash);
@@ -354,7 +354,7 @@ program multisig_compliant_token.aleo {
         public admin: address,
         public manager_wallet_id: address,
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             // Check if the token has already been initialized
             let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
@@ -389,10 +389,10 @@ program multisig_compliant_token.aleo {
     // Allows future private transfers without needing to re-prove non-inclusion in the freeze list.
     // The signer's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     fn get_credentials(sender_merkle_proofs: [MerkleProof;2]) -> (Credentials, Final) {
-        let root: field = verify_non_inclusion(self.signer, sender_merkle_proofs);
+        let root: field = verify_non_inclusion(std::ctx::signer(), sender_merkle_proofs);
 
         let credentials_record: Credentials = Credentials {
-            owner: self.signer,
+            owner: std::ctx::signer(),
             freeze_list_root: root,
         };
 
@@ -404,7 +404,7 @@ program multisig_compliant_token.aleo {
                 let previous_root: field = multisig_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(root, previous_root);
                 let updated_height: u32 = multisig_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }
@@ -417,7 +417,7 @@ program multisig_compliant_token.aleo {
         public recipient: address,
         public amount: u128,
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
@@ -467,14 +467,14 @@ program multisig_compliant_token.aleo {
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
             assert(wallet_id_role & MINTER_ROLE == MINTER_ROLE);
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
             pending_requests.remove(wallet_signing_op_id_hash);
@@ -525,7 +525,7 @@ program multisig_compliant_token.aleo {
             recipient: recipient,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, token, final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
@@ -581,14 +581,14 @@ program multisig_compliant_token.aleo {
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, token, final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
             assert(wallet_id_role & MINTER_ROLE == MINTER_ROLE);
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             assert(private_pending_requests.contains(wallet_signing_op_id_hash));
             private_pending_requests.remove(wallet_signing_op_id_hash);
 
@@ -620,7 +620,7 @@ program multisig_compliant_token.aleo {
         public owner: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
@@ -665,14 +665,14 @@ program multisig_compliant_token.aleo {
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
             assert(wallet_id_role & BURNER_ROLE == BURNER_ROLE);
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             let pending_request = pending_requests.get(wallet_signing_op_id_hash);
             assert_eq(pending_request, multisig_op);
             pending_requests.remove(wallet_signing_op_id_hash);
@@ -717,7 +717,7 @@ program multisig_compliant_token.aleo {
             recipient: ZERO_ADDRESS,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, output_record, final {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
@@ -768,14 +768,14 @@ program multisig_compliant_token.aleo {
         let signing_op_id = BHP256::commit_to_field(multisig_op, multisig_common_params.salt);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, output_record, final {
             let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
             assert(wallet_id_role & BURNER_ROLE == BURNER_ROLE);
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
             let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-            assert(pending_signing_op.expires_at_block > block.height);
+            assert(pending_signing_op.expires_at_block > std::ctx::block_height());
             assert(private_pending_requests.contains(wallet_signing_op_id_hash));
             private_pending_requests.remove(wallet_signing_op_id_hash);
 
@@ -807,7 +807,7 @@ program multisig_compliant_token.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let is_sender_frozen: bool = multisig_freezelist_registry.aleo::freeze_list.get_or_use(caller, false);
             assert_eq(is_sender_frozen, false);
@@ -831,7 +831,7 @@ program multisig_compliant_token.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let signer: address = self.signer;
+        let signer: address = std::ctx::signer();
         return final {
             let is_sender_frozen: bool = multisig_freezelist_registry.aleo::freeze_list.get_or_use(signer, false);
             assert_eq(is_sender_frozen, false);
@@ -857,7 +857,7 @@ program multisig_compliant_token.aleo {
         public amount: u128
     ) -> Final {
         let allowance: TokenAllowance = TokenAllowance {
-            account: self.caller,
+            account: std::ctx::caller(),
             spender: spender
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -880,7 +880,7 @@ program multisig_compliant_token.aleo {
         public amount: u128
     ) -> Final {
         let allowance: TokenAllowance = TokenAllowance {
-            account: self.caller,
+            account: std::ctx::caller(),
             spender: spender
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -906,7 +906,7 @@ program multisig_compliant_token.aleo {
     ) -> Final {
         let allowance: TokenAllowance = TokenAllowance {
             account: sender,
-            spender: self.caller,
+            spender: std::ctx::caller(),
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
@@ -947,11 +947,11 @@ program multisig_compliant_token.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR_ADDRESS,
             amount: amount,
-            sender: self.caller,
+            sender: std::ctx::caller(),
             recipient: recipient,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, token, final {
             let is_sender_frozen: bool = multisig_freezelist_registry.aleo::freeze_list.get_or_use(caller, false);
             assert_eq(is_sender_frozen, false);
@@ -982,7 +982,7 @@ program multisig_compliant_token.aleo {
 
         let allowance: TokenAllowance = TokenAllowance {
             account: sender,
-            spender: self.caller,
+            spender: std::ctx::caller(),
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
@@ -1050,7 +1050,7 @@ program multisig_compliant_token.aleo {
                 let previous_root: field = multisig_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(sender_root, previous_root);
                 let updated_height: u32 = multisig_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }
@@ -1094,7 +1094,7 @@ program multisig_compliant_token.aleo {
                     let previous_root: field = multisig_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                     assert_eq(root, previous_root);
                     let updated_height: u32 = multisig_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                    assert(updated_height + window > block.height);
+                    assert(updated_height + window > std::ctx::block_height());
                 }
 
                 let is_recipient_frozen: bool = multisig_freezelist_registry.aleo::freeze_list.get_or_use(recipient, false);
@@ -1121,7 +1121,7 @@ program multisig_compliant_token.aleo {
         };
         let signing_op_id = BHP256::hash_to_field(multisig_op);
         let wallet_signing_op_id_hash = multisig_core.aleo::get_signing_op_id_hash(multisig_common_params.wallet_id, signing_op_id);
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             if (multisig_common_params.wallet_id != ZERO_ADDRESS) {
                 let wallet_id_role = wallet_id_to_role.get(multisig_common_params.wallet_id);
@@ -1129,7 +1129,7 @@ program multisig_compliant_token.aleo {
                 let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
                 assert(signing_complete);
                 let pending_signing_op = multisig_core.aleo::pending_signing_ops.get(wallet_signing_op_id_hash);
-                assert(pending_signing_op.expires_at_block > block.height);
+                assert(pending_signing_op.expires_at_block > std::ctx::block_height());
                 let pending_request = pending_requests.get(wallet_signing_op_id_hash);
                 assert_eq(pending_request, multisig_op);
                 pending_requests.remove(wallet_signing_op_id_hash);
@@ -1214,7 +1214,7 @@ program multisig_compliant_token.aleo {
                 let previous_root: field = multisig_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(creds_root, previous_root);
                 let updated_height: u32 = multisig_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }

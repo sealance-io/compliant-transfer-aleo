@@ -29,10 +29,10 @@ program gqrfmwbtyp.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -50,7 +50,7 @@ program gqrfmwbtyp.aleo {
     // Can only be called once -- ensures the contract has not already been initialized.
     // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     fn initialize(public admin: address) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let is_already_initialized: bool = initialized.get_or_use(INITIALIZED_INDEX, false);
             assert_eq(is_already_initialized, false);
@@ -67,7 +67,7 @@ program gqrfmwbtyp.aleo {
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -83,7 +83,7 @@ program gqrfmwbtyp.aleo {
     // Updates the exchange rate for a given token.
     // Can only be called by the admin.
     fn update_rate(public token_id: field, public rate: u128) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MANAGER_ROLE == MANAGER_ROLE);
@@ -104,7 +104,7 @@ program gqrfmwbtyp.aleo {
         let token_amount: u128 = rate * amount as u128;
         let mint_token_call: (token_registry.aleo::Token, Final) = token_registry.aleo::mint_private(
             token_id,
-            self.signer,
+            std::ctx::signer(),
             token_amount,
             true,
             0u32
@@ -134,7 +134,7 @@ program gqrfmwbtyp.aleo {
 
         let token_amount: u128 = rate * amount as u128;
         let mint_token_call: (sealed_timelock_policy.aleo::CompliantToken, token_registry.aleo::Token, Final) = sealed_timelock_policy.aleo::mint_private(
-            self.signer,
+            std::ctx::signer(),
             token_amount,
             0u32
         );

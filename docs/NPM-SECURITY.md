@@ -34,6 +34,11 @@ Committed validator with no registry bootstrap. Validates: npm registry only,
 HTTPS enforcement, integrity presence for resolved packages, and rejection of
 git/file/tarball fallback sources when `resolved` is absent.
 
+Exception: the root LionDen dev dependencies are allowed to resolve from the
+local `../lionden/packages/*` checkout so this repository can be tested against
+local LionDen changes. The validator permits only those exact `@lionden/*`
+package names and paths.
+
 ### 4. Vulnerability Scanning
 
 | Environment  | Command                                    | Threshold |

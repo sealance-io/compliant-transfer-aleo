@@ -33,10 +33,10 @@ program sealed_report_policy.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -70,7 +70,7 @@ program sealed_report_policy.aleo {
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
     fn initialize(public admin: address, public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
             assert_eq(is_already_initialized, false);
@@ -107,7 +107,7 @@ program sealed_report_policy.aleo {
         public previous_root: field,
         public new_root: field
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
@@ -143,14 +143,14 @@ program sealed_report_policy.aleo {
                 freeze_list_index.set(frozen_index, ZERO_ADDRESS);
             }
 
-            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, std::ctx::block_height());
         };
     }
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -166,7 +166,7 @@ program sealed_report_policy.aleo {
     // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the admin.
     fn update_block_height_window(public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
@@ -186,9 +186,9 @@ program sealed_report_policy.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.caller,
+            account: std::ctx::caller(),
             token_id: TOKEN_ID
         };
         let authorization_call: Final = token_registry.aleo::prehook_public(
@@ -199,7 +199,7 @@ program sealed_report_policy.aleo {
 
         let transfer_call: Final = token_registry.aleo::transfer_from_public(
             TOKEN_ID,
-            self.caller,
+            std::ctx::caller(),
             recipient,
             amount
         );
@@ -220,9 +220,9 @@ program sealed_report_policy.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let signer: address = self.signer;
+        let signer: address = std::ctx::signer();
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.signer,
+            account: std::ctx::signer(),
             token_id: TOKEN_ID
         };
 
@@ -258,11 +258,11 @@ program sealed_report_policy.aleo {
         public amount: u128,
         recipient_merkle_proofs: [merkle_tree.aleo::MerkleProof;2]
     ) -> (ComplianceRecord, token_registry.aleo::Token, Final) {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         let root: field = merkle_tree.aleo::verify_non_inclusion(recipient, recipient_merkle_proofs);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.caller,
+            account: std::ctx::caller(),
             token_id: TOKEN_ID
         };
 
@@ -274,7 +274,7 @@ program sealed_report_policy.aleo {
 
         let transfer_call: (token_registry.aleo::Token, Final) = token_registry.aleo::transfer_from_public_to_private(
             TOKEN_ID,
-            self.caller,
+            std::ctx::caller(),
             recipient,
             amount,
             true
@@ -284,7 +284,7 @@ program sealed_report_policy.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR_ADDRESS,
             amount: amount,
-            sender: self.caller,
+            sender: std::ctx::caller(),
             recipient: recipient,
         };
         return (
@@ -300,7 +300,7 @@ program sealed_report_policy.aleo {
                     assert_eq(root, previous_root);
                     let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                     let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                    assert(updated_height + window > block.height);
+                    assert(updated_height + window > std::ctx::block_height());
                 }
 
                 authorization_call.run();
@@ -364,7 +364,7 @@ program sealed_report_policy.aleo {
                     assert_eq(sender_root, previous_root);
                     let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                     let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                    assert(updated_height + window > block.height);
+                    assert(updated_height + window > std::ctx::block_height());
                 }
 
                 authorization_call.2.run();
@@ -425,7 +425,7 @@ program sealed_report_policy.aleo {
                     assert_eq(root, previous_root);
                     let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                     let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                    assert(updated_height + window > block.height);
+                    assert(updated_height + window > std::ctx::block_height());
                 }
 
                 authorization_call.2.run();

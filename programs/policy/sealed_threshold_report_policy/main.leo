@@ -35,10 +35,10 @@ program sealed_threshold_report_policy.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -53,7 +53,7 @@ program sealed_threshold_report_policy.aleo {
     // Stores the EPOCH constant for off-chain visibility.
     mapping epoch: bool => u32;
     // Defines the number of blocks within which an estimated block height is considered valid:
-    // (block.height - window) < estimated_block_height ≤ block.height
+    // (std::ctx::block_height() - window) < estimated_block_height ≤ std::ctx::block_height()
     mapping block_height_window: bool => u32;
     // Tracks which addresses have already generated a TokenComplianceStateRecord.
     mapping owned_state_record: address => bool;
@@ -76,7 +76,7 @@ program sealed_threshold_report_policy.aleo {
     // Can only be called once — ensures the contract has not already been initialized.
     // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     fn initialize(public admin: address, public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let already_initialized: bool = freeze_registry_program_name.contains(FREEZE_REGISTRY_PROGRAM_INDEX);
             assert_eq(already_initialized, false);
@@ -97,9 +97,9 @@ program sealed_threshold_report_policy.aleo {
     // Ensures the signer has not already registered.
     // Marks the signer as having an active compliance state record in owned_state_record mapping.
     fn signup() -> (TokenComplianceStateRecord, Final){
-        let signer: address = self.signer;
+        let signer: address = std::ctx::signer();
         let state_record: TokenComplianceStateRecord = TokenComplianceStateRecord {
-            owner: self.signer,
+            owner: std::ctx::signer(),
             cumulative_amount_per_epoch: 0u128,
             latest_block_height: 0u32
         };
@@ -182,12 +182,12 @@ program sealed_threshold_report_policy.aleo {
                 verify_sender.run();
                 verify_recipient.run();
 
-                assert(block.height >= estimated_block_height);
+                assert(std::ctx::block_height() >= estimated_block_height);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-                window = block.height > window
+                window = std::ctx::block_height() > window
                     ? window
-                    : block.height;
-                assert(estimated_block_height >= (block.height - window));
+                    : std::ctx::block_height();
+                assert(estimated_block_height >= (std::ctx::block_height() - window));
 
                 authorization_call.2.run();
                 transfer_call.2.run();
@@ -197,7 +197,7 @@ program sealed_threshold_report_policy.aleo {
     // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the admin.
     fn update_block_height_window(public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MANAGER_ROLE == MANAGER_ROLE);
@@ -209,7 +209,7 @@ program sealed_threshold_report_policy.aleo {
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -239,13 +239,13 @@ program sealed_threshold_report_policy.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Final) {
-        assert_eq(input_state_record.owner, self.caller);
+        assert_eq(input_state_record.owner, std::ctx::caller());
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.caller);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::caller());
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.caller,
+            account: std::ctx::caller(),
             token_id: TOKEN_ID
         };
         let authorization_call: Final = token_registry.aleo::prehook_public(
@@ -256,7 +256,7 @@ program sealed_threshold_report_policy.aleo {
 
         let transfer_call: Final = token_registry.aleo::transfer_from_public(
             TOKEN_ID,
-            self.caller,
+            std::ctx::caller(),
             recipient,
             amount
         );
@@ -279,12 +279,12 @@ program sealed_threshold_report_policy.aleo {
             verify_sender.run();
             verify_recipient.run();
 
-            assert(block.height >= estimated_block_height);
+            assert(std::ctx::block_height() >= estimated_block_height);
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            window = block.height > window
+            window = std::ctx::block_height() > window
                 ? window
-                : block.height;
-            assert(estimated_block_height >= (block.height - window));
+                : std::ctx::block_height();
+            assert(estimated_block_height >= (std::ctx::block_height() - window));
 
             authorization_call.run();
             transfer_call.run();
@@ -303,11 +303,11 @@ program sealed_threshold_report_policy.aleo {
         input_state_record: TokenComplianceStateRecord,
         public estimated_block_height: u32,
     ) -> (TokenComplianceStateRecord, Final) {
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.signer);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::signer());
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.signer,
+            account: std::ctx::signer(),
             token_id: TOKEN_ID
         };
 
@@ -341,12 +341,12 @@ program sealed_threshold_report_policy.aleo {
             verify_sender.run();
             verify_recipient.run();
 
-            assert(block.height >= estimated_block_height);
+            assert(std::ctx::block_height() >= estimated_block_height);
             let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-            window = block.height > window
+            window = std::ctx::block_height() > window
                 ? window
-                : block.height;
-            assert(estimated_block_height >= (block.height - window));
+                : std::ctx::block_height();
+            assert(estimated_block_height >= (std::ctx::block_height() - window));
 
             authorization_call.run();
             transfer_call.run();
@@ -369,13 +369,13 @@ program sealed_threshold_report_policy.aleo {
         public estimated_block_height: u32,
         recipient_merkle_proofs: [merkle_tree.aleo::MerkleProof;2]
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo::Token, Final) {
-        assert_eq(input_state_record.owner, self.caller);
+        assert_eq(input_state_record.owner, std::ctx::caller());
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.caller);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::caller());
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.caller,
+            account: std::ctx::caller(),
             token_id: TOKEN_ID
         };
 
@@ -387,7 +387,7 @@ program sealed_threshold_report_policy.aleo {
 
         let transfer_call: (token_registry.aleo::Token, Final) = token_registry.aleo::transfer_from_public_to_private(
             TOKEN_ID,
-            self.caller,
+            std::ctx::caller(),
             recipient,
             amount,
             true
@@ -408,7 +408,7 @@ program sealed_threshold_report_policy.aleo {
         };
 
         let is_above_threshold: bool = cumulative_amount_per_epoch > THRESHOLD;
-        let sender: address = self.caller;
+        let sender: address = std::ctx::caller();
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: is_above_threshold ? INVESTIGATOR_ADDRESS : ZERO_ADDRESS,
             amount: is_above_threshold ? amount : 0u128,
@@ -424,12 +424,12 @@ program sealed_threshold_report_policy.aleo {
                 verify_sender.run();
                 verify_recipient.run();
 
-                assert(block.height >= estimated_block_height);
+                assert(std::ctx::block_height() >= estimated_block_height);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-                window = block.height > window
+                window = std::ctx::block_height() > window
                     ? window
-                    : block.height;
-                assert(estimated_block_height >= (block.height - window));
+                    : std::ctx::block_height();
+                assert(estimated_block_height >= (std::ctx::block_height() - window));
 
                 authorization_call.run();
                 transfer_call.1.run();
@@ -511,12 +511,12 @@ program sealed_threshold_report_policy.aleo {
                 verify_sender.run();
                 verify_recipient.run();
 
-                assert(block.height >= estimated_block_height);
+                assert(std::ctx::block_height() >= estimated_block_height);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-                window = block.height > window
+                window = std::ctx::block_height() > window
                     ? window
-                    : block.height;
-                assert(estimated_block_height >= (block.height - window));
+                    : std::ctx::block_height();
+                assert(estimated_block_height >= (std::ctx::block_height() - window));
 
                 authorization_call.2.run();
                 transfer_call.2.run();
@@ -592,12 +592,12 @@ program sealed_threshold_report_policy.aleo {
                 verify_sender.run();
                 verify_recipient.run();
 
-                assert(block.height >= estimated_block_height);
+                assert(std::ctx::block_height() >= estimated_block_height);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-                window = block.height > window
+                window = std::ctx::block_height() > window
                     ? window
-                    : block.height;
-                assert(estimated_block_height >= (block.height - window));
+                    : std::ctx::block_height();
+                assert(estimated_block_height >= (std::ctx::block_height() - window));
 
                 authorization_call.2.run();
                 transfer_call.1.run();
