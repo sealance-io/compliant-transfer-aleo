@@ -46,10 +46,10 @@ program sealed_report_token.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -112,7 +112,7 @@ program sealed_report_token.aleo {
         public previous_root: field,
         public new_root: field
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
@@ -148,14 +148,14 @@ program sealed_report_token.aleo {
                 freeze_list_index.set(frozen_index, ZERO_ADDRESS);
             }
 
-            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, std::ctx::block_height());
         };
     }
 
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -171,7 +171,7 @@ program sealed_report_token.aleo {
     // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the admin.
     fn update_block_height_window(public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
@@ -194,7 +194,7 @@ program sealed_report_token.aleo {
         public admin: address,
         public blocks: u32
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             // Check if the token has already been initialized
             let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
@@ -230,7 +230,7 @@ program sealed_report_token.aleo {
         public recipient: address,
         public amount: u128,
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
@@ -272,7 +272,7 @@ program sealed_report_token.aleo {
             amount: amount,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (token, final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
@@ -302,7 +302,7 @@ program sealed_report_token.aleo {
         public owner: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
@@ -337,7 +337,7 @@ program sealed_report_token.aleo {
             amount: input_record.amount - amount
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (output_record, final {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
@@ -366,7 +366,7 @@ program sealed_report_token.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let is_sender_frozen: bool = freeze_list.get_or_use(caller, false);
             assert_eq(is_sender_frozen, false);
@@ -387,7 +387,7 @@ program sealed_report_token.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let signer: address = self.signer;
+        let signer: address = std::ctx::signer();
         return final {
             let is_sender_frozen: bool = freeze_list.get_or_use(signer, false);
             assert_eq(is_sender_frozen, false);
@@ -410,7 +410,7 @@ program sealed_report_token.aleo {
         public amount: u128
     ) -> Final {
         let allowance: Allowance = Allowance {
-            account: self.caller,
+            account: std::ctx::caller(),
             spender: spender
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -430,7 +430,7 @@ program sealed_report_token.aleo {
         public amount: u128
     ) -> Final {
         let allowance: Allowance = Allowance {
-            account: self.caller,
+            account: std::ctx::caller(),
             spender: spender
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -453,7 +453,7 @@ program sealed_report_token.aleo {
     ) -> Final {
         let allowance: Allowance = Allowance {
             account: owner,
-            spender: self.caller,
+            spender: std::ctx::caller(),
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
@@ -495,11 +495,11 @@ program sealed_report_token.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR_ADDRESS,
             amount: amount,
-            sender: self.caller,
+            sender: std::ctx::caller(),
             recipient: recipient,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, token, final {
             let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
             if (current_root != root) {
@@ -507,7 +507,7 @@ program sealed_report_token.aleo {
                 assert_eq(root, previous_root);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                 let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
 
             let is_sender_frozen: bool = freeze_list.get_or_use(caller, false);
@@ -539,7 +539,7 @@ program sealed_report_token.aleo {
 
         let allowance: Allowance = Allowance {
             account: owner,
-            spender: self.caller,
+            spender: std::ctx::caller(),
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
@@ -557,7 +557,7 @@ program sealed_report_token.aleo {
                 assert_eq(root, previous_root);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                 let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
 
             let is_sender_frozen: bool = freeze_list.get_or_use(owner, false);
@@ -612,7 +612,7 @@ program sealed_report_token.aleo {
                 assert_eq(sender_root, previous_root);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                 let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }
@@ -651,7 +651,7 @@ program sealed_report_token.aleo {
                     assert_eq(root, previous_root);
                     let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                     let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                    assert(updated_height + window > block.height);
+                    assert(updated_height + window > std::ctx::block_height());
                 }
 
                 let is_recipient_frozen: bool = freeze_list.get_or_use(recipient, false);

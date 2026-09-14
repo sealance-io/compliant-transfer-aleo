@@ -121,10 +121,10 @@ program compliant_token_template.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -169,7 +169,7 @@ program compliant_token_template.aleo {
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -194,7 +194,7 @@ program compliant_token_template.aleo {
         public max_supply: u128,
         public admin: address,
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             // Check if the token has already been initialized
             let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
@@ -223,10 +223,10 @@ program compliant_token_template.aleo {
     // Allows future private transfers without needing to re-prove non-inclusion in the freeze list.
     // The signer's privacy is preserved by proving non-inclusion in the freeze list Merkle tree.
     fn get_credentials(sender_merkle_proofs: [MerkleProof;2]) -> (Credentials, Final) {
-        let root: field = verify_non_inclusion(self.signer, sender_merkle_proofs);
+        let root: field = verify_non_inclusion(std::ctx::signer(), sender_merkle_proofs);
 
         let credentials_record: Credentials = Credentials {
-            owner: self.signer,
+            owner: std::ctx::signer(),
             freeze_list_root: root,
         };
 
@@ -238,7 +238,7 @@ program compliant_token_template.aleo {
                 let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(root, previous_root);
                 let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }
@@ -251,7 +251,7 @@ program compliant_token_template.aleo {
         public recipient: address,
         public amount: u128,
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
@@ -301,7 +301,7 @@ program compliant_token_template.aleo {
             recipient: recipient,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, token, final {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
@@ -334,7 +334,7 @@ program compliant_token_template.aleo {
         public owner: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
@@ -379,7 +379,7 @@ program compliant_token_template.aleo {
             recipient: ZERO_ADDRESS,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, output_record, final {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
@@ -411,7 +411,7 @@ program compliant_token_template.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let is_sender_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(caller, false);
             assert_eq(is_sender_frozen, false);
@@ -435,7 +435,7 @@ program compliant_token_template.aleo {
         public recipient: address,
         public amount: u128
     ) -> Final {
-        let signer: address = self.signer;
+        let signer: address = std::ctx::signer();
         return final {
             let is_sender_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(signer, false);
             assert_eq(is_sender_frozen, false);
@@ -461,7 +461,7 @@ program compliant_token_template.aleo {
         public amount: u128
     ) -> Final {
         let allowance: TokenAllowance = TokenAllowance {
-            account: self.caller,
+            account: std::ctx::caller(),
             spender: spender
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -484,7 +484,7 @@ program compliant_token_template.aleo {
         public amount: u128
     ) -> Final {
         let allowance: TokenAllowance = TokenAllowance {
-            account: self.caller,
+            account: std::ctx::caller(),
             spender: spender
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -510,7 +510,7 @@ program compliant_token_template.aleo {
     ) -> Final {
         let allowance: TokenAllowance = TokenAllowance {
             account: owner,
-            spender: self.caller,
+            spender: std::ctx::caller(),
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
@@ -551,11 +551,11 @@ program compliant_token_template.aleo {
         let compliance_record: ComplianceRecord = ComplianceRecord {
             owner: INVESTIGATOR_ADDRESS,
             amount: amount,
-            sender: self.caller,
+            sender: std::ctx::caller(),
             recipient: recipient,
         };
 
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return (compliance_record, token, final {
             let is_sender_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(caller, false);
             assert_eq(is_sender_frozen, false);
@@ -586,7 +586,7 @@ program compliant_token_template.aleo {
 
         let allowance: TokenAllowance = TokenAllowance {
             account: owner,
-            spender: self.caller,
+            spender: std::ctx::caller(),
         };
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
@@ -654,7 +654,7 @@ program compliant_token_template.aleo {
                 let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(sender_root, previous_root);
                 let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }
@@ -698,7 +698,7 @@ program compliant_token_template.aleo {
                     let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                     assert_eq(root, previous_root);
                     let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                    assert(updated_height + window > block.height);
+                    assert(updated_height + window > std::ctx::block_height());
                 }
 
                 let is_recipient_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(recipient, false);
@@ -713,7 +713,7 @@ program compliant_token_template.aleo {
     // Stops or resumes all token transfers.
     // Can only be called by an address with the PAUSE_ROLE.
     fn set_pause_status(pause_status: bool) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & PAUSE_ROLE == PAUSE_ROLE);
@@ -795,7 +795,7 @@ program compliant_token_template.aleo {
                 let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(creds_root, previous_root);
                 let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         });
     }

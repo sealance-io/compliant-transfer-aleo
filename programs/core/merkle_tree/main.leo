@@ -2,7 +2,7 @@
 // The siblings array has MAX_TREE_DEPTH + 1 elements because siblings[0] holds the leaf itself.
 const MAX_TREE_DEPTH: u32 = 15u32;
 
-struct MerkleProof {
+export struct MerkleProof {
     siblings: [field; 16],
     leaf_index: u32
 }

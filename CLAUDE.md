@@ -66,7 +66,7 @@ lionden recipe --file recipes/upgrade.ts --network devnode --program <program-na
 
 - **npm security**: Always `--ignore-scripts` for install/ci commands and use `--allow-git=none` with `npm ci`
 - **Workspace**: Install packages from repo root only, never in subdirectories
-- **Leo version**: v4.3.2 — compile with `npm run compile`, not `leo build`
+- **Leo version**: v4.4.2 — compile with `npm run compile`, not `leo build`
 - **LionDen dependencies**: `@lionden/*` packages are installed from npm and pinned exactly; update them intentionally as a group
 - **Program upgrades**: Use `lionden recipe --file recipes/upgrade.ts --network <network> --program <program-name>` where the program name comes from `/programs` without the `.aleo` suffix
 - **Node**: v24 (see `.nvmrc`); v20.19.0+ or v22.12.0+ also work
