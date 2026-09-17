@@ -25,11 +25,16 @@ LionDen runs test **files serially**, each in its own forked Vitest worker:
 
 ```bash
 cp .env.example .env
-npm test                         # Default devnode mode (recommended)
+npm run compile                  # Required after a clean checkout/program change
+npm test                         # Default devnode mode (reuses generated output)
 npm test test/your-test.test.ts  # Single test
 npm test -- --grep "mint"           # Filter tests by name
 npm test -- --prove                 # Generate proofs during execution
 ```
+
+The root `npm test` script intentionally passes `--no-compile`. Because `artifacts/` and
+`typechain/` are gitignored, run `npm run compile` after a clean checkout and whenever a
+Leo program changes. Tests then reuse those generated outputs.
 
 ## Devnet mode
 
