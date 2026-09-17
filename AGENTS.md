@@ -28,10 +28,10 @@ npm run compile              # Compile Leo programs with LionDen
 npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
-npm test                    # Default devnode mode (recommended)
+npm run compile             # Required after a clean checkout/program change
+npm test                    # Default devnode mode; reuses artifacts/typechain
 npm test test/merkle_tree.test.ts  # Specific test
 npm test -- --grep "mint"      # Filter tests by name
-npm test -- --no-compile       # Reuse existing artifacts/typechain
 npm test -- --prove            # Generate proofs during execution
 
 # Deploy
@@ -118,5 +118,8 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Testing Preferences
 
-- Prefer `npm test` for root integration tests so LionDen manages compile, typechain, and devnode lifecycle.
-- Use `npm test -- --no-compile` only when intentionally reusing existing artifacts/typechain.
+- Run `npm run compile` after a clean checkout or Leo program change to generate the
+  gitignored artifacts and typechain.
+- Prefer `npm test` for root integration tests; the script intentionally passes
+  `--no-compile` and reuses the generated artifacts/typechain while LionDen manages the
+  devnode lifecycle.
