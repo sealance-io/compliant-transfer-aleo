@@ -11,7 +11,7 @@ See @docs/ARCHITECTURE.md for program structure and @docs/LEO-ALEO-PATTERNS.md f
 **Build constraints:**
 
 - Compile with `npm run compile` (not `leo build`)
-- Leo CLI version: 4.3.2
+- Leo CLI version: 4.4.2
 - `@lionden/*` packages are installed from npm and pinned exactly; update them intentionally as a group
 
 **Execution model:**
@@ -42,11 +42,11 @@ See @docs/ARCHITECTURE.md for program structure and @docs/LEO-ALEO-PATTERNS.md f
 
 - Cross-program calls are hardcoded (e.g., `token_registry.aleo::...`); Leo v4 adds interfaces/dynamic dispatch but this repo doesn't use them yet
 - No inheritance/traits: common logic duplicated across policy programs
-- No parameterized caller: separate functions for `self.caller` vs `self.signer` variants
+- No parameterized caller: separate functions for `std::ctx::caller()` vs `std::ctx::signer()` variants
 - Mapping workarounds: index emulation for arrays, hash-based multi-dimensional keys, `get_or_use` for absent values
 
 **Design patterns:**
 
 - Integrated dual-auth: single program with `address_to_role` + `wallet_id_to_role`
 - Separated (proxy): token template + multisig proxy wrapper
-- Upgradability: `@custom constructor()` with `self.edition` check + multisig approval
+- Upgradability: `@custom constructor()` with `std::ctx::edition()` check + multisig approval

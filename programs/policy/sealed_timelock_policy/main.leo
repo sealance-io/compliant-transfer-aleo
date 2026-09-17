@@ -31,10 +31,10 @@ program sealed_timelock_policy.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -62,8 +62,8 @@ program sealed_timelock_policy.aleo {
     // Can be called only by the INITIAL_CONFIGURATION_ADDRESS
     // Registers the token and assigns this program as both the token admin and the external authorization party
     fn initialize(public admin: address) -> Final {
-        let caller: address = self.caller;
-        // Set admin and external_authorization_party to be self.address
+        let caller: address = std::ctx::caller();
+        // Set admin and external_authorization_party to be std::ctx::addr()
         let token_registry_call: Final = token_registry.aleo::register_token(
             TOKEN_ID,
             NAME,
@@ -71,7 +71,7 @@ program sealed_timelock_policy.aleo {
             DECIMALS,
             TOTAL_SUPPLY,
             true,
-            self.address // external_authorization_party
+            std::ctx::addr() // external_authorization_party
         );
         return final {
             // Check if the token has already been initialized
@@ -91,7 +91,7 @@ program sealed_timelock_policy.aleo {
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -112,7 +112,7 @@ program sealed_timelock_policy.aleo {
         public amount: u128,
         lock_until: u32
     ) -> (CompliantToken, Final) {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         let token_registry_call: Final = token_registry.aleo::mint_public(
             TOKEN_ID,
             recipient,
@@ -142,7 +142,7 @@ program sealed_timelock_policy.aleo {
         public amount: u128,
         lock_until: u32
     ) -> (CompliantToken, token_registry.aleo::Token, Final) {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         let token_registry_call: (token_registry.aleo::Token, Final) = token_registry.aleo::mint_private(
             TOKEN_ID,
             recipient,
@@ -180,13 +180,13 @@ program sealed_timelock_policy.aleo {
         sealed_token: CompliantToken,
         lock_until: u32,
     ) -> (CompliantToken, CompliantToken, Final) {
-        assert_eq(self.caller, sealed_token.owner);
+        assert_eq(std::ctx::caller(), sealed_token.owner);
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.caller);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::caller());
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.caller,
+            account: std::ctx::caller(),
             token_id: TOKEN_ID
         };
         let authorization_call: Final = token_registry.aleo::prehook_public(
@@ -197,7 +197,7 @@ program sealed_timelock_policy.aleo {
 
         let transfer_call: Final = token_registry.aleo::transfer_from_public(
             TOKEN_ID,
-            self.caller,
+            std::ctx::caller(),
             recipient,
             amount
         );
@@ -226,7 +226,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.run();
                 transfer_call.run();
 
-                assert(locked_until <= block.height);
+                assert(locked_until <= std::ctx::block_height());
             }
             );
     }
@@ -241,11 +241,11 @@ program sealed_timelock_policy.aleo {
         sealed_token: CompliantToken,
         lock_until: u32
     ) -> (CompliantToken, CompliantToken, Final) {
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.signer);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::signer());
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.signer,
+            account: std::ctx::signer(),
             token_id: TOKEN_ID
         };
 
@@ -285,7 +285,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.run();
                 transfer_call.run();
 
-                assert(locked_until <= block.height);
+                assert(locked_until <= std::ctx::block_height());
             }
         );
     }
@@ -303,13 +303,13 @@ program sealed_timelock_policy.aleo {
         recipient_merkle_proofs: [merkle_tree.aleo::MerkleProof;2],
         lock_until: u32
     ) -> (CompliantToken, CompliantToken, token_registry.aleo::Token, Final) {
-        assert_eq(self.caller, sealed_token.owner);
+        assert_eq(std::ctx::caller(), sealed_token.owner);
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(self.caller);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::caller());
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
-            account: self.caller,
+            account: std::ctx::caller(),
             token_id: TOKEN_ID
         };
 
@@ -321,7 +321,7 @@ program sealed_timelock_policy.aleo {
 
         let transfer_call: (token_registry.aleo::Token, Final) = token_registry.aleo::transfer_from_public_to_private(
             TOKEN_ID,
-            self.caller,
+            std::ctx::caller(),
             recipient,
             amount,
             true
@@ -352,7 +352,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.run();
                 transfer_call.1.run();
 
-                assert(locked_until <= block.height);
+                assert(locked_until <= std::ctx::block_height());
             }
         );
     }
@@ -421,7 +421,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.2.run();
                 transfer_call.2.run();
 
-                assert(locked_until <= block.height);
+                assert(locked_until <= std::ctx::block_height());
             }
         );
     }
@@ -486,7 +486,7 @@ program sealed_timelock_policy.aleo {
                 authorization_call.2.run();
                 transfer_call.1.run();
 
-                assert(locked_until <= block.height);
+                assert(locked_until <= std::ctx::block_height());
             }
         );
     }

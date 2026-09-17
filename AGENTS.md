@@ -28,10 +28,10 @@ npm run compile              # Compile Leo programs with LionDen
 npm run build --workspace=@sealance-io/policy-engine-aleo  # SDK only
 
 # Test
-npm test                    # Default devnode mode (recommended)
+npm run compile             # Required after a clean checkout/program change
+npm test                    # Default devnode mode; reuses artifacts/typechain
 npm test test/merkle_tree.test.ts  # Specific test
 npm test -- --grep "mint"      # Filter tests by name
-npm test -- --no-compile       # Reuse existing artifacts/typechain
 npm test -- --prove            # Generate proofs during execution
 
 # Deploy
@@ -74,7 +74,7 @@ npm run format:fix          # Auto-fix formatting
 ## Critical Constraints
 
 1. **Node Version**: Use Node 20.19.0+ on the 20.x line, or Node 22.12.0+; the repo default in `.nvmrc` is `v24`
-2. **Leo Version**: Developed with Leo CLI v4.3.2
+2. **Leo Version**: Developed with Leo CLI v4.4.2
 3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
 4. **One Chain Per Test File**: Test files run serially, each in its own forked worker with its own chain. No state is shared across files and file order is irrelevant — but a file's own tests do share a chain and must stay ordered within the file
 5. **npm Security**: Always use `--ignore-scripts` for installs; use `--allow-git=none` with `npm ci`. Build/publish workflows may run scripts as needed
@@ -118,5 +118,8 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 
 ## Testing Preferences
 
-- Prefer `npm test` for root integration tests so LionDen manages compile, typechain, and devnode lifecycle.
-- Use `npm test -- --no-compile` only when intentionally reusing existing artifacts/typechain.
+- Run `npm run compile` after a clean checkout or Leo program change to generate the
+  gitignored artifacts and typechain.
+- Prefer `npm test` for root integration tests; the script intentionally passes
+  `--no-compile` and reuses the generated artifacts/typechain while LionDen manages the
+  devnode lifecycle.

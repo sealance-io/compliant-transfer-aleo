@@ -2,7 +2,7 @@
 
 Status: Normative
 Last verified: 2026-04-06
-Scope: Leo v4.3.2; Aleo execution model; programs under /programs in this repository.
+Scope: Leo v4.4.2; Aleo execution model; programs under /programs in this repository.
 External program behavior is treated as assumptions and called out explicitly.
 
 This document is authoritative for how this repo's Leo programs are structured and how agents
@@ -82,7 +82,7 @@ fn join(private token_1: Token, private token_2: Token) -> Token { ... }
 
 // Entry fn with on-chain state change
 fn update_role(public new_address: address, role: u16) -> Final {
-    let caller: address = self.caller;  // capture before final block
+    let caller: address = std::ctx::caller();  // capture before final block
     return final {
         // on-chain logic; can access mappings
     };
@@ -145,8 +145,8 @@ fn transfer(...) -> Final {
 
 - Entry fns in programs/policy/sealed_threshold_report_policy.leo accept public estimated_block_height.
 - Final blocks MUST enforce:
-  - block.height >= estimated_block_height
-  - estimated_block_height >= (block.height - window)
+  - std::ctx::block_height() >= estimated_block_height
+  - estimated_block_height >= (std::ctx::block_height() - window)
 - These checks appear in the final blocks of functions such as signup_and_transfer_private in
   programs/policy/sealed_threshold_report_policy.leo.
 
@@ -199,7 +199,7 @@ Example:
 
 ### Caller resolution duplication
 
-- self.caller vs self.signer vs self.address cannot be parameterized.
+- std::ctx::caller() vs std::ctx::signer() vs std::ctx::addr() cannot be parameterized.
 - Result: separate transfer\_\* variants for caller vs signer flows.
 
 ### Mapping limitations

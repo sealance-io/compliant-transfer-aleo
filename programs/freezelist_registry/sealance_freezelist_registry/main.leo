@@ -26,10 +26,10 @@ program sealance_freezelist_registry.aleo {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
-        if self.edition > 0u16 {
-            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
+        if std::ctx::edition() > 0u16 {
+            let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: std::ctx::checksum(), edition: std::ctx::edition() });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo::WalletSigningOpId { wallet_id: std::ctx::addr(), signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo::completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -55,7 +55,7 @@ program sealance_freezelist_registry.aleo {
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
     fn initialize(public admin: address, public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
             assert_eq(is_already_initialized, false);
@@ -74,7 +74,7 @@ program sealance_freezelist_registry.aleo {
     // Updates the address assigned to a given role.
     // Can only be called by the current role manager.
     fn update_role(public new_address: address, role: u16) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let current_role: u16 = address_to_role.get(caller);
             assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
@@ -90,7 +90,7 @@ program sealance_freezelist_registry.aleo {
     // Updates the number of blocks during which the previous root is still considered valid.
     // Can only be called by the admin.
     fn update_block_height_window(public blocks: u32) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
@@ -120,7 +120,7 @@ program sealance_freezelist_registry.aleo {
         public previous_root: field,
         public new_root: field
     ) -> Final {
-        let caller: address = self.caller;
+        let caller: address = std::ctx::caller();
         return final {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
@@ -156,7 +156,7 @@ program sealance_freezelist_registry.aleo {
                 freeze_list_index.set(frozen_index, ZERO_ADDRESS);
             }
 
-            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, block.height);
+            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, std::ctx::block_height());
         };
     }
 
@@ -185,7 +185,7 @@ program sealance_freezelist_registry.aleo {
                 assert_eq(root, previous_root);
                 let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
                 let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
-                assert(updated_height + window > block.height);
+                assert(updated_height + window > std::ctx::block_height());
             }
         };
     }

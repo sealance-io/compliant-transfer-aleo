@@ -29,14 +29,17 @@ npm run build --workspace=@sealance-io/policy-engine-aleo
 | **Devnode** | `npm test` | Fast  | Local iteration, CI | **Default and recommended** |
 
 ```bash
-npm test                                      # Default devnode mode (recommended)
+npm run compile                               # Required after a clean checkout/program change
+npm test                                      # Default devnode mode (reuses generated output)
 npm test test/merkle_tree.test.ts          # Specific test file
 npm test -- --grep "mint"                     # Filter tests by name
-npm test -- --no-compile                      # Reuse existing artifacts/typechain
 npm test -- --prove                           # Generate proofs during execution
 ```
 
-**Note**: PR CI and local runs default to LionDen's managed devnode.
+**Note**: PR CI and local runs default to LionDen's managed devnode. The root `npm test`
+script intentionally passes `--no-compile`, so `artifacts/` and `typechain/` must already
+exist. Run `npm run compile` after a clean checkout and whenever Leo programs change;
+subsequent test runs reuse that generated output.
 
 ## SDK Development
 

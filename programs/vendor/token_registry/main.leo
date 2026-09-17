@@ -14,7 +14,7 @@ struct TokenMetadata {
   external_authorization_party: address
 }
 
-struct TokenOwner {
+export struct TokenOwner {
   account: address,
   token_id: field
 }
@@ -75,7 +75,7 @@ program token_registry.aleo {
         max_supply: 10_000_000_000_000_000u128,
         admin: wrapped_credits.aleo, // admin is the token_registry itself, ie no one can change the token metadata
         external_authorization_required: false,
-        external_authorization_party: self.address // admin is the token_registry itself, ie no one can change the token metadata
+        external_authorization_party: std::ctx::addr() // admin is the token_registry itself, ie no one can change the token metadata
       };
 
       registered_tokens.set(CREDITS_RESERVED_TOKEN_ID, credits_reserved_token);
@@ -92,7 +92,7 @@ program token_registry.aleo {
     public external_authorization_party: address
     ) -> Final {
     assert(token_id != CREDITS_RESERVED_TOKEN_ID);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
     let token: TokenMetadata = TokenMetadata {
       token_id: token_id,
       name: name,
@@ -120,7 +120,7 @@ program token_registry.aleo {
     public external_authorization_party: address
   ) -> Final {
     assert(token_id != CREDITS_RESERVED_TOKEN_ID);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
     return final {
       let token: TokenMetadata = registered_tokens.get(token_id);
       assert_eq(caller, token.admin);
@@ -153,7 +153,7 @@ program token_registry.aleo {
       token_id: token_id
     };
     let role_owner_hash: field = BHP256::hash_to_field(role_owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
 
     return final {
       let token: TokenMetadata = registered_tokens.get(token_id);
@@ -174,7 +174,7 @@ program token_registry.aleo {
       token_id: token_id
     };
     let role_owner_hash: field = BHP256::hash_to_field(role_owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
 
     return final {
       let token: TokenMetadata = registered_tokens.get(token_id);
@@ -191,7 +191,7 @@ program token_registry.aleo {
     public authorized_until: u32
   ) -> Final {
     let role_owner: TokenOwner = TokenOwner {
-      account: self.caller,
+      account: std::ctx::caller(),
       token_id: token_id
     };
     let role_owner_hash: field = BHP256::hash_to_field(role_owner);
@@ -200,7 +200,7 @@ program token_registry.aleo {
       token_id: token_id
     };
     let balance_key: field = BHP256::hash_to_field(token_owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
 
     return final {
       // Check that the token exists, and that the caller has permission to mint
@@ -271,11 +271,11 @@ program token_registry.aleo {
       authorized_until: authorized_until
     };
     let role_owner: TokenOwner = TokenOwner {
-      account: self.caller,
+      account: std::ctx::caller(),
       token_id: token_id
     };
     let role_owner_hash: field = BHP256::hash_to_field(role_owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
 
     return (token, final {
       // Check that the token exists, and that the caller has permission to mint
@@ -322,11 +322,11 @@ program token_registry.aleo {
     };
     let balance_key: field = BHP256::hash_to_field(token_owner);
     let role_owner: TokenOwner = TokenOwner {
-      account: self.caller,
+      account: std::ctx::caller(),
       token_id: token_id
     };
     let role_owner_hash: field = BHP256::hash_to_field(role_owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
 
     return final {
       // Check that the token exists, and that the caller has permission to burn
@@ -415,11 +415,11 @@ program token_registry.aleo {
         authorized_until: input_record.authorized_until
     };
     let role_owner: TokenOwner = TokenOwner {
-      account: self.caller,
+      account: std::ctx::caller(),
       token_id: input_record.token_id
     };
     let role_owner_hash: field = BHP256::hash_to_field(role_owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
     let token_id: field = input_record.token_id;
     return (output_record, final {
       // Check that the token exists, and that the caller has permission to burn
@@ -455,7 +455,7 @@ program token_registry.aleo {
     public authorized_until: u32
   ) -> Final {
     let balance_key: field = BHP256::hash_to_field(owner);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
     return final {
       let token: TokenMetadata = registered_tokens.get(owner.token_id);
       // Check that the token requires external authorization
@@ -474,7 +474,7 @@ program token_registry.aleo {
       // Get the authorized balance for the recipient
       let authorized_balance: Balance = authorized_balances.get_or_use(balance_key, default_balance);
       // Check if the authorized balance is expired
-      let authorized_balance_expired: bool = authorized_balance.authorized_until < block.height;
+      let authorized_balance_expired: bool = authorized_balance.authorized_until < std::ctx::block_height();
       // If the authorized balance is expired, treat is as part of the locked balance
       let actual_locked_balance: u128 = authorized_balance_expired
         ? locked_balance.balance + authorized_balance.balance
@@ -521,7 +521,7 @@ program token_registry.aleo {
         external_authorization_required: input_record.external_authorization_required,
         authorized_until: authorized_until
     };
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
     let token_id: field = input_record.token_id;
     return (unauthorized_record, authorized_record, final {
       // Check that the caller has permission to authorize
@@ -540,7 +540,7 @@ program token_registry.aleo {
     public amount: u128
   ) -> Final {
     let sender_key: TokenOwner = TokenOwner {
-      account: self.caller,
+      account: std::ctx::caller(),
       token_id: token_id
     };
     let sender_key_hash: field = BHP256::hash_to_field(sender_key);
@@ -550,13 +550,13 @@ program token_registry.aleo {
       token_id: token_id
     };
     let recipient_balance_key: field = BHP256::hash_to_field(recipient_key);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
 
     return final {
       let balance: Balance = authorized_balances.get(sender_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
       let token: TokenMetadata = registered_tokens.get(token_id);
-      assert(block.height <= balance.authorized_until || !token.external_authorization_required);
+      assert(std::ctx::block_height() <= balance.authorized_until || !token.external_authorization_required);
       // Update the balance, and check that the balance >= amount
       let new_balance: Balance = Balance {
         token_id: token_id,
@@ -601,7 +601,7 @@ program token_registry.aleo {
     public amount: u128
   ) -> Final {
     let sender_key: TokenOwner = TokenOwner {
-      account: self.signer,
+      account: std::ctx::signer(),
       token_id: token_id
     };
     let sender_key_hash: field = BHP256::hash_to_field(sender_key);
@@ -610,13 +610,13 @@ program token_registry.aleo {
       token_id: token_id
     };
     let recipient_balance_key: field = BHP256::hash_to_field(recipient_key);
-    let signer: address = self.signer;
+    let signer: address = std::ctx::signer();
     return final {
       // Get stored balance for the owner
       let balance: Balance = authorized_balances.get(sender_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
       let token: TokenMetadata = registered_tokens.get(token_id);
-      assert(block.height <= balance.authorized_until || !token.external_authorization_required);
+      assert(std::ctx::block_height() <= balance.authorized_until || !token.external_authorization_required);
       // Update the balance, and check that the balance >= amount
       let new_balance: Balance = Balance {
         token_id: token_id,
@@ -661,7 +661,7 @@ program token_registry.aleo {
     public amount: u128
   ) -> Final {
     let allowance: Allowance = Allowance {
-      account: self.caller,
+      account: std::ctx::caller(),
       spender: spender,
       token_id: token_id
     };
@@ -680,7 +680,7 @@ program token_registry.aleo {
     public amount: u128
   ) -> Final {
     let allowance: Allowance = Allowance {
-      account: self.caller,
+      account: std::ctx::caller(),
       spender: spender,
       token_id: token_id
     };
@@ -701,7 +701,7 @@ program token_registry.aleo {
   ) -> Final {
     let allowance: Allowance = Allowance {
       account: owner,
-      spender: self.caller,
+      spender: std::ctx::caller(),
       token_id: token_id
     };
     let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -727,7 +727,7 @@ program token_registry.aleo {
       let balance: Balance = authorized_balances.get(owner_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
       let token: TokenMetadata = registered_tokens.get(token_id);
-      assert(block.height <= balance.authorized_until || !token.external_authorization_required);
+      assert(std::ctx::block_height() <= balance.authorized_until || !token.external_authorization_required);
 
       // Update the balance for the owner
       let new_balance: Balance = Balance {
@@ -781,11 +781,11 @@ program token_registry.aleo {
     };
 
     let sender_key: TokenOwner = TokenOwner {
-      account: self.caller,
+      account: std::ctx::caller(),
       token_id: token_id
     };
     let sender_key_hash: field = BHP256::hash_to_field(sender_key);
-    let caller: address = self.caller;
+    let caller: address = std::ctx::caller();
     return (token, final {
       // Check that the transfer record's authorization matches the token's external_authorization_required
       let token_metadata: TokenMetadata = registered_tokens.get(token_id);
@@ -793,7 +793,7 @@ program token_registry.aleo {
       // Get stored balances for the owner
       let balance: Balance = authorized_balances.get(sender_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
-      assert(block.height <= balance.authorized_until || !token_metadata.external_authorization_required);
+      assert(std::ctx::block_height() <= balance.authorized_until || !token_metadata.external_authorization_required);
       // Update the balance
       let new_balance: Balance = Balance {
         token_id: token_id,
@@ -823,7 +823,7 @@ program token_registry.aleo {
 
     let allowance: Allowance = Allowance {
       account: owner,
-      spender: self.caller,
+      spender: std::ctx::caller(),
       token_id: token_id
     };
     let allowance_key: field = BHP256::hash_to_field(allowance);
@@ -847,7 +847,7 @@ program token_registry.aleo {
       // Check that the owner has enough authorized balance
       let balance: Balance = authorized_balances.get(owner_key_hash);
       // Assert that the balance authorization is not expired or that the token does not require authorization
-      assert(block.height <= balance.authorized_until || !token_metadata.external_authorization_required);
+      assert(std::ctx::block_height() <= balance.authorized_until || !token_metadata.external_authorization_required);
       // Update the balance for the owner
       let new_balance: Balance = Balance {
         token_id: token_id,
@@ -884,7 +884,7 @@ program token_registry.aleo {
 
     let input_token_authorized_until: u32 = input_record.authorized_until;
     return (updated_record, transfer_record, final {
-      assert(block.height <= input_token_authorized_until || !external_authorization_required);
+      assert(std::ctx::block_height() <= input_token_authorized_until || !external_authorization_required);
     });
   }
 
@@ -912,7 +912,7 @@ program token_registry.aleo {
 
     return (updated_record, final {
       // Assert that the record authorization is not expired
-      assert(block.height <= record_authorized_until || !record_ext_auth_required);
+      assert(std::ctx::block_height() <= record_authorized_until || !record_ext_auth_required);
 
       // Get the locked balance if authorization is required, otherwise get the authorized balance
       let authorization_required: bool = registered_tokens.get(token_id).external_authorization_required;
