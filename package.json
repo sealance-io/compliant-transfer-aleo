@@ -46,12 +46,12 @@
     "@lionden/testing": "0.4.0",
     "@provablehq/sdk": "0.10.5",
     "@sealance-io/policy-engine-aleo": "workspace:*",
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.13.5",
     "dotenv": "^17.4.2",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.7",
     "testcontainers": "^12.1.0",
     "tsx": "^4.23.11",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
