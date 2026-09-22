@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "typecheck": "tsc",
     "basic": "tsx basic-usage.ts",
     "cached": "tsx cached-freeze-list.ts",
     "verify-tx": "tsx verify-non-inclusion-transaction.ts"

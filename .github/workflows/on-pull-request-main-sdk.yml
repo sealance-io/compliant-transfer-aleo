@@ -39,6 +39,10 @@ jobs:
   # Workflow-level path filters cause required status checks to remain "Pending"
   # forever when skipped, blocking PR merges. Job-level skipping via `if:` reports
   # "Success" for skipped jobs, allowing the SDK Status rollup to pass.
+  #
+  # The `examples` output is deliberately broader than `sdk`: the examples
+  # consume the SDK through a `file:..` link, so SDK source changes can break
+  # them just as directly as edits to the examples themselves.
   detect-changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -46,6 +50,7 @@ jobs:
       contents: read
     outputs:
       sdk: ${{ steps.filter.outputs.sdk }}
+      examples: ${{ steps.filter.outputs.examples }}
     defaults:
       run:
         shell: bash -eo pipefail {0}
@@ -72,6 +77,17 @@ jobs:
           else
             echo "sdk=false" >> "$GITHUB_OUTPUT"
             echo "No SDK code changes"
+          fi
+
+          # Examples typecheck against the linked SDK, so either side can break them.
+          EXAMPLE_CHANGES=$(echo "$CHANGED" | grep '^packages/policy-engine-sdk/examples/' | grep -vE '\.md$' || echo "")
+
+          if [[ -n "$EXAMPLE_CHANGES" || -n "$SDK_CHANGES" ]]; then
+            echo "examples=true" >> "$GITHUB_OUTPUT"
+            echo "Examples typecheck required"
+          else
+            echo "examples=false" >> "$GITHUB_OUTPUT"
+            echo "No changes affecting examples"
           fi
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -207,10 +223,56 @@ jobs:
         env:
           PEER_FLOOR: ${{ steps.floor.outputs.floor }}
 
+  # The examples are a nested project rather than a workspace member, so nothing
+  # in the normal SDK jobs compiles them - which is how their @provablehq/sdk
+  # pin was able to fall two ranges behind the manifest unnoticed. They resolve
+  # the SDK through a `file:..` link, so this also catches SDK source changes
+  # that break the documented usage.
+  typecheck-examples:
+    needs: [dependency-review, detect-changes]
+    if: needs.detect-changes.outputs.examples == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          cache: "npm"
+          node-version-file: ".nvmrc"
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
+
+      # The examples typecheck against dist/, not src/, so the link target has
+      # to exist before tsc runs.
+      - name: Build SDK
+        run: npm run build --workspace=@sealance-io/policy-engine-aleo
+
+      - name: Install examples dependencies
+        run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
+        working-directory: packages/policy-engine-sdk/examples
+
+      # tsc and @types/node come from the repo toolchain via the ancestor
+      # node_modules/.bin - the examples are repo-bound by their `file:..` link
+      # and intentionally do not re-pin a second copy of the toolchain.
+      - name: Typecheck examples
+        run: npm run typecheck
+        working-directory: packages/policy-engine-sdk/examples
+
   # Rollup job: Stable check name for branch protection
   sdk-status:
     name: SDK Status
-    needs: [dependency-review, detect-changes, linter, test, test-peer-floor]
+    needs: [dependency-review, detect-changes, linter, test, test-peer-floor, typecheck-examples]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -227,11 +289,20 @@ jobs:
           echo "Linter: $LINTER_RESULT"
           echo "Test: $TEST_RESULT"
           echo "Peer floor test: $PEER_FLOOR_RESULT"
+          echo "Examples affected: $EXAMPLES_CHANGES"
+          echo "Examples typecheck: $EXAMPLES_RESULT"
           echo "::endgroup::"
 
           # Dependency review must always pass (runs on all PRs)
           if [[ "$DEP_REVIEW_RESULT" != "success" ]]; then
             echo "::error::Dependency review failed - check for vulnerabilities or license issues"
+            exit 1
+          fi
+
+          # Checked before the SDK early-exit below: an examples-only PR leaves
+          # SDK_CHANGES false while this job still ran and can still have failed.
+          if [[ "$EXAMPLES_CHANGES" == "true" && "$EXAMPLES_RESULT" != "success" ]]; then
+            echo "::error::Examples typecheck failed"
             exit 1
           fi
 
@@ -264,3 +335,5 @@ jobs:
           LINTER_RESULT: ${{ needs.linter.result }}
           TEST_RESULT: ${{ needs.test.result }}
           PEER_FLOOR_RESULT: ${{ needs.test-peer-floor.result }}
+          EXAMPLES_CHANGES: ${{ needs.detect-changes.outputs.examples }}
+          EXAMPLES_RESULT: ${{ needs.typecheck-examples.result }}
