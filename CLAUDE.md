@@ -84,7 +84,7 @@ Context-specific rules load automatically from `.claude/rules/` based on file pa
 ### Code Style
 
 - Run `npm run format:fix` before committing
-- No GPL/AGPL licensed dependencies (`npm run lint:licenses`)
+- No GPL/AGPL licensed dependencies (`npm run lint:licenses`). Sole exception: `@provablehq/sdk` and `@provablehq/wasm` (`GPL-3.0`, the core Aleo SDK), excluded by name
 - Only make requested changes — avoid over-engineering
 
 ### Testing
