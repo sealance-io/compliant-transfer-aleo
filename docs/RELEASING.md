@@ -102,6 +102,20 @@ Not all changes require a release. Skip changesets for:
 
 ---
 
+## Release Automation Backlog
+
+- [ ] Add a PR CI guard for semantic changes to `dependencies` or
+      `peerDependencies` in `packages/policy-engine-sdk/package.json`, compared with
+      the PR base. Require a new or updated, valid changeset that names
+      `@sealance-io/policy-engine-aleo`; an unrelated changeset must not satisfy it.
+      Ignore formatting-only changes and changes limited to `devDependencies`.
+      Handle automated version PRs explicitly, since they consume changesets; scope
+      any exemption to the verified release automation rather than a branch name alone.
+      Cover missing, unrelated, and valid changesets, dependency additions/removals,
+      peer dependency changes, and the automated version PR path in tests.
+
+---
+
 ## Developer Workflow (Feature Branches)
 
 This section explains the day-to-day workflow for contributing SDK changes.
