@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+### Patch Changes
+
+- [#278](https://github.com/sealance-io/compliant-transfer-aleo/pull/278) [`593aeae`](https://github.com/sealance-io/compliant-transfer-aleo/commit/593aeaee2b5d2c6d8137c62f3fe54ede22573371) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump `@scure/base` to `^2.4.0`. Non-ASCII address strings that previously decoded via Unicode case folding are now rejected by `convertAddressToField`.
+
+- [#275](https://github.com/sealance-io/compliant-transfer-aleo/pull/275) [`f8228c8`](https://github.com/sealance-io/compliant-transfer-aleo/commit/f8228c89a0f3857ba2ba75874ea5df5226a75185) Thanks [@dependabot](https://github.com/apps/dependabot)! - Allow @provablehq/sdk 0.11.9 and compatible patch releases while retaining support for 0.10.2 and compatible patch releases.
+
 ## 0.3.0
 
 ### Minor Changes
