@@ -353,7 +353,7 @@ npm install  # Refreshes the symlink
 - No need to publish or version bump
 
 **In Production Applications:**
-- Use published package: `"@sealance-io/policy-engine-aleo": "^0.1.0"`
+- Use published package: `"@sealance-io/policy-engine-aleo": "^0.3.0"`
 - Install from npm: `npm install @sealance-io/policy-engine-aleo @provablehq/sdk`
 
 ## License
