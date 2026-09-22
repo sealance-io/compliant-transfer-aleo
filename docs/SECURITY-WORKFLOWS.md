@@ -74,7 +74,7 @@ concurrency:
 | `npm audit` (SDK workspace, omit dev+peer) | Runtime deps only | Publish gate |
 | `npm audit`                                | Full lockfile     | Local only   |
 
-Blocked licenses: GPL-2.0, GPL-3.0, AGPL (checked manually via `npm run lint:licenses`; dependency-review license checking planned).
+Blocked licenses: GPL-2.0, GPL-3.0, AGPL (checked manually via `npm run lint:licenses`; dependency-review license checking planned). Both bare and `-only`/`-or-later` SPDX identifiers are blocked. Accepted exception: `@provablehq/sdk` and `@provablehq/wasm` (`GPL-3.0`), excluded by exact name so other `@provablehq/*` packages are still checked.
 
 ## Action Trust Levels
 
