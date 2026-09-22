@@ -33,6 +33,7 @@ jobs:
   # NOTE: This replaces workflow-level `paths` filter. Equivalent to:
   #   paths:
   #     - "packages/policy-engine-sdk/**"
+  #     - "scripts/peer-floor-smoke.mjs"
   #     - "!packages/policy-engine-sdk/**/*.md"
   #     - "!packages/policy-engine-sdk/examples/**"
   # Workflow-level path filters cause required status checks to remain "Pending"
@@ -59,8 +60,10 @@ jobs:
           git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
           CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || echo "")
 
-          # Filter to SDK files, excluding .md and examples
-          SDK_CHANGES=$(echo "$CHANGED" | grep '^packages/policy-engine-sdk/' | grep -vE '\.md$' | grep -v '^packages/policy-engine-sdk/examples/' || echo "")
+          # Filter to SDK files, excluding .md and examples. The peer floor
+          # guard lives outside the workspace, so match it explicitly - edits to
+          # the guard itself must run the job they guard.
+          SDK_CHANGES=$(echo "$CHANGED" | grep -E '^(packages/policy-engine-sdk/|scripts/peer-floor-smoke\.mjs$)' | grep -vE '\.md$' | grep -v '^packages/policy-engine-sdk/examples/' || echo "")
 
           if [[ -n "$SDK_CHANGES" ]]; then
             echo "sdk=true" >> "$GITHUB_OUTPUT"
@@ -136,10 +139,78 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage --workspace=@sealance-io/policy-engine-aleo
 
+  # The SDK's peerDependencies range spans two @provablehq/sdk minor lines, but
+  # the workspace only ever installs the upper one (root pins it exactly), so
+  # the lower bound is an unverified promise to consumers. Install the packed
+  # tarball against the floor in a throwaway project - the way a consumer would
+  # - and confirm Merkle roots are unchanged. A forced install inside the
+  # workspace is not an option here: the root pin makes npm refuse the
+  # resolution without --force, which would prove nothing.
+  test-peer-floor:
+    needs: [dependency-review, detect-changes, linter]
+    if: needs.detect-changes.outputs.sdk == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          cache: "npm"
+          node-version-file: ".nvmrc"
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --ignore-scripts --allow-git=none --no-audit --no-fund
+
+      - name: Build SDK
+        run: npm run build --workspace=@sealance-io/policy-engine-aleo
+
+      # Derived rather than hardcoded so narrowing the range retargets the job
+      # instead of silently testing a version nobody supports anymore.
+      - name: Resolve peer range floor
+        id: floor
+        run: |
+          FLOOR=$(node -p "require('./packages/policy-engine-sdk/package.json').peerDependencies['@provablehq/sdk'].split('||')[0].trim().replace(/^[^0-9]*/, '')")
+          if [[ -z "$FLOOR" ]]; then
+            echo "::error::Could not parse the @provablehq/sdk peer range floor"
+            exit 1
+          fi
+          echo "Peer range floor: $FLOOR"
+          echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
+
+      - name: Pack SDK and install against the floor
+        run: |
+          npm pack --workspace=@sealance-io/policy-engine-aleo --ignore-scripts --pack-destination "$RUNNER_TEMP"
+          TARBALL=$(ls "$RUNNER_TEMP"/sealance-io-policy-engine-aleo-*.tgz)
+          mkdir -p "$RUNNER_TEMP/peer-floor"
+          cd "$RUNNER_TEMP/peer-floor"
+          npm init -y > /dev/null
+          npm pkg set type=module > /dev/null
+          npm install --ignore-scripts --no-audit --no-fund "$TARBALL" "@provablehq/sdk@$PEER_FLOOR"
+        env:
+          PEER_FLOOR: ${{ steps.floor.outputs.floor }}
+
+      - name: Verify Merkle roots against the floor
+        run: |
+          cp scripts/peer-floor-smoke.mjs "$RUNNER_TEMP/peer-floor/"
+          cd "$RUNNER_TEMP/peer-floor"
+          node peer-floor-smoke.mjs
+        env:
+          PEER_FLOOR: ${{ steps.floor.outputs.floor }}
+
   # Rollup job: Stable check name for branch protection
   sdk-status:
     name: SDK Status
-    needs: [dependency-review, detect-changes, linter, test]
+    needs: [dependency-review, detect-changes, linter, test, test-peer-floor]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -155,6 +226,7 @@ jobs:
           echo "SDK changes: $SDK_CHANGES"
           echo "Linter: $LINTER_RESULT"
           echo "Test: $TEST_RESULT"
+          echo "Peer floor test: $PEER_FLOOR_RESULT"
           echo "::endgroup::"
 
           # Dependency review must always pass (runs on all PRs)
@@ -180,9 +252,15 @@ jobs:
             exit 1
           fi
 
+          if [[ "$PEER_FLOOR_RESULT" != "success" ]]; then
+            echo "::error::Peer floor test failed - the declared @provablehq/sdk peer range is not supported"
+            exit 1
+          fi
+
           echo "::notice::All SDK checks passed"
         env:
           DEP_REVIEW_RESULT: ${{ needs.dependency-review.result }}
           SDK_CHANGES: ${{ needs.detect-changes.outputs.sdk }}
           LINTER_RESULT: ${{ needs.linter.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          PEER_FLOOR_RESULT: ${{ needs.test-peer-floor.result }}
