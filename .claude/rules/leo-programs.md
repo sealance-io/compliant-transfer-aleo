@@ -11,7 +11,7 @@ See @docs/ARCHITECTURE.md for program structure and @docs/LEO-ALEO-PATTERNS.md f
 **Build constraints:**
 
 - Compile with `npm run compile` (not `leo build`)
-- Leo CLI version: 4.4.2
+- Leo CLI version: 4.4.3
 - `@lionden/*` packages are installed from npm and pinned exactly; update them intentionally as a group
 
 **Execution model:**
