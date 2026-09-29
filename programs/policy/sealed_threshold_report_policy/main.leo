@@ -8,6 +8,21 @@ struct ChecksumEdition {
     edition: u16,
 }
 
+fn as_registry_merkle_proofs(
+    proofs: [merkle_tree.aleo::MerkleProof; 2],
+) -> [sealance_freezelist_registry.aleo::MerkleProof; 2] {
+    return [
+        sealance_freezelist_registry.aleo::MerkleProof {
+            siblings: proofs[0u32].siblings,
+            leaf_index: proofs[0u32].leaf_index,
+        },
+        sealance_freezelist_registry.aleo::MerkleProof {
+            siblings: proofs[1u32].siblings,
+            leaf_index: proofs[1u32].leaf_index,
+        },
+    ];
+}
+
 const TOKEN_ID: field = 574712059778503139260725892318697246579807451239563150109743143935624025field; // "Threshold Token" ascii encoded
 const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
 const AUTHORIZED_UNTIL: u32 = 4294967295u32; // Set to the maximum u32 to avoid expiration. However, the asset is always used immediately in the same transaction
@@ -132,7 +147,7 @@ program sealed_threshold_report_policy.aleo {
         assert_eq(input_record.token_id, TOKEN_ID);
 
         let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(input_record.owner);
-        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, as_registry_merkle_proofs(recipient_merkle_proofs));
 
         let authorization_call: (
             token_registry.aleo::Token, // unauthorized_record
@@ -372,7 +387,7 @@ program sealed_threshold_report_policy.aleo {
         assert_eq(input_state_record.owner, std::ctx::caller());
 
         let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::caller());
-        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, as_registry_merkle_proofs(recipient_merkle_proofs));
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
             account: std::ctx::caller(),
@@ -456,8 +471,8 @@ program sealed_threshold_report_policy.aleo {
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo::Token, token_registry.aleo::Token, Final) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
-        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(input_record.owner, as_registry_merkle_proofs(sender_merkle_proofs));
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, as_registry_merkle_proofs(recipient_merkle_proofs));
 
         let authorization_call: (
             token_registry.aleo::Token, // unauthorized_record
@@ -542,7 +557,7 @@ program sealed_threshold_report_policy.aleo {
     ) -> (ComplianceRecord, TokenComplianceStateRecord, token_registry.aleo::Token, Final) {
         assert_eq(input_record.token_id, TOKEN_ID);
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(input_record.owner, sender_merkle_proofs);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(input_record.owner, as_registry_merkle_proofs(sender_merkle_proofs));
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
         let authorization_call: (

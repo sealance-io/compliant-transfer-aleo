@@ -1,0 +1,18 @@
+{
+  "program": "iarc22_check.aleo",
+  "version": "0.1.0",
+  "description": "Pins the canonical ARC-22 interfaces for ABI conformance checks.",
+  "license": "Apache-2.0",
+  "leo": "4.4.3",
+  "dependencies": [
+    {
+      "name": "IARC22",
+      "location": "git",
+      "git": {
+        "url": "https://github.com/ProvableHQ/ARCs",
+        "rev": "7e66621306953bc58822a393fb45d0e8749ebb5d"
+      }
+    }
+  ],
+  "dev_dependencies": null
+}

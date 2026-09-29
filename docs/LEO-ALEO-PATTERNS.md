@@ -61,11 +61,12 @@ This section captures protocol-level behavior that this repo assumes.
 
 ### Data primitives (protocol)
 
-| Type    | Visibility          | Storage                | Behavior                                       |
-| ------- | ------------------- | ---------------------- | ---------------------------------------------- |
-| record  | Private (encrypted) | Off-chain (user holds) | UTXO-like; consumed/produced by entry fns      |
-| mapping | Public              | On-chain               | Key/value store; writable only in final blocks |
-| struct  | N/A (transient)     | None                   | Circuit data only; not persisted               |
+| Type    | Visibility          | Storage                | Behavior                                                    |
+| ------- | ------------------- | ---------------------- | ----------------------------------------------------------- |
+| record  | Private (encrypted) | Off-chain (user holds) | UTXO-like; consumed/produced by entry fns                   |
+| mapping | Public              | On-chain               | Key/value store; writable only in final blocks              |
+| storage | Public              | On-chain               | Optional singleton or vector; writable only in final blocks |
+| struct  | N/A (transient)     | None                   | Circuit data only; not persisted                            |
 
 ## Leo v4 Program Structure
 
@@ -101,7 +102,7 @@ Cross-program function calls and mapping access use `::` separator:
 
 ```leo
 let (_, fut) = token_registry.aleo::prehook_public(...);
-let root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(...);
+let root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(1u8);
 ```
 
 Finals from cross-program calls are chained with `.run()`:
@@ -129,17 +130,21 @@ fn transfer(...) -> Final {
 
 ### Freeze list rules
 
-- MUST use array-like mappings: freeze_list: address => bool, freeze_list_index: u32 => address.
+- MUST preserve the SDK-facing `freeze_list`, `freeze_list_index`,
+  `freeze_list_last_index`, and `freeze_list_root` mappings, including their key/value types.
 - MUST use ZERO_ADDRESS as a sentinel for empty slots; ZERO_ADDRESS MUST NOT be a real frozen entry.
-- MUST initialize freeze_list_last_index, freeze_list, and freeze_list_index in initialize
+- MUST initialize freeze_list_last_index, the current freeze_list_root, freeze_list, and
+  freeze_list_index in initialize
   (programs/freezelist_registry/sealance_freezelist_registry.leo::initialize).
 - MUST update freeze_list_last_index when adding entries at last_index + 1
   (programs/freezelist_registry/sealance_freezelist_registry.leo::update_freeze_list).
-- MUST update root_updated_height when roots change
+- MUST update freeze_list_root_updated_at when roots change
   (programs/freezelist_registry/sealance_freezelist_registry.leo::update_freeze_list).
 - MUST enforce the previous_root window in verify_non_inclusion_priv
   (programs/freezelist_registry/sealance_freezelist_registry.leo::verify_non_inclusion_priv).
 - Sentinel value is defined in lib/Constants.ts; SDK handling is in packages/policy-engine-sdk/src/merkle-tree.ts.
+- The Policy Engine SDK reads the four mappings above directly in `fetchCurrentRoot()` and
+  `fetchFreezeListFromChain()` to reconstruct the ordered list and generate private proofs.
 
 ### Block height window (threshold policy)
 
@@ -202,10 +207,14 @@ Example:
 - std::ctx::caller() vs std::ctx::signer() vs std::ctx::addr() cannot be parameterized.
 - Result: separate transfer\_\* variants for caller vs signer flows.
 
-### Mapping limitations
+### Public-storage limitations
 
-- No native arrays; use index mappings + sentinel values.
-- No optional types; get_or_use conflates unset with default value.
+- Dynamic keyed state uses mappings; fixed-cardinality ordered state can use storage vectors.
+- Scalar storage is optional: use `unwrap()` only after initialization and `unwrap_or(default)`
+  where pre-initialization reads need a deterministic fallback.
+- Leo 4.4.3 rejects `identifier` as a storage type, including inside a stored struct. ARC-22
+  identifier metadata therefore cannot be moved from its singleton mapping into scalar storage
+  without changing the public metadata type or upgrading the compiler.
 - Multi-dimensional keys are hash-composed (e.g., hash(token_id, account)).
 
 ## Design Patterns (Informative)

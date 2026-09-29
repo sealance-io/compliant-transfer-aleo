@@ -6,7 +6,6 @@ import {
   generateLeaves,
   getLeafIndices,
   getSiblingPath,
-  stringToBigInt,
   ZERO_ADDRESS,
 } from "@sealance-io/policy-engine-aleo";
 
@@ -38,9 +37,10 @@ import {
 import { createSealanceFreezelistRegistry } from "../typechain/SealanceFreezelistRegistry.js";
 import { AleoNetworkClient } from "@provablehq/sdk";
 import { getLatestBlockHeight } from "../lib/Block.js";
+import { Leo } from "../typechain/BaseContract.js";
 
-const tokenName = stringToBigInt("Stable Token");
-const tokenSymbol = stringToBigInt("STABLE_TOKEN");
+const tokenName = Leo.identifier("Stable_Token");
+const tokenSymbol = Leo.identifier("STABLE_TOKEN");
 const fakeRootField = fieldLiteral(1n);
 
 interface CompliantTokenFixture {
@@ -192,7 +192,16 @@ afterAll(async () => {
 describe("test compliant token program", () => {
   test("test initialize", async () => {
     const fixture = state!;
-    if (!(await fixture.token.mappings.tokenInfo.contains(true))) {
+    if (!(await fixture.token.storage.isInitialized.getOrUse(false))) {
+      expect(await fixture.token.views.balanceOf(fixture.account)).toBe(0n);
+      expect(await fixture.token.views.allowance(fixture.account, fixture.spender)).toBe(0n);
+      expect(await fixture.token.views.supply()).toBe(0n);
+      expect(await fixture.token.views.maxSupply()).toBe(0n);
+      expect(await fixture.token.views.decimals()).toBe(0);
+      expect(await fixture.token.views.name()).toBe(Leo.identifier("unset"));
+      expect(await fixture.token.views.symbol()).toBe(Leo.identifier("unset"));
+      expect(await fixture.token.storage.isPaused.getOrUse(false)).toBe(false);
+
       await fixture.token.initialize.accepted(
         tokenName,
         tokenSymbol,
@@ -210,8 +219,16 @@ describe("test compliant token program", () => {
       expect(tokenInfo.symbol).toBe(tokenSymbol);
       const role = await fixture.token.mappings.addressToRole.get(fixture.admin);
       expect(role).toBe(MANAGER_ROLE);
-      const pauseStatus = await fixture.token.mappings.pause.get(true);
+      const pauseStatus = await fixture.token.storage.isPaused.get();
       expect(pauseStatus).toBe(false);
+      expect(await fixture.token.storage.isInitialized.get()).toBe(true);
+      expect(await fixture.token.views.balanceOf(fixture.account)).toBe(0n);
+      expect(await fixture.token.views.allowance(fixture.account, fixture.spender)).toBe(0n);
+      expect(await fixture.token.views.supply()).toBe(0n);
+      expect(await fixture.token.views.maxSupply()).toBe(maxSupply);
+      expect(await fixture.token.views.decimals()).toBe(decimals);
+      expect(await fixture.token.views.name()).toBe(tokenName);
+      expect(await fixture.token.views.symbol()).toBe(tokenSymbol);
 
       // It is possible to call to initialize only one time
       await fixture.token.initialize.rejected(
@@ -352,9 +369,11 @@ describe("test compliant token program", () => {
     await fixture.token.mint_public.accepted(fixture.account, amount * 20n, asSigner(fixture.supplyManager));
     balance = await fixture.token.mappings.balances.get(fixture.account);
     expect(balance).toBe(amount * 20n);
+    expect(await fixture.token.views.balanceOf(fixture.account)).toBe(balance);
 
     tokenInfo = await fixture.token.mappings.tokenInfo.get(true);
     expect(tokenInfo!.supply - supply).toBe(amount * 40n);
+    expect(await fixture.token.views.supply()).toBe(tokenInfo.supply);
   });
 
   test("test burn_public", async () => {
@@ -481,7 +500,9 @@ describe("test compliant token program", () => {
     );
 
     await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    expect(await fixture.token.views.allowance(fixture.account, fixture.spender)).toBe(amount);
     await fixture.token.unapprove_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    expect(await fixture.token.views.allowance(fixture.account, fixture.spender)).toBe(0n);
 
     // If the sender approve and then unapprove the spender the transaction will fail
     await fixture.token.transfer_from_public.rejected(
@@ -492,6 +513,7 @@ describe("test compliant token program", () => {
     );
 
     await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.account));
+    expect(await fixture.token.views.allowance(fixture.account, fixture.spender)).toBe(amount);
     await fixture.token.approve_public.accepted(fixture.spender, amount, asSigner(fixture.frozenAccount));
 
     // If the sender is frozen account it's impossible to send tokens
@@ -818,7 +840,7 @@ describe("test compliant token program", () => {
 
     // pause the contract
     await fixture.token.set_pause_status.accepted(true, asSigner(fixture.pauser));
-    let pauseStatus = await fixture.token.mappings.pause.get(true);
+    let pauseStatus = await fixture.token.storage.isPaused.get();
     expect(pauseStatus).toBe(true);
 
     // verify that all the functionalities are paused
@@ -878,7 +900,7 @@ describe("test compliant token program", () => {
 
     // unpause the contract
     await fixture.token.set_pause_status.accepted(false, asSigner(fixture.pauser));
-    pauseStatus = await fixture.token.mappings.pause.get(true);
+    pauseStatus = await fixture.token.storage.isPaused.get();
     expect(pauseStatus).toBe(false);
 
     //verify that the functionalities are back (one is enough)

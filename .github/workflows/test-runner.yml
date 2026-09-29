@@ -89,6 +89,10 @@ jobs:
       - name: Compile Leo programs
         run: npm run compile -- --network testnet
 
+      - name: Check ARC-22 interface conformance
+        if: inputs.mode == 'devnode' && inputs.test-file == 'all'
+        run: npm run check:iarc22
+
       # Needs both the built SDK and generated typechain/, so it runs after
       # compile. Gated to run once per PR rather than 13x across the matrix.
       - name: Type-check TypeScript

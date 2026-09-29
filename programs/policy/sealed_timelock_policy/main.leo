@@ -8,6 +8,21 @@ struct ChecksumEdition {
     edition: u16,
 }
 
+fn as_registry_merkle_proofs(
+    proofs: [merkle_tree.aleo::MerkleProof; 2],
+) -> [sealance_freezelist_registry.aleo::MerkleProof; 2] {
+    return [
+        sealance_freezelist_registry.aleo::MerkleProof {
+            siblings: proofs[0u32].siblings,
+            leaf_index: proofs[0u32].leaf_index,
+        },
+        sealance_freezelist_registry.aleo::MerkleProof {
+            siblings: proofs[1u32].siblings,
+            leaf_index: proofs[1u32].leaf_index,
+        },
+    ];
+}
+
 // token specs
 const TOKEN_ID: field = 31155203188273609789785737924444174490841009372087129field; // TIMELOCK ascii encoded
 const NAME: u128 = 1709529976692281403789758276781390u128; // name: u128, TIMELOCK_TOKEN ascii encoded
@@ -306,7 +321,7 @@ program sealed_timelock_policy.aleo {
         assert_eq(std::ctx::caller(), sealed_token.owner);
 
         let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(std::ctx::caller());
-        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, as_registry_merkle_proofs(recipient_merkle_proofs));
 
         let owner: token_registry.aleo::TokenOwner = token_registry.aleo::TokenOwner {
             account: std::ctx::caller(),
@@ -373,8 +388,8 @@ program sealed_timelock_policy.aleo {
     ) -> (CompliantToken, CompliantToken, token_registry.aleo::Token, token_registry.aleo::Token, Final) {
         assert_eq(base_token.token_id, TOKEN_ID);
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
-        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, recipient_merkle_proofs);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(base_token.owner, as_registry_merkle_proofs(sender_merkle_proofs));
+        let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(recipient, as_registry_merkle_proofs(recipient_merkle_proofs));
 
         let authorization_call: (
             token_registry.aleo::Token, // unauthorized_record
@@ -441,7 +456,7 @@ program sealed_timelock_policy.aleo {
     ) -> (CompliantToken, CompliantToken, token_registry.aleo::Token, Final) {
         assert_eq(base_token.token_id, TOKEN_ID);
 
-        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(base_token.owner, sender_merkle_proofs);
+        let verify_sender: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_priv(base_token.owner, as_registry_merkle_proofs(sender_merkle_proofs));
         let verify_recipient: Final = sealance_freezelist_registry.aleo::verify_non_inclusion_pub(recipient);
 
         let authorization_call: (
