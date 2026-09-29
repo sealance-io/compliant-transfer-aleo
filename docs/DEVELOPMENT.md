@@ -2,6 +2,9 @@
 
 Commands and workflows for developing in this repository.
 
+For the ARC-22 programs, immutable upstream dependency pin, conformance command, and
+deployment/migration notes, see [IARC22.md](./IARC22.md).
+
 ## Dependencies & Setup
 
 ```bash

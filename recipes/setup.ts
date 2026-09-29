@@ -24,6 +24,7 @@ import { createMultisigFreezelistRegistry } from "../typechain/MultisigFreezelis
 import { createCompliantTokenTemplate } from "../typechain/CompliantTokenTemplate.js";
 import { asSigner, fieldLiteral } from "../lib/LiondenAdapters.js";
 import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
+import { Leo } from "../typechain/BaseContract.js";
 
 const PROGRAMS = [
   "token_registry",
@@ -100,8 +101,8 @@ export const setup: DeploymentRecipe = async ctx => {
   }
   if (!(await compliantToken.mappings.tokenInfo.contains(true))) {
     await compliantToken.initialize.accepted(
-      stringToBigInt("Stable Token"),
-      stringToBigInt("STABLE_TOKEN"),
+      Leo.identifier("Stable_Token"),
+      Leo.identifier("STABLE_TOKEN"),
       6,
       1000_000000000000n,
       admin,

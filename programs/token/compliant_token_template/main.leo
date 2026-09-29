@@ -6,14 +6,39 @@ struct MerkleProof {
     leaf_index: u32
 }
 
+// BEGIN LOCAL IARC22 INTERFACE MIRROR
+interface IARC22Token {
+    record Token { owner: address, amount: u128, .. }
+    record ComplianceRecord { owner: address, amount: u128, sender: address, recipient: address, .. }
+    fn approve_public(public spender: address, public amount: u128) -> Final;
+    fn unapprove_public(public spender: address, public amount: u128) -> Final;
+    fn transfer_public(public recipient: address, public amount: u128) -> Final;
+    fn transfer_private(private recipient: address, private amount: u128, private input_record: Token, private sender_merkle_proofs: [MerkleProof; 2]) -> (ComplianceRecord, Token, Token, Final);
+    fn transfer_private_to_public(public recipient: address, public amount: u128, private input_record: Token, private sender_merkle_proofs: [MerkleProof; 2]) -> (ComplianceRecord, Token, Final);
+    fn transfer_public_to_private(recipient: address, public amount: u128) -> (ComplianceRecord, Token, Final);
+    fn transfer_from_public(public owner: address, public recipient: address, public amount: u128) -> Final;
+    fn transfer_from_public_to_private(public owner: address, private recipient: address, public amount: u128) -> (ComplianceRecord, Token, Final);
+    fn transfer_public_as_signer(public recipient: address, public amount: u128) -> Final;
+    fn join(input_1: Token, input_2: Token) -> Token;
+    fn split(input: Token, amount: u128) -> (Token, Token);
+    view fn balance_of(account: address) -> u128;
+    view fn allowance(owner: address, spender: address) -> u128;
+    view fn supply() -> u128;
+    view fn max_supply() -> u128;
+    view fn decimals() -> u8;
+    view fn name() -> identifier;
+    view fn symbol() -> identifier;
+}
+// END LOCAL IARC22 INTERFACE MIRROR
+
 struct ChecksumEdition {
     checksum: [u8; 32],
     edition: u16,
 }
 
 struct TokenInfo {
-    name: u128, // ASCII text represented in bits, and the u128 value of the bitstring
-    symbol: u128, // ASCII text represented in bits, and the u128 value of the bitstring
+    name: identifier,
+    symbol: identifier,
     decimals: u8,
     supply: u128,
     max_supply: u128,
@@ -91,8 +116,6 @@ fn verify_non_inclusion(addr: address, merkle_proofs: [MerkleProof;2]) -> field 
     return root1;
 }
 
-const TOKEN_INFO_INDEX: bool = true;
-
 // Roles can be assigned using bitmasking to allow multiple roles per address
 const NONE_ROLE: u16 = 0u16;
 const MINTER_ROLE: u16 = 1u16;
@@ -106,18 +129,14 @@ const DEPLOYER_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gnc
 // This address receives compliance records (can be updated with the contract upgrade)
 const INVESTIGATOR_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
 
-const PAUSE_STATUS_INDEX: bool = true;
-
 const ZERO_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc; // ZERO_ADDRESS as field equals to 0field
 const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
 const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
-const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
 // Maximum depth of the Merkle tree used in freeze list proofs.
 // The siblings array has MAX_TREE_DEPTH + 1 elements because siblings[0] holds the leaf itself.
 const MAX_TREE_DEPTH: u32 = 15u32;
 
-program compliant_token_template.aleo {
+program compliant_token_template.aleo: IARC22Token {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
@@ -153,13 +172,15 @@ program compliant_token_template.aleo {
         owner: address,
         freeze_list_root: field,
     }
-    // token specs
+    // Token metadata and aggregate supply state. This remains a singleton-keyed
+    // mapping because Leo 4.4.3 rejects identifier fields in scalar storage.
     mapping token_info: bool => TokenInfo;
 
     mapping balances: address => u128;
     mapping allowances: field => u128; // hash(account, spender) => TokenAllowance
     mapping address_to_role: address => u16;
-    mapping pause: bool => bool;
+    storage is_paused: bool;
+    storage is_initialized: bool;
 
     // -------------------------
     // Called by token admins
@@ -188,8 +209,8 @@ program compliant_token_template.aleo {
     // Sets the block height window, the initial empty Merkle root,
     // and initialize the freeze_list_last_index, freeze_list, and freeze_list_index with a ZERO_ADDRESS placeholder.
     fn initialize(
-        public name: u128,
-        public symbol: u128,
+        public name: identifier,
+        public symbol: identifier,
         public decimals: u8,
         public max_supply: u128,
         public admin: address,
@@ -197,7 +218,7 @@ program compliant_token_template.aleo {
         let caller: address = std::ctx::caller();
         return final {
             // Check if the token has already been initialized
-            let already_initialized: bool = token_info.contains(TOKEN_INFO_INDEX);
+            let already_initialized: bool = is_initialized.unwrap_or(false);
             assert_eq(already_initialized, false);
 
             // Only the INITIAL_CONFIGURATION_ADDRESS can initialize the contract
@@ -213,9 +234,9 @@ program compliant_token_template.aleo {
                 max_supply: max_supply
             };
 
-            token_info.set(TOKEN_INFO_INDEX, token);
-
-            pause.set(PAUSE_STATUS_INDEX, false);
+            token_info.set(true, token);
+            is_paused = false;
+            is_initialized = true;
         };
     }
 
@@ -232,12 +253,12 @@ program compliant_token_template.aleo {
 
         return (credentials_record, final {
             let current_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-            let window: u32 = sealance_freezelist_registry.aleo::block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+            let window: u32 = sealance_freezelist_registry.aleo::freeze_list_root_grace_window.unwrap();
 
             if (current_root != root) {
                 let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(root, previous_root);
-                let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                let updated_height: u32 = sealance_freezelist_registry.aleo::freeze_list_root_updated_at.unwrap();
                 assert(updated_height + window > std::ctx::block_height());
             }
         });
@@ -256,10 +277,10 @@ program compliant_token_template.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
-            let token = token_info.get(TOKEN_INFO_INDEX);
+            let token = token_info.get(true);
             // Check that the token supply + amount <= max_supply
             let new_supply: u128 = token.supply + amount;
             assert(new_supply <= token.max_supply);
@@ -277,7 +298,7 @@ program compliant_token_template.aleo {
                 supply: new_supply,
                 max_supply: token.max_supply,
             };
-            token_info.set(TOKEN_INFO_INDEX, new_metadata);
+            token_info.set(true, new_metadata);
         };
     }
 
@@ -306,10 +327,10 @@ program compliant_token_template.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & MINTER_ROLE == MINTER_ROLE);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
-            let token_metadata = token_info.get(TOKEN_INFO_INDEX);
+            let token_metadata = token_info.get(true);
 
             // Check that the token supply + amount <= max_supply
             let new_supply: u128 = token_metadata.supply + amount;
@@ -323,7 +344,7 @@ program compliant_token_template.aleo {
                 supply: new_supply,
                 max_supply: token_metadata.max_supply,
             };
-            token_info.set(TOKEN_INFO_INDEX, new_metadata);
+            token_info.set(true, new_metadata);
         });
     }
 
@@ -339,15 +360,15 @@ program compliant_token_template.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             // Update the balance
             let balance = balances.get(owner);
             let new_balance = balance - amount;
             balances.set(owner, new_balance);
 
-            let token = token_info.get(TOKEN_INFO_INDEX);
+            let token = token_info.get(true);
 
             let new_metadata: TokenInfo = TokenInfo {
                 name: token.name,
@@ -356,7 +377,7 @@ program compliant_token_template.aleo {
                 supply: token.supply - amount, // underflow will be caught by the VM
                 max_supply: token.max_supply,
             };
-            token_info.set(TOKEN_INFO_INDEX, new_metadata);
+            token_info.set(true, new_metadata);
         };
     }
 
@@ -384,10 +405,10 @@ program compliant_token_template.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & BURNER_ROLE == BURNER_ROLE);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
-            let token = token_info.get(TOKEN_INFO_INDEX);
+            let token = token_info.get(true);
 
             // Update the token supply
             let new_metadata: TokenInfo = TokenInfo {
@@ -397,7 +418,7 @@ program compliant_token_template.aleo {
                 supply: token.supply - amount, // underflow will be caught by the VM
                 max_supply: token.max_supply,
             };
-            token_info.set(TOKEN_INFO_INDEX, new_metadata);
+            token_info.set(true, new_metadata);
         });
     }
 
@@ -418,8 +439,8 @@ program compliant_token_template.aleo {
             let is_recipient_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(recipient, false);
             assert_eq(is_recipient_frozen, false);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let sender_balance = balances.get(caller);
             balances.set(caller, sender_balance - amount);
@@ -442,8 +463,8 @@ program compliant_token_template.aleo {
             let is_recipient_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(recipient, false);
             assert_eq(is_recipient_frozen, false);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let sender_balance = balances.get(signer);
             balances.set(signer, sender_balance - amount);
@@ -467,8 +488,8 @@ program compliant_token_template.aleo {
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
         return final {
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let current_allowance: u128 = allowances.get_or_use(allowance_key, 0u128);
             // Increase or create the allowance amount
@@ -490,8 +511,8 @@ program compliant_token_template.aleo {
         let allowance_key: field = BHP256::hash_to_field(allowance);
 
         return final {
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let current_allowance: u128 = allowances.get(allowance_key);
             // Decrease the allowance amount
@@ -520,8 +541,8 @@ program compliant_token_template.aleo {
             let is_recipient_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(recipient, false);
             assert_eq(is_recipient_frozen, false);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             // Check that the spender is authorized to spend the amount
             let current_allowance: u128 = allowances.get(allowance_key);
@@ -560,8 +581,8 @@ program compliant_token_template.aleo {
             let is_sender_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(caller, false);
             assert_eq(is_sender_frozen, false);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let sender_balance = balances.get(caller);
             balances.set(caller, sender_balance - amount);
@@ -601,8 +622,8 @@ program compliant_token_template.aleo {
             let is_sender_frozen: bool = sealance_freezelist_registry.aleo::freeze_list.get_or_use(owner, false);
             assert_eq(is_sender_frozen, false);
 
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             // Check that the spender is authorized to spend the amount
             let current_allowance: u128 = allowances.get(allowance_key);
@@ -644,16 +665,16 @@ program compliant_token_template.aleo {
         };
 
         return (compliance_record, updated_record, transfer_record, final {
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let current_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-            let window: u32 = sealance_freezelist_registry.aleo::block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+            let window: u32 = sealance_freezelist_registry.aleo::freeze_list_root_grace_window.unwrap();
 
             if (current_root != sender_root) {
                 let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(sender_root, previous_root);
-                let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                let updated_height: u32 = sealance_freezelist_registry.aleo::freeze_list_root_updated_at.unwrap();
                 assert(updated_height + window > std::ctx::block_height());
             }
         });
@@ -688,16 +709,16 @@ program compliant_token_template.aleo {
             compliance_record,
             updated_record,
             final {
-                let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-                assert_eq(is_paused, false);
+                let paused: bool = is_paused.unwrap();
+                assert_eq(paused, false);
 
                 let current_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-                let window: u32 = sealance_freezelist_registry.aleo::block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+                let window: u32 = sealance_freezelist_registry.aleo::freeze_list_root_grace_window.unwrap();
 
                 if (current_root != root) {
                     let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                     assert_eq(root, previous_root);
-                    let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                    let updated_height: u32 = sealance_freezelist_registry.aleo::freeze_list_root_updated_at.unwrap();
                     assert(updated_height + window > std::ctx::block_height());
                 }
 
@@ -718,7 +739,7 @@ program compliant_token_template.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & PAUSE_ROLE == PAUSE_ROLE);
 
-            pause.set(PAUSE_STATUS_INDEX, pause_status);
+            is_paused = pause_status;
         };
     }
 
@@ -785,18 +806,52 @@ program compliant_token_template.aleo {
 
         let creds_root: field = credentials.freeze_list_root;
         return (compliance_record, updated_record, transfer_record, credentials_record, final {
-            let is_paused: bool = pause.get(PAUSE_STATUS_INDEX);
-            assert_eq(is_paused, false);
+            let paused: bool = is_paused.unwrap();
+            assert_eq(paused, false);
 
             let current_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-            let window: u32 = sealance_freezelist_registry.aleo::block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+            let window: u32 = sealance_freezelist_registry.aleo::freeze_list_root_grace_window.unwrap();
 
             if (current_root != creds_root) {
                 let previous_root: field = sealance_freezelist_registry.aleo::freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(creds_root, previous_root);
-                let updated_height: u32 = sealance_freezelist_registry.aleo::root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                let updated_height: u32 = sealance_freezelist_registry.aleo::freeze_list_root_updated_at.unwrap();
                 assert(updated_height + window > std::ctx::block_height());
             }
         });
+    }
+
+    view fn balance_of(account: address) -> u128 {
+        return balances.get_or_use(account, 0u128);
+    }
+
+    view fn allowance(owner: address, spender: address) -> u128 {
+        let key = BHP256::hash_to_field(TokenAllowance { account: owner, spender: spender });
+        return allowances.get_or_use(key, 0u128);
+    }
+
+    view fn supply() -> u128 {
+        let info = token_info.get_or_use(true, TokenInfo { name: 'unset', symbol: 'unset', decimals: 0u8, supply: 0u128, max_supply: 0u128 });
+        return info.supply;
+    }
+
+    view fn max_supply() -> u128 {
+        let info = token_info.get_or_use(true, TokenInfo { name: 'unset', symbol: 'unset', decimals: 0u8, supply: 0u128, max_supply: 0u128 });
+        return info.max_supply;
+    }
+
+    view fn decimals() -> u8 {
+        let info = token_info.get_or_use(true, TokenInfo { name: 'unset', symbol: 'unset', decimals: 0u8, supply: 0u128, max_supply: 0u128 });
+        return info.decimals;
+    }
+
+    view fn name() -> identifier {
+        let info = token_info.get_or_use(true, TokenInfo { name: 'unset', symbol: 'unset', decimals: 0u8, supply: 0u128, max_supply: 0u128 });
+        return info.name;
+    }
+
+    view fn symbol() -> identifier {
+        let info = token_info.get_or_use(true, TokenInfo { name: 'unset', symbol: 'unset', decimals: 0u8, supply: 0u128, max_supply: 0u128 });
+        return info.symbol;
     }
 }

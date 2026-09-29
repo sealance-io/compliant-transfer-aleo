@@ -1,5 +1,9 @@
 # Testing Configuration
 
+ARC-22 interface and integration validation is documented in
+[IARC22.md](./IARC22.md). Run `npm run check:iarc22` in addition to the normal suite when
+changing either standards-compatible program.
+
 ## Testing Modes
 
 | Mode        | Command               | Speed | Use Case                             | Status                      |

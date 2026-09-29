@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { clearFixtures, loadFixture, setup, type TestContext } from "@lionden/testing";
 import { type SignableNamedAccount } from "@lionden/config";
-import { stringToBigInt } from "@sealance-io/policy-engine-aleo";
 
 import {
   BURNER_ROLE,
@@ -38,8 +37,8 @@ import {
 } from "../typechain/MultisigTokenProxy.js";
 import { safeAddress } from "./utils/Accounts.js";
 
-const tokenName = stringToBigInt("Stable Token");
-const tokenSymbol = stringToBigInt("STABLE_TOKEN");
+const tokenName = Leo.identifier("Stable_Token");
+const tokenSymbol = Leo.identifier("STABLE_TOKEN");
 
 const managerWalletId = Leo.address(safeAddress());
 const pauseWalletId = Leo.address(safeAddress());
@@ -974,7 +973,7 @@ describe("test multisig token proxy program", () => {
       multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
-    let pauseStatus = await fixture.token.mappings.pause.get(true);
+    let pauseStatus = await fixture.token.storage.isPaused.get();
     expect(pauseStatus).toBe(true);
 
     // It's possible to execute the request only once
@@ -1009,7 +1008,7 @@ describe("test multisig token proxy program", () => {
       multisigCommonParams(fixture.pauseWalletId, salt),
       asSigner(fixture.deployer),
     );
-    pauseStatus = await fixture.token.mappings.pause.get(true);
+    pauseStatus = await fixture.token.storage.isPaused.get();
     expect(pauseStatus).toBe(false);
   });
 });

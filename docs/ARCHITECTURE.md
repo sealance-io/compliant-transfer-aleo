@@ -2,6 +2,10 @@
 
 System design and component structure for compliant token transfers on Aleo.
 
+The standards-compatible path consists of `compliant_token_template.aleo` and
+`sealance_freezelist_registry.aleo`; see [IARC22.md](./IARC22.md). The multisig variants
+extend the project APIs and are not claimed as direct ARC-22 implementations.
+
 ## Leo Programs
 
 Programs are organized in `/programs` subdirectories:
@@ -12,7 +16,7 @@ Programs are organized in `/programs` subdirectories:
 
 ### Freeze List Registry (`freezelist_registry/`)
 
-- **`sealance_freezelist_registry.leo`**: Standalone registry with Merkle tree verification. Role-based access control (`MANAGER_ROLE`, `FREEZELIST_MANAGER_ROLE`). Maintains current and previous roots with configurable block height windows.
+- **`sealance_freezelist_registry.leo`**: Standalone registry with Merkle tree verification. Role-based access control (`MANAGER_ROLE`, `FREEZELIST_MANAGER_ROLE`). Preserves the SDK-facing freeze-list/root mappings and uses scalar storage for the update height, grace window, and initialization sentinel.
 - **`multisig_freezelist_registry.leo`**: Multi-signature variant.
 
 ### Compliance Policies (`policy/`)
@@ -63,6 +67,10 @@ Located in `/packages/policy-engine-sdk`:
 | `api-client.ts`    | Blockchain API client with retry logic, concurrency control        |
 | `merkle-tree.ts`   | `buildTree()`, `getSiblingPath()`, `getLeafIndices()`              |
 | `conversion.ts`    | Address/field conversion utilities                                 |
+
+The published SDK reconstructs private non-inclusion proofs by reading the registry's
+`freeze_list_root`, `freeze_list_last_index`, `freeze_list_index`, and `freeze_list`
+mappings directly. Those mapping names and key/value types are compatibility-sensitive.
 
 ## Testing Infrastructure
 

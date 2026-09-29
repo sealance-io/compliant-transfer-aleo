@@ -637,7 +637,7 @@ describe("test multisig_freezelist_proxy program", () => {
       multisigCommonParams(fixture.freezeListManagerWalletId, salt),
       asSigner(fixture.deployer),
     );
-    const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
+    const blockHeightWindow = await fixture.freezeRegistry.storage.freezeListRootGraceWindow.get();
     expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
 
     // It's possible to execute the request only once

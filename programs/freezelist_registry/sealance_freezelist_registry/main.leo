@@ -1,6 +1,22 @@
 import merkle_tree.aleo;
 import multisig_core.aleo;
 
+// BEGIN LOCAL IARC22 INTERFACE MIRROR
+export struct MerkleProof { siblings: [field; 16], leaf_index: u32 }
+interface IARC22Freezelist {
+    fn initialize(public admin: address, public blocks: u32) -> Final;
+    fn update_freeze_list(public account: address, public is_frozen: bool, public index: u32, public existing_root: field, public new_root: field) -> Final;
+    fn verify_non_inclusion_pub(public account: address) -> Final;
+    fn verify_non_inclusion_priv(account: address, merkle_proof: [MerkleProof; 2]) -> Final;
+    view fn is_frozen_address(account: address) -> bool;
+    view fn is_frozen_index(index: u32) -> bool;
+    view fn current_freeze_list_root() -> field;
+    view fn previous_freeze_list_root() -> field;
+    view fn root_updated_height() -> u32;
+    view fn block_height_window() -> u32;
+}
+// END LOCAL IARC22 INTERFACE MIRROR
+
 struct ChecksumEdition {
     checksum: [u8; 32],
     edition: u16,
@@ -18,11 +34,9 @@ const FREEZELIST_MANAGER_ROLE: u16 = 16u16; // can update the freeze list
 
 const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
 const PREVIOUS_FREEZE_LIST_ROOT_INDEX: u8 = 2u8;
-const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
-const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
 const FREEZE_LIST_LAST_INDEX: bool = true;
 
-program sealance_freezelist_registry.aleo {
+program sealance_freezelist_registry.aleo: IARC22Freezelist {
     @custom
     constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
@@ -42,12 +56,14 @@ program sealance_freezelist_registry.aleo {
     mapping freeze_list_index: u32 => address;
     // Stores the highest index used in the freeze_list_index mapping.
     mapping freeze_list_last_index: bool => u32;
-    // Stores the current and previous Merkle roots of the freeze list (e.g., 1 = current, 2 = previous).
+    // Stores the current and previous Merkle roots for SDK-compatible direct reads.
     mapping freeze_list_root: u8 => field;
     // Stores the block height when the root was updated.
-    mapping root_updated_height: bool => u32;
+    storage freeze_list_root_updated_at: u32;
     // Defines the number of blocks during which the previous root is still considered valid.
-    mapping block_height_window: bool => u32;
+    storage freeze_list_root_grace_window: u32;
+    // Separates one-time initialization from the values stored above.
+    storage is_initialized: bool;
 
     // Initializes the freeze list and the admin.
     // Can only be called once — ensures the contract has not already been initialized.
@@ -57,17 +73,19 @@ program sealance_freezelist_registry.aleo {
     fn initialize(public admin: address, public blocks: u32) -> Final {
         let caller: address = std::ctx::caller();
         return final {
-            let is_already_initialized: bool = freeze_list_root.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
+            let is_already_initialized: bool = is_initialized.unwrap_or(false);
             assert_eq(is_already_initialized, false);
 
             assert_eq(caller, DEPLOYER_ADDRESS);
             address_to_role.set(admin, MANAGER_ROLE);
 
-            block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
+            freeze_list_root_grace_window = blocks;
             freeze_list_last_index.set(FREEZE_LIST_LAST_INDEX, 0u32);
-            freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX,EMPTY_ROOT);
+            freeze_list_root.set(CURRENT_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT);
+            freeze_list_root_updated_at = 0u32;
             freeze_list.set(ZERO_ADDRESS, false);
             freeze_list_index.set(0u32, ZERO_ADDRESS);
+            is_initialized = true;
         };
     }
 
@@ -95,7 +113,7 @@ program sealance_freezelist_registry.aleo {
             let role: u16 = address_to_role.get(caller);
             assert(role & FREEZELIST_MANAGER_ROLE == FREEZELIST_MANAGER_ROLE);
 
-            block_height_window.set(BLOCK_HEIGHT_WINDOW_INDEX, blocks);
+            freeze_list_root_grace_window = blocks;
         };
     }
 
@@ -156,7 +174,7 @@ program sealance_freezelist_registry.aleo {
                 freeze_list_index.set(frozen_index, ZERO_ADDRESS);
             }
 
-            root_updated_height.set(ROOT_UPDATED_HEIGHT_INDEX, std::ctx::block_height());
+            freeze_list_root_updated_at = std::ctx::block_height();
         };
     }
 
@@ -176,17 +194,28 @@ program sealance_freezelist_registry.aleo {
     // - If the root matches the previous root: ensures it was updated recently (within the allowed block window).
     // - If the root matches neither: the proof is rejected (invalid).
     // Keeps the account address private.
-    fn verify_non_inclusion_priv(account: address, merkle_proof: [merkle_tree.aleo::MerkleProof; 2]) -> Final {
-        let root: field = merkle_tree.aleo::verify_non_inclusion(account, merkle_proof);
+    fn verify_non_inclusion_priv(account: address, merkle_proof: [MerkleProof; 2]) -> Final {
+        let proofs: [merkle_tree.aleo::MerkleProof; 2] = [
+            merkle_tree.aleo::MerkleProof { siblings: merkle_proof[0u32].siblings, leaf_index: merkle_proof[0u32].leaf_index },
+            merkle_tree.aleo::MerkleProof { siblings: merkle_proof[1u32].siblings, leaf_index: merkle_proof[1u32].leaf_index },
+        ];
+        let root: field = merkle_tree.aleo::verify_non_inclusion(account, proofs);
         return final {
             let current_root: field = freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
             if (current_root != root) {
                 let previous_root: field = freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
                 assert_eq(root, previous_root);
-                let window: u32 = block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
-                let updated_height: u32 = root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                let window: u32 = freeze_list_root_grace_window.unwrap();
+                let updated_height: u32 = freeze_list_root_updated_at.unwrap();
                 assert(updated_height + window > std::ctx::block_height());
             }
         };
     }
+
+    view fn is_frozen_address(account: address) -> bool { return freeze_list.get_or_use(account, false); }
+    view fn is_frozen_index(index: u32) -> bool { return freeze_list_index.get_or_use(index, ZERO_ADDRESS) != ZERO_ADDRESS; }
+    view fn current_freeze_list_root() -> field { return freeze_list_root.get_or_use(CURRENT_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT); }
+    view fn previous_freeze_list_root() -> field { return freeze_list_root.get_or_use(PREVIOUS_FREEZE_LIST_ROOT_INDEX, EMPTY_ROOT); }
+    view fn root_updated_height() -> u32 { return freeze_list_root_updated_at.unwrap_or(0u32); }
+    view fn block_height_window() -> u32 { return freeze_list_root_grace_window.unwrap_or(0u32); }
 }

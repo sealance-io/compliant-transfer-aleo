@@ -105,10 +105,17 @@ afterAll(async () => {
 describe("test freeze registry program", () => {
   test("test initialize", async () => {
     const fixture = state!;
-    const isFreezeRegistryInitialized =
-      await fixture.freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX);
+    const isFreezeRegistryInitialized = await fixture.freezeRegistry.storage.isInitialized.getOrUse(false);
 
     if (!isFreezeRegistryInitialized) {
+      expect(await fixture.freezeRegistry.views.isFrozenAddress(fixture.frozenAccount)).toBe(false);
+      expect(await fixture.freezeRegistry.views.isFrozenIndex(1)).toBe(false);
+      expect(await fixture.freezeRegistry.views.currentFreezeListRoot()).toBe(emptyRootField);
+      expect(await fixture.freezeRegistry.views.previousFreezeListRoot()).toBe(emptyRootField);
+      expect(await fixture.freezeRegistry.views.rootUpdatedHeight()).toBe(0);
+      expect(await fixture.freezeRegistry.views.blockHeightWindow()).toBe(0);
+      expect(await fixture.freezeRegistry.mappings.freezeListRoot.contains(CURRENT_FREEZE_LIST_ROOT_INDEX)).toBe(false);
+
       // Cannot update freeze list before initialization
       await fixture.freezeRegistry.update_freeze_list.rejected(
         fixture.frozenAccount,
@@ -130,7 +137,7 @@ describe("test freeze registry program", () => {
       const frozenAccountByIndex = await fixture.freezeRegistry.mappings.freezeListIndex.get(0);
       const lastIndex = await fixture.freezeRegistry.mappings.freezeListLastIndex.get(FREEZE_LIST_LAST_INDEX);
       const initializedRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
-      const blockHeightWindow = await fixture.freezeRegistry.mappings.blockHeightWindow.get(BLOCK_HEIGHT_WINDOW_INDEX);
+      const blockHeightWindow = await fixture.freezeRegistry.storage.freezeListRootGraceWindow.get();
       const role = await fixture.freezeRegistry.mappings.addressToRole.get(fixture.admin);
 
       expect(role).toBe(MANAGER_ROLE);
@@ -139,6 +146,14 @@ describe("test freeze registry program", () => {
       expect(lastIndex).toBe(0);
       expect(initializedRoot).toBe(emptyRootField);
       expect(blockHeightWindow).toBe(BLOCK_HEIGHT_WINDOW);
+      expect(await fixture.freezeRegistry.storage.freezeListRootUpdatedAt.get()).toBe(0);
+      expect(await fixture.freezeRegistry.storage.isInitialized.get()).toBe(true);
+      expect(await fixture.freezeRegistry.views.isFrozenAddress(zeroAddress)).toBe(false);
+      expect(await fixture.freezeRegistry.views.isFrozenIndex(0)).toBe(false);
+      expect(await fixture.freezeRegistry.views.currentFreezeListRoot()).toBe(emptyRootField);
+      expect(await fixture.freezeRegistry.views.previousFreezeListRoot()).toBe(emptyRootField);
+      expect(await fixture.freezeRegistry.views.rootUpdatedHeight()).toBe(0);
+      expect(await fixture.freezeRegistry.views.blockHeightWindow()).toBe(BLOCK_HEIGHT_WINDOW);
     }
 
     // It is possible to call to initialize only one time
@@ -237,6 +252,18 @@ describe("test freeze registry program", () => {
       expect(isAccountFrozen).toBe(true);
       expect(frozenAccountByIndex).toBe(fixture.frozenAccount.address);
       expect(lastIndex).toBe(1);
+      expect(await fixture.freezeRegistry.views.isFrozenAddress(fixture.frozenAccount)).toBe(true);
+      expect(await fixture.freezeRegistry.views.isFrozenIndex(1)).toBe(true);
+      expect(await fixture.freezeRegistry.views.currentFreezeListRoot()).toBe(fixture.rootField);
+      expect(await fixture.freezeRegistry.views.previousFreezeListRoot()).toBe(emptyRootField);
+      expect(await fixture.freezeRegistry.views.rootUpdatedHeight()).toBeGreaterThan(0);
+      expect(await fixture.freezeRegistry.mappings.freezeListRoot.get(CURRENT_FREEZE_LIST_ROOT_INDEX)).toBe(
+        fixture.rootField,
+      );
+      expect(await fixture.freezeRegistry.mappings.freezeListRoot.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX)).toBe(
+        emptyRootField,
+      );
+      expect(await fixture.freezeRegistry.storage.freezeListRootUpdatedAt.get()).toBeGreaterThan(0);
     }
 
     // Cannot unfreeze an account when the frozen list index is incorrect
@@ -309,6 +336,7 @@ describe("test freeze registry program", () => {
       BLOCK_HEIGHT_WINDOW,
       asSigner(fixture.freezeListManager),
     );
+    expect(await fixture.freezeRegistry.views.blockHeightWindow()).toBe(BLOCK_HEIGHT_WINDOW);
   });
 
   test("test verify_non_inclusion_pub", async () => {
@@ -362,6 +390,10 @@ describe("test freeze registry program", () => {
     const oldRoot = await fixture.freezeRegistry.mappings.freezeListRoot.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
     expect(oldRoot).toBe(fixture.rootField);
     expect(newRoot).toBe(emptyRootField);
+    expect(await fixture.freezeRegistry.views.isFrozenAddress(fixture.frozenAccount)).toBe(false);
+    expect(await fixture.freezeRegistry.views.isFrozenIndex(1)).toBe(false);
+    expect(await fixture.freezeRegistry.views.currentFreezeListRoot()).toBe(emptyRootField);
+    expect(await fixture.freezeRegistry.views.previousFreezeListRoot()).toBe(fixture.rootField);
 
     // The transaction succeed because the old root is match
     await fixture.freezeRegistry.verify_non_inclusion_priv.accepted(
