@@ -96,9 +96,8 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 - **Releasing SDK versions:** `docs/RELEASING.md` - Changesets workflow, emergency procedures
 - **Testing or CI failures:** `docs/TESTING.md` - manual local Aleo setup, test configuration
 - **npm install, security policy, or dependency updates:** `docs/NPM-SECURITY.md` - security model and practices
-- **Program structure or compliance flow:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system
+- **Program structure, compliance flow, or editing Leo programs:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system, cross-program invariants
 - **ARC-22 compatibility or conformance checks:** `docs/IARC22.md` - ARC-22 implementations, SDK-facing mapping compatibility, pinned standard
-- **Leo/Aleo language patterns:** `docs/LEO-ALEO-PATTERNS.md` - execution model, limitations, dual-auth patterns, upgradability
 - **Patterns for Leo contracts or tests:** `docs/CODE-PATTERNS.md` - contract interaction, freeze lists, test structure
 - **SDK development tasks:** `packages/policy-engine-sdk/AGENTS.md` - SDK agent guide
 - **SDK usage or API questions:** `packages/policy-engine-sdk/README.md` (quick start) and `packages/policy-engine-sdk/API.md` (API reference)
