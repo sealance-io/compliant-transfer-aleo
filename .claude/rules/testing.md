@@ -7,4 +7,4 @@ paths:
 
 # Testing
 
-See @docs/TESTING.md for the testing guide.
+See @../../docs/TESTING.md for the testing guide.

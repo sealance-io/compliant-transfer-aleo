@@ -87,18 +87,18 @@ Not all changes require a release. Skip changesets for:
 - **Internal refactoring**: Code reorganization with no public API impact
 - **Development tooling**: ESLint config, TypeScript config changes
 - **Non-SDK files**: Leo programs, deployment recipes, utility scripts, root-level docs
-- **Internal SDK docs**: `DEVELOPMENT.md`, `QUICK_START.md` (don't ship to npm)
+- **SDK docs outside the npm package**: `API.md`, `AGENTS.md`, `CLAUDE.md`, `examples/`, `test/README.md`
 
 **Rule of thumb**: If the change doesn't affect what users `npm install`, it doesn't need a changeset.
 
 **Note on SDK markdown files:**
 
-| File             | Ships to npm? | Needs changeset?       |
-| ---------------- | ------------- | ---------------------- |
-| `README.md`      | ✅ Yes        | ✅ Yes (patch)         |
-| `CHANGELOG.md`   | ✅ Yes (auto) | ❌ No (auto-generated) |
-| `DEVELOPMENT.md` | ❌ No         | ❌ No                  |
-| `QUICK_START.md` | ❌ No         | ❌ No                  |
+| File           | Ships to npm? | Needs changeset?       |
+| -------------- | ------------- | ---------------------- |
+| `README.md`    | ✅ Yes        | ✅ Yes (patch)         |
+| `CHANGELOG.md` | ❌ No         | ❌ No (auto-generated) |
+| `API.md`       | ❌ No         | ❌ No                  |
+| `AGENTS.md`    | ❌ No         | ❌ No                  |
 
 ---
 
@@ -602,8 +602,8 @@ The workflow is fully idempotent. If a re-run is needed (e.g., npm published but
 # Add a changeset
 npx changeset
 
-# Preview version changes (dry-run)
-npm run version
+# Preview pending version changes
+npx changeset status
 
 # Manual release (not recommended - use workflows)
 npm run release

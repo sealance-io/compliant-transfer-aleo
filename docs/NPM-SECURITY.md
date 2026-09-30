@@ -72,7 +72,7 @@ package names and paths.
 | Minor       | 7 days   | Longer validation for significant changes |
 | Major       | Blocked  | Manual review required                    |
 
-Security updates bypass all cooldowns. See `.github/dependabot.yml` and `docs/DEPENDABOT-STRATEGY.md`.
+Security updates bypass all cooldowns. See `../.github/dependabot.yml` and `DEPENDABOT-STRATEGY.md`.
 
 ## Tooling Status
 
@@ -86,8 +86,8 @@ Security updates bypass all cooldowns. See `.github/dependabot.yml` and `docs/DE
 | `dependency-review-action`      | PR vulnerability gating      | Active               |
 | `zizmor`                        | Workflow security            | Active               |
 | Dependabot                      | Automated updates            | Active               |
-| npm provenance                  | Build attestations           | Planned              |
-| OIDC publishing                 | Token-less publishing        | Planned              |
+| npm provenance                  | Build attestations           | Active (publish CI)  |
+| OIDC publishing                 | Token-less publishing        | Active (publish CI)  |
 
 ## Incident Response
 

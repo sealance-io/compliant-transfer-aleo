@@ -6,4 +6,4 @@ paths:
 
 # Deployment
 
-See @docs/DEVELOPMENT.md for deployment and upgrade details.
+See @../../docs/DEVELOPMENT.md for deployment and upgrade details.

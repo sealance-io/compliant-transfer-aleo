@@ -104,4 +104,4 @@ Dependabot is one layer in defense-in-depth:
 - [Dependabot Options Reference](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference)
 - [Dependency Cooldowns Security Analysis](https://blog.yossarian.net/2025/11/21/We-should-all-be-using-dependency-cooldowns)
 - [Cooldown "Stuck Forever" Bug](https://github.com/dependabot/dependabot-core/issues/13691)
-- Project: `docs/NPM-SECURITY.md` for npm security model
+- Project: `NPM-SECURITY.md` for npm security model

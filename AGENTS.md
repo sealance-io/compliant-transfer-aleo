@@ -62,7 +62,7 @@ npm run format:fix          # Auto-fix formatting
 
 1. **Node Version**: Use Node 20.19.0+ on the 20.x line, or Node 22.12.0+; the repo default in `.nvmrc` is `v24`
 2. **Leo Version**: Developed with Leo CLI v4.4.3 — compile with `npm run compile`, not `leo build`
-3. **Workspace Rules**: Always install packages from repository root, never in subdirectories
+3. **Workspace Rules**: Always install packages from repository root, never in subdirectories. Sole exception: the standalone `packages/policy-engine-sdk/examples/` package (outside the workspace), installed in place with `--ignore-scripts`
 4. **One Chain Per Test File**: Test files run serially, each in its own forked worker with its own chain. No state is shared across files and file order is irrelevant — but a file's own tests do share a chain and must stay ordered within the file
 5. **npm Security**: Always use `--ignore-scripts` for installs; use `--allow-git=none` with `npm ci`. Build/publish workflows may run scripts as needed
 6. **LionDen Dependencies**: `@lionden/*` packages are installed from npm and pinned exactly; update them intentionally as a group

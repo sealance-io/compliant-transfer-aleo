@@ -12,6 +12,8 @@ Before running the examples, ensure you have:
 
    These examples use a local file dependency (`"file:.."`) that references the SDK source code directly. This means changes to the SDK are immediately reflected in the examples without republishing.
 
+   The examples are a standalone package outside the root npm workspace, so they are the one place installed in place rather than from the repository root. Always keep `--ignore-scripts`.
+
    **Option 1: Quick setup (from SDK directory)**
    ```bash
    # From packages/policy-engine-sdk/
@@ -323,7 +325,7 @@ npm run basic
 **Note:** If you add/remove exports from the SDK, you may need to reinstall:
 ```bash
 cd examples
-npm install  # Refreshes the symlink
+npm install --ignore-scripts  # Refreshes the symlink
 ```
 
 ### Creating New Examples

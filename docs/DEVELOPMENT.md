@@ -57,8 +57,8 @@ npm run format:fix --workspace=@sealance-io/policy-engine-aleo  # Format
 Uses [Changesets](https://github.com/changesets/changesets) for version management.
 
 ```bash
-npx changeset   # Add changeset when making SDK changes
-npm run version # Preview version bumps (dry-run)
+npx changeset         # Add changeset when making SDK changes
+npx changeset status  # Preview pending version bumps
 ```
 
 ## Deployment
@@ -94,8 +94,8 @@ npm run lint:licenses  # Check for GPL/AGPL licenses (blocked)
 ## Adding Dependencies
 
 ```bash
-npm install <package>                                          # Root workspace
-npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
+npm install --ignore-scripts <package>                                         # Root workspace
+npm install --ignore-scripts --workspace=@sealance-io/policy-engine-aleo <pkg> # SDK workspace
 ```
 
 ## Common Issues
@@ -103,4 +103,4 @@ npm install --workspace=@sealance-io/policy-engine-aleo <pkg>  # SDK workspace
 - **Leo CLI missing**: Install a Leo CLI compatible with `lionden.config.ts`
 - **Tests too slow**: Keep proofs disabled for normal devnode runs; use `npm test -- --prove` only when needed
 - **Port 3030 in use**: Stop the process currently listening on port 3030
-- **Manual local Aleo setup**: See `docs/TESTING.md`
+- **Manual local Aleo setup**: See `TESTING.md`

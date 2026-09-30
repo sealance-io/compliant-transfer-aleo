@@ -2,7 +2,7 @@
 
 Unit tests for `@sealance-io/policy-engine-aleo` SDK.
 
-These are fast unit tests that mock external dependencies (no blockchain interaction). For integration tests using actual Aleo blockchain, see the main repository tests in `../../test/`.
+These are fast unit tests that mock external dependencies (no blockchain interaction). For integration tests using actual Aleo blockchain, see the main repository tests in `../../../test/`.
 
 ## Running Tests
 

@@ -70,8 +70,9 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 - **SDK usage or public API surface:** `README.md` (installation, quick start) and `API.md` (complete API reference)
 - **SDK examples or integration guidance:** `examples/` directory
 - **SDK version history or release notes:** `CHANGELOG.md`
-- **Publishing or package registry setup:** See Publishing section below
-- **Repo-wide constraints or shared tooling:** Root `AGENTS.md`
+- **SDK unit tests:** `test/README.md`
+- **Publishing, changesets, or package registry setup:** `../../docs/RELEASING.md` (summary in Publishing section below)
+- **Repo-wide constraints or shared tooling:** `../../AGENTS.md`
 
 ## Testing
 
@@ -98,7 +99,7 @@ The `prepublishOnly` script builds automatically before publishing.
 ## SDK-Specific Notes
 
 - **ESM Only**: No CommonJS - use `import`/`export` only
-- **Install from root only**: Never run `npm install` in this directory; install packages from the repository root
-- Add changeset for any SDK change: `npx changeset`
+- **Install from root only**: Never run `npm install` in this directory; install packages from the repository root. Exception: `examples/` is a standalone package outside the workspace — install it in place with `npm install --ignore-scripts` (or `npm run build:examples`)
+- Add a changeset (`npx changeset`) for changes that affect the published package; see `../../docs/RELEASING.md` for exemptions
 
-See root `/AGENTS.md` for repository-wide constraints.
+See `../../AGENTS.md` for repository-wide constraints.
