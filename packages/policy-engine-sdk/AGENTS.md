@@ -17,14 +17,14 @@ npx changeset  # Add changeset for SDK changes
 
 ## Module Structure
 
-| File                 | Purpose                                    |
-| -------------------- | ------------------------------------------ |
-| `src/policy-engine.ts` | Main `PolicyEngine` class                |
-| `src/api-client.ts`    | Blockchain API with retry/concurrency    |
-| `src/merkle-tree.ts`   | Tree building and proof generation       |
-| `src/conversion.ts`    | Address/field conversion utilities       |
-| `src/types.ts`         | TypeScript type definitions              |
-| `src/index.ts`         | Public exports                           |
+| File                   | Purpose                               |
+| ---------------------- | ------------------------------------- |
+| `src/policy-engine.ts` | Main `PolicyEngine` class             |
+| `src/api-client.ts`    | Blockchain API with retry/concurrency |
+| `src/merkle-tree.ts`   | Tree building and proof generation    |
+| `src/conversion.ts`    | Address/field conversion utilities    |
+| `src/types.ts`         | TypeScript type definitions           |
+| `src/index.ts`         | Public exports                        |
 
 ## Key APIs
 
@@ -34,25 +34,25 @@ npx changeset  # Add changeset for SDK changes
 const engine = new PolicyEngine({ endpoint, network, maxTreeDepth });
 
 // Core methods
-engine.fetchCurrentRoot(programId)                      // Lightweight root fetch
-engine.fetchFreezeListFromChain(programId)              // Full freeze list
-engine.generateFreezeListNonInclusionProof(addr, opts)  // Generate proof
-engine.buildMerkleTree(addresses)                       // Build tree
-engine.getMerkleRoot(addresses)                         // Get root
+engine.fetchCurrentRoot(programId); // Lightweight root fetch
+engine.fetchFreezeListFromChain(programId); // Full freeze list
+engine.generateFreezeListNonInclusionProof(addr, opts); // Generate proof
+engine.buildMerkleTree(addresses); // Build tree
+engine.getMerkleRoot(addresses); // Get root
 ```
 
 ### Utility Functions
 
 ```typescript
 import {
-  convertAddressToField,   // aleo1... → bigint
-  convertFieldToAddress,   // field → aleo1...
-  stringToBigInt,          // ASCII → bigint
-  buildTree,               // leaves → tree
-  generateLeaves,          // addresses → sorted leaves
-  getLeafIndices,          // tree + address → indices
-  getSiblingPath,          // tree + index → proof
-  trackTransactionStatus   // txId → status
+  convertAddressToField, // aleo1... → bigint
+  convertFieldToAddress, // field → aleo1...
+  stringToBigInt, // ASCII → bigint
+  buildTree, // leaves → tree
+  generateLeaves, // addresses → sorted leaves
+  getLeafIndices, // tree + address → indices
+  getSiblingPath, // tree + index → proof
+  trackTransactionStatus, // txId → status
 } from "@sealance-io/policy-engine-aleo";
 ```
 
@@ -90,6 +90,7 @@ SDK unit tests can run in parallel; root integration tests must run sequentially
 Published to npm via CI (OIDC trusted publishing with provenance attestation).
 
 Automated release flow:
+
 1. Add changeset (`npx changeset`)
 2. Merge to `main` → version workflow creates release PR
 3. Merge release PR → publish workflow publishes to npm + creates GitHub Release

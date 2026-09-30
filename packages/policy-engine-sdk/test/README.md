@@ -24,7 +24,9 @@ npm run test:coverage --workspace=@sealance-io/policy-engine-aleo
 ## Test Structure
 
 ### `conversion.test.ts`
+
 Tests for address ↔ field conversion utilities:
+
 - Round-trip conversions (address → field → address)
 - Special cases (zero, small, large field values)
 - Error handling for invalid inputs
@@ -33,7 +35,9 @@ Tests for address ↔ field conversion utilities:
 - `stringToBigInt` utility
 
 ### `merkle-tree.test.ts`
+
 Tests for Merkle tree operations:
+
 - `generateLeaves`: Leaf generation, sorting, padding
 - `buildTree`: Tree construction, validation
 - `getLeafIndices`: Finding indices for non-inclusion proofs
@@ -41,7 +45,9 @@ Tests for Merkle tree operations:
 - Integration tests for complete proof generation
 
 ### `api-client.test.ts`
+
 Tests for Aleo API client:
+
 - Configuration initialization
 - Mapping fetches from blockchain
 - Retry logic with exponential backoff
@@ -49,7 +55,9 @@ Tests for Aleo API client:
 - URL construction
 
 ### `policy-engine.test.ts`
+
 Tests for main PolicyEngine class:
+
 - Configuration and initialization
 - `buildMerkleTree`: Tree building from addresses
 - `getMerkleRoot`: Root computation
@@ -62,12 +70,14 @@ Tests for main PolicyEngine class:
 ## Coverage
 
 The test suite aims for 80% coverage across:
+
 - Lines
 - Functions
 - Branches
 - Statements
 
 Coverage reports are generated in `coverage/` directory:
+
 - `coverage/index.html`: HTML report (open in browser)
 - `coverage/coverage-final.json`: JSON report
 - `coverage/lcov.info`: LCOV format (for CI/CD)
@@ -75,6 +85,7 @@ Coverage reports are generated in `coverage/` directory:
 ## Test Configuration
 
 See `../vitest.config.ts` in SDK root for configuration:
+
 - Test timeout: 30 seconds per test
 - Hook timeout: 10 seconds
 - Coverage provider: V8
@@ -85,18 +96,20 @@ See `../vitest.config.ts` in SDK root for configuration:
 ## Mocking
 
 Tests use Vitest's built-in mocking:
+
 - `vi.fn()`: Mock functions
 - `vi.mock()`: Module mocking
 - `global.fetch`: Mocked for API calls
 
 Example:
+
 ```typescript
 import { vi } from "vitest";
 
 const mockFetch = vi.fn().mockResolvedValue({
   ok: true,
   status: 200,
-  text: async () => "result"
+  text: async () => "result",
 });
 
 global.fetch = mockFetch;
@@ -139,4 +152,3 @@ Tests can be integrated into CI/CD pipelines:
   with:
     files: ./coverage/lcov.info
 ```
-
