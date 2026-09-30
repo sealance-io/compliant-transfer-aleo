@@ -216,6 +216,10 @@ Example:
   identifier metadata therefore cannot be moved from its singleton mapping into scalar storage
   without changing the public metadata type or upgrading the compiler.
 - Multi-dimensional keys are hash-composed (e.g., hash(token_id, account)).
+- Ordered lists in mappings are emulated with index maps (e.g., `freeze_list_index` +
+  `freeze_list_last_index`).
+- `get_or_use(key, default)` conflates an unset key with a key explicitly set to `default`;
+  do not use it where "absent" and "default" must be distinguished.
 
 ## Design Patterns (Informative)
 
@@ -241,7 +245,9 @@ Separated pattern:
 
 ### Upgradability
 
-- All programs use constructor-based upgrade protection.
+- Upgradeable programs use constructor-based upgrade protection: `@custom constructor()` checks
+  `std::ctx::edition() > 0u16` so initial deployment has no checks. `merkle_tree` and
+  `token_registry` are `@noupgrade`.
 - Upgrades (edition > 0) require multisig approval using the program's own address as wallet_id.
 - See programs/token/compliant_token_template.leo and programs/vendor/multisig_core.leo.
 
@@ -255,6 +261,8 @@ Separated pattern:
 Off-chain computations MUST match on-chain logic exactly:
 
 - Hash inputs: same field ordering, padding, and encoding as on-chain.
+- Hash functions: Poseidon4 for Merkle tree hashing (programs/core/merkle_tree); BHP256 for
+  structured data (operation IDs, composite keys).
 - String encoding: ASCII-packed u128; see packages/policy-engine-sdk/src/conversion.ts.
 - Merkle proofs: use buildTree, generateLeaves, getSiblingPath from
   packages/policy-engine-sdk/src/merkle-tree.ts.
