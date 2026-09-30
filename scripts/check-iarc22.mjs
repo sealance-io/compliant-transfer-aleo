@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSy
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { formatLeoFailure, isInterfaceMismatchDiagnostic } from "./check-iarc22-output.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const leo = process.env.LEO_BINARY ?? "leo";
@@ -66,15 +67,14 @@ const standardDependency = readStandardPin();
 const temp = mkdtempSync(join(tmpdir(), "iarc22-conformance-"));
 
 function run(args, options = {}) {
-  const result = spawnSync(leo, ["--disable-update-check", ...args], {
+  const result = spawnSync(leo, ["--disable-update-check", "-q", ...args], {
     cwd: root,
     encoding: "utf8",
-    // Leo prints every loaded .env entry at normal verbosity. Capture output so
-    // conformance logs never disclose keys; include it only when a check fails.
+    // Quiet mode suppresses routine output; failures only surface sanitized diagnostics.
     stdio: "pipe",
   });
   if (!options.allowFailure && result.status !== 0) {
-    throw new Error(`leo ${args.join(" ")} failed (${result.status})\n${result.stdout ?? ""}${result.stderr ?? ""}`);
+    throw new Error(formatLeoFailure(args, result));
   }
   return result;
 }
@@ -140,7 +140,7 @@ try {
   const tokenStandard = join(tokenDir, "build", "compliant_token_template", "interfaces", "IARC22", "IARC22.json");
   const imports = join(temp, "negative-imports");
   mkdirSync(imports, { recursive: true });
-  for (const name of ["multisig_core", "multisig_freezelist_registry"]) {
+  for (const name of ["merkle_tree", "multisig_core", "multisig_freezelist_registry"]) {
     copyFileSync(resolve(root, "artifacts", `${name}.aleo`, "main.aleo"), join(imports, `${name}.aleo`));
   }
   const negative = run(
@@ -155,6 +155,11 @@ try {
     { allowFailure: true },
   );
   if (negative.status === 0) throw new Error("negative conformance check unexpectedly passed");
+  if (!isInterfaceMismatchDiagnostic(`${negative.stdout ?? ""}\n${negative.stderr ?? ""}`)) {
+    throw new Error(
+      `negative control is invalid: Leo did not report an IARC22 interface mismatch\n${formatLeoFailure(["abi", "--satisfies", tokenStandard], negative)}`,
+    );
+  }
   console.log("Negative control: multisig_compliant_token.aleo correctly rejected.");
 } finally {
   rmSync(temp, { recursive: true, force: true });

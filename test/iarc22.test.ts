@@ -30,21 +30,6 @@ let token: ReturnType<typeof createCompliantTokenTemplate>;
 let registry: ReturnType<typeof createSealanceFreezelistRegistry>;
 let accountRecord: Token;
 
-async function view(program: string, name: string, ...inputs: string[]): Promise<string> {
-  const response = await fetch(`${ctx!.connection.endpoint}/testnet/program/${program}.aleo/view/${name}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(inputs),
-  });
-  if (!response.ok) throw new Error(`view ${program}/${name} failed: ${await response.text()}`);
-  const outputs = (await response.json()) as string[];
-  return outputs[0]!;
-}
-
-async function expectView(program: string, name: string, expected: string, ...inputs: string[]) {
-  expect(await view(program, name, ...inputs)).toContain(expected);
-}
-
 beforeAll(async () => {
   ctx = await setup();
   const deployer = ctx.named.signer("deployer");
@@ -71,12 +56,12 @@ afterAll(async () => {
 describe.sequential("ARC-22 programs", () => {
   test("freeze-list views return safe defaults before initialization", async () => {
     const account = ctx!.named.signer("account");
-    await expectView("sealance_freezelist_registry", "is_frozen_address", "false", account.address);
-    await expectView("sealance_freezelist_registry", "is_frozen_index", "false", "1u32");
-    await expectView("sealance_freezelist_registry", "current_freeze_list_root", emptyRootField.toString());
-    await expectView("sealance_freezelist_registry", "previous_freeze_list_root", emptyRootField.toString());
-    await expectView("sealance_freezelist_registry", "root_updated_height", "0u32");
-    await expectView("sealance_freezelist_registry", "block_height_window", "0u32");
+    expect(await registry.views.isFrozenAddress(account)).toBe(false);
+    expect(await registry.views.isFrozenIndex(1)).toBe(false);
+    expect(await registry.views.currentFreezeListRoot()).toBe(emptyRootField);
+    expect(await registry.views.previousFreezeListRoot()).toBe(emptyRootField);
+    expect(await registry.views.rootUpdatedHeight()).toBe(0);
+    expect(await registry.views.blockHeightWindow()).toBe(0);
   });
 
   test("initializes identifier metadata and all required views", async () => {
@@ -95,15 +80,19 @@ describe.sequential("ARC-22 programs", () => {
     );
     await token.update_role.accepted(admin, MANAGER_ROLE + MINTER_ROLE, asSigner(admin));
 
-    await expectView("sealance_freezelist_registry", "current_freeze_list_root", emptyRootField.toString());
-    await expectView("sealance_freezelist_registry", "block_height_window", `${BLOCK_HEIGHT_WINDOW}u32`);
-    await expectView("compliant_token_template", "balance_of", "0u128", account.address);
-    await expectView("compliant_token_template", "allowance", "0u128", account.address, admin.address);
-    await expectView("compliant_token_template", "supply", "0u128");
-    await expectView("compliant_token_template", "max_supply", "1000000u128");
-    await expectView("compliant_token_template", "decimals", "6u8");
-    await expectView("compliant_token_template", "name", "Stable_Token");
-    await expectView("compliant_token_template", "symbol", "STABLE_TOKEN");
+    expect(await registry.views.isFrozenAddress(account)).toBe(false);
+    expect(await registry.views.isFrozenIndex(1)).toBe(false);
+    expect(await registry.views.currentFreezeListRoot()).toBe(emptyRootField);
+    expect(await registry.views.previousFreezeListRoot()).toBe(emptyRootField);
+    expect(await registry.views.rootUpdatedHeight()).toBe(0);
+    expect(await registry.views.blockHeightWindow()).toBe(BLOCK_HEIGHT_WINDOW);
+    expect(await token.views.balanceOf(account)).toBe(0n);
+    expect(await token.views.allowance(account, admin)).toBe(0n);
+    expect(await token.views.supply()).toBe(0n);
+    expect(await token.views.maxSupply()).toBe(1_000_000n);
+    expect(await token.views.decimals()).toBe(6);
+    expect(await token.views.name()).toBe(Leo.identifier("Stable_Token"));
+    expect(await token.views.symbol()).toBe(Leo.identifier("STABLE_TOKEN"));
   });
 
   test("views track approval, minting, freezing, unfreezing, and root rotation", async () => {
@@ -112,23 +101,26 @@ describe.sequential("ARC-22 programs", () => {
     const frozen = ctx!.named.signer("frozenAccount");
     await token.mint_public.accepted(account, 100n, asSigner(admin));
     await token.approve_public.accepted(admin, 25n, asSigner(account));
-    await expectView("compliant_token_template", "balance_of", "100u128", account.address);
-    await expectView("compliant_token_template", "allowance", "25u128", account.address, admin.address);
-    await expectView("compliant_token_template", "supply", "100u128");
+    expect(await token.views.balanceOf(account)).toBe(100n);
+    expect(await token.views.allowance(account, admin)).toBe(25n);
+    expect(await token.views.supply()).toBe(100n);
 
     const tree = buildTree(generateLeaves([frozen.address]));
     const root = fieldLiteral(tree.at(-1)!);
     await registry.update_freeze_list.accepted(frozen, true, 1, emptyRootField, root, asSigner(admin));
-    await expectView("sealance_freezelist_registry", "is_frozen_address", "true", frozen.address);
-    await expectView("sealance_freezelist_registry", "is_frozen_index", "true", "1u32");
-    await expectView("sealance_freezelist_registry", "current_freeze_list_root", root.toString());
-    await expectView("sealance_freezelist_registry", "previous_freeze_list_root", emptyRootField.toString());
-    expect(await view("sealance_freezelist_registry", "root_updated_height")).toMatch(/[1-9][0-9]*u32/);
+    expect(await registry.views.isFrozenAddress(frozen)).toBe(true);
+    expect(await registry.views.isFrozenIndex(1)).toBe(true);
+    expect(await registry.views.currentFreezeListRoot()).toBe(root);
+    expect(await registry.views.previousFreezeListRoot()).toBe(emptyRootField);
+    expect(await registry.views.rootUpdatedHeight()).toBeGreaterThan(0);
+    expect(await registry.views.blockHeightWindow()).toBe(BLOCK_HEIGHT_WINDOW);
 
     await token.transfer_public.rejected(frozen, 1n, asSigner(account));
     await registry.update_freeze_list.accepted(frozen, false, 1, root, emptyRootField, asSigner(admin));
-    await expectView("sealance_freezelist_registry", "is_frozen_address", "false", frozen.address);
-    await expectView("sealance_freezelist_registry", "is_frozen_index", "false", "1u32");
+    expect(await registry.views.isFrozenAddress(frozen)).toBe(false);
+    expect(await registry.views.isFrozenIndex(1)).toBe(false);
+    expect(await registry.views.currentFreezeListRoot()).toBe(emptyRootField);
+    expect(await registry.views.previousFreezeListRoot()).toBe(root);
   });
 
   test("private transfers enforce non-inclusion and emit investigator compliance records", async () => {
