@@ -1,101 +1,31 @@
 # API Reference
 
-Complete API documentation for `@sealance-io/policy-engine-aleo`.
+API reference for `@sealance-io/policy-engine-aleo`. Installation, configuration options, program compatibility and the recommended cache pattern are in the [README](./README.md). All exports carry TSDoc, visible in your IDE.
 
 ## PolicyEngine
 
-Main class for SDK operations.
-
-### Constructor
-
 ```typescript
-new PolicyEngine(config?: PolicyEngineConfig)
+const engine = new PolicyEngine();
 ```
 
-**Config Options (all optional):**
+The constructor takes an optional `PolicyEngineConfig`; options and defaults are in the README's "Configuration" section.
 
-| Option           | Type     | Default                                     | Description                    |
-| ---------------- | -------- | ------------------------------------------- | ------------------------------ |
-| `endpoint`       | `string` | `"https://api.explorer.provable.com/v1"`    | Aleo network endpoint          |
-| `network`        | `string` | `"mainnet"`                                 | Network name                   |
-| `maxTreeDepth`   | `number` | `15`                                        | Maximum Merkle tree depth      |
-| `maxRetries`     | `number` | `5`                                         | Max API retry attempts         |
-| `retryDelay`     | `number` | `2000`                                      | Delay between retries (ms)     |
-| `maxConcurrency` | `number` | `10`                                        | Max concurrent HTTP requests   |
-| `logger`         | `Logger` | `defaultLogger`                             | Custom logger function         |
+| Method                                                                                 | Description                                                                       |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `fetchCurrentRoot(programId): Promise<bigint>`                                         | Reads only the `freeze_list_root` mapping (one API call). Use to validate a cache |
+| `fetchFreezeListFromChain(programId): Promise<FreezeListResult>`                       | Reads `freeze_list_last_index` and the root, then every `freeze_list_index` entry |
+| `generateFreezeListNonInclusionProof(address, options?): Promise<NonInclusionWitness>` | Builds the tree and returns the two proofs for a private compliant transfer       |
+| `buildMerkleTree(addresses): bigint[]`                                                 | Builds the full tree (leaves first, root last)                                    |
+| `getMerkleRoot(addresses): bigint`                                                     | Computes the root                                                                 |
+| `getConfig(): Required<PolicyEngineConfig>`                                            | Returns the resolved configuration, including defaults                            |
 
-### Methods
-
-#### `fetchCurrentRoot(programId: string): Promise<bigint>`
-
-Fetches only the current Merkle root from the blockchain. Lightweight operation (single API call) without fetching the entire freeze list or building the tree.
-
-```typescript
-const currentRoot = await engine.fetchCurrentRoot("sealance_freezelist_registry.aleo");
-// Returns: 123456789n
-
-// Use for cache validation
-if (cache.root !== currentRoot) {
-  const freezeList = await engine.fetchFreezeListFromChain(programId);
-  cache = { addresses: freezeList.addresses, root: currentRoot };
-}
-```
-
-#### `fetchFreezeListFromChain(programId: string): Promise<FreezeListResult>`
-
-Fetches the freeze list from the blockchain by querying the `freeze_list_index` mapping.
-
-```typescript
-const result = await engine.fetchFreezeListFromChain("sealance_freezelist_registry.aleo");
-// Returns:
-// {
-//   addresses: ["aleo1...", "aleo1..."],
-//   lastIndex: 5,
-//   currentRoot: 123456789n
-// }
-```
-
-#### `generateFreezeListNonInclusionProof(address: string, options?: NonInclusionProofOptions): Promise<NonInclusionWitness>`
-
-Generates a non-inclusion proof for private compliant transfers.
+`generateFreezeListNonInclusionProof` options (`NonInclusionProofOptions`) require **either** `freezeList` (use a cached list, no network calls) **or** `programId` (fetch from chain). With neither it throws.
 
 ```typescript
 const witness = await engine.generateFreezeListNonInclusionProof("aleo1...", {
   programId: "sealance_freezelist_registry.aleo",
-  freezeList: [...], // Optional: provide cached freeze list
 });
-// Returns:
-// {
-//   proofs: [MerkleProof, MerkleProof],
-//   root: 123456789n,
-//   freezeList: ["aleo1...", ...]
-// }
-```
-
-#### `buildMerkleTree(addresses: string[]): bigint[]`
-
-Builds a complete Merkle tree from an array of addresses.
-
-```typescript
-const tree = engine.buildMerkleTree(["aleo1...", "aleo1..."]);
-```
-
-#### `getMerkleRoot(addresses: string[]): bigint`
-
-Computes the Merkle root from a list of addresses.
-
-```typescript
-const root = engine.getMerkleRoot(["aleo1...", "aleo1..."]);
-```
-
-#### `getConfig(): Required<PolicyEngineConfig>`
-
-Gets the current PolicyEngine configuration.
-
-```typescript
-const config = engine.getConfig();
-console.log(config.endpoint); // "https://api.explorer.provable.com/v1"
-console.log(config.network);  // "mainnet"
+// { proofs: [MerkleProof, MerkleProof], root: 123456789n, freezeList: ["aleo1...", ...] }
 ```
 
 ## Utility Functions
@@ -103,67 +33,36 @@ console.log(config.network);  // "mainnet"
 ### Address Conversion
 
 ```typescript
-import {
-  convertAddressToField,
-  convertFieldToAddress,
-  stringToBigInt
-} from "@sealance-io/policy-engine-aleo";
+import { convertAddressToField, convertFieldToAddress, stringToBigInt } from "@sealance-io/policy-engine-aleo";
 
-// Convert address to field element
-const field = convertAddressToField("aleo1...");
-console.log(field); // 123456789n
-
-// Convert field element back to address
-const address = convertFieldToAddress("123456789field");
-console.log(address); // "aleo1..."
-
-// Convert ASCII string to BigInt (for token names, symbols)
-const nameField = stringToBigInt("MyToken");
-console.log(nameField); // 39473518878318894n
+convertAddressToField("aleo1..."); // 123456789n
+convertFieldToAddress("123456789field"); // "aleo1..."
+stringToBigInt("MyToken"); // ASCII string to BigInt (token names, symbols)
 ```
 
 ### Merkle Tree Operations
 
+Low-level steps behind `generateFreezeListNonInclusionProof`:
+
 ```typescript
-import {
-  buildTree,
-  generateLeaves,
-  getLeafIndices,
-  getSiblingPath
-} from "@sealance-io/policy-engine-aleo";
+import { buildTree, generateLeaves, getLeafIndices, getSiblingPath } from "@sealance-io/policy-engine-aleo";
 
-// Generate leaves from addresses (sorted and padded)
-const leaves = generateLeaves(["aleo1...", "aleo1..."], 15);
-
-// Build the tree
+const leaves = generateLeaves(["aleo1...", "aleo1..."], 15); // sorted, zero-padded; throws if over 2^(depth-1) addresses
 const tree = buildTree(leaves);
-
-// Get leaf indices for non-inclusion proof
-const [leftIdx, rightIdx] = getLeafIndices(tree, "aleo1...");
-
-// Get sibling path (Merkle proof)
-const proof = getSiblingPath(tree, leftIdx, 15);
+const [leftIdx, rightIdx] = getLeafIndices(tree, "aleo1..."); // leaves surrounding the address
+const proof = getSiblingPath(tree, leftIdx, 15); // { siblings: [leaf, ...15 siblings], leaf_index }
 ```
 
 ### Transaction Tracking
 
+`trackTransactionStatus(txId, endpoint, options?): Promise<TransactionStatus>` polls until the transaction is confirmed or tracking times out.
+
 ```typescript
 import { trackTransactionStatus } from "@sealance-io/policy-engine-aleo";
 
-// Track with default settings (5 minute timeout)
-const status = await trackTransactionStatus(txId, "http://localhost:3030/testnet");
-
-// Track with custom options
-const status = await trackTransactionStatus(
-  txId,
-  "https://api.explorer.provable.com/v1/testnet",
-  {
-    timeout: 600000,        // Overall timeout: 10 minutes
-    pollInterval: 10000,    // Check every 10 seconds
-    fetchTimeout: 30000,    // 30 second timeout per request
-    maxAttempts: 60         // Max 60 polling attempts
-  }
-);
+const status = await trackTransactionStatus(txId, "https://api.explorer.provable.com/v1/testnet", {
+  timeout: 600000, // 10 minutes
+});
 
 if (status.status === "accepted") {
   console.log(`Transaction confirmed in block ${status.blockHeight}`);
@@ -172,154 +71,117 @@ if (status.status === "accepted") {
 }
 ```
 
-## Type Definitions
+`TransactionTrackingOptions` (all optional):
 
-### MerkleProof
+| Option         | Default         | Description                    |
+| -------------- | --------------- | ------------------------------ |
+| `maxAttempts`  | `60`            | Max polling attempts           |
+| `pollInterval` | `5000`          | Delay between polls (ms)       |
+| `timeout`      | `300000`        | Overall timeout (ms)           |
+| `fetchTimeout` | `30000`         | Per-request timeout (ms)       |
+| `network`      | —               | Network name, used for logging |
+| `logger`       | `defaultLogger` | See [Logger](#logger)          |
+
+### Other Exports
+
+`AleoAPIClient` (HTTP client with retries and rate-limit handling) and the fetch helpers `calculateBackoff`, `parseRetryAfter` and `sleep` are also exported. See their TSDoc.
+
+## Types
 
 ```typescript
 interface MerkleProof {
   siblings: bigint[];
   leaf_index: number;
 }
-```
 
-### NonInclusionWitness
-
-```typescript
 interface NonInclusionWitness {
   proofs: [MerkleProof, MerkleProof];
   root: bigint;
   freezeList: string[];
 }
-```
 
-### FreezeListResult
-
-```typescript
 interface FreezeListResult {
   addresses: string[];
-  lastIndex: number;
+  lastIndex: number; // last populated index in the on-chain list
   currentRoot: bigint;
 }
-```
 
-### TransactionStatus
-
-```typescript
 interface TransactionStatus {
-  status: 'accepted' | 'rejected' | 'aborted' | 'pending';
-  type: 'execute' | 'deploy' | 'fee';
+  status: "accepted" | "rejected" | "aborted" | "pending"; // TransactionStatusType
+  type: "execute" | "deploy" | "fee"; // TransactionType
   confirmedId: string;
-  unconfirmedId?: string;
+  unconfirmedId?: string; // typically set when rejected
   blockHeight?: number;
   error?: string;
 }
 ```
 
-**Status meanings:**
-- `accepted`: Successfully executed and included in a block
-- `rejected`: Failed but fee was consumed (type will be 'fee')
-- `aborted`: Both execution and fee processing failed
-- `pending`: Waiting to be included in a block
+Status meanings:
 
-### TransactionTrackingOptions
-
-```typescript
-interface TransactionTrackingOptions {
-  maxAttempts?: number;     // Max polling attempts (default: 60)
-  pollInterval?: number;    // Delay between polls in ms (default: 5000)
-  timeout?: number;         // Overall timeout in ms (default: 300000)
-  fetchTimeout?: number;    // Per-request timeout in ms (default: 30000)
-  network?: string;         // Network name for logging
-}
-```
+- `accepted`: executed and included in a block
+- `rejected`: execution failed but the fee was consumed (`type` is `"fee"`)
+- `aborted`: both execution and fee processing failed
+- `pending`: waiting to be included in a block
 
 ### Logger
 
 ```typescript
 type LogLevel = "debug" | "info" | "warn" | "error";
-type Logger = (level: LogLevel, message: string, ...args: unknown[]) => void;
+type Logger = (level: LogLevel, message: string, context?: Record<string, unknown>) => void;
+```
 
-// Built-in loggers
-import { defaultLogger, silentLogger } from "@sealance-io/policy-engine-aleo";
+`defaultLogger` logs to the console; `silentLogger` discards everything. Both `PolicyEngineConfig` and `TransactionTrackingOptions` accept a `logger`.
 
-// Use silent logger to suppress all logs
-const engine = new PolicyEngine({ logger: silentLogger });
+```typescript
+import { PolicyEngine, silentLogger } from "@sealance-io/policy-engine-aleo";
 
-// Custom logger
-const customLogger: Logger = (level, message, ...args) => {
-  console.log(`[${level.toUpperCase()}] ${message}`, ...args);
-};
-const engine2 = new PolicyEngine({ logger: customLogger });
+const quiet = new PolicyEngine({ logger: silentLogger });
+const custom = new PolicyEngine({
+  logger: (level, message, context) => myAppLogger.log({ level, message, ...context }),
+});
 ```
 
 ## Constants
 
-| Constant          | Value                                                                 |
-| ----------------- | --------------------------------------------------------------------- |
-| `ZERO_ADDRESS`    | `"aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc"` |
-| `maxTreeDepth`    | `15` (default)                                                        |
-| `leavesLength`    | `16384` (2^14, default)                                               |
+| Constant       | Value                                                               |
+| -------------- | ------------------------------------------------------------------- |
+| `ZERO_ADDRESS` | `"aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc"` |
 
-## Program Compatibility
+`ZERO_ADDRESS` is field element `0`, used as Merkle tree padding and filtered out of freeze lists.
 
-Your Aleo program must include these mappings:
+## Errors
 
-```leo
-mapping freeze_list_index: u32 => address;
-mapping freeze_list_last_index: bool => u32;
-mapping freeze_list_root: u8 => field;
-```
+The SDK throws plain `Error`s.
 
-**Compatible programs:**
-- `sealance_freezelist_registry.aleo` - Reference implementation
-- `sealed_report_policy.aleo` - Transaction reporting
-- `sealed_threshold_report_policy.aleo` - Threshold reporting
-- `sealed_timelock_policy.aleo` - Time-locked transfers
+### PolicyEngine and AleoAPIClient
 
-## Best Practices
+Mapping reads treat HTTP 404 as "no value" rather than an error; `PolicyEngine` then reports it as a missing mapping.
 
-### Cache Freeze List with Root Validation
-
-```typescript
-interface FreezeListCache {
-  addresses: string[];
-  root: bigint;
-  lastFetched: Date;
-}
-
-let cache: FreezeListCache | null = null;
-
-// Before each proof generation:
-const currentRoot = await engine.fetchCurrentRoot(programId);
-
-if (!cache || cache.root !== currentRoot) {
-  const freezeListResult = await engine.fetchFreezeListFromChain(programId);
-  cache = {
-    addresses: freezeListResult.addresses,
-    root: currentRoot,
-    lastFetched: new Date(),
-  };
-}
-
-const witness = await engine.generateFreezeListNonInclusionProof(address, {
-  freezeList: cache.addresses,
-  programId,
-});
-```
-
-### Error Handling
+| Message (prefix)                                             | Cause                                                                                                            |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `Either freezeList or programId must be provided in options` | `generateFreezeListNonInclusionProof` called without either                                                      |
+| `Failed to fetch freeze_list_root for program ...`           | Mapping missing (404) or empty: wrong program ID or registry not initialized (same for `freeze_list_last_index`) |
+| `Failed to fetch after N attempts: ...`                      | Network error, 5xx or 429 persisted through all retries                                                          |
+| `HTTP 4xx: ...`                                              | Client error other than 404 and 429, not retried                                                                 |
+| `Leaves limit exceeded. Max: ..., provided: ...`             | Freeze list larger than the tree capacity                                                                        |
 
 ```typescript
 try {
-  const witness = await engine.generateFreezeListNonInclusionProof(address);
+  const witness = await engine.generateFreezeListNonInclusionProof(address, { programId });
 } catch (error) {
-  if (error.message.includes("Failed to fetch")) {
-    console.error("Network error:", error);
-  } else if (error.message.includes("Leaves limit exceeded")) {
-    console.error("Tree capacity exceeded:", error);
-  } else {
-    console.error("Unexpected error:", error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.startsWith("Leaves limit exceeded")) {
+    // freeze list exceeds tree capacity
   }
 }
 ```
+
+### trackTransactionStatus
+
+A 404 means "not yet confirmed" and polling continues. Other HTTP and network errors are also caught and polling continues until `maxAttempts` or `timeout` is reached. It then throws one of:
+
+| Message (prefix)                                              | Cause                                                               |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `Transaction polling timeout after ...`                       | `timeout` elapsed                                                   |
+| `Failed after N attempts. Last error: ...`                    | The final attempt errored (e.g. `HTTP 401: Unauthorized`)           |
+| `Transaction status could not be determined after N attempts` | `maxAttempts` reached without confirmation; it may still be pending |
