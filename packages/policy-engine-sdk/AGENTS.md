@@ -59,7 +59,7 @@ import {
 ## Design Principles
 
 1. **ESM Only**: Modern ES module package
-2. **Minimal Dependencies**: Only `@provablehq/sdk` and `@scure/base`
+2. **Minimal Dependencies**: `@scure/base` at runtime; `@provablehq/sdk` as a peer dependency
 3. **Configurable**: All options have sensible defaults
 4. **Cache-Friendly**: `fetchCurrentRoot()` enables efficient cache validation
 
