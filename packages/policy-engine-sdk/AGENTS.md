@@ -98,6 +98,7 @@ The `prepublishOnly` script builds automatically before publishing.
 ## SDK-Specific Notes
 
 - **ESM Only**: No CommonJS - use `import`/`export` only
+- **Install from root only**: Never run `npm install` in this directory; install packages from the repository root
 - Add changeset for any SDK change: `npx changeset`
 
 See root `/AGENTS.md` for repository-wide constraints.
