@@ -232,36 +232,9 @@ Final Status:
 
 ---
 
-### Utility Modules
+### Transaction Tracking
 
-#### `aleo-transaction-tracker.ts`
-
-This is a **utility module** (not a standalone example) that provides transaction tracking functionality. It's used by the `verify-non-inclusion-transaction.ts` example.
-
-**Features:**
-
-- Polls the Aleo API to track transaction status
-- Distinguishes between accepted, rejected, and aborted transactions
-- Retrieves block height for confirmed transactions
-- Configurable timeout, retry attempts, and polling interval
-- Handles edge cases (fee-only transactions, API errors, etc.)
-
-**Usage:**
-
-```typescript
-import { trackTransactionStatus } from "./aleo-transaction-tracker.js";
-
-const status = await trackTransactionStatus(txId, endpoint, {
-  maxAttempts: 60,
-  pollInterval: 5000,
-  timeout: 300000,
-  network: "testnet",
-});
-
-console.log(status.status); // 'accepted' | 'rejected' | 'aborted' | 'pending'
-```
-
-This utility is reusable for any Aleo transaction tracking needs in your applications.
+`verify-non-inclusion-transaction.ts` polls for confirmation with `trackTransactionStatus`, exported by the SDK. See [API.md](../API.md#utility-functions) for its options.
 
 ---
 
