@@ -129,7 +129,7 @@ Tests use **LionDen** to compile programs and manage a local `leo devnode` proce
 | `/test/*.test.ts`   | Sequential Vitest integration tests               |
 | `/lib/*.ts`         | Shared test and deployment helpers                |
 
-**Test Accounts**: deployer, admin, investigator, frozen_address, sender, recipient, minter, burner, supply_manager, spender, freeze_list_manager, pauser
+**Test Accounts** (`namedAccounts` in `lionden.config.ts`, used via `ctx.named.signer("<name>")`): `deployer`, `admin`, `investigator`, `frozenAccount`, `account`, `recipient`, `minter`, `burner`, `supplyManager`, `spender`, `freezeListManager`, `pauser`
 
 ## Compilation Artifacts
 
