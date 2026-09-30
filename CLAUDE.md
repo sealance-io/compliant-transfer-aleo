@@ -6,4 +6,4 @@ Backwards-compatibility adapter for Claude Code. All agent-agnostic project inst
 
 ## Claude Code specifics
 
-- Path-scoped rules in `.claude/rules/` load automatically based on the files being worked on (Leo programs, testing, SDK, deployment, lib).
+- Path-scoped rules in `.claude/rules/` load automatically based on the files being worked on (Leo programs, testing, deployment, lib).
