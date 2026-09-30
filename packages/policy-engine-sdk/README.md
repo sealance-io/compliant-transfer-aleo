@@ -70,7 +70,7 @@ const tx = await policyContract.transfer_private(recipient, amount, inputRecord,
 | `getSiblingPath`          | Generate Merkle proof                    |
 | `trackTransactionStatus`  | Track transaction confirmation           |
 
-See [API.md](./API.md) for complete documentation.
+See [API.md](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/API.md) for complete documentation.
 
 ## Configuration
 
@@ -115,13 +115,13 @@ const witness = await engine.generateFreezeListNonInclusionProof(address, {
 });
 ```
 
-See `examples/cached-freeze-list.ts` for complete implementation.
+See [`examples/cached-freeze-list.ts`](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/examples/cached-freeze-list.ts) for complete implementation.
 
 ## Documentation
 
-- [API.md](./API.md) - Complete API reference
-- [examples/](./examples/) - Usage examples
-- [CHANGELOG.md](./CHANGELOG.md) - Version history
+- [API.md](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/API.md) - Complete API reference
+- [examples/](https://github.com/sealance-io/compliant-transfer-aleo/tree/main/packages/policy-engine-sdk/examples) - Usage examples
+- [CHANGELOG.md](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/CHANGELOG.md) - Version history
 
 ## Development
 
