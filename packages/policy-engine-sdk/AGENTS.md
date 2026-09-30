@@ -71,7 +71,8 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 - **SDK examples or integration guidance:** `examples/` directory
 - **SDK version history or release notes:** `CHANGELOG.md`
 - **SDK unit tests:** `test/README.md`
-- **Publishing, changesets, or package registry setup:** `../../docs/RELEASING.md` (summary in Publishing section below)
+- **Publishing or changesets:** `../../docs/RELEASING.md` (summary in Publishing section below)
+- **Package registry setup, release failures, or emergencies:** `../../docs/RELEASE-OPERATIONS.md`
 - **Repo-wide constraints or shared tooling:** `../../AGENTS.md`
 
 ## Testing

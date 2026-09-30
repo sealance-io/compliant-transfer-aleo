@@ -93,7 +93,8 @@ Required for branch protection:
 Load the linked file(s) when your task touches that area. Do not assume links are auto-loaded.
 
 - **Build, deploy, upgrade, release, or setup:** `docs/DEVELOPMENT.md` - commands, SDK development, deployment, upgrades
-- **Releasing SDK versions:** `docs/RELEASING.md` - Changesets workflow, emergency procedures
+- **Releasing SDK versions:** `docs/RELEASING.md` - Changesets workflow, bump types, pre-releases
+- **Release admin, failures, or emergencies:** `docs/RELEASE-OPERATIONS.md` - environments, troubleshooting, rollback/deprecate/unpublish
 - **Testing or CI failures:** `docs/TESTING.md` - manual local Aleo setup, test configuration
 - **npm install, security policy, or dependency updates:** `docs/NPM-SECURITY.md` - security model and practices
 - **Program structure, compliance flow, or editing Leo programs:** `docs/ARCHITECTURE.md` - Leo programs, dependencies, compliance system, cross-program invariants
