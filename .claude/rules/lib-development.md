@@ -5,7 +5,7 @@ paths:
 
 # Library Utilities
 
-See @AGENTS.md "Key Libraries" section for module overview.
+See @docs/CODE-PATTERNS.md "Key Libraries" section for module overview.
 
 **Critical constraints:**
 

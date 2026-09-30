@@ -16,16 +16,6 @@ Monorepo for compliant token transfers on Aleo blockchain. Leo programs (smart c
 - **Shared Libraries** (`/lib`): Freeze lists, tokens, deployment, roles, funding
 - **Deployment Recipes** (`/recipes`): Devnode/testnet deployment and upgrades
 
-**Leo programs** (`/programs`) — 14 programs across 7 directories:
-
-- `vendor/` — `token_registry` (shared token registry), `multisig_core` (multisig primitives)
-- `core/` — `merkle_tree` (Merkle proof verification)
-- `freezelist_registry/` — On-chain freeze lists with Merkle roots + multisig variant
-- `token/` — Compliant token template, self-contained report token, multisig token
-- `policy/` — Report, threshold-report, and timelock compliance policies
-- `proxy/` — Multisig proxy wrappers for tokens and freeze lists
-- `demo/` — Credit-to-token exchange
-
 **Execution model** (Leo v4): Entry `fn` runs off-chain (generates ZKP + `Final`). The `final { }` block runs on-chain (validators write to mappings). Only `public` values are visible inside `final` blocks.
 
 **Compliance flow**: Freeze list stored on-chain -> SDK fetches list and builds Merkle tree -> generates non-inclusion proof -> proof submitted with transfer transaction -> on-chain final block verifies proof.
@@ -67,31 +57,6 @@ lionden recipe --file recipes/upgrade.ts --network devnode --program <program-na
 # Format
 npm run format:fix          # Auto-fix formatting
 ```
-
-## File Locations
-
-| Path                           | Contents               |
-| ------------------------------ | ---------------------- |
-| `/programs/**/*.leo`           | Leo programs           |
-| `/packages/policy-engine-sdk/` | SDK source and docs    |
-| `/test/*.test.ts`              | Integration tests      |
-| `/lib/`                        | Shared utilities       |
-| `/artifacts/`                  | Compiled output        |
-| `/recipes/`                    | Deployment recipes     |
-| `/scripts/`                    | Utility scripts        |
-| `/docs/`                       | Detailed documentation |
-
-## Key Libraries (`/lib`)
-
-| Module               | Purpose                                      |
-| -------------------- | -------------------------------------------- |
-| `Block.ts`           | Block height queries, `waitBlocks()` utility |
-| `Constants.ts`       | Shared constants, policy metadata, roles     |
-| `Fund.ts`            | Credit funding for test accounts             |
-| `LiondenAdapters.ts` | Type and signer adapters for LionDen calls   |
-| `Multisig.ts`        | Multisig wallet creation and approval        |
-| `Token.ts`           | Token operation utilities                    |
-| `Upgrade.ts`         | Program upgrade and checksum verification    |
 
 ## Critical Constraints
 
