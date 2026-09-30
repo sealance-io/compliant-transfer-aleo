@@ -4,24 +4,28 @@ Common patterns and examples for working with this codebase.
 
 ## Contract Interaction
 
-All TypeScript contract interactions follow this pattern:
+Contracts are typed bindings generated into `/typechain` by `npm run compile`:
 
 ```typescript
-// 1. Create contract instance with execution mode and private key
-const contract = new ContractNameContract({
-  mode: ExecutionMode.SnarkExecute, // or SnarkProve, Evaluate
-  privateKey: deployerPrivKey,
-});
+import { createCompliantTokenTemplate } from "../typechain/CompliantTokenTemplate.js";
+import { asSigner } from "../lib/LiondenAdapters.js";
 
-// 2. Check deployment status
-const isDeployed = await contract.isDeployed();
+// 1. Bind the generated contract to the LionDen runtime
+const token = createCompliantTokenTemplate().connect(ctx.lre);
+const minter = ctx.named.signer("minter");
 
-// 3. Execute transitions (returns TransactionResponse)
-const tx = await contract.transition_name(params);
-await tx.wait(); // Wait for confirmation
+// 2. Execute transitions; each exposes accepted / rejected / settled / submitted,
+//    plus locally / failsLocally for off-chain execution
+const tx = await token.mint_private.accepted(recipient, amount, asSigner(minter));
+await token.burn_private.rejected(record, amount, asSigner(recipient));
 
-// 4. Decrypt private outputs
-const decryptedRecord = decryptRecordType(ciphertext, viewKey);
+// 3. Decrypt private outputs with the owning signer
+const record = await tx.outputs[1].decrypt(recipient);
+
+// 4. Read public state
+const info = await token.mappings.tokenInfo.get(true);
+const paused = await token.storage.isPaused.getOrUse(false);
+const balance = await token.views.balanceOf(recipient);
 ```
 
 ## Working with Freeze Lists
