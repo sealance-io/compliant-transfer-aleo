@@ -1,13 +1,5 @@
 # CLAUDE.md
 
-Claude Code configuration for the Policy Engine SDK.
+Backwards-compatibility adapter for Claude Code. All agent-agnostic SDK instructions live in `AGENTS.md` — edit that file, not this one.
 
-## Instructions
-
-See @AGENTS.md for SDK-specific guide, commands, and API reference.
-
-## Rules
-
-- Install packages from repository root only, never in this directory
-- Add changeset for any SDK change: `npx changeset`
-- ESM only - use `import`/`export`, no CommonJS
+@AGENTS.md

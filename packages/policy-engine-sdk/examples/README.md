@@ -12,14 +12,19 @@ Before running the examples, ensure you have:
 
    These examples use a local file dependency (`"file:.."`) that references the SDK source code directly. This means changes to the SDK are immediately reflected in the examples without republishing.
 
+   The examples are a standalone package outside the root npm workspace, so they are the one place installed in place rather than from the repository root. Always keep `--ignore-scripts`.
+
    **Option 1: Quick setup (from SDK directory)**
+
    ```bash
    # From packages/policy-engine-sdk/
    npm run build:examples
    ```
+
    This builds the SDK and installs example dependencies in one command.
 
    **Option 2: Manual setup**
+
    ```bash
    # Build the SDK first
    cd packages/policy-engine-sdk
@@ -46,6 +51,7 @@ Before running the examples, ensure you have:
 4. **Compatible program deployed** on the target network:
 
    The SDK works with any Aleo program that implements the freeze list API:
+
    ```leo
    mapping freeze_list_index: u32 => address
    mapping freeze_list_last_index: bool => u32
@@ -63,28 +69,31 @@ Before running the examples, ensure you have:
 
 ## Available Examples
 
-| Example | Script | Queries Chain | Broadcasts Transaction | Description |
-|---------|--------|---------------|------------------------|-------------|
-| Basic Usage | `npm run basic` | ✅ Yes | ❌ No | Fetches freeze list and generates proofs |
-| Cached Freeze List | `npm run cached` | ✅ Yes | ❌ No | Demonstrates root validation and caching |
-| Verify Transaction | `npm run verify-tx` | ✅ Yes | ✅ Yes | Complete transaction submission workflow |
+| Example            | Script              | Queries Chain | Broadcasts Transaction | Description                              |
+| ------------------ | ------------------- | ------------- | ---------------------- | ---------------------------------------- |
+| Basic Usage        | `npm run basic`     | ✅ Yes        | ❌ No                  | Fetches freeze list and generates proofs |
+| Cached Freeze List | `npm run cached`    | ✅ Yes        | ❌ No                  | Demonstrates root validation and caching |
+| Verify Transaction | `npm run verify-tx` | ✅ Yes        | ✅ Yes                 | Complete transaction submission workflow |
 
 ---
 
 ### 1. Basic Usage (`basic-usage.ts`)
 
 Demonstrates the fundamental features of the SDK:
+
 - Fetching freeze lists from the blockchain
 - Generating non-inclusion proofs
 - Converting addresses to field elements
 - Building custom Merkle trees
 
 **Run:**
+
 ```bash
 npm run basic
 ```
 
 **Features:**
+
 - ✅ Queries blockchain for freeze list data
 - ✅ Shows complete proof generation workflow
 - ✅ Demonstrates utility functions
@@ -95,17 +104,20 @@ npm run basic
 ### 2. Cached Freeze List (`cached-freeze-list.ts`)
 
 Shows best practices for generating multiple proofs efficiently:
+
 - Uses `fetchCurrentRoot()` to validate cache with lightweight API call
 - Only re-fetches full freeze list when root changes
 - Generates multiple proofs using cached data
 - Demonstrates the recommended caching pattern
 
 **Run:**
+
 ```bash
 npm run cached
 ```
 
 **Features:**
+
 - ✅ Queries blockchain (fetchCurrentRoot + fetchFreezeListFromChain)
 - ✅ Performance optimization with root validation
 - ✅ Multiple address verification
@@ -117,11 +129,13 @@ npm run cached
 ### 3. Verify Non-Inclusion Transaction (`verify-non-inclusion-transaction.ts`)
 
 **Complete end-to-end example** showing how to:
+
 1. Generate a non-inclusion proof using the SDK
 2. Create a transaction for `verify_non_inclusion_priv` using `@provablehq/sdk`
 3. Broadcast the transaction to the Aleo network
 
 **Run:**
+
 ```bash
 # Set your private key
 export PRIVATE_KEY="APrivateKey1zkp..."
@@ -131,6 +145,7 @@ npm run verify-tx
 ```
 
 **Features:**
+
 - ✅ Queries blockchain for freeze list data
 - ✅ **Broadcasts transaction** to Aleo network
 - ✅ Full end-to-end transaction workflow
@@ -153,18 +168,20 @@ const CONFIG = {
   priorityFee: 0,
 
   // Transaction tracking configuration
-  trackTransaction: true,        // Set to false to skip waiting for confirmation
-  trackingTimeout: 300000,       // 5 minutes (in milliseconds)
+  trackTransaction: true, // Set to false to skip waiting for confirmation
+  trackingTimeout: 300000, // 5 minutes (in milliseconds)
 };
 ```
 
 **Requirements:**
+
 - ✅ Active Aleo network (local devnet, testnet, or mainnet)
 - ✅ Private key with sufficient balance for transaction fees
 - ✅ `sealance_freezelist_registry.aleo` program deployed on the network
 - ✅ Network endpoint accessible (e.g., `http://localhost:3030`)
 
 **Output Example:**
+
 ```
 ================================================================================
 Verify Non-Inclusion Transaction Example
@@ -215,34 +232,9 @@ Final Status:
 
 ---
 
-### Utility Modules
+### Transaction Tracking
 
-#### `aleo-transaction-tracker.ts`
-
-This is a **utility module** (not a standalone example) that provides transaction tracking functionality. It's used by the `verify-non-inclusion-transaction.ts` example.
-
-**Features:**
-- Polls the Aleo API to track transaction status
-- Distinguishes between accepted, rejected, and aborted transactions
-- Retrieves block height for confirmed transactions
-- Configurable timeout, retry attempts, and polling interval
-- Handles edge cases (fee-only transactions, API errors, etc.)
-
-**Usage:**
-```typescript
-import { trackTransactionStatus } from "./aleo-transaction-tracker.js";
-
-const status = await trackTransactionStatus(txId, endpoint, {
-  maxAttempts: 60,
-  pollInterval: 5000,
-  timeout: 300000,
-  network: "testnet",
-});
-
-console.log(status.status); // 'accepted' | 'rejected' | 'aborted' | 'pending'
-```
-
-This utility is reusable for any Aleo transaction tracking needs in your applications.
+`verify-non-inclusion-transaction.ts` polls for confirmation with `trackTransactionStatus`, exported by the SDK. See [API.md](../API.md#utility-functions) for its options.
 
 ---
 
@@ -253,6 +245,7 @@ This utility is reusable for any Aleo transaction tracking needs in your applica
 - `PRIVATE_KEY`: Aleo private key (e.g., `APrivateKey1zkp...`)
 
   **Generate a new account:**
+
   ```bash
   # Using Leo CLI (recommended)
   leo account new
@@ -271,17 +264,21 @@ This utility is reusable for any Aleo transaction tracking needs in your applica
 ### Common Issues
 
 **"Cannot find module '@provablehq/sdk'"**
+
 - Run `npm install --ignore-scripts` in the examples directory
 
 **"Account has insufficient balance"**
+
 - Ensure your account has Aleo credits for transaction fees
 - For local devnet use pre-funded accounts
 
 **"Program not found"**
+
 - Ensure the program is deployed on the network
 - Check the `programId` in the configuration matches the deployed program
 
 **"Root mismatch error"**
+
 - The on-chain freeze list may have been updated
 - Re-fetch the freeze list before generating proofs
 
@@ -321,9 +318,10 @@ npm run basic
 ```
 
 **Note:** If you add/remove exports from the SDK, you may need to reinstall:
+
 ```bash
 cd examples
-npm install  # Refreshes the symlink
+npm install --ignore-scripts  # Refreshes the symlink
 ```
 
 ### Creating New Examples
@@ -348,11 +346,13 @@ npm install  # Refreshes the symlink
 ### File Dependency vs Published Package
 
 **During Development (current setup):**
+
 - Uses `"file:.."` to reference local SDK
 - Changes to SDK immediately available after rebuilding
 - No need to publish or version bump
 
 **In Production Applications:**
+
 - Use published package: `"@sealance-io/policy-engine-aleo": "^0.3.0"`
 - Install from npm: `npm install @sealance-io/policy-engine-aleo @provablehq/sdk`
 

@@ -138,10 +138,11 @@ that call `setup({ skipDevnode: true })`, start a devnode separately:
 
 ```bash
 # In another terminal:
-leo devnode start \
-  --private-key "$ALEO_DEVNET_DEPLOYER_PRIVATE_KEY" \
-  --consensus-heights 0,1,2,3,4,5,6,7,8,9,10,11,12,13
+leo devnode start --private-key "$ALEO_DEVNET_DEPLOYER_PRIVATE_KEY"
 ```
+
+Leo 4.3+ compiles the devnode's consensus heights in; `leo devnode start` no longer accepts
+`--consensus-heights`.
 
 For devnet, `DEVNET_EXTERNAL=1` plus a `DEVNET_ENDPOINT` points the suite at a network you
 started yourself. Nothing is torn down in that mode, and readiness failures report the poll

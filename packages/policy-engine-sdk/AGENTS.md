@@ -17,14 +17,14 @@ npx changeset  # Add changeset for SDK changes
 
 ## Module Structure
 
-| File                 | Purpose                                    |
-| -------------------- | ------------------------------------------ |
-| `src/policy-engine.ts` | Main `PolicyEngine` class                |
-| `src/api-client.ts`    | Blockchain API with retry/concurrency    |
-| `src/merkle-tree.ts`   | Tree building and proof generation       |
-| `src/conversion.ts`    | Address/field conversion utilities       |
-| `src/types.ts`         | TypeScript type definitions              |
-| `src/index.ts`         | Public exports                           |
+| File                   | Purpose                               |
+| ---------------------- | ------------------------------------- |
+| `src/policy-engine.ts` | Main `PolicyEngine` class             |
+| `src/api-client.ts`    | Blockchain API with retry/concurrency |
+| `src/merkle-tree.ts`   | Tree building and proof generation    |
+| `src/conversion.ts`    | Address/field conversion utilities    |
+| `src/types.ts`         | TypeScript type definitions           |
+| `src/index.ts`         | Public exports                        |
 
 ## Key APIs
 
@@ -34,32 +34,32 @@ npx changeset  # Add changeset for SDK changes
 const engine = new PolicyEngine({ endpoint, network, maxTreeDepth });
 
 // Core methods
-engine.fetchCurrentRoot(programId)                      // Lightweight root fetch
-engine.fetchFreezeListFromChain(programId)              // Full freeze list
-engine.generateFreezeListNonInclusionProof(addr, opts)  // Generate proof
-engine.buildMerkleTree(addresses)                       // Build tree
-engine.getMerkleRoot(addresses)                         // Get root
+engine.fetchCurrentRoot(programId); // Lightweight root fetch
+engine.fetchFreezeListFromChain(programId); // Full freeze list
+engine.generateFreezeListNonInclusionProof(addr, opts); // Generate proof
+engine.buildMerkleTree(addresses); // Build tree
+engine.getMerkleRoot(addresses); // Get root
 ```
 
 ### Utility Functions
 
 ```typescript
 import {
-  convertAddressToField,   // aleo1... → bigint
-  convertFieldToAddress,   // field → aleo1...
-  stringToBigInt,          // ASCII → bigint
-  buildTree,               // leaves → tree
-  generateLeaves,          // addresses → sorted leaves
-  getLeafIndices,          // tree + address → indices
-  getSiblingPath,          // tree + index → proof
-  trackTransactionStatus   // txId → status
+  convertAddressToField, // aleo1... → bigint
+  convertFieldToAddress, // field → aleo1...
+  stringToBigInt, // ASCII → bigint
+  buildTree, // leaves → tree
+  generateLeaves, // addresses → sorted leaves
+  getLeafIndices, // tree + address → indices
+  getSiblingPath, // tree + index → proof
+  trackTransactionStatus, // txId → status
 } from "@sealance-io/policy-engine-aleo";
 ```
 
 ## Design Principles
 
 1. **ESM Only**: Modern ES module package
-2. **Minimal Dependencies**: Only `@provablehq/sdk` and `@scure/base`
+2. **Minimal Dependencies**: `@scure/base` at runtime; `@provablehq/sdk` as a peer dependency
 3. **Configurable**: All options have sensible defaults
 4. **Cache-Friendly**: `fetchCurrentRoot()` enables efficient cache validation
 
@@ -70,8 +70,10 @@ Load the linked file(s) when your task touches that area. Do not assume links ar
 - **SDK usage or public API surface:** `README.md` (installation, quick start) and `API.md` (complete API reference)
 - **SDK examples or integration guidance:** `examples/` directory
 - **SDK version history or release notes:** `CHANGELOG.md`
-- **Publishing or package registry setup:** See Publishing section below
-- **Repo-wide constraints or shared tooling:** Root `AGENTS.md`
+- **SDK unit tests:** `test/README.md`
+- **Publishing or changesets:** `../../docs/RELEASING.md` (summary in Publishing section below)
+- **Package registry setup, release failures, or emergencies:** `../../docs/RELEASE-OPERATIONS.md`
+- **Repo-wide constraints or shared tooling:** `../../AGENTS.md`
 
 ## Testing
 
@@ -89,6 +91,7 @@ SDK unit tests can run in parallel; root integration tests must run sequentially
 Published to npm via CI (OIDC trusted publishing with provenance attestation).
 
 Automated release flow:
+
 1. Add changeset (`npx changeset`)
 2. Merge to `main` → version workflow creates release PR
 3. Merge release PR → publish workflow publishes to npm + creates GitHub Release
@@ -98,6 +101,7 @@ The `prepublishOnly` script builds automatically before publishing.
 ## SDK-Specific Notes
 
 - **ESM Only**: No CommonJS - use `import`/`export` only
-- Add changeset for any SDK change: `npx changeset`
+- **Install from root only**: Never run `npm install` in this directory; install packages from the repository root. Exception: `examples/` is a standalone package outside the workspace — install it in place with `npm install --ignore-scripts` (or `npm run build:examples`)
+- Add a changeset (`npx changeset`) for changes that affect the published package; see `../../docs/RELEASING.md` for exemptions
 
-See root `/AGENTS.md` for repository-wide constraints.
+See `../../AGENTS.md` for repository-wide constraints.

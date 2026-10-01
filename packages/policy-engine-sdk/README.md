@@ -48,41 +48,41 @@ const tx = await policyContract.transfer_private(recipient, amount, inputRecord,
 
 ### PolicyEngine Methods
 
-| Method                                | Description                              |
-| ------------------------------------- | ---------------------------------------- |
-| `fetchCurrentRoot(programId)`         | Lightweight root fetch (1 API call)      |
-| `fetchFreezeListFromChain(programId)` | Fetch full freeze list                   |
-| `generateFreezeListNonInclusionProof(addr, opts)` | Generate non-inclusion proof |
-| `buildMerkleTree(addresses)`          | Build tree from addresses                |
-| `getMerkleRoot(addresses)`            | Compute root from addresses              |
-| `getConfig()`                         | Get current configuration                |
+| Method                                            | Description                         |
+| ------------------------------------------------- | ----------------------------------- |
+| `fetchCurrentRoot(programId)`                     | Lightweight root fetch (1 API call) |
+| `fetchFreezeListFromChain(programId)`             | Fetch full freeze list              |
+| `generateFreezeListNonInclusionProof(addr, opts)` | Generate non-inclusion proof        |
+| `buildMerkleTree(addresses)`                      | Build tree from addresses           |
+| `getMerkleRoot(addresses)`                        | Compute root from addresses         |
+| `getConfig()`                                     | Get current configuration           |
 
 ### Utility Functions
 
-| Function                  | Description                              |
-| ------------------------- | ---------------------------------------- |
-| `convertAddressToField`   | Address → field element                  |
-| `convertFieldToAddress`   | Field element → address                  |
-| `stringToBigInt`          | ASCII string → BigInt                    |
-| `buildTree`               | Build Merkle tree from leaves            |
-| `generateLeaves`          | Generate sorted/padded leaves            |
-| `getLeafIndices`          | Find leaf indices for address            |
-| `getSiblingPath`          | Generate Merkle proof                    |
-| `trackTransactionStatus`  | Track transaction confirmation           |
+| Function                 | Description                    |
+| ------------------------ | ------------------------------ |
+| `convertAddressToField`  | Address → field element        |
+| `convertFieldToAddress`  | Field element → address        |
+| `stringToBigInt`         | ASCII string → BigInt          |
+| `buildTree`              | Build Merkle tree from leaves  |
+| `generateLeaves`         | Generate sorted/padded leaves  |
+| `getLeafIndices`         | Find leaf indices for address  |
+| `getSiblingPath`         | Generate Merkle proof          |
+| `trackTransactionStatus` | Track transaction confirmation |
 
-See [API.md](./API.md) for complete documentation.
+See [API.md](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/API.md) for complete documentation.
 
 ## Configuration
 
-| Option           | Default                                  | Description                    |
-| ---------------- | ---------------------------------------- | ------------------------------ |
-| `endpoint`       | `"https://api.explorer.provable.com/v1"` | Aleo network endpoint          |
-| `network`        | `"mainnet"`                              | Network name                   |
-| `maxTreeDepth`   | `15`                                     | Maximum Merkle tree depth      |
-| `maxRetries`     | `5`                                      | Max API retry attempts         |
-| `retryDelay`     | `2000`                                   | Delay between retries (ms)     |
-| `maxConcurrency` | `10`                                     | Max concurrent HTTP requests   |
-| `logger`         | `defaultLogger`                          | Custom logger function         |
+| Option           | Default                                  | Description                  |
+| ---------------- | ---------------------------------------- | ---------------------------- |
+| `endpoint`       | `"https://api.explorer.provable.com/v1"` | Aleo network endpoint        |
+| `network`        | `"mainnet"`                              | Network name                 |
+| `maxTreeDepth`   | `15`                                     | Maximum Merkle tree depth    |
+| `maxRetries`     | `5`                                      | Max API retry attempts       |
+| `retryDelay`     | `2000`                                   | Delay between retries (ms)   |
+| `maxConcurrency` | `10`                                     | Max concurrent HTTP requests |
+| `logger`         | `defaultLogger`                          | Custom logger function       |
 
 ## Program Compatibility
 
@@ -94,7 +94,9 @@ mapping freeze_list_last_index: bool => u32;
 mapping freeze_list_root: u8 => field;
 ```
 
-Compatible programs: `sealance_freezelist_registry.aleo`, `sealed_report_policy.aleo`, `sealed_threshold_report_policy.aleo`, `sealed_timelock_policy.aleo`
+Compatible programs (pass as `programId`): `sealance_freezelist_registry.aleo`, `multisig_freezelist_registry.aleo`, `sealed_report_policy.aleo`, `sealed_report_token.aleo`
+
+Programs that verify against a separate registry instead of holding their own freeze list use that registry's `programId`: `compliant_token_template.aleo`, `sealed_threshold_report_policy.aleo` and `sealed_timelock_policy.aleo` use `sealance_freezelist_registry.aleo`; `multisig_compliant_token.aleo` uses `multisig_freezelist_registry.aleo`.
 
 ## Cache Pattern (Recommended)
 
@@ -115,13 +117,13 @@ const witness = await engine.generateFreezeListNonInclusionProof(address, {
 });
 ```
 
-See `examples/cached-freeze-list.ts` for complete implementation.
+See [`examples/cached-freeze-list.ts`](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/examples/cached-freeze-list.ts) for complete implementation.
 
 ## Documentation
 
-- [API.md](./API.md) - Complete API reference
-- [examples/](./examples/) - Usage examples
-- [CHANGELOG.md](./CHANGELOG.md) - Version history
+- [API.md](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/API.md) - Complete API reference
+- [examples/](https://github.com/sealance-io/compliant-transfer-aleo/tree/main/packages/policy-engine-sdk/examples) - Usage examples
+- [CHANGELOG.md](https://github.com/sealance-io/compliant-transfer-aleo/blob/main/packages/policy-engine-sdk/CHANGELOG.md) - Version history
 
 ## Development
 
