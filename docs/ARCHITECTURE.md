@@ -74,8 +74,9 @@ Cross-program rules that must survive edits. Program sources live at
   the SDK and re-exported from `lib/Constants.ts`.
 - `update_freeze_list` must require the caller to pass the current root, keep the previous root,
   extend `freeze_list_last_index` when freezing at `last_index + 1`, and record the update height
-  (`freeze_list_root_updated_at` storage in `sealance_freezelist_registry`; `root_updated_height`
-  mapping in `multisig_freezelist_registry`, `sealed_report_policy`, and `sealed_report_token`).
+  (`freeze_list_root_updated_at` storage in `sealance_freezelist_registry`, read through its
+  ARC-22 `root_updated_height()` view; `root_updated_height` mapping in
+  `multisig_freezelist_registry`, `sealed_report_policy`, and `sealed_report_token`).
 - `verify_non_inclusion_priv` accepts the previous root only within the grace window after the
   last update. `verify_non_inclusion_pub` reveals the account; the `_priv` variant passes only the
   Merkle root to the final block.
