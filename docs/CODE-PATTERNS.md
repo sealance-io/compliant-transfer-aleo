@@ -13,16 +13,19 @@ import { asSigner } from "../lib/LiondenAdapters.js";
 // 1. Bind the generated contract to the LionDen runtime
 const token = createCompliantTokenTemplate().connect(ctx.lre);
 const minter = ctx.named.signer("minter");
+const recipient = ctx.named.signer("recipient");
 
 // 2. Execute transitions; each exposes accepted / rejected / settled / submitted,
 //    plus locally / failsLocally for off-chain execution
 const tx = await token.mint_private.accepted(recipient, amount, asSigner(minter));
-await token.burn_private.rejected(record, amount, asSigner(recipient));
 
 // 3. Decrypt private outputs with the owning signer
 const record = await tx.outputs[1].decrypt(recipient);
 
-// 4. Read public state
+// 4. Use the record; recipient lacks the burner role, so this is rejected
+await token.burn_private.rejected(record, amount, asSigner(recipient));
+
+// 5. Read public state
 const info = await token.mappings.tokenInfo.get(true);
 const paused = await token.storage.isPaused.getOrUse(false);
 const balance = await token.views.balanceOf(recipient);
